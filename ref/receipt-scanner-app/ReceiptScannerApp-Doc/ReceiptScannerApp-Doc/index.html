@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Receipt Scanner App Documentation</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #f39c12;
+            --background-color: #f4f7f9;
+            --text-color: #333;
+            --heading-color: #2c3e50;
+            --light-gray: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(to right, #f0f0f0, #e8e8e8);
+            color: var(--text-color);
+            line-height: 1.7;
+            padding-top: 70px;
+            /* Space for fixed navbar */
+            transition: background-color 0.3s ease;
+        }
+
+        /* Background for dark mode */
+        body.dark-mode {
+            background: linear-gradient(to right, #333, #444);
+            color: #fff;
+        }
+
+        body.dark-mode .navbar {
+            background-color: #222;
+        }
+
+        body.dark-mode .navbar-brand,
+        body.dark-mode .navbar-nav .nav-link {
+            color: #fff;
+        }
+
+        body.dark-mode .container,
+        body.dark-mode .note {
+            background-color: #333;
+        }
+
+        /* Navbar Styles */
+        .navbar {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: var(--heading-color);
+            font-size: 1.7rem;
+            transition: color 0.3s ease;
+        }
+
+        .navbar-nav .nav-link {
+            color: var(--text-color);
+            transition: color 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-nav .nav-link i {
+            margin-right: 5px;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: var(--primary-color);
+        }
+
+        .navbar-nav .active>.nav-link {
+            color: var(--primary-color);
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: var(--primary-color);
+        }
+
+        .navbar-nav .active>.nav-link {
+            color: var(--primary-color);
+        }
+
+        .container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+            transition: background-color 0.3s ease;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: var(--heading-color);
+            margin-bottom: 20px;
+            margin-top: 50px;
+            font-weight: 500;
+        }
+
+        p {
+            margin-bottom: 1.2rem;
+        }
+
+        code {
+            background-color: var(--light-gray);
+            padding: 2px 5px;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .image-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid var(--light-gray);
+            border-radius: 6px;
+            transition: border-color 0.3s ease;
+        }
+
+        .step-header {
+            font-weight: bold;
+            color: var(--secondary-color);
+            font-size: 1.4rem;
+            margin-top: 1.8rem;
+            margin-bottom: .8rem;
+            transition: color 0.3s ease;
+        }
+
+        .note {
+            color: var(--text-color);
+            font-weight: bold;
+            background-color: var(--light-gray);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        .dark-mode .note {
+            color: #fff;
+            background-color: #444;
+        }
+         .dark-mode code {
+            background-color: #555;
+        }
+
+        a {
+            text-decoration: none !important;
+            color: var(--primary-color);
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: var(--secondary-color);
+        }
+
+        .list-unstyled li {
+            margin-bottom: .8rem;
+            line-height: 1.8;
+            padding-left: 10px;
+            transition: all 0.3s ease;
+        }
+
+        ul li {
+             margin-bottom: .5rem;
+        }
+         ul ul li {
+             margin-bottom: .3rem;
+             margin-left: 20px;
+             list-style-type: disc;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        .card-header {
+            background-color: var(--light-gray);
+            color: var(--heading-color);
+            font-weight: 500;
+            padding: 18px;
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            transition: background-color 0.3s ease;
+        }
+
+         body.dark-mode .card-header {
+             background-color: #444;
+             color: #eee;
+         }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .accordion-button::after {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%233498db'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+            transition: transform 0.3s ease;
+        }
+
+         body.dark-mode .accordion-button::after {
+             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23eee'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+         }
+
+        .accordion-button:not(.collapsed)::after {
+            transform: rotate(180deg);
+        }
+
+        body.dark-mode .accordion-button {
+            background-color: #3a3a3a;
+            color: #eee;
+         }
+         body.dark-mode .accordion-button:not(.collapsed) {
+            background-color: #484848;
+            color: #fff;
+         }
+         body.dark-mode .accordion-body {
+            background-color: #333;
+            color: #ccc;
+         }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        .fixed-top {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+        }
+
+        .text-muted {
+            color: gray !important;
+        }
+
+        .dark-mode .text-muted {
+            color: #ccc !important;
+        }
+
+        .dark-mode-toggle {
+            cursor: pointer;
+            font-size: 1.5rem;
+            margin-left: 20px;
+        }
+
+        .accordion-item:first-child {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">AI Receipt Scanner App Docs</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#setupAccordion" role="button" aria-expanded="true"
+                            aria-controls="setupAccordion" data-bs-toggle="collapse">
+                            <i class="fas fa-cog"></i> Setup
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#structureAccordion" role="button" aria-expanded="false"
+                            aria-controls="structureAccordion" data-bs-toggle="collapse">
+                            <i class="fas fa-sitemap"></i> Structure
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#featuresAccordion" role="button" aria-expanded="false"
+                            aria-controls="featuresAccordion" data-bs-toggle="collapse">
+                            <i class="fas fa-list-ul"></i> Features
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#videoAccordion" role="button" aria-expanded="false"
+                            aria-controls="videoAccordion" data-bs-toggle="collapse">
+                            <i class="fas fa-video"></i> Video
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#supportAccordion" role="button" aria-expanded="false"
+                            aria-controls="supportAccordion" data-bs-toggle="collapse">
+                            <i class="fas fa-headset"></i> Support
+                        </a>
+                    </li>
+                     <li class="nav-item">
+                        <a class="nav-link" href="#whatsappAccordion" role="button" aria-expanded="false"
+                            aria-controls="whatsappAccordion" data-bs-toggle="collapse">
+                             <i class="fab fa-whatsapp"></i> WhatsApp
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#editAccordion" role="button" aria-expanded="false"
+                            aria-controls="editAccordion" data-bs-toggle="collapse">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                    </li>
+                </ul>
+                <span id="darkModeToggle" class="dark-mode-toggle">
+                    <i class="fas fa-moon" id="darkModeIcon"></i>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="accordion" id="documentationAccordion">
+            <!-- SETUP SECTION -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="setupHeading">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#setupAccordion" aria-expanded="true" aria-controls="setupAccordion">
+                        How to Setup the Project
+                    </button>
+                </h2>
+                <div id="setupAccordion" class="accordion-collapse collapse show" aria-labelledby="setupHeading"
+                    data-bs-parent="#documentationAccordion">
+                    <div class="accordion-body">
+                        <p class="note">
+                           Note: This project is in flutter(v3.19.5) stable channel do not run on other channels you may face issues.
+                        </p>
+                        <p>
+                            Once you extract the "Codes" folder, you can follow these steps on both Windows and macOS platforms as part of the project.
+                        </p>
+                        <p class="step-header">
+                            Step 1: Install Flutter
+                        </p>
+                        <p>
+                            To begin, you'll need to install the Flutter framework on your macOS, Windows, or Linux system. You can find official installation instructions on the Flutter website at: <a href="https://flutter.dev/docs/get-started/install" target="_blank" rel="noopener noreferrer">https://flutter.dev/docs/get-started/install</a>
+                        </p>
+                        <p class="step-header">
+                           Step 2: Create a Test Flutter App (Verify Flutter Installation)
+                        </p>
+                        <ol>
+                            <li>Open your terminal or command prompt on your macOS, Windows, or Linux system.</li>
+                            <li>Type the command <code>flutter create testapp</code> and press enter. This command will create a new Flutter project named "testapp" in a directory of your choice.</li>
+                            <li>Wait for a few seconds while Flutter generates the necessary project files and dependencies.</li>
+                            <li>Once the project is created, you can navigate to the project directory using the <code>cd</code> command in your terminal. For example: <code>cd testapp</code>.</li>
+                            <li>Now, you can open the "testapp" project in your preferred integrated development environment (IDE) such as Visual Studio Code (VSCode) or Android Studio. You can also use any other text editor to modify the project files.</li>
+                            <li>From your IDE or text editor, you can make changes to the Flutter project, such as modifying the code in the Dart files, updating the UI in the Flutter widgets, and configuring the project settings.</li>
+                            <li>To run the Flutter project, you can use the <code>flutter run</code> command in your terminal or the built-in run button in your IDE. This will launch the project in an emulator or a physical device for testing and debugging.</li>
+                            <li>You can continue to experiment with different Flutter commands, modify the project, and run it to see the changes in real-time. This will help you learn and familiarize yourself with Flutter development workflow and best practices.</li>
+                        </ol>
+                        <p>That's it! You have now created a test Flutter project, opened it in an IDE, and run it to see the output. Happy Fluttering!</p>
+
+                        <p class="step-header">
+                           Step 3: Run the Receipt Scanner App Project
+                        </p>
+
+                        <p>If you not face any issue then you ready to run my project. Even if you face any issue then you can comment on envato so I can reply to as soon as.</p>
+                         <div class="image-container">
+                            <img src="assets/images/runmy.png" alt="Running the project illustration" class="img-fluid">
+                         </div>
+                        <p>You can got this folders from envato you just open this <strong>Receipt Scanner -flutter-app-code</strong> in VSCode editor. Then your editor looks like this.</p>
+                         <div class="image-container">
+                            <img src="assets/images/editor.png" alt="Screenshot of VSCode Editor with Receipt Scanner project" class="img-fluid">
+                         </div>
+
+                        <p>After you just go to <code>pubspec.yaml</code> then click on get-packages arrow button</p>
+                         <div class="image-container">
+                            <img src="assets/images/pubs.png" alt="Screenshot of pubspec.yaml Get Packages button" class="img-fluid">
+                         </div>
+
+                        <p>Finally you done all thing just run project for click Run Without Debugging.</p>
+                        <div class="image-container">
+                            <img src="assets/images/debug.png" alt="Screenshot of Run Without Debugging button" class="img-fluid">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+             <!-- STRUCTURE SECTION -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="structureHeading">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#structureAccordion" aria-expanded="false" aria-controls="structureAccordion">
+                        Project Structure Overview
+                    </button>
+                </h2>
+                <div id="structureAccordion" class="accordion-collapse collapse" aria-labelledby="structureHeading"
+                    data-bs-parent="#documentationAccordion">
+                    <div class="accordion-body">
+                        <p>Basic Project Structure:</p>
+                        <div class="image-container">
+                             <img src="assets/images/structure.png" alt="Screenshot of Receipt Scanner Project Structure in IDE" class="img-fluid">
+                        </div>
+
+                        <p>You can see the lib folder this our project all coding stuff,</p>
+                        <ul>
+                           <li><b>Core:</b> this folder contain core file, like common, utils, models, values, widgets</li>
+                           <li><b>Features:</b> we AI Receipt Scanner App all Features like Scan Image of Receipt, History Of Receipt, Details Of Receipt, Receipt Insight, Progress Tracking, Analysis, AI Receipt Assistant Chat Bot. You also check this all screen UI is separated in folders so you can understand this all code easily.</li>
+                        </ul>
+                        <p>Follow dart file: <code>main.dart</code> => <code>app.dart</code> => <code>splash_screen.dart</code> => <code>onboarding_screen.dart</code> => etc.…, so you can understand the code.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FEATURES SECTION -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="featuresHeading">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#featuresAccordion" aria-expanded="false" aria-controls="featuresAccordion">
+                        Key Features and Description
+                    </button>
+                </h2>
+                <div id="featuresAccordion" class="accordion-collapse collapse" aria-labelledby="featuresHeading"
+                    data-bs-parent="#documentationAccordion">
+                    <div class="accordion-body">
+                        <h1>Description</h1>
+                        <ul>
+                            <li>Will give almost all the details required for an AI Receipt Scanner App all Features like Scan Image of Receipt, History Of Receipt, Details Of Receipt, Receipt Insight, Progress Tracking, Analysis, AI Receipt Assistant Chat Bot</li>
+                            <li>Everything was made with a detail-oriented style and followed by today's App Design trends.</li>
+                            <li>Clean coded & layers are well-organized, carefully named, and grouped.</li>
+                            <li>Easy customization of text, colors, graphics, and photos.</li>
+                            <li>100% free fonts Perfect pixel (high-quality design) Very clean and cool UI Free updates.</li>
+                        </ul>
+
+                        <h2>AI Receipt Scanner App Flutter UI Kit Features:</h2>
+                        <ul>
+                            <li>Supported on mobile Android and iPhone</li>
+                            <li>Dart Language</li>
+                            <li>UI/UX design from industry experts</li>
+                            <li>Beautiful and professional looking design</li>
+                            <li>Smooth Transition Effects</li>
+                            <li>Font Awesome & Material Icons</li>
+                            <li>Multiple Font Selection</li>
+                            <li>Multiple Primary Colors Selection</li>
+                            <li>Mobile and Tablet Support</li>
+                            <li>Responsive design for all devices</li>
+                            <li>Animation Controller</li>
+                            <li>Complete Receipt Scanner App module</li>
+                            <li>Splash Screen</li>
+                        </ul>
+
+                        <h3>Detailed Feature Breakdown:</h3>
+                        <ul>
+                            <li>Scanning Features:
+                                <ul>
+                                    <li>Scan Image of Receipt</li>
+                                    <li>Multi-page receipt scanning</li>
+                                    <li>Automatic edge detection</li>
+                                </ul>
+                            </li>
+
+                            <li>History & Organization:
+                                <ul>
+                                    <li>History Of Receipt</li>
+                                    <li>Categorized receipt storage</li>
+                                    <li>Searchable receipt database</li>
+                                </ul>
+                            </li>
+
+                            <li>Details & Analysis:
+                                <ul>
+                                    <li>Details Of Receipt</li>
+                                    <li>Receipt Insight</li>
+                                    <li>Analysis Screen</li>
+                                    <li>Expense categorization</li>
+                                </ul>
+                            </li>
+
+                            <li>Tracking & Reports:
+                                <ul>
+                                    <li>Progress Tracking</li>
+                                    <li>Monthly expense reports</li>
+                                    <li>Budget tracking integration</li>
+                                </ul>
+                            </li>
+
+                            <li>AI Features:
+                                <ul>
+                                    <li>AI Receipt Assistant Chat Bot</li>
+                                    <li>Smart expense suggestions</li>
+                                    <li>Automated data extraction</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIDEO SECTION -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="videoHeading">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#videoAccordion" aria-expanded="false" aria-controls="videoAccordion">
+                        Video Demo
+                    </button>
+                </h2>
+                <div id="videoAccordion" class="accordion-collapse collapse" aria-labelledby="videoHeading"
+                    data-bs-parent="#documentationAccordion">
+                    <div class="accordion-body">
+                       <h2>Download APK:</h2>
+                       <button onclick="window.location.href='https://drive.google.com/file/d/1mGYkfDnygtMPvlAbT1SA_gCGsySW_jV3/view?usp=sharing'" class="btn btn-success">Download APK</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUPPORT SECTION -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="supportHeading">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#supportAccordion" aria-expanded="false" aria-controls="supportAccordion">
+                        Support (Email)
+                    </button>
+                </h2>
+                <div id="supportAccordion" class="accordion-collapse collapse" aria-labelledby="supportHeading"
+                    data-bs-parent="#documentationAccordion">
+                    <div class="accordion-body">
+                         <h2>Support:</h2>
+                         <p>For support, please contact: <a href="mailto:hakamali1237@gmail.com">hakamali1237@gmail.com</a></p>
+                    </div>
+                </div>
+            </div>
+
+             <!-- WHATSAPP SECTION -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="whatsappHeading">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#whatsappAccordion" aria-expanded="false" aria-controls="whatsappAccordion">
+                        Support (WhatsApp)
+                    </button>
+                </h2>
+                <div id="whatsappAccordion" class="accordion-collapse collapse" aria-labelledby="whatsappHeading"
+                    data-bs-parent="#documentationAccordion">
+                    <div class="accordion-body">
+                         <h2>WhatsApp:</h2>
+                         <ul>
+                            <li><a href="https://wa.me/923264247112" target="_blank" rel="noopener noreferrer">+92 326 4247112</a></li>
+                            <li><a href="https://wa.me/923467433714" target="_blank" rel="noopener noreferrer">+92 346 7433714</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EDIT SECTION -->
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="editHeading">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#editAccordion" aria-expanded="false" aria-controls="editAccordion">
+                        How to Edit and Use the Project
+                    </button>
+                </h2>
+                <div id="editAccordion" class="accordion-collapse collapse" aria-labelledby="editHeading"
+                    data-bs-parent="#documentationAccordion">
+                    <div class="accordion-body">
+                        <p>
+                           If you have a solid foundation in Flutter and are comfortable with the basics, you can easily build on that knowledge without encountering any issues. However, if you need additional guidance, the Flutter Cookbook (<a href="https://flutter.dev/docs/cookbook" target="_blank" rel="noopener noreferrer">https://flutter.dev/docs/cookbook</a>) is an excellent resource provided by the Flutter team. It offers a wealth of material that can help you enhance your skills and overcome any challenges you may face. Additionally, feel free to modify or reuse code snippets in your other projects as needed. The flexibility of Flutter allows you to adapt and utilize code in various contexts.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Activate Nav Link on Click
+        const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', function () {
+                const targetId = this.getAttribute('href');
+                if (targetId && targetId.startsWith('#')) {
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                    }
+                }
+                navLinks.forEach(navLink => navLink.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Dark Mode Toggle
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const darkModeIcon = document.getElementById('darkModeIcon');
+        const body = document.body;
+
+        let darkMode = localStorage.getItem('darkMode') === 'enabled';
+        setDarkMode(darkMode);
+
+        darkModeToggle.addEventListener('click', () => {
+            darkMode = !darkMode;
+            setDarkMode(darkMode);
+            localStorage.setItem('darkMode', darkMode ? 'enabled' : 'disabled');
+        });
+
+        function setDarkMode(enabled) {
+            if (enabled) {
+                body.classList.add('dark-mode');
+                darkModeIcon.classList.remove('fa-moon');
+                darkModeIcon.classList.add('fa-sun');
+            } else {
+                body.classList.remove('dark-mode');
+                darkModeIcon.classList.remove('fa-sun');
+                darkModeIcon.classList.add('fa-moon');
+            }
+        }
+
+        document.querySelectorAll('.navbar-nav .nav-link[data-bs-toggle="collapse"]').forEach(link => {
+            link.addEventListener('click', function(event) {
+                const targetSelector = this.getAttribute('href');
+                const targetCollapse = document.querySelector(targetSelector);
+                if (targetCollapse && !targetCollapse.classList.contains('show')) {
+                } else if (targetCollapse && targetCollapse.classList.contains('show')) {
+                }
+            });
+        });
+    </script>
+</body>
+</html>
