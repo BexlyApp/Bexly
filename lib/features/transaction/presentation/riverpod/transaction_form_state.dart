@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +19,9 @@ import 'package:pockaw/features/category/data/model/category_model.dart';
 import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
 import 'package:pockaw/features/wallet/riverpod/wallet_providers.dart';
 import 'package:toastification/toastification.dart';
+import 'package:pockaw/core/services/receipt_storage/receipt_storage_service_provider.dart';
+import 'package:pockaw/features/authentication/presentation/riverpod/auth_provider.dart';
+import 'package:pockaw/core/services/transaction_sync/transaction_sync_service_provider.dart';
 
 class TransactionFormState {
   final TextEditingController titleController;
@@ -81,8 +85,17 @@ class TransactionFormState {
     }
 
     String imagePath = '';
-    if (await File(imagePickerState.savedPath ?? '').exists()) {
-      imagePath = imagePickerState.savedPath ?? '';
+    // Check if image exists (skip File check on web)
+    if (imagePickerState.savedPath != null && imagePickerState.savedPath!.isNotEmpty) {
+      if (kIsWeb) {
+        // On web, trust that the path exists if it's not empty
+        imagePath = imagePickerState.savedPath!;
+      } else {
+        // On native platforms, check if file exists
+        if (await File(imagePickerState.savedPath!).exists()) {
+          imagePath = imagePickerState.savedPath!;
+        }
+      }
     }
 
     // --- FIX: Use the correct date ---
@@ -133,6 +146,51 @@ class TransactionFormState {
         await db.transactionDao.updateTransaction(transactionToSave);
         savedTransactionId = transactionToSave.id;
         await _adjustWalletBalance(ref, initialTransaction, transactionToSave);
+      }
+
+      // Upload receipt to Firebase Storage if there is a local image
+      final user = ref.read(authStateProvider);
+      final String? userId = user.id?.toString();
+      String? receiptUrl;
+      String? receiptStoragePath;
+      if (userId != null && imagePath.isNotEmpty && !kIsWeb) {
+        // Skip Firebase Storage upload on web for now
+        try {
+          final receiptStorage = ref.read(receiptStorageServiceProvider);
+          final result = await receiptStorage.uploadReceipt(
+            file: File(imagePath),
+            userId: userId,
+            date: transactionToSave.date,
+          );
+          receiptUrl = result.downloadUrl;
+          receiptStoragePath = result.storagePath;
+          Log.i(
+            {
+              'storagePath': receiptStoragePath,
+              'downloadUrl': receiptUrl,
+            },
+            label: 'receipt uploaded',
+          );
+        } catch (e) {
+          Log.e('Receipt upload failed: $e', label: 'storage');
+        }
+      }
+
+      // Sync to Firestore only for logged-in premium users
+      if (userId != null && user.isPremium == true && savedTransactionId != null) {
+        try {
+          final syncService = ref.read(transactionSyncServiceProvider);
+          await syncService.upsertTransaction(
+            userId: userId,
+            transactionId: savedTransactionId,
+            transaction: transactionToSave.copyWith(id: savedTransactionId),
+            receiptUrl: receiptUrl,
+            receiptStoragePath: receiptStoragePath,
+            isCreate: !isEditing,
+          );
+        } catch (e) {
+          Log.e('Firestore sync failed: $e', label: 'firestore');
+        }
       }
 
       if (context.mounted) {

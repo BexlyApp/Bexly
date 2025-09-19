@@ -43,7 +43,20 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:docs.claude.com)",
       "Bash(D:Devflutterbinflutter clean)",
-      "Bash(D:Devflutterbinflutter.bat clean)"
+      "Bash(D:Devflutterbinflutter.bat clean)",
+      "Bash(D:Devflutterbinflutter.bat pub get)",
+      "Bash(call D:Devflutterbinflutter.bat pub get)",
+      "Bash(D:Devflutterbinflutter run)",
+      "Read(//c/Users/JOY/AppData/Local/Pub/Cache/hosted/pub.dev/country_flags-4.0.1/**)",
+      "Bash(dir:*)",
+      "Bash(pockaw.exe)",
+      "Bash(D:ProjectsDOSafebuildwindowsx64runnerReleasepockaw.exe)",
+      "Bash(python:*)",
+      "Bash(npx http-server:*)",
+      "Read(//tmp/SnagitTemp/**)",
+      "Bash(curl:*)",
+      "Bash(D:Devflutterbinflutter build web)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

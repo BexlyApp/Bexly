@@ -55,7 +55,7 @@ class LoginScreen extends HookConsumerWidget {
 
               if (context.mounted) {
                 dialogContext.pop();
-                context.replace(Routes.main);
+                context.go(Routes.main);
               }
             },
           ),
@@ -134,7 +134,7 @@ class LoginScreen extends HookConsumerWidget {
                   );
 
                   ref.read(authStateProvider.notifier).setUser(user);
-                  context.push(Routes.main);
+                  context.go(Routes.main);
                 },
               ),
             ),

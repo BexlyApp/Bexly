@@ -1,10 +1,6 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:pockaw/core/database/database_connection.dart';
 import 'package:pockaw/core/database/daos/budget_dao.dart';
 import 'package:pockaw/core/database/daos/category_dao.dart';
 import 'package:pockaw/core/database/daos/transaction_dao.dart';
@@ -46,7 +42,7 @@ part 'pockaw_database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
   int get schemaVersion => 8; // Increment schema version for the new fields
@@ -245,15 +241,3 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-/// https://github.com/simolus3/drift/issues/188
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dbFolder =
-        await getApplicationSupportDirectory(); // Use support directory for database
-    final file = File(join(dbFolder.path, 'pockaw.sqlite'));
-    if (kDebugMode) {
-      // await file.delete(); // Uncomment for fresh DB on every run in debug
-    }
-    return NativeDatabase(file);
-  });
-}

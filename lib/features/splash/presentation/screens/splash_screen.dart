@@ -21,39 +21,48 @@ class SplashScreen extends HookConsumerWidget {
     // Use useEffect to run side effects once when the widget is built
     useEffect(() {
       Future<void> initializeApp() async {
-        // Initialize database (this also triggers onCreate population services)
-        ref.read(databaseProvider);
-
-        // Initialize PackageInfoService
-        final packageInfoService = ref.read(packageInfoServiceProvider);
-        await packageInfoService.init();
-
-        // Delete log file
-        final file = await Log.getLogFile();
-        file?.delete();
-
-        // Fetch currencies and populate the static provider
-        // Using ref.read(currenciesProvider.future) to get the future directly
         try {
-          final currencyList = await ref.read(currenciesProvider.future);
-          ref.read(currenciesStaticProvider.notifier).state = currencyList;
-          Log.d(currencyList.length, label: 'currencies populated');
-        } catch (e) {
-          Log.e(
-            'Failed to load currencies for static provider',
-            label: 'currencies',
-          );
-        }
+          // Initialize database (this also triggers onCreate population services)
+          ref.read(databaseProvider);
 
-        // Check user session and navigate
-        final auth = ref.read(authStateProvider.notifier);
-        final user = await auth.getSession();
-        if (context.mounted) {
-          // Ensure context is still valid
-          if (user == null) {
+          // Initialize PackageInfoService
+          final packageInfoService = ref.read(packageInfoServiceProvider);
+          await packageInfoService.init();
+
+          // Delete log file
+          final file = await Log.getLogFile();
+          file?.delete();
+
+          // Fetch currencies and populate the static provider
+          // Using ref.read(currenciesProvider.future) to get the future directly
+          try {
+            final currencyList = await ref.read(currenciesProvider.future);
+            ref.read(currenciesStaticProvider.notifier).state = currencyList;
+            Log.d(currencyList.length, label: 'currencies populated');
+          } catch (e) {
+            Log.e(
+              'Failed to load currencies for static provider: $e',
+              label: 'currencies',
+            );
+            // Continue anyway for web
+          }
+
+          // Check user session and navigate
+          final auth = ref.read(authStateProvider.notifier);
+          final user = await auth.getSession();
+          if (context.mounted) {
+            // Ensure context is still valid
+            if (user == null) {
+              GoRouter.of(rootNavKey.currentContext!).go(Routes.onboarding);
+            } else {
+              GoRouter.of(rootNavKey.currentContext!).go(Routes.main);
+            }
+          }
+        } catch (e) {
+          Log.e('Error during initialization: $e', label: 'splash');
+          // Navigate to onboarding as fallback
+          if (context.mounted) {
             GoRouter.of(rootNavKey.currentContext!).go(Routes.onboarding);
-          } else {
-            GoRouter.of(rootNavKey.currentContext!).go(Routes.main);
           }
         }
       }
