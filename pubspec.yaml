@@ -50,6 +50,7 @@ dependencies:
   firebase_crashlytics: ^5.0.0
   firebase_performance: ^0.11.0
   cloud_firestore: ^6.0.1
+  firebase_storage: ^13.0.0
   flex_color_scheme: ^8.2.0
   flutter_expandable_fab: ^2.3.0
   flutter_hooks: ^0.21.2

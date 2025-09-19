@@ -31,6 +31,14 @@
 
   <title>pockaw</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Load sql.js for Drift Web support -->
+  <script>
+    var config = {
+      locateFile: filename => `./${filename}`
+    }
+  </script>
+  <script src="sql-wasm.js"></script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
