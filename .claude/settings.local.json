@@ -56,7 +56,13 @@
       "Read(//tmp/SnagitTemp/**)",
       "Bash(curl:*)",
       "Bash(D:Devflutterbinflutter build web)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(D:Devflutterbinflutter devices)",
+      "Bash(D:\\Dev\\flutter\\bin\\flutter devices)",
+      "Bash(adb uninstall:*)",
+      "Bash(timeout:*)",
+      "WebFetch(domain:m3.material.io)"
     ],
     "deny": [],
     "ask": []

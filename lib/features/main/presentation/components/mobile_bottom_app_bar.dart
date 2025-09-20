@@ -7,6 +7,7 @@ import 'package:pockaw/core/constants/app_colors.dart';
 import 'package:pockaw/core/constants/app_radius.dart';
 import 'package:pockaw/core/constants/app_spacing.dart';
 import 'package:pockaw/core/router/routes.dart';
+import 'package:pockaw/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:pockaw/features/main/presentation/riverpod/main_page_view_riverpod.dart';
 
 class MobileBottomAppBar extends ConsumerWidget {
@@ -58,7 +59,12 @@ class MobileBottomAppBar extends ConsumerWidget {
             backgroundColor: AppColors.primary,
             foregroundColor: AppColors.light,
             onTap: () {
-              context.push(Routes.transactionForm);
+              showModalBottomSheet(
+                context: context,
+                builder: (context) => const TransactionOptionsMenu(),
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+              );
             },
           ),
           CircleIconButton(
