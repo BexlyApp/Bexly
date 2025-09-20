@@ -7,6 +7,7 @@ class Routes {
   static const String currencyListTile = '/currency';
   static const String main = index;
   static const String transactionForm = '/transaction-form';
+  static const String scanReceipt = '/scan-receipt';
   static const String categoryList = '/categories';
   static const String manageCategories = '/manage-categories';
   static const String categoryListPickingParent = '/categories-pick-parent';
