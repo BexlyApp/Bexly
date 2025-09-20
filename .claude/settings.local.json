@@ -62,7 +62,8 @@
       "Bash(D:\\Dev\\flutter\\bin\\flutter devices)",
       "Bash(adb uninstall:*)",
       "Bash(timeout:*)",
-      "WebFetch(domain:m3.material.io)"
+      "WebFetch(domain:m3.material.io)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
