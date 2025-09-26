@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_colors.dart';
 
 class LoadingIndicator extends CircularProgressIndicator {
   const LoadingIndicator({

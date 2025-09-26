@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pockaw/core/constants/app_font_families.dart';
-import 'package:pockaw/core/constants/app_font_weights.dart';
+import 'package:bexly/core/constants/app_font_families.dart';
+import 'package:bexly/core/constants/app_font_weights.dart';
 
 class AppTextStyles {
   static const headLine1 = TextStyle(

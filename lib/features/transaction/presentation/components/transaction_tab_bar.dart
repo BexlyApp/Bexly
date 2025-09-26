@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/components/tabs/custom_tab.dart';
-import 'package:pockaw/core/components/tabs/custom_tab_bar.dart';
-import 'package:pockaw/core/extensions/date_time_extension.dart';
+import 'package:bexly/core/components/tabs/custom_tab.dart';
+import 'package:bexly/core/components/tabs/custom_tab_bar.dart';
+import 'package:bexly/core/extensions/date_time_extension.dart';
 
 class TransactionTabBar extends HookConsumerWidget {
   final List<DateTime> monthsForTabs;

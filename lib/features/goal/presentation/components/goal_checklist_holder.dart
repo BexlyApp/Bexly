@@ -3,11 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/features/goal/presentation/components/goal_checklist_title.dart';
-import 'package:pockaw/features/goal/presentation/riverpod/checklist_items_provider.dart';
-import 'package:pockaw/features/goal/presentation/components/goal_checklist_item.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/features/goal/presentation/components/goal_checklist_title.dart';
+import 'package:bexly/features/goal/presentation/riverpod/checklist_items_provider.dart';
+import 'package:bexly/features/goal/presentation/components/goal_checklist_item.dart';
 
 class GoalChecklistHolder extends ConsumerWidget {
   final int goalId;

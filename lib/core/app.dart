@@ -1,12 +1,12 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_constants.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/router/app_router.dart';
-import 'package:pockaw/features/theme_switcher/presentation/riverpod/theme_mode_provider.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_constants.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/router/app_router.dart';
+import 'package:bexly/features/theme_switcher/presentation/riverpod/theme_mode_provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:toastification/toastification.dart';
 
@@ -72,7 +72,23 @@ class MyApp extends ConsumerWidget {
           shape: buttonShape,
         ),
       ),
-      textTheme: TextTheme(bodyMedium: AppTextStyles.body2),
+      textTheme: TextTheme(
+        displayLarge: AppTextStyles.heading1,
+        displayMedium: AppTextStyles.heading2,
+        displaySmall: AppTextStyles.heading3,
+        headlineLarge: AppTextStyles.heading4,
+        headlineMedium: AppTextStyles.heading5,
+        headlineSmall: AppTextStyles.heading6,
+        titleLarge: AppTextStyles.body1,
+        titleMedium: AppTextStyles.body2.copyWith(fontWeight: FontWeight.w600),
+        titleSmall: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w600),
+        bodyLarge: AppTextStyles.body2.copyWith(fontWeight: FontWeight.w500),
+        bodyMedium: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w500),
+        bodySmall: AppTextStyles.body4.copyWith(fontWeight: FontWeight.w500),
+        labelLarge: AppTextStyles.body2.copyWith(fontWeight: FontWeight.w600),
+        labelMedium: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w600),
+        labelSmall: AppTextStyles.body4.copyWith(fontWeight: FontWeight.w600),
+      ),
     );
 
     // Define the dark theme using the standard ThemeData
@@ -120,7 +136,23 @@ class MyApp extends ConsumerWidget {
       bottomSheetTheme: BottomSheetThemeData(
         modalBarrierColor: AppColors.neutral700.withAlpha(150),
       ),
-      textTheme: TextTheme(bodyMedium: AppTextStyles.body2),
+      textTheme: TextTheme(
+        displayLarge: AppTextStyles.heading1,
+        displayMedium: AppTextStyles.heading2,
+        displaySmall: AppTextStyles.heading3,
+        headlineLarge: AppTextStyles.heading4,
+        headlineMedium: AppTextStyles.heading5,
+        headlineSmall: AppTextStyles.heading6,
+        titleLarge: AppTextStyles.body1,
+        titleMedium: AppTextStyles.body2.copyWith(fontWeight: FontWeight.w600),
+        titleSmall: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w600),
+        bodyLarge: AppTextStyles.body2.copyWith(fontWeight: FontWeight.w500),
+        bodyMedium: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w500),
+        bodySmall: AppTextStyles.body4.copyWith(fontWeight: FontWeight.w500),
+        labelLarge: AppTextStyles.body2.copyWith(fontWeight: FontWeight.w600),
+        labelMedium: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w600),
+        labelSmall: AppTextStyles.body4.copyWith(fontWeight: FontWeight.w600),
+      ),
     );
 
     return ToastificationWrapper(

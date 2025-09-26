@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
 
 class ProgressBar extends StatelessWidget {
   final double value;

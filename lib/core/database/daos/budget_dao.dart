@@ -1,10 +1,10 @@
 import 'package:drift/drift.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/core/database/tables/budgets_table.dart';
-import 'package:pockaw/core/database/tables/category_table.dart';
-import 'package:pockaw/core/database/tables/wallet_table.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/budget/data/model/budget_model.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/tables/budgets_table.dart';
+import 'package:bexly/core/database/tables/category_table.dart';
+import 'package:bexly/core/database/tables/wallet_table.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/budget/data/model/budget_model.dart';
 
 part 'budget_dao.g.dart';
 

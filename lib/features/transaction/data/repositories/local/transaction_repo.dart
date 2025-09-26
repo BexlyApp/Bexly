@@ -1,7 +1,7 @@
-import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
-import 'package:pockaw/features/category/data/model/category_model.dart';
-import 'package:pockaw/features/category/data/repositories/category_repo.dart';
-import 'package:pockaw/features/wallet/data/repositories/wallet_repo.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/category/data/model/category_model.dart';
+import 'package:bexly/features/category/data/repositories/category_repo.dart';
+import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart';
 
 // Helper to find a category by title, with a fallback.
 // It now searches both parent and sub-category titles.

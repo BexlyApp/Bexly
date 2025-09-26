@@ -2,13 +2,13 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pockaw/core/components/dialogs/toast.dart';
-import 'package:pockaw/core/database/database_provider.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/category/data/model/category_model.dart';
-import 'package:pockaw/features/category/presentation/riverpod/category_actions_provider.dart';
-import 'package:pockaw/features/category/presentation/riverpod/category_providers.dart';
+import 'package:bexly/core/components/dialogs/toast.dart';
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/category/data/model/category_model.dart';
+import 'package:bexly/features/category/presentation/riverpod/category_actions_provider.dart';
+import 'package:bexly/features/category/presentation/riverpod/category_providers.dart';
 import 'package:toastification/toastification.dart';
 
 class CategoryFormService {

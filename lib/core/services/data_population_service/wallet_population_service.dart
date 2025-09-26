@@ -1,6 +1,6 @@
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/wallet/data/repositories/wallet_repo.dart'; // Assuming defaultWallets is here
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart'; // Assuming defaultWallets is here
 
 class WalletPopulationService {
   static Future<void> populate(AppDatabase db) async {

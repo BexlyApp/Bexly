@@ -1,5 +1,5 @@
-import 'package:pockaw/features/currency_picker/data/models/currency.dart';
-import 'package:pockaw/features/currency_picker/data/sources/currency_local_source.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/features/currency_picker/data/sources/currency_local_source.dart';
 
 abstract class CurrencyRepository {
   Future<List<Currency>> fetchCurrencies();

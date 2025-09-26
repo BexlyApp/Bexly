@@ -5,13 +5,13 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/form_fields/custom_text_field.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/core/services/keyboard_service/virtual_keyboard_service.dart';
-import 'package:pockaw/features/currency_picker/data/models/currency.dart';
-import 'package:pockaw/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
+import 'package:bexly/core/components/form_fields/custom_text_field.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/core/services/keyboard_service/virtual_keyboard_service.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
 
 class CurrencyPickerField extends HookConsumerWidget {
   final Currency? defaultCurrency;

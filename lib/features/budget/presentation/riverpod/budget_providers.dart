@@ -1,10 +1,10 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/database/daos/budget_dao.dart';
-import 'package:pockaw/core/database/database_provider.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/budget/data/model/budget_model.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
-import 'package:pockaw/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/core/database/daos/budget_dao.dart';
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/budget/data/model/budget_model.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 // Provider for the BudgetDao instance
 final budgetDaoProvider = Provider<BudgetDao>((ref) {

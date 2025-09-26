@@ -3,12 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/components/bottom_sheets/custom_bottom_sheet.dart';
-import 'package:pockaw/core/components/buttons/primary_button.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
+import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
 
 class CategoryIconInitialPicker extends HookConsumerWidget {
   const CategoryIconInitialPicker({super.key});

@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/services/image_service/domain/image_state.dart';
-import 'package:pockaw/core/services/image_service/image_service.dart';
-import 'package:pockaw/core/services/image_service/riverpod/image_service_provider.dart';
+import 'package:bexly/core/services/image_service/domain/image_state.dart';
+import 'package:bexly/core/services/image_service/image_service.dart';
+import 'package:bexly/core/services/image_service/riverpod/image_service_provider.dart';
 
 class ImageNotifier extends StateNotifier<ImageState> {
   final ImageService _imageService;

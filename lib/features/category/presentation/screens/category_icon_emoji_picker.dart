@@ -3,10 +3,10 @@ import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/bottom_sheets/custom_bottom_sheet.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
+import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
 
 class CategoryIconEmojiPicker extends StatelessWidget {
   const CategoryIconEmojiPicker({super.key});

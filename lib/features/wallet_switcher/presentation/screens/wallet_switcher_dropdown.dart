@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/buttons/small_button.dart';
-import 'package:pockaw/core/extensions/popup_extension.dart';
-import 'package:pockaw/features/wallet/riverpod/wallet_providers.dart';
-import 'package:pockaw/features/wallet_switcher/presentation/components/wallet_selector_bottom_sheet.dart';
+import 'package:bexly/core/components/buttons/small_button.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/features/wallet_switcher/presentation/components/wallet_selector_bottom_sheet.dart';
 
 class WalletSwitcherDropdown extends ConsumerWidget {
   const WalletSwitcherDropdown({super.key});

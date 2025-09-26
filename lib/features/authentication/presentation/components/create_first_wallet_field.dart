@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/form_fields/custom_text_field.dart';
-import 'package:pockaw/core/extensions/double_extension.dart';
-import 'package:pockaw/core/extensions/popup_extension.dart';
-import 'package:pockaw/features/currency_picker/data/sources/currency_local_source.dart';
-import 'package:pockaw/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
-import 'package:pockaw/features/wallet/data/model/wallet_model.dart';
-import 'package:pockaw/features/wallet/data/repositories/wallet_repo.dart';
-import 'package:pockaw/features/wallet/riverpod/wallet_providers.dart';
-import 'package:pockaw/features/wallet/screens/wallet_form_bottom_sheet.dart';
+import 'package:bexly/core/components/form_fields/custom_text_field.dart';
+import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/features/currency_picker/data/sources/currency_local_source.dart';
+import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart';
+import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/features/wallet/screens/wallet_form_bottom_sheet.dart';
 
 class CreateFirstWalletField extends HookConsumerWidget {
   const CreateFirstWalletField({super.key});

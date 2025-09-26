@@ -1,9 +1,9 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/database/database_provider.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/core/database/tables/category_table.dart'
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/tables/category_table.dart'
     show CategoryTableExtensions; // Import for toModel()
-import 'package:pockaw/features/category/data/model/category_model.dart';
+import 'package:bexly/features/category/data/model/category_model.dart';
 
 /// Provider that watches all categories from the database and transforms them
 /// into a hierarchical list of [CategoryModel]s.

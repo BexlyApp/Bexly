@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_colors.dart';
 
 class PageControllerNotifier extends StateNotifier<int> {
   PageControllerNotifier() : super(0);

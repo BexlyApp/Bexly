@@ -1,7 +1,7 @@
 import 'package:go_router/go_router.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/features/budget/presentation/screens/budget_details_screen.dart';
-import 'package:pockaw/features/budget/presentation/screens/budget_form_screen.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/features/budget/presentation/screens/budget_details_screen.dart';
+import 'package:bexly/features/budget/presentation/screens/budget_form_screen.dart';
 
 class BudgetRouter {
   static final routes = <GoRoute>[

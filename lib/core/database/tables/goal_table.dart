@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/features/goal/data/model/goal_model.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/features/goal/data/model/goal_model.dart';
 
 @DataClassName('Goal')
 class Goals extends Table {

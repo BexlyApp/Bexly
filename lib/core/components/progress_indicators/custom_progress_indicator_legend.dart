@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
 
 class CustomProgressIndicatorLegend extends StatelessWidget {
   final String label;

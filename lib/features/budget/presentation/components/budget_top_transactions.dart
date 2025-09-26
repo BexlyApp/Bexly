@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/features/budget/data/model/budget_model.dart';
-import 'package:pockaw/features/budget/presentation/riverpod/budget_providers.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
-import 'package:pockaw/features/transaction/presentation/components/transaction_tile.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/features/budget/data/model/budget_model.dart';
+import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/transaction/presentation/components/transaction_tile.dart';
 
 class BudgetTopTransactions extends ConsumerWidget {
   final BudgetModel budget;

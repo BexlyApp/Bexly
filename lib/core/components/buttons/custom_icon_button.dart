@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:pockaw/core/components/loading_indicators/loading_indicator.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
+import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
 
 enum IconSize { large, medium, small, tiny }
 

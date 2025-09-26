@@ -4,8 +4,8 @@ import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/router/routes.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/router/routes.dart';
 
 class CustomFab extends StatelessWidget {
   CustomFab({super.key});

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
+import 'package:bexly/core/constants/app_radius.dart';
 
 class CircleIconButton extends StatelessWidget {
   final double? radius;

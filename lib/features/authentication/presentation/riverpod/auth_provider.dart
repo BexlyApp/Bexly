@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pockaw/core/database/daos/user_dao.dart';
-import 'package:pockaw/core/database/database_provider.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/authentication/data/repositories/user_repository.dart';
-import 'package:pockaw/features/authentication/data/models/user_model.dart';
+import 'package:bexly/core/database/daos/user_dao.dart';
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/authentication/data/repositories/user_repository.dart';
+import 'package:bexly/features/authentication/data/models/user_model.dart';
 
 // Provider for the UserDao
 final userDaoProvider = Provider<UserDao>((ref) {

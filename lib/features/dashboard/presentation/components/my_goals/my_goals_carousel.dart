@@ -1,8 +1,8 @@
 // import 'package:flutter/material.dart';
 // import 'package:gap/gap.dart';
-// import 'package:pockaw/core/constants/app_spacing.dart';
-// import 'package:pockaw/core/constants/app_text_styles.dart';
-// import 'package:pockaw/features/dashboard/presentation/components/dashboard_screen.dart';
+// import 'package:bexly/core/constants/app_spacing.dart';
+// import 'package:bexly/core/constants/app_text_styles.dart';
+// import 'package:bexly/features/dashboard/presentation/components/dashboard_screen.dart';
 //
 // class MyGoalsCarousel extends StatelessWidget {
 //   const MyGoalsCarousel({super.key});

@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/buttons/circle_button.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/features/main/presentation/components/transaction_options_menu.dart';
-import 'package:pockaw/features/main/presentation/riverpod/main_page_view_riverpod.dart';
+import 'package:bexly/core/components/buttons/circle_button.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
+import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
 
 class MobileBottomAppBar extends ConsumerWidget {
   final PageController pageController;
@@ -44,7 +44,7 @@ class MobileBottomAppBar extends ConsumerWidget {
           ),
           CircleIconButton(
             radius: 25,
-            icon: HugeIcons.strokeRoundedReceiptDollar,
+            icon: HugeIcons.strokeRoundedAiChat01,
             backgroundColor: Colors.transparent,
             foregroundColor: ref
                 .read(pageControllerProvider.notifier)
@@ -69,7 +69,7 @@ class MobileBottomAppBar extends ConsumerWidget {
           ),
           CircleIconButton(
             radius: 25,
-            icon: HugeIcons.strokeRoundedTarget01,
+            icon: HugeIcons.strokeRoundedReceiptDollar,
             backgroundColor: Colors.transparent,
             foregroundColor: ref
                 .read(pageControllerProvider.notifier)
@@ -80,7 +80,7 @@ class MobileBottomAppBar extends ConsumerWidget {
           ),
           CircleIconButton(
             radius: 25,
-            icon: HugeIcons.strokeRoundedMoneyBag02,
+            icon: HugeIcons.strokeRoundedChartLineData03,
             backgroundColor: Colors.transparent,
             foregroundColor: ref
                 .read(pageControllerProvider.notifier)

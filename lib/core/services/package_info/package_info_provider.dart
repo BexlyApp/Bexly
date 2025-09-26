@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:pockaw/core/utils/logger.dart';
+import 'package:bexly/core/utils/logger.dart';
 
 /// A service to provide application package information.
 class PackageInfoService {

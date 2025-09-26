@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/features/main/presentation/riverpod/main_page_view_riverpod.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
 
 class DesktopSidebar extends ConsumerWidget {
   static const double desktopSidebarWidth = 220.0; // Increased width for text

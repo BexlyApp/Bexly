@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/features/goal/presentation/components/goal_card.dart';
-import 'package:pockaw/features/goal/presentation/riverpod/goals_list_provider.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/features/goal/presentation/components/goal_card.dart';
+import 'package:bexly/features/goal/presentation/riverpod/goals_list_provider.dart';
 
 class GoalPinnedHolder extends ConsumerWidget {
   const GoalPinnedHolder({super.key});

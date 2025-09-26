@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/extensions/screen_utils_extensions.dart';
-import 'package:pockaw/features/budget/presentation/screens/budget_screen.dart';
-import 'package:pockaw/features/dashboard/presentation/screens/dashboard_screen.dart';
-import 'package:pockaw/features/goal/presentation/screens/goal_screen.dart';
-import 'package:pockaw/features/main/presentation/components/custom_bottom_app_bar.dart';
-import 'package:pockaw/features/main/presentation/riverpod/main_page_view_riverpod.dart';
-import 'package:pockaw/features/transaction/presentation/screens/transaction_screen.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/extensions/screen_utils_extensions.dart';
+import 'package:bexly/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:bexly/features/main/presentation/components/custom_bottom_app_bar.dart';
+import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
+import 'package:bexly/features/transaction/presentation/screens/transaction_screen.dart';
+import 'package:bexly/features/ai_chat/presentation/screens/ai_chat_screen.dart';
+import 'package:bexly/features/planning/presentation/screens/planning_screen.dart';
 
 class MainScreen extends ConsumerWidget {
   const MainScreen({super.key});
@@ -27,9 +27,9 @@ class MainScreen extends ConsumerWidget {
       },
       children: const [
         DashboardScreen(),
+        AIChatScreen(),
         TransactionScreen(),
-        GoalScreen(),
-        BudgetScreen(),
+        PlanningScreen(),
       ],
     );
 

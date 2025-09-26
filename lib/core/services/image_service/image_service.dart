@@ -9,12 +9,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart'
     show getApplicationDocumentsDirectory;
-import 'package:pockaw/core/components/bottom_sheets/custom_bottom_sheet.dart';
-import 'package:pockaw/core/components/buttons/secondary_button.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/extensions/popup_extension.dart';
-import 'package:pockaw/core/extensions/screen_utils_extensions.dart';
-import 'package:pockaw/core/utils/logger.dart';
+import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
+import 'package:bexly/core/components/buttons/secondary_button.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/core/extensions/screen_utils_extensions.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'package:uuid/uuid.dart';
 
 class ImageService {
