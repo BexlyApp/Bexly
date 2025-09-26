@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:pockaw/core/utils/logger.dart';
+import 'package:bexly/core/utils/logger.dart';
 
 /// A utility class for managing keyboard interactions.
 class KeyboardService {

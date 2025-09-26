@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/features/budget/data/model/budget_model.dart';
-import 'package:pockaw/features/budget/presentation/components/budget_top_transactions.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/features/budget/data/model/budget_model.dart';
+import 'package:bexly/features/budget/presentation/components/budget_top_transactions.dart';
 
 class BudgetTopTransactionsHolder extends StatelessWidget {
   final BudgetModel budget;

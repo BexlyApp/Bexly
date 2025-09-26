@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/components/progress_indicators/progress_bar.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/extensions/double_extension.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/budget/presentation/components/budget_spent_card.dart';
-import 'package:pockaw/features/budget/presentation/components/budget_total_card.dart';
-import 'package:pockaw/features/budget/presentation/riverpod/budget_providers.dart';
+import 'package:bexly/core/components/progress_indicators/progress_bar.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/budget/presentation/components/budget_spent_card.dart';
+import 'package:bexly/features/budget/presentation/components/budget_total_card.dart';
+import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
 
 class BudgetSummaryCard extends ConsumerWidget {
   const BudgetSummaryCard({super.key});

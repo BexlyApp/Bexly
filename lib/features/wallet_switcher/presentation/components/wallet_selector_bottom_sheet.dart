@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/bottom_sheets/alert_bottom_sheet.dart';
-import 'package:pockaw/core/components/bottom_sheets/custom_bottom_sheet.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/extensions/double_extension.dart';
-import 'package:pockaw/features/wallet/data/model/wallet_model.dart';
-import 'package:pockaw/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/core/components/bottom_sheets/alert_bottom_sheet.dart';
+import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 class WalletSelectorBottomSheet extends ConsumerWidget {
   const WalletSelectorBottomSheet({super.key});

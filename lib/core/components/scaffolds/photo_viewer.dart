@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:photo_view/photo_view.dart';
-import 'package:pockaw/core/components/buttons/custom_icon_button.dart';
+import 'package:bexly/core/components/buttons/custom_icon_button.dart';
 
 class PhotoViewer extends HookConsumerWidget {
   final List<Image>? images;

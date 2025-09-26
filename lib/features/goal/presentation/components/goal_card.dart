@@ -4,15 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/progress_indicators/progress_bar.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/goal/data/model/goal_model.dart';
-import 'package:pockaw/features/goal/presentation/riverpod/checklist_items_provider.dart';
+import 'package:bexly/core/components/progress_indicators/progress_bar.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/goal/data/model/goal_model.dart';
+import 'package:bexly/features/goal/presentation/riverpod/checklist_items_provider.dart';
 
 class GoalCard extends ConsumerWidget {
   final GoalModel goal;

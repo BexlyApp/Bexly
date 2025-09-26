@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_font_weights.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_font_weights.dart';
 
 extension TextStyleExtensions on TextStyle {
   TextStyle get semibold => copyWith(fontVariations: [AppFontWeights.semiBold]);

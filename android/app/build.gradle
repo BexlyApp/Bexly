@@ -42,6 +42,10 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled true
+        manifestPlaceholders = [
+            appAuthRedirectScheme: 'com.joy.bexly',
+            applicationName: 'io.flutter.app.FlutterApplication'
+        ]
     }
 
     signingConfigs {

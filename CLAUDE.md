@@ -2,9 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Quy tắc giao tiếp
+- **LUÔN trả lời bằng tiếng Việt** khi làm việc với repository này
+- **LUÔN viết code comments bằng tiếng Anh**
+- Chỉ dùng tiếng Việt khi chat/giải thích với user
+- Documentation và code comments phải bằng tiếng Anh
+
 ## Project Overview
 
-Pockaw is a Flutter-based personal finance and budget tracking application with a focus on offline-first functionality and cross-platform support. The project uses a feature-based clean architecture with Riverpod for state management and Drift for local database storage.
+Bexly is a Flutter-based personal finance and budget tracking application with a focus on cross-platform sync and AI agent capabilities. The project uses a feature-based clean architecture with Riverpod for state management, Drift for local database storage, and Firebase for cloud sync and authentication.
+
+## IMPORTANT: Authentication Configuration
+**LUÔN NHỚ: AUTHENTICATION SỬ DỤNG DOS-ME FIREBASE PROJECT** - App sử dụng DOS-Me Firebase project cho toàn bộ authentication để duy trì hệ sinh thái thống nhất giữa nhiều apps. DOS-Me Firebase app được cấu hình riêng biệt với Bexly Firebase app chính (dùng cho Firestore và các services khác).
 
 ## Essential Commands
 

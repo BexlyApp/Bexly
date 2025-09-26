@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/extensions/date_time_extension.dart';
-import 'package:pockaw/core/extensions/double_extension.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/extensions/date_time_extension.dart';
+import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 
 /// Extension on Transaction to provide UI-specific properties based on type.
 extension TransactionUIExtensions on TransactionModel {

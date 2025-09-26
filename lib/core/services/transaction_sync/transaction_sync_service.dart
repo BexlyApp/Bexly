@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 
 class TransactionSyncService {
   final FirebaseFirestore _firestore;

@@ -1,6 +1,6 @@
-import 'package:pockaw/features/budget/data/model/budget_model.dart';
-import 'package:pockaw/features/category/data/repositories/category_repo.dart';
-import 'package:pockaw/features/wallet/data/repositories/wallet_repo.dart'; // Import categories
+import 'package:bexly/features/budget/data/model/budget_model.dart';
+import 'package:bexly/features/category/data/repositories/category_repo.dart';
+import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart'; // Import categories
 
 // Helper to find a wallet by name (using firstWhere for simplicity in example)
 final _myWallet = wallets.firstWhere((w) => w.name == 'My Wallet');

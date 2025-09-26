@@ -1,6 +1,6 @@
 import 'package:go_router/go_router.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/features/currency_picker/presentation/screens/currency_list_tiles.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/features/currency_picker/presentation/screens/currency_list_tiles.dart';
 
 class CurrencyRouter {
   static final routes = <GoRoute>[

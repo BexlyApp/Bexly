@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/router/routes.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/router/routes.dart';
 
 class TransactionOptionsMenu extends StatelessWidget {
   const TransactionOptionsMenu({super.key});
@@ -60,12 +60,12 @@ class TransactionOptionsMenu extends StatelessWidget {
             leading: Container(
               padding: const EdgeInsets.all(AppSpacing.spacing8),
               decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.1),
+                color: AppColors.greenAlpha10,
                 borderRadius: BorderRadius.circular(AppRadius.radius8),
               ),
               child: Icon(
-                HugeIcons.strokeRoundedScanQrCode,
-                color: AppColors.success,
+                Icons.camera_alt_outlined,
+                color: AppColors.green200,
               ),
             ),
             title: Text(

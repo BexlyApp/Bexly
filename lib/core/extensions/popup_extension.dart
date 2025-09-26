@@ -1,4 +1,4 @@
-import 'package:pockaw/core/components/custom_keyboard/custom_keyboard.dart';
+import 'package:bexly/core/components/custom_keyboard/custom_keyboard.dart';
 import 'package:flutter/material.dart';
 
 extension PopupExtension on BuildContext {

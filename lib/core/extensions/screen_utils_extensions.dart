@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pockaw/core/constants/app_constants.dart';
+import 'package:bexly/core/constants/app_constants.dart';
 
 extension ScreenUtilsExtensions on BuildContext {
   Size get screenSize => MediaQuery.of(this).size;

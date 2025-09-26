@@ -5,14 +5,14 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/buttons/primary_button.dart';
-import 'package:pockaw/core/components/dialogs/toast.dart';
-import 'package:pockaw/core/components/form_fields/custom_text_field.dart';
-import 'package:pockaw/core/components/scaffolds/custom_scaffold.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/services/image_service/image_service.dart';
-import 'package:pockaw/features/authentication/presentation/riverpod/auth_provider.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
+import 'package:bexly/core/components/dialogs/toast.dart';
+import 'package:bexly/core/components/form_fields/custom_text_field.dart';
+import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/services/image_service/image_service.dart';
+import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 import 'package:toastification/toastification.dart';
 
 class PersonalDetailsScreen extends HookConsumerWidget {

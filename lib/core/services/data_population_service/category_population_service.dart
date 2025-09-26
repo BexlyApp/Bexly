@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/category/data/repositories/category_repo.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/category/data/repositories/category_repo.dart';
 
 class CategoryPopulationService {
   static Future<void> populate(AppDatabase db) async {

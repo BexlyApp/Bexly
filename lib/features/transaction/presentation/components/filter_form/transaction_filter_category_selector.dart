@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/components/form_fields/custom_select_field.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/category/data/model/category_model.dart';
+import 'package:bexly/core/components/form_fields/custom_select_field.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/category/data/model/category_model.dart';
 
 class TransactionFilterCategorySelector extends HookConsumerWidget {
   final TextEditingController controller;

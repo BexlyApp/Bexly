@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/database/database_provider.dart';
-import 'package:pockaw/core/router/app_router.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/core/services/package_info/package_info_provider.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/authentication/presentation/riverpod/auth_provider.dart';
-import 'package:pockaw/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/router/app_router.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/core/services/package_info/package_info_provider.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
+import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
+import 'package:bexly/features/currency_picker/data/sources/currency_local_source.dart';
 import 'package:flutter_hooks/flutter_hooks.dart'; // Import for useEffect
+import 'dart:ui' as ui;
 
 class SplashScreen extends HookConsumerWidget {
   // Changed to HookConsumerWidget
@@ -39,6 +41,22 @@ class SplashScreen extends HookConsumerWidget {
             final currencyList = await ref.read(currenciesProvider.future);
             ref.read(currenciesStaticProvider.notifier).state = currencyList;
             Log.d(currencyList.length, label: 'currencies populated');
+
+            // Set default currency by device locale country code if available
+            try {
+              final ui.Locale deviceLocale = ui.PlatformDispatcher.instance.locale;
+              final String? countryCode = deviceLocale.countryCode?.toUpperCase();
+              if (countryCode != null && countryCode.isNotEmpty) {
+                final match = currencyList.firstWhere(
+                  (c) => c.countryCode.toUpperCase() == countryCode,
+                  orElse: () => CurrencyLocalDataSource.dummy,
+                );
+                ref.read(currencyProvider.notifier).state = match;
+                Log.d({'deviceCountry': countryCode, 'selected': match.isoCode}, label: 'default currency');
+              }
+            } catch (e) {
+              Log.e('Failed to set default currency by device: $e', label: 'currency');
+            }
           } catch (e) {
             Log.e(
               'Failed to load currencies for static provider: $e',

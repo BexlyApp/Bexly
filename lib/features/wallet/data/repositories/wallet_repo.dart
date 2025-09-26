@@ -1,4 +1,4 @@
-import 'package:pockaw/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 
 const List<WalletModel> defaultWallets = [
   WalletModel(

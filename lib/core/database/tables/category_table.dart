@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/features/category/data/model/category_model.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/features/category/data/model/category_model.dart';
 
 // Define tables
 @DataClassName('Category')

@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:developer';
 import 'package:flutter/foundation.dart';
-import 'package:pockaw/core/utils/storage_directory.dart';
+import 'package:bexly/core/utils/storage_directory.dart';
 
 class Log {
   static void _console(

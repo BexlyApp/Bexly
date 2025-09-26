@@ -1,5 +1,5 @@
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/form_fields/custom_text_field.dart';
+import 'package:bexly/core/components/form_fields/custom_text_field.dart';
 
 class CustomSelectField extends CustomTextField {
   CustomSelectField({

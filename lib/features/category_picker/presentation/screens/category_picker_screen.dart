@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/components/buttons/button_state.dart';
-import 'package:pockaw/core/components/buttons/primary_button.dart';
-import 'package:pockaw/core/components/scaffolds/custom_scaffold.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/extensions/popup_extension.dart';
-import 'package:pockaw/features/category/presentation/riverpod/category_providers.dart';
-import 'package:pockaw/features/category/presentation/screens/category_form_screen.dart';
-import 'package:pockaw/features/category_picker/presentation/components/category_dropdown.dart';
+import 'package:bexly/core/components/buttons/button_state.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
+import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/features/category/presentation/riverpod/category_providers.dart';
+import 'package:bexly/features/category/presentation/screens/category_form_screen.dart';
+import 'package:bexly/features/category_picker/presentation/components/category_dropdown.dart';
 
 class CategoryPickerScreen extends ConsumerWidget {
   final bool isManageCategories;

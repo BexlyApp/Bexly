@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:pockaw/features/category/data/model/category_model.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/category/data/model/category_model.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 
 part 'transaction_filter_model.freezed.dart';
 part 'transaction_filter_model.g.dart';

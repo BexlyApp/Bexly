@@ -4,15 +4,13 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/buttons/custom_icon_button.dart';
-import 'package:pockaw/core/components/scaffolds/custom_scaffold.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/features/budget/presentation/components/budget_card_holder.dart';
-import 'package:pockaw/features/budget/presentation/components/budget_summary_card.dart';
-import 'package:pockaw/features/budget/presentation/components/budget_tab_bar.dart';
-import 'package:pockaw/features/budget/presentation/riverpod/budget_providers.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/features/budget/presentation/components/budget_card_holder.dart';
+import 'package:bexly/features/budget/presentation/components/budget_summary_card.dart';
+import 'package:bexly/features/budget/presentation/components/budget_tab_bar.dart';
+import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
 
 class BudgetScreen extends HookConsumerWidget {
   const BudgetScreen({super.key});
@@ -21,20 +19,13 @@ class BudgetScreen extends HookConsumerWidget {
   Widget build(BuildContext context, ref) {
     final allBudgetsAsyncValue = ref.watch(budgetListProvider);
 
-    return CustomScaffold(
-      context: context,
-      title: 'My Budgets',
-      showBackButton: false,
-      actions: [
-        CustomIconButton(
-          context,
-          onPressed: () {
-            context.push(Routes.budgetForm);
-          },
-          icon: HugeIcons.strokeRoundedPlusSign,
-          themeMode: context.themeMode,
-        ),
-      ],
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          context.push(Routes.budgetForm);
+        },
+        child: Icon(HugeIcons.strokeRoundedPlusSign),
+      ),
       body: allBudgetsAsyncValue.when(
         data: (allBudgets) {
           if (allBudgets.isEmpty) {

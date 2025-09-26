@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/features/budget/presentation/components/budget_card.dart';
-import 'package:pockaw/features/budget/presentation/riverpod/budget_providers.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/features/budget/presentation/components/budget_card.dart';
+import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
 
 class BudgetCardHolder extends ConsumerWidget {
   const BudgetCardHolder({super.key});

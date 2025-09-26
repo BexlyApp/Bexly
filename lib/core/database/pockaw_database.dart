@@ -1,23 +1,23 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
-import 'package:pockaw/core/database/database_connection.dart';
-import 'package:pockaw/core/database/daos/budget_dao.dart';
-import 'package:pockaw/core/database/daos/category_dao.dart';
-import 'package:pockaw/core/database/daos/transaction_dao.dart';
-import 'package:pockaw/core/database/daos/checklist_item_dao.dart';
-import 'package:pockaw/core/database/daos/goal_dao.dart';
-import 'package:pockaw/core/database/daos/user_dao.dart';
-import 'package:pockaw/core/database/daos/wallet_dao.dart'; // Import new DAO
-import 'package:pockaw/core/database/tables/budgets_table.dart';
-import 'package:pockaw/core/database/tables/category_table.dart';
-import 'package:pockaw/core/database/tables/transaction_table.dart';
-import 'package:pockaw/core/database/tables/checklist_item_table.dart';
-import 'package:pockaw/core/database/tables/goal_table.dart';
-import 'package:pockaw/core/database/tables/users.dart';
-import 'package:pockaw/core/database/tables/wallet_table.dart'; // Import new table
-import 'package:pockaw/core/services/data_population_service/category_population_service.dart';
-import 'package:pockaw/core/services/data_population_service/wallet_population_service.dart'; // Import new population service
-import 'package:pockaw/core/utils/logger.dart';
+import 'package:bexly/core/database/database_connection.dart';
+import 'package:bexly/core/database/daos/budget_dao.dart';
+import 'package:bexly/core/database/daos/category_dao.dart';
+import 'package:bexly/core/database/daos/transaction_dao.dart';
+import 'package:bexly/core/database/daos/checklist_item_dao.dart';
+import 'package:bexly/core/database/daos/goal_dao.dart';
+import 'package:bexly/core/database/daos/user_dao.dart';
+import 'package:bexly/core/database/daos/wallet_dao.dart'; // Import new DAO
+import 'package:bexly/core/database/tables/budgets_table.dart';
+import 'package:bexly/core/database/tables/category_table.dart';
+import 'package:bexly/core/database/tables/transaction_table.dart';
+import 'package:bexly/core/database/tables/checklist_item_table.dart';
+import 'package:bexly/core/database/tables/goal_table.dart';
+import 'package:bexly/core/database/tables/users.dart';
+import 'package:bexly/core/database/tables/wallet_table.dart'; // Import new table
+import 'package:bexly/core/services/data_population_service/category_population_service.dart';
+import 'package:bexly/core/services/data_population_service/wallet_population_service.dart'; // Import new population service
+import 'package:bexly/core/utils/logger.dart';
 
 part 'pockaw_database.g.dart';
 

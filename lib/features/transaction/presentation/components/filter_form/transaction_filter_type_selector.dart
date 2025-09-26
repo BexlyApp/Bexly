@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/components/buttons/button_chip.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/core/components/buttons/button_chip.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 
 class TransactionFilterTypeSelector extends ConsumerWidget {
   final TransactionType selectedType;

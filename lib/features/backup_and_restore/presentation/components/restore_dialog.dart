@@ -3,15 +3,15 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/buttons/secondary_button.dart';
-import 'package:pockaw/core/components/dialogs/toast.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/database/daos/user_dao.dart';
-import 'package:pockaw/core/extensions/text_style_extensions.dart';
-import 'package:pockaw/core/services/data_backup_service/data_backup_service_provider.dart';
-import 'package:pockaw/features/authentication/presentation/riverpod/auth_provider.dart';
-import 'package:pockaw/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/core/components/buttons/secondary_button.dart';
+import 'package:bexly/core/components/dialogs/toast.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/database/daos/user_dao.dart';
+import 'package:bexly/core/extensions/text_style_extensions.dart';
+import 'package:bexly/core/services/data_backup_service/data_backup_service_provider.dart';
+import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
+import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:toastification/toastification.dart';
 
 class RestoreDialog extends HookConsumerWidget {

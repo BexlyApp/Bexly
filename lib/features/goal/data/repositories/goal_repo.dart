@@ -1,4 +1,4 @@
-import 'package:pockaw/features/goal/data/model/goal_model.dart';
+import 'package:bexly/features/goal/data/model/goal_model.dart';
 
 final GoalModel goalDummy = GoalModel(
   id: 0,

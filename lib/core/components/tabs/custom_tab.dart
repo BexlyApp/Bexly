@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
 
 class CustomTab extends Tab {
   final String label;

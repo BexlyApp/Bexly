@@ -1,10 +1,10 @@
 import 'package:calendar_date_picker2/calendar_date_picker2.dart';
 import 'package:flutter/material.dart';
-import 'package:pockaw/core/components/date_picker/date_time_picker_dialog.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/extensions/popup_extension.dart';
-import 'package:pockaw/core/utils/logger.dart';
+import 'package:bexly/core/components/date_picker/date_time_picker_dialog.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/core/utils/logger.dart';
 
 class CustomDatePicker {
   static final _datePickerConfig = CalendarDatePicker2WithActionButtonsConfig(

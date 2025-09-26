@@ -1,8 +1,8 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/database/database_provider.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/wallet/data/model/wallet_model.dart';
-// import 'package:pockaw/features/wallet/data/repositories/wallet_repo.dart'; // No longer needed for hardcoded list
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+// import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart'; // No longer needed for hardcoded list
 
 /// Provider to stream all wallets from the database.
 final allWalletsStreamProvider = StreamProvider.autoDispose<List<WalletModel>>((

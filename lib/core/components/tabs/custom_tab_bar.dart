@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/extensions/text_style_extensions.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/text_style_extensions.dart';
 
 class CustomTabBar extends StatelessWidget {
   final TabController? tabController;

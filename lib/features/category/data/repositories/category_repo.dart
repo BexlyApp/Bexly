@@ -1,4 +1,4 @@
-import 'package:pockaw/features/category/data/model/category_model.dart';
+import 'package:bexly/features/category/data/model/category_model.dart';
 
 final List<CategoryModel> categories = [
   CategoryModel(

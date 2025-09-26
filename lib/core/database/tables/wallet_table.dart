@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 
 @DataClassName('Wallet')
 class Wallets extends Table {

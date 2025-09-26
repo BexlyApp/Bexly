@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pockaw/core/components/buttons/primary_button.dart';
-import 'package:pockaw/core/components/scaffolds/custom_scaffold.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/features/theme_switcher/presentation/components/theme_mode_switcher.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
+import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/features/theme_switcher/presentation/components/theme_mode_switcher.dart';
 
 part '../components/get_started_button.dart';
 

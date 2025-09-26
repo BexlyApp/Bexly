@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/core/database/tables/category_table.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/tables/category_table.dart';
 
 part 'category_dao.g.dart';
 

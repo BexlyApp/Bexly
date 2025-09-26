@@ -3,22 +3,22 @@ import 'package:gap/gap.dart';
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/chips/custom_chip.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/core/extensions/double_extension.dart';
-import 'package:pockaw/core/extensions/popup_extension.dart';
-import 'package:pockaw/core/extensions/string_extension.dart';
-import 'package:pockaw/core/services/keyboard_service/virtual_keyboard_service.dart';
-import 'package:pockaw/core/services/url_launcher/url_launcher.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/goal/data/model/checklist_item_model.dart';
-import 'package:pockaw/features/goal/presentation/screens/goal_checklist_form_dialog.dart';
-import 'package:pockaw/features/goal/presentation/services/goal_form_service.dart';
-import 'package:pockaw/features/wallet/data/model/wallet_model.dart';
-import 'package:pockaw/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/core/components/chips/custom_chip.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/core/extensions/string_extension.dart';
+import 'package:bexly/core/services/keyboard_service/virtual_keyboard_service.dart';
+import 'package:bexly/core/services/url_launcher/url_launcher.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/goal/data/model/checklist_item_model.dart';
+import 'package:bexly/features/goal/presentation/screens/goal_checklist_form_dialog.dart';
+import 'package:bexly/features/goal/presentation/services/goal_form_service.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 class GoalChecklistItem extends ConsumerWidget {
   final bool isOdd;

@@ -3,17 +3,17 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/buttons/custom_icon_button.dart';
-import 'package:pockaw/core/components/scaffolds/custom_scaffold.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/features/budget/presentation/components/budget_card.dart';
-import 'package:pockaw/features/budget/presentation/components/budget_date_card.dart';
-import 'package:pockaw/features/budget/presentation/components/budget_fund_source_card.dart';
-import 'package:pockaw/features/budget/presentation/components/budget_top_transactions_holder.dart';
-import 'package:pockaw/features/budget/presentation/riverpod/budget_providers.dart';
-import 'package:pockaw/features/budget/presentation/riverpod/date_picker_provider.dart';
+import 'package:bexly/core/components/buttons/custom_icon_button.dart';
+import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/features/budget/presentation/components/budget_card.dart';
+import 'package:bexly/features/budget/presentation/components/budget_date_card.dart';
+import 'package:bexly/features/budget/presentation/components/budget_fund_source_card.dart';
+import 'package:bexly/features/budget/presentation/components/budget_top_transactions_holder.dart';
+import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
+import 'package:bexly/features/budget/presentation/riverpod/date_picker_provider.dart';
 
 class BudgetDetailsScreen extends ConsumerWidget {
   final int budgetId;

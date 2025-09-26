@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/buttons/custom_icon_button.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/features/theme_switcher/presentation/riverpod/theme_mode_provider.dart';
+import 'package:bexly/core/components/buttons/custom_icon_button.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/features/theme_switcher/presentation/riverpod/theme_mode_provider.dart';
 
 class ThemeModeSwitcher extends ConsumerWidget {
   const ThemeModeSwitcher({super.key});

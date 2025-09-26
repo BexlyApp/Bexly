@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:pockaw/core/components/form_fields/custom_text_field.dart';
-import 'package:pockaw/features/currency_picker/data/models/currency.dart';
-import 'package:pockaw/features/currency_picker/data/sources/currency_local_source.dart';
-import 'package:pockaw/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
-import 'package:pockaw/features/wallet/data/model/wallet_model.dart';
-import 'package:pockaw/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/core/components/form_fields/custom_text_field.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/features/currency_picker/data/sources/currency_local_source.dart';
+import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 class CustomNumericField extends ConsumerWidget {
   final String label;

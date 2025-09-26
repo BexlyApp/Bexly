@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
-import 'package:pockaw/core/utils/logger.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'package:uuid/uuid.dart';
 
 class ReceiptUploadResult {

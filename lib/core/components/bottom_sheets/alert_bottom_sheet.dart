@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pockaw/core/components/bottom_sheets/custom_bottom_sheet.dart';
-import 'package:pockaw/core/components/buttons/button_state.dart';
-import 'package:pockaw/core/components/buttons/primary_button.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
+import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
+import 'package:bexly/core/components/buttons/button_state.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
 
 class AlertBottomSheet extends CustomBottomSheet {
   final BuildContext? context;

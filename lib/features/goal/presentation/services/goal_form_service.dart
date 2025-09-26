@@ -2,12 +2,12 @@ import 'package:drift/drift.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/goal/data/model/checklist_item_model.dart';
-import 'package:pockaw/features/goal/data/model/goal_model.dart';
-import 'package:pockaw/features/goal/presentation/riverpod/checklist_actions_provider.dart';
-import 'package:pockaw/features/goal/presentation/riverpod/goals_actions_provider.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/goal/data/model/checklist_item_model.dart';
+import 'package:bexly/features/goal/data/model/goal_model.dart';
+import 'package:bexly/features/goal/presentation/riverpod/checklist_actions_provider.dart';
+import 'package:bexly/features/goal/presentation/riverpod/goals_actions_provider.dart';
 
 class GoalFormService {
   Future<void> save(

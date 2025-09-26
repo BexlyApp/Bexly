@@ -1,12 +1,11 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pockaw/core/app.dart';
+import 'package:bexly/core/app.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +16,15 @@ Future<void> main() async {
       DeviceOrientation.portraitDown,
     ]);
   }
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+  // Initialize dual Firebase apps
+  try {
+    await FirebaseInitService.initialize();
+    // Only setup Crashlytics after successful Firebase init
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  } catch (e) {
+    print('Firebase init error in main: $e');
+    // Continue without Crashlytics if Firebase fails
+  }
   runApp(ProviderScope(child: const MyApp()));
 }

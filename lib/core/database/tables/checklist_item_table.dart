@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/core/database/tables/goal_table.dart';
-import 'package:pockaw/features/goal/data/model/checklist_item_model.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/tables/goal_table.dart';
+import 'package:bexly/features/goal/data/model/checklist_item_model.dart';
 
 @DataClassName('ChecklistItem')
 class ChecklistItems extends Table {

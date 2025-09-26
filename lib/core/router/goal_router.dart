@@ -1,7 +1,7 @@
 import 'package:go_router/go_router.dart';
-import 'package:pockaw/core/router/routes.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/goal/presentation/screens/goal_details_screen.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/goal/presentation/screens/goal_details_screen.dart';
 
 class GoalRouter {
   static final routes = <GoRoute>[

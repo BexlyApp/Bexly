@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/core/database/tables/users.dart';
-import 'package:pockaw/features/authentication/data/models/user_model.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/tables/users.dart';
+import 'package:bexly/features/authentication/data/models/user_model.dart';
 
 part 'user_dao.g.dart';
 

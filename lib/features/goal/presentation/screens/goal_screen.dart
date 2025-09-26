@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/buttons/custom_icon_button.dart';
-import 'package:pockaw/core/components/scaffolds/custom_scaffold.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/extensions/popup_extension.dart';
-import 'package:pockaw/features/goal/presentation/components/goal_card.dart';
-import 'package:pockaw/features/goal/presentation/riverpod/goals_list_provider.dart';
-import 'package:pockaw/features/goal/presentation/screens/goal_form_dialog.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/features/goal/presentation/components/goal_card.dart';
+import 'package:bexly/features/goal/presentation/riverpod/goals_list_provider.dart';
+import 'package:bexly/features/goal/presentation/screens/goal_form_dialog.dart';
 
 class GoalScreen extends ConsumerWidget {
   const GoalScreen({super.key});
@@ -19,20 +17,13 @@ class GoalScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncGoals = ref.watch(goalsListProvider);
 
-    return CustomScaffold(
-      context: context,
-      showBackButton: false,
-      title: 'My Goals',
-      actions: [
-        CustomIconButton(
-          context,
-          onPressed: () {
-            context.openBottomSheet(child: GoalFormDialog());
-          },
-          icon: HugeIcons.strokeRoundedPlusSign,
-          themeMode: context.themeMode,
-        ),
-      ],
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          context.openBottomSheet(child: GoalFormDialog());
+        },
+        child: Icon(HugeIcons.strokeRoundedPlusSign),
+      ),
       body: asyncGoals.when(
         data: (goals) {
           if (goals.isEmpty) {

@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/buttons/secondary_button.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/services/image_service/riverpod/image_notifier.dart';
+import 'package:bexly/core/components/buttons/secondary_button.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 
 class TransactionImagePicker extends ConsumerWidget {
   const TransactionImagePicker({super.key});

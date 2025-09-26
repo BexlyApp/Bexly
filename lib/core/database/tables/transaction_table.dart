@@ -1,12 +1,12 @@
 import 'package:drift/drift.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/core/database/tables/category_table.dart';
-import 'package:pockaw/core/database/tables/wallet_table.dart';
-import 'package:pockaw/features/category/data/model/category_model.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
-import 'package:pockaw/features/wallet/data/repositories/wallet_repo.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/tables/category_table.dart';
+import 'package:bexly/core/database/tables/wallet_table.dart';
+import 'package:bexly/features/category/data/model/category_model.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart';
 // Assuming a WalletTable will exist, create a placeholder or actual import
-// import 'package:pockaw/core/database/tables/wallet_table.dart'; // Placeholder
+// import 'package:bexly/core/database/tables/wallet_table.dart'; // Placeholder
 
 /// Represents the `transactions` table in the database.
 @DataClassName('Transaction') // Defines the name of the generated data class

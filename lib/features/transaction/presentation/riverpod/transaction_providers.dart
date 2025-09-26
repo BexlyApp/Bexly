@@ -1,8 +1,8 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pockaw/core/database/database_provider.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_filter_model.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
-import 'package:pockaw/features/wallet/riverpod/wallet_providers.dart'; // Import activeWalletProvider
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/features/transaction/data/model/transaction_filter_model.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/wallet/riverpod/wallet_providers.dart'; // Import activeWalletProvider
 
 /// Emits a new list of transactions for the currently active wallet.
 final transactionListProvider =

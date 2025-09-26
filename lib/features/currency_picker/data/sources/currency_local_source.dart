@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
-import 'package:pockaw/core/constants/app_constants.dart';
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/core/constants/app_constants.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 
 class CurrencyLocalDataSource {
   Future<List<dynamic>> getCurrencies() async {

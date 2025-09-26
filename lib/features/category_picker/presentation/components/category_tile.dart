@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'package:gap/gap.dart';
-import 'package:pockaw/core/components/buttons/custom_icon_button.dart';
-import 'package:pockaw/core/constants/app_colors.dart';
-import 'package:pockaw/core/constants/app_radius.dart';
-import 'package:pockaw/core/constants/app_spacing.dart';
-import 'package:pockaw/core/constants/app_text_styles.dart';
-import 'package:pockaw/features/category/data/model/category_model.dart';
-import 'package:pockaw/features/category_picker/presentation/components/category_icon.dart';
+import 'package:bexly/core/components/buttons/custom_icon_button.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/features/category/data/model/category_model.dart';
+import 'package:bexly/features/category_picker/presentation/components/category_icon.dart';
 
 class CategoryTile extends StatelessWidget {
   final CategoryModel category;

@@ -1,4 +1,4 @@
-import 'package:pockaw/core/utils/logger.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ShareService {

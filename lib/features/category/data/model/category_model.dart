@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:pockaw/core/database/database_provider.dart';
-import 'package:pockaw/core/database/tables/category_table.dart';
-import 'package:pockaw/features/category/data/model/icon_type.dart';
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/database/tables/category_table.dart';
+import 'package:bexly/features/category/data/model/icon_type.dart';
 
 part 'category_model.freezed.dart';
 part 'category_model.g.dart';

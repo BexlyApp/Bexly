@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:pockaw/core/extensions/double_extension.dart';
-import 'package:pockaw/features/currency_picker/data/models/currency.dart';
-import 'package:pockaw/features/currency_picker/data/sources/currency_local_source.dart';
-import 'package:pockaw/features/currency_picker/presentation/riverpod/currency_picker_provider.dart'; // For currency formatting in the extension
+import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/features/currency_picker/data/sources/currency_local_source.dart';
+import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart'; // For currency formatting in the extension
 
 part 'wallet_model.freezed.dart';
 part 'wallet_model.g.dart';

@@ -1,11 +1,11 @@
 import 'package:drift/drift.dart';
-import 'package:pockaw/core/database/pockaw_database.dart';
-import 'package:pockaw/core/database/tables/category_table.dart';
-import 'package:pockaw/core/database/tables/transaction_table.dart';
-import 'package:pockaw/core/database/tables/wallet_table.dart'; // Import WalletTable
-import 'package:pockaw/core/utils/logger.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_filter_model.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/tables/category_table.dart';
+import 'package:bexly/core/database/tables/transaction_table.dart';
+import 'package:bexly/core/database/tables/wallet_table.dart'; // Import WalletTable
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/transaction/data/model/transaction_filter_model.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 
 part 'transaction_dao.g.dart';
 

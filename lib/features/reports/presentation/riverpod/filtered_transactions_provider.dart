@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pockaw/features/transaction/data/model/transaction_model.dart';
-import 'package:pockaw/features/transaction/presentation/riverpod/transaction_providers.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
 
 final monthlyTransactionsProvider =
     Provider.family<AsyncValue<List<TransactionModel>>, DateTime>((ref, date) {

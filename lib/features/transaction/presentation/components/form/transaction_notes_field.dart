@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:pockaw/core/components/form_fields/custom_text_field.dart';
+import 'package:bexly/core/components/form_fields/custom_text_field.dart';
 
 class TransactionNotesField extends HookConsumerWidget {
   final TextEditingController controller;

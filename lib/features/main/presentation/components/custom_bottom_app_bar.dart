@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pockaw/core/extensions/screen_utils_extensions.dart';
-import 'package:pockaw/features/main/presentation/components/desktop_sidebar.dart';
-import 'package:pockaw/features/main/presentation/components/mobile_bottom_app_bar.dart';
+import 'package:bexly/core/extensions/screen_utils_extensions.dart';
+import 'package:bexly/features/main/presentation/components/desktop_sidebar.dart';
+import 'package:bexly/features/main/presentation/components/mobile_bottom_app_bar.dart';
 
 class CustomBottomAppBar extends ConsumerWidget {
   final PageController pageController;
