@@ -59,11 +59,11 @@ class AIChatScreen extends HookConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Trợ lý AI Bexly',
+                  'Bexly AI Assistant',
                   style: AppTextStyles.body2,
                 ),
                 Text(
-                  chatState.isTyping ? 'Đang nhập...' : 'Sẵn sàng hỗ trợ',
+                  chatState.isTyping ? 'Typing...' : 'Ready to help',
                   style: AppTextStyles.body4.copyWith(
                     color: chatState.isTyping
                         ? AppColors.green100
@@ -80,21 +80,21 @@ class AIChatScreen extends HookConsumerWidget {
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: const Text('Xóa cuộc trò chuyện'),
+                  title: const Text('Clear chat'),
                   content: const Text(
-                    'Bạn có chắc chắn muốn xóa toàn bộ cuộc trò chuyện?',
+                    'Are you sure you want to clear all chat history?',
                   ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Hủy'),
+                      child: const Text('Cancel'),
                     ),
                     TextButton(
                       onPressed: () {
                         chatNotifier.clearChat();
                         Navigator.of(context).pop();
                       },
-                      child: const Text('Xóa'),
+                      child: const Text('Clear'),
                     ),
                   ],
                 ),
@@ -123,7 +123,7 @@ class AIChatScreen extends HookConsumerWidget {
                     const SizedBox(width: AppSpacing.spacing8),
                     Expanded(
                       child: Text(
-                        'Đã có lỗi xảy ra. Vui lòng thử lại.',
+                        'An error occurred. Please try again.',
                         style: AppTextStyles.body4.copyWith(
                           color: AppColors.red600,
                         ),
@@ -308,11 +308,11 @@ class _MessageBubble extends StatelessWidget {
     final difference = now.difference(dateTime);
 
     if (difference.inMinutes < 1) {
-      return 'Vừa xong';
+      return 'Just now';
     } else if (difference.inHours < 1) {
-      return '${difference.inMinutes} phút trước';
+      return '${difference.inMinutes} minutes ago';
     } else if (difference.inDays < 1) {
-      return '${difference.inHours} giờ trước';
+      return '${difference.inHours} hours ago';
     } else {
       return '${dateTime.day}/${dateTime.month} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     }
@@ -418,7 +418,7 @@ class _ChatInput extends HookWidget {
                   enabled: !isLoading,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
-                hintText: 'Nhập tin nhắn của bạn...',
+                hintText: 'Type your message...',
                 hintStyle: AppTextStyles.body2.copyWith(
                   color: AppColors.neutral400,
                 ),

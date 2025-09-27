@@ -49,7 +49,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 9; // Increment for chat messages table
+  int get schemaVersion => 10; // Increment for chat messages table fix
 
   @override
   MigrationStrategy get migration {
@@ -70,8 +70,26 @@ class AppDatabase extends _$AppDatabase {
           return;
         }
 
-        if (kDebugMode) {
-          // In debug mode, clear and recreate everything for other migrations
+        // For version 9 or 10, create the chat_messages table if it doesn't exist
+        if (from < 10) {
+          try {
+            await m.createTable(chatMessages);
+            Log.i('Created chat_messages table', label: 'database');
+          } catch (e) {
+            Log.d('Chat messages table might already exist: $e', label: 'database');
+          }
+          return;
+        }
+
+        // Don't reset database if already at current version
+        if (from == to) {
+          Log.i('Database already at version $to, no migration needed', label: 'database');
+          return;
+        }
+
+        if (kDebugMode && from < 9) {
+          // In debug mode, clear and recreate everything for old migrations
+          // But not for version 9 or later to preserve chat history
           Log.i(
             'Debug mode: Wiping and recreating all tables for upgrade from $from to $to.',
             label: 'database',
