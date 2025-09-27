@@ -35,7 +35,8 @@ class WalletFormBottomSheet extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currency = ref.read(currencyProvider);
+    // Watch currency provider to get updated value when user picks new currency
+    final currency = ref.watch(currencyProvider);
     final isEditing = wallet != null;
 
     final nameController = useTextEditingController();

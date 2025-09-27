@@ -11,7 +11,8 @@ import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 class WalletSelectorBottomSheet extends ConsumerWidget {
-  const WalletSelectorBottomSheet({super.key});
+  final Function(WalletModel)? onWalletSelected;
+  const WalletSelectorBottomSheet({super.key, this.onWalletSelected});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final allWalletsAsync = ref.watch(allWalletsStreamProvider);
@@ -54,6 +55,13 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
                   color: isSelected ? Colors.green : Colors.grey,
                 ),
                 onTap: () {
+                  // If callback provided, just call it (for budget form use)
+                  if (onWalletSelected != null) {
+                    onWalletSelected!(wallet);
+                    return;
+                  }
+
+                  // Otherwise, show confirmation for switching active wallet
                   if (isSelected) return;
                   showModalBottomSheet(
                     context: context,
