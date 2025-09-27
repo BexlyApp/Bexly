@@ -8,6 +8,7 @@ import 'package:bexly/core/database/daos/checklist_item_dao.dart';
 import 'package:bexly/core/database/daos/goal_dao.dart';
 import 'package:bexly/core/database/daos/user_dao.dart';
 import 'package:bexly/core/database/daos/wallet_dao.dart'; // Import new DAO
+import 'package:bexly/core/database/daos/chat_message_dao.dart';
 import 'package:bexly/core/database/tables/budgets_table.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/transaction_table.dart';
@@ -15,6 +16,7 @@ import 'package:bexly/core/database/tables/checklist_item_table.dart';
 import 'package:bexly/core/database/tables/goal_table.dart';
 import 'package:bexly/core/database/tables/users.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart'; // Import new table
+import 'package:bexly/core/database/tables/chat_messages_table.dart';
 import 'package:bexly/core/services/data_population_service/category_population_service.dart';
 import 'package:bexly/core/services/data_population_service/wallet_population_service.dart'; // Import new population service
 import 'package:bexly/core/utils/logger.dart';
@@ -30,6 +32,7 @@ part 'pockaw_database.g.dart';
     Transactions,
     Wallets,
     Budgets,
+    ChatMessages,
   ],
   daos: [
     UserDao,
@@ -39,13 +42,14 @@ part 'pockaw_database.g.dart';
     TransactionDao,
     WalletDao,
     BudgetDao,
+    ChatMessageDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 8; // Increment schema version for the new fields
+  int get schemaVersion => 9; // Increment for chat messages table
 
   @override
   MigrationStrategy get migration {
