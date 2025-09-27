@@ -13,6 +13,11 @@ import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
+import 'package:bexly/features/budget/data/model/budget_model.dart';
+import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
+import 'package:bexly/features/ai_chat/presentation/riverpod/chat_dao_provider.dart';
+import 'package:bexly/core/database/pockaw_database.dart' as db;
+import 'package:drift/drift.dart' as drift;
 
 // AI Service Provider
 final aiServiceProvider = Provider<AIService>((ref) {
@@ -60,18 +65,51 @@ class ChatNotifier extends StateNotifier<ChatState> {
     _initializeChat();
   }
 
-  void _initializeChat() {
-    // Add welcome message
-    final welcomeMessage = ChatMessage(
-      id: _uuid.v4(),
-      content: 'Chào bạn! Tôi là trợ lý AI của Bexly. Tôi có thể giúp bạn về các vấn đề tài chính, lập ngân sách, và quản lý chi tiêu. Bạn có câu hỏi gì không?',
-      isFromUser: false,
-      timestamp: DateTime.now(),
-    );
+  void _initializeChat() async {
+    // Load messages from database
+    final dao = _ref.read(chatMessageDaoProvider);
+    final savedMessages = await dao.getAllMessages();
 
-    state = state.copyWith(
-      messages: [welcomeMessage],
-    );
+    if (savedMessages.isNotEmpty) {
+      // Convert database messages to ChatMessage model
+      final messages = savedMessages.map((dbMsg) => ChatMessage(
+        id: dbMsg.messageId,
+        content: dbMsg.content,
+        isFromUser: dbMsg.isFromUser,
+        timestamp: dbMsg.timestamp,
+        error: dbMsg.error,
+        isTyping: dbMsg.isTyping,
+      )).toList();
+
+      state = state.copyWith(messages: messages);
+    } else {
+      // Add welcome message if no history
+      final welcomeMessage = ChatMessage(
+        id: _uuid.v4(),
+        content: 'Welcome to Bexly AI Assistant! I can help you track expenses, record income, check balances, and view transaction summaries. Note: Budget creation is now supported via chat!',
+        isFromUser: false,
+        timestamp: DateTime.now(),
+      );
+
+      state = state.copyWith(
+        messages: [welcomeMessage],
+      );
+
+      // Save welcome message to database
+      await _saveMessageToDatabase(welcomeMessage);
+    }
+  }
+
+  Future<void> _saveMessageToDatabase(ChatMessage message) async {
+    final dao = _ref.read(chatMessageDaoProvider);
+    await dao.addMessage(db.ChatMessagesCompanion(
+      messageId: drift.Value(message.id),
+      content: drift.Value(message.content),
+      isFromUser: drift.Value(message.isFromUser),
+      timestamp: drift.Value(message.timestamp),
+      error: drift.Value(message.error),
+      isTyping: drift.Value(message.isTyping),
+    ));
   }
 
   Future<void> sendMessage(String content) async {
@@ -91,6 +129,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
       isTyping: false,
       error: null,
     );
+
+    // Save user message to database
+    await _saveMessageToDatabase(userMessage);
 
     try {
       // Start typing indicator
@@ -163,13 +204,45 @@ class ChatNotifier extends StateNotifier<ChatState> {
                 String conversionNote = '';
                 if (aiCurrency == 'VND' && walletCurrency == 'USD') {
                   final vndAmount = (action['amount'] as num) * 25000;
-                  conversionNote = ' (từ ${_formatAmount(vndAmount, currency: 'VND')})';
+                  conversionNote = ' (from ${_formatAmount(vndAmount, currency: 'VND')})';
                 }
 
                 final confirmText = isIncome
-                    ? 'Đã ghi nhận thu ' + amountText + conversionNote + ' vào "' + walletName + '" cho ' + (action['description']).toString() + ' (Danh mục: ' + (action['category']).toString() + ') ' + dateText + '.'
-                    : 'Đã ghi nhận chi ' + amountText + conversionNote + ' từ "' + walletName + '" cho ' + (action['description']).toString() + ' (Danh mục: ' + (action['category']).toString() + ') ' + dateText + '.';
+                    ? 'Recorded income of ' + amountText + conversionNote + ' to "' + walletName + '" for ' + (action['description']).toString() + ' (Category: ' + (action['category']).toString() + ') on ' + dateText + '.'
+                    : 'Recorded expense of ' + amountText + conversionNote + ' from "' + walletName + '" for ' + (action['description']).toString() + ' (Category: ' + (action['category']).toString() + ') on ' + dateText + '.';
                 displayMessage += '\n\n✅ ' + confirmText;
+                break;
+              }
+            case 'create_budget':
+              {
+                Log.d('Processing create_budget action: $action', label: 'Chat Provider');
+
+                final wallet = _ref.read(activeWalletProvider).valueOrNull;
+                if (wallet == null) {
+                  displayMessage += '\n\n❌ No active wallet selected.';
+                  break;
+                }
+
+                // Handle currency conversion if needed
+                final walletCurrency = wallet.currency ?? 'VND';
+                double amount = (action['amount'] as num).toDouble();
+                final aiCurrency = action['currency'] ?? 'VND';
+
+                // Convert VND to USD if wallet uses USD
+                if (aiCurrency == 'VND' && walletCurrency == 'USD') {
+                  amount = amount / 25000;
+                }
+
+                await _createBudgetFromAction({
+                  ...action,
+                  'amount': amount,
+                });
+
+                final amountText = _formatAmount(amount, currency: walletCurrency);
+                final categoryName = action['category']?.toString() ?? 'General';
+                final period = action['period']?.toString() ?? 'monthly';
+
+                displayMessage += '\n\n✅ Created $period budget of $amountText for $categoryName.';
                 break;
               }
             case 'get_balance':
@@ -218,12 +291,12 @@ class ChatNotifier extends StateNotifier<ChatState> {
             if (currency == 'USD' && !userMessage.content.toLowerCase().contains(RegExp(r'\$|usd|dollar'))) {
               // Likely VND amount converted to USD
               final originalVnd = (inferred['amount'] as num) * 25000;
-              conversionNote = ' (từ ${_formatAmount(originalVnd, currency: 'VND')})';
+              conversionNote = ' (from ${_formatAmount(originalVnd, currency: 'VND')})';
             }
 
             final confirmText = isIncome
-                ? 'Đã ghi nhận thu ' + amountText + conversionNote + ' vào "' + walletName + '" cho ' + (inferred['description']).toString() + ' (Danh mục: ' + (inferred['category']).toString() + ') ' + dateText + '.'
-                : 'Đã ghi nhận chi ' + amountText + conversionNote + ' từ "' + walletName + '" cho ' + (inferred['description']).toString() + ' (Danh mục: ' + (inferred['category']).toString() + ') ' + dateText + '.';
+                ? 'Recorded income of ' + amountText + conversionNote + ' to "' + walletName + '" for ' + (inferred['description']).toString() + ' (Category: ' + (inferred['category']).toString() + ') on ' + dateText + '.'
+                : 'Recorded expense of ' + amountText + conversionNote + ' from "' + walletName + '" for ' + (inferred['description']).toString() + ' (Category: ' + (inferred['category']).toString() + ') on ' + dateText + '.';
             displayMessage += '\n\n✅ ' + confirmText;
           } catch (e) {
             Log.e('Fallback create transaction failed: $e', label: 'Chat Provider');
@@ -244,6 +317,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
         isTyping: false,
       );
 
+      // Save AI message to database
+      await _saveMessageToDatabase(aiMessage);
+
       Log.d('Message sent and response received successfully', label: 'Chat Provider');
     } catch (error) {
       _cancelTypingEffect();
@@ -259,7 +335,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       // Add error message to chat
       final errorMessage = ChatMessage(
         id: _uuid.v4(),
-        content: 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.',
+        content: 'Sorry, an error occurred. Please try again later.',
         isFromUser: false,
         timestamp: DateTime.now(),
         error: error.toString(),
@@ -470,14 +546,106 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
   }
 
+  Future<void> _createBudgetFromAction(Map<String, dynamic> action) async {
+    Log.d('Creating budget from action: $action', label: 'BUDGET_DEBUG');
+
+    try {
+      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      if (wallet == null) {
+        Log.e('No active wallet for budget creation', label: 'BUDGET_DEBUG');
+        return;
+      }
+
+      // Get category
+      final categoryName = action['category']?.toString() ?? 'Others';
+      final categories = _ref.read(hierarchicalCategoriesProvider).valueOrNull ?? [];
+
+      // Find matching category (case-insensitive, partial match)
+      var category = categories.firstWhereOrNull(
+        (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
+               categoryName.toLowerCase().contains(c.title.toLowerCase())
+      );
+
+      // If no match, try exact match
+      category ??= categories.firstWhereOrNull(
+        (c) => c.title.toLowerCase() == categoryName.toLowerCase()
+      );
+
+      // If still no match, use "Others" or first category
+      if (category == null) {
+        category = categories.firstWhereOrNull((c) => c.title == 'Others') ??
+                  categories.firstOrNull;
+        if (category == null) {
+          Log.e('No categories available for budget', label: 'BUDGET_DEBUG');
+          return;
+        }
+      }
+
+      // Determine budget period dates
+      final now = DateTime.now();
+      DateTime startDate;
+      DateTime endDate;
+
+      final period = action['period']?.toString() ?? 'monthly';
+      switch (period) {
+        case 'weekly':
+          startDate = DateTime(now.year, now.month, now.day);
+          endDate = startDate.add(Duration(days: 7));
+          break;
+        case 'custom':
+          startDate = action['startDate'] != null
+              ? DateTime.parse(action['startDate'])
+              : DateTime(now.year, now.month, now.day);
+          endDate = action['endDate'] != null
+              ? DateTime.parse(action['endDate'])
+              : startDate.add(Duration(days: 30));
+          break;
+        case 'monthly':
+        default:
+          startDate = DateTime(now.year, now.month, 1);
+          endDate = DateTime(now.year, now.month + 1, 1).subtract(Duration(days: 1));
+          break;
+      }
+
+      final amount = (action['amount'] as num).toDouble();
+      final isRoutine = action['isRoutine'] ?? false;
+
+      // Import budget model and providers
+      final BudgetModel budget = BudgetModel(
+        id: null,
+        wallet: wallet,
+        category: category,
+        amount: amount,
+        startDate: startDate,
+        endDate: endDate,
+        isRoutine: isRoutine,
+      );
+
+      Log.d('Creating budget: amount=$amount, category=${category.title}, period=$period', label: 'BUDGET_DEBUG');
+
+      // Save budget to database
+      final budgetDao = _ref.read(budgetDaoProvider);
+      await budgetDao.addBudget(budget);
+
+      Log.d('Budget created successfully', label: 'BUDGET_DEBUG');
+
+      // Invalidate budget list to refresh UI
+      _ref.invalidate(budgetListProvider);
+
+    } catch (e, stackTrace) {
+      Log.e('Failed to create budget: $e', label: 'BUDGET_ERROR');
+      Log.e('Stack trace: $stackTrace', label: 'BUDGET_ERROR');
+    }
+  }
+
   Future<String> _getActiveWalletBalanceText() async {
     final walletState = _ref.read(activeWalletProvider);
     final wallet = walletState.valueOrNull;
     if (wallet == null) {
-      return 'Chưa chọn ví hoạt động.';
+      return 'No active wallet selected.';
     }
     final amount = (wallet.balance).toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => m.group(1)! + '.');
-    return 'Số dư hiện tại của ví "' + wallet.name + '": ' + amount + ' ' + wallet.currency;
+    return 'Current balance in "' + wallet.name + '": ' + amount + ' ' + wallet.currency;
   }
 
   Future<String> _getSummaryText(Map<String, dynamic> action) async {
@@ -580,15 +748,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
       filtered.sort((a, b) => b.date.compareTo(a.date));
       final int limit = (action['limit'] is num) ? (action['limit'] as num).toInt() : 5;
       final take = filtered.take(limit).toList();
-      if (take.isEmpty) return 'Không có giao dịch trong khoảng thời gian này.';
+      if (take.isEmpty) return 'No transactions found in this time period.';
 
       String fmt(num v) => v.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
       final lines = take.map((t) =>
           '- ${t.title} • ${(t.transactionType == TransactionType.expense ? '-' : '+')}${fmt(t.amount)} ${t.wallet.currency} • ${t.category.title}');
-      return 'Các giao dịch gần đây:\n' + lines.join('\n');
+      return 'Recent transactions:\n' + lines.join('\n');
     } catch (e) {
       Log.e('List tx error: $e', label: 'Chat Provider');
-      return 'Không lấy được danh sách giao dịch.';
+      return 'Unable to retrieve transaction list.';
     }
   }
 
@@ -610,16 +778,16 @@ class ChatNotifier extends StateNotifier<ChatState> {
     String dayPhrase;
     final yesterday = now.subtract(const Duration(days: 1));
     if (date.year == now.year && date.month == now.month && date.day == now.day) {
-      dayPhrase = 'hôm nay';
+      dayPhrase = 'today';
     } else if (date.year == yesterday.year && date.month == yesterday.month && date.day == yesterday.day) {
-      dayPhrase = 'hôm qua';
+      dayPhrase = 'yesterday';
     } else {
-      dayPhrase = 'ngày';
+      dayPhrase = 'on';
     }
     final dd = date.day.toString().padLeft(2, '0');
     final mm = date.month.toString().padLeft(2, '0');
     final yyyy = date.year.toString();
-    return dayPhrase + ', ' + dd + '/' + mm + '/' + yyyy;
+    return dayPhrase + ' ' + dd + '/' + mm + '/' + yyyy;
   }
 
   Future<Map<String, dynamic>?> _inferActionFromText(String text) async {
