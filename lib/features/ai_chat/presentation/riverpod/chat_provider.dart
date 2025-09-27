@@ -198,7 +198,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
                 final isIncome = actionType == 'create_income';
                 final amountText = _formatAmount(amount, currency: walletCurrency);
                 final dateText = _formatDatePhrase(DateTime.now());
-                final walletName = wallet?.name ?? 'Ví mặc định';
+                final walletName = wallet?.name ?? 'My Wallet';
 
                 // Show conversion info if currency was converted
                 String conversionNote = '';
@@ -282,7 +282,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
             final wallet = _ref.read(activeWalletProvider).valueOrNull;
             // Use wallet currency or default to VND
             final currency = wallet?.currency ?? 'VND';
-            final walletName = wallet?.name ?? 'Ví mặc định';
+            final walletName = wallet?.name ?? 'My Wallet';
             final amountText = _formatAmount(inferred['amount'] as num, currency: currency);
             final dateText = _formatDatePhrase(DateTime.now());
 
@@ -652,7 +652,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     try {
       final db = _ref.read(databaseProvider);
       final wallet = _ref.read(activeWalletProvider).valueOrNull;
-      if (wallet == null || wallet.id == null) return 'Chưa chọn ví hoạt động.';
+      if (wallet == null || wallet.id == null) return 'No active wallet selected.';
 
       final now = DateTime.now();
       final String range = (action['range'] ?? 'month').toString();
@@ -713,7 +713,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     try {
       final db = _ref.read(databaseProvider);
       final wallet = _ref.read(activeWalletProvider).valueOrNull;
-      if (wallet == null || wallet.id == null) return 'Chưa chọn ví hoạt động.';
+      if (wallet == null || wallet.id == null) return 'No active wallet selected.';
 
       final now = DateTime.now();
       final String range = (action['range'] ?? 'month').toString();
@@ -764,9 +764,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
     final intPart = value.round();
     final text = intPart.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => m.group(1)! + '.');
     if (currency != null && currency.isNotEmpty) {
-      // Special formatting for VND (Vietnamese Dong)
+      // Special formatting for currencies
       if (currency == 'VND' || currency == 'đ') {
         return text + ' đ';
+      } else if (currency == 'USD') {
+        return '\$' + text;
       }
       return text + ' ' + currency;
     }
