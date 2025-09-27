@@ -25,6 +25,7 @@ import 'package:bexly/core/services/url_launcher/url_launcher.dart';
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 import 'package:bexly/features/settings/presentation/components/report_log_file_dialog.dart';
 import 'package:bexly/features/settings/presentation/components/settings_group_holder.dart';
+import 'package:bexly/features/settings/presentation/riverpod/language_provider.dart';
 import 'package:bexly/features/theme_switcher/presentation/components/theme_mode_switcher.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart';
