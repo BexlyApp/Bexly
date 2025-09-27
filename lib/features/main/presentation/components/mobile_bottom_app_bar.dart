@@ -16,78 +16,72 @@ class MobileBottomAppBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentIndex = ref.watch(pageControllerProvider);
+
     return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.spacing12,
-        horizontal: AppSpacing.spacing16,
-      ),
       decoration: BoxDecoration(
-        color: context.themeMode == ThemeMode.light
-            ? AppColors.dark
-            : AppColors.darkGrey,
-        borderRadius: BorderRadius.circular(AppRadius.radiusFull),
-        border: Border.all(color: AppColors.darkGreyBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          CircleIconButton(
-            radius: 25,
-            icon: HugeIcons.strokeRoundedHome01,
-            backgroundColor: Colors.transparent,
-            foregroundColor: ref
-                .read(pageControllerProvider.notifier)
-                .getIconColor(0),
-            onTap: () {
-              pageController.jumpToPage(0);
-            },
+      child: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        elevation: 0,
+        currentIndex: currentIndex == 0 || currentIndex == 1 || currentIndex == 2 || currentIndex == 3
+            ? (currentIndex > 1 ? currentIndex + 1 : currentIndex)
+            : 0,
+        onTap: (index) {
+          if (index == 2) {
+            // Add button - show menu
+            showModalBottomSheet(
+              context: context,
+              builder: (context) => const TransactionOptionsMenu(),
+              backgroundColor: Colors.transparent,
+              isScrollControlled: true,
+            );
+          } else {
+            // Navigate to page (adjust index for add button)
+            final pageIndex = index > 2 ? index - 1 : index;
+            pageController.jumpToPage(pageIndex);
+          }
+        },
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(HugeIcons.strokeRoundedHome01),
+            label: 'Home',
           ),
-          CircleIconButton(
-            radius: 25,
-            icon: HugeIcons.strokeRoundedAiChat01,
-            backgroundColor: Colors.transparent,
-            foregroundColor: ref
-                .read(pageControllerProvider.notifier)
-                .getIconColor(1),
-            onTap: () {
-              pageController.jumpToPage(1);
-            },
+          BottomNavigationBarItem(
+            icon: Icon(HugeIcons.strokeRoundedAiChat01),
+            label: 'AI Chat',
           ),
-          CircleIconButton(
-            radius: 25,
-            icon: HugeIcons.strokeRoundedPlusSign,
-            backgroundColor: AppColors.primary,
-            foregroundColor: AppColors.light,
-            onTap: () {
-              showModalBottomSheet(
-                context: context,
-                builder: (context) => const TransactionOptionsMenu(),
-                backgroundColor: Colors.transparent,
-                isScrollControlled: true,
-              );
-            },
+          BottomNavigationBarItem(
+            icon: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+              padding: const EdgeInsets.all(8),
+              child: Icon(
+                HugeIcons.strokeRoundedPlusSign,
+                color: Theme.of(context).colorScheme.onPrimary,
+                size: 16,
+              ),
+            ),
+            label: 'Add',
           ),
-          CircleIconButton(
-            radius: 25,
-            icon: HugeIcons.strokeRoundedReceiptDollar,
-            backgroundColor: Colors.transparent,
-            foregroundColor: ref
-                .read(pageControllerProvider.notifier)
-                .getIconColor(2),
-            onTap: () {
-              pageController.jumpToPage(2);
-            },
+          BottomNavigationBarItem(
+            icon: Icon(HugeIcons.strokeRoundedReceiptDollar),
+            label: 'History',
           ),
-          CircleIconButton(
-            radius: 25,
-            icon: HugeIcons.strokeRoundedChartLineData03,
-            backgroundColor: Colors.transparent,
-            foregroundColor: ref
-                .read(pageControllerProvider.notifier)
-                .getIconColor(3),
-            onTap: () {
-              pageController.jumpToPage(3);
-            },
+          BottomNavigationBarItem(
+            icon: Icon(HugeIcons.strokeRoundedTarget02),
+            label: 'Planning',
           ),
         ],
       ),

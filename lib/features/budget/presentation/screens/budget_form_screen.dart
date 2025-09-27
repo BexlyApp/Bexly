@@ -26,6 +26,7 @@ import 'package:bexly/features/budget/presentation/riverpod/date_picker_provider
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/features/wallet_switcher/presentation/components/wallet_selector_bottom_sheet.dart';
 import 'package:toastification/toastification.dart';
 
 class BudgetFormScreen extends HookConsumerWidget {
@@ -47,15 +48,19 @@ class BudgetFormScreen extends HookConsumerWidget {
     final categoryController = useTextEditingController(); // For display text
 
     final selectedCategory = useState<CategoryModel?>(null);
-    final selectedWallet = ref.watch(activeWalletProvider); // For fund source
+    final selectedWallet = useState<WalletModel?>(null); // For fund source
     final isRoutine = useState(false);
 
     final activeWalletsAsync = ref.watch(activeWalletProvider);
     final allBudgetsAsync = ref.watch(budgetListProvider);
 
     useEffect(() {
-      walletController.text =
-          '${activeWalletsAsync.valueOrNull?.currencyByIsoCode(ref).symbol} ${activeWalletsAsync.valueOrNull?.balance.toPriceFormat()}';
+      // Set default wallet to active wallet if not editing
+      if (!isEditing && selectedWallet.value == null && activeWalletsAsync.valueOrNull != null) {
+        selectedWallet.value = activeWalletsAsync.valueOrNull;
+        walletController.text =
+            '${activeWalletsAsync.valueOrNull?.currencyByIsoCode(ref).symbol} ${activeWalletsAsync.valueOrNull?.balance.toPriceFormat()}';
+      }
 
       if (isEditing && budgetDetails is AsyncData<BudgetModel?>) {
         final budget = budgetDetails.value;
@@ -64,18 +69,17 @@ class BudgetFormScreen extends HookConsumerWidget {
               '$defaultCurrency ${budget.amount.toPriceFormat()}';
           selectedCategory.value = budget.category;
           categoryController.text = budget.category.title; // Simplified display
+          selectedWallet.value = budget.wallet;
+          walletController.text =
+              '${budget.wallet.currencyByIsoCode(ref).symbol} ${budget.wallet.balance.toPriceFormat()}';
           isRoutine.value = budget.isRoutine;
         }
-      } else if (!isEditing) {
-        // Set default wallet if available
-        if (activeWalletsAsync is AsyncData<WalletModel?> &&
-            activeWalletsAsync.value != null) {}
       }
       return null;
     }, [isEditing, budgetDetails, activeWalletsAsync]);
 
     final remainingBudgetForEntry = useMemoized<double?>(() {
-      final wallet = selectedWallet.valueOrNull;
+      final wallet = selectedWallet.value;
       final budgets = allBudgetsAsync.valueOrNull;
 
       // Don't calculate if essential data is missing
@@ -247,9 +251,25 @@ class BudgetFormScreen extends HookConsumerWidget {
                     CustomSelectField(
                       context: context,
                       controller: walletController,
-                      label: activeWalletsAsync.value?.name,
+                      label: 'Wallet',
+                      hint: 'Select Wallet',
+                      isRequired: true,
                       prefixIcon: HugeIcons.strokeRoundedWallet01,
-                      onTap: () {},
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          showDragHandle: true,
+                          builder: (context) => WalletSelectorBottomSheet(
+                            onWalletSelected: (WalletModel wallet) {
+                              selectedWallet.value = wallet;
+                              walletController.text =
+                                '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}';
+                              Navigator.pop(context);
+                            },
+                          ),
+                        );
+                      },
                     ),
                     CustomSelectField(
                       context: context,
