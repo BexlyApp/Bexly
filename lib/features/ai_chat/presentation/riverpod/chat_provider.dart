@@ -795,6 +795,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
   Future<Map<String, dynamic>?> _inferActionFromText(String text) async {
     try {
       final lower = text.toLowerCase();
+
+      // Skip if user is trying to update/set balance directly
+      if (RegExp(r'\b(update|set|change|thay doi|thay đổi|cap nhat|cập nhật)\s*(vi|ví|balance|wallet)').hasMatch(lower)) {
+        Log.d('Skipping balance update request in fallback', label: 'AI_FALLBACK');
+        return null;
+      }
+
       // Decide income vs expense by keywords (simple heuristic)
       final isIncome = RegExp(r'\b(luong|lương|thu nhap|thu nhập|nhan|nhận|ban|bán|thu)\b').hasMatch(lower);
 
