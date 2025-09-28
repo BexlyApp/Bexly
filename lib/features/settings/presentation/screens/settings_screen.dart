@@ -18,6 +18,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_constants.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/services/package_info/package_info_provider.dart';
@@ -48,6 +49,7 @@ class SettingsScreen extends ConsumerWidget {
       context: context,
       title: 'Settings',
       showBackButton: true,
+      showBalance: false,
       actions: [ThemeModeSwitcher()],
       body: const SingleChildScrollView(
         padding: EdgeInsets.all(AppSpacing.spacing20),
