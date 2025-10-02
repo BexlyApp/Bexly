@@ -72,9 +72,9 @@ class AccountDeletionScreen extends HookConsumerWidget {
       // Dismiss loading dialog
       if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
 
-      // Navigate to login screen
-      if (context.mounted) context.go(Routes.getStarted);
-      Log.i('Navigated to login screen.');
+      // Navigate to onboarding screen to recreate initial wallet and user setup
+      if (context.mounted) context.go(Routes.onboarding);
+      Log.i('Navigated to onboarding screen.');
     } catch (e) {
       Log.e('Error during account deletion', label: 'delete account');
       // Show error message

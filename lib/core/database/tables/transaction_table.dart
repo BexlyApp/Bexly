@@ -11,8 +11,12 @@ import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart';
 /// Represents the `transactions` table in the database.
 @DataClassName('Transaction') // Defines the name of the generated data class
 class Transactions extends Table {
-  /// Unique identifier for the transaction (UUID string).
+  /// Unique identifier for the transaction (local ID).
   IntColumn get id => integer().autoIncrement()();
+
+  /// Cloud ID (UUID v7) for syncing with Firestore
+  /// Null for offline-only data, generated when first synced
+  TextColumn get cloudId => text().nullable().unique()();
 
   /// Type of transaction (0: income, 1: expense, 2: transfer).
   IntColumn get transactionType => integer()();

@@ -17,7 +17,19 @@ final authProvider = FutureProvider<UserModel?>((ref) async {
 
 class AuthProvider extends StateNotifier<UserModel> {
   final Ref ref;
-  AuthProvider(this.ref) : super(UserRepository.dummy);
+  AuthProvider(this.ref) : super(UserRepository.dummy) {
+    // Automatically load session from database on initialization
+    _initializeSession();
+  }
+
+  Future<void> _initializeSession() async {
+    final userDao = ref.read(userDaoProvider);
+    final userFromDb = await userDao.getFirstUser();
+    if (userFromDb != null) {
+      state = userFromDb.toModel();
+      Log.i(state.toJson(), label: 'auto-loaded user session on provider init');
+    }
+  }
 
   void setUser(UserModel user) {
     state = user;

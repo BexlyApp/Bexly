@@ -6,6 +6,11 @@ import 'package:bexly/core/database/tables/wallet_table.dart';
 @DataClassName('Budget') // Name of the generated data class
 class Budgets extends Table {
   IntColumn get id => integer().autoIncrement()();
+
+  /// Cloud ID (UUID v7) for syncing with Firestore
+  /// Null for offline-only data, generated when first synced
+  TextColumn get cloudId => text().nullable().unique()();
+
   IntColumn get walletId => integer().references(Wallets, #id)();
   IntColumn get categoryId => integer().references(Categories, #id)();
   RealColumn get amount => real()();

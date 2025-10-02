@@ -6,6 +6,11 @@ import 'package:bexly/features/category/data/model/category_model.dart';
 @DataClassName('Category')
 class Categories extends Table {
   IntColumn get id => integer().autoIncrement()();
+
+  /// Cloud ID (UUID v7) for syncing with Firestore
+  /// Null for offline-only data, generated when first synced
+  TextColumn get cloudId => text().nullable().unique()();
+
   TextColumn get title => text().withLength(min: 1, max: 100)();
   TextColumn get icon => text().nullable()();
   TextColumn get iconBackground => text().nullable()();

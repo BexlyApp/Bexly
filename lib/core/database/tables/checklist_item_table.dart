@@ -6,6 +6,11 @@ import 'package:bexly/features/goal/data/model/checklist_item_model.dart';
 @DataClassName('ChecklistItem')
 class ChecklistItems extends Table {
   IntColumn get id => integer().autoIncrement()();
+
+  /// Cloud ID (UUID v7) for syncing with Firestore
+  /// Null for offline-only data, generated when first synced
+  TextColumn get cloudId => text().nullable().unique()();
+
   IntColumn get goalId =>
       integer().references(Goals, #id, onDelete: KeyAction.cascade)();
   TextColumn get title => text().withLength(min: 1, max: 100)();

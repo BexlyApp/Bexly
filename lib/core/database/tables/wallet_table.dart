@@ -5,6 +5,11 @@ import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 @DataClassName('Wallet')
 class Wallets extends Table {
   IntColumn get id => integer().autoIncrement()();
+
+  /// Cloud ID (UUID v7) for syncing with Firestore
+  /// Null for offline-only data, generated when first synced
+  TextColumn get cloudId => text().nullable().unique()();
+
   TextColumn get name => text().withDefault(const Constant('My Wallet'))();
   RealColumn get balance => real().withDefault(const Constant(0.0))();
   TextColumn get currency => text().withDefault(const Constant('IDR'))();
