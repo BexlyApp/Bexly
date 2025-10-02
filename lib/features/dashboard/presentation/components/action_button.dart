@@ -10,7 +10,6 @@ class ActionButton extends ConsumerWidget {
           ? AppSpacing.spacing16
           : AppSpacing.spacing8,
       children: [
-        ThemeModeSwitcher(),
         CustomIconButton(
           context,
           onPressed: () => context.push(Routes.comingSoon),

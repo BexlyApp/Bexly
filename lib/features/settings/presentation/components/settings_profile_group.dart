@@ -9,10 +9,10 @@ class SettingsProfileGroup extends ConsumerWidget {
     final isAuthenticated = authState != null;
 
     return SettingsGroupHolder(
-      title: 'Profile',
+      title: context.l10n.profile,
       settingTiles: [
         MenuTileButton(
-          label: 'Personal Details',
+          label: context.l10n.personalDetails,
           icon: HugeIcons.strokeRoundedUser,
           onTap: () => context.push(Routes.personalDetails),
         ),

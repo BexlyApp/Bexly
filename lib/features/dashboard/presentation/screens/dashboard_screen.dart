@@ -11,6 +11,8 @@ import 'package:bexly/core/components/buttons/custom_icon_button.dart';
 import 'package:bexly/core/components/progress_indicators/custom_progress_indicator.dart';
 import 'package:bexly/core/components/progress_indicators/custom_progress_indicator_legend.dart';
 import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/constants/app_font_weights.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
@@ -31,6 +33,7 @@ import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/wallet/screens/wallet_form_bottom_sheet.dart';
 import 'package:bexly/features/wallet_switcher/presentation/screens/wallet_switcher_dropdown.dart';
+import 'package:bexly/features/dashboard/presentation/riverpod/selected_month_provider.dart';
 
 part '../components/action_button.dart';
 part '../components/balance_card.dart';
@@ -39,6 +42,7 @@ part '../components/wallet_amount_edit_button.dart';
 part '../components/cash_flow_cards.dart';
 part '../components/greeting_card.dart';
 part '../components/header.dart';
+part '../components/month_navigator.dart';
 part '../components/recent_transaction_list.dart';
 part '../components/spending_progress_chart.dart';
 part '../components/transaction_card.dart';
@@ -50,9 +54,9 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.colors.surface,
-      appBar: const PreferredSize(
-        preferredSize: Size.fromHeight(85),
-        child: Header(),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(114 + MediaQuery.of(context).padding.top),
+        child: const Header(),
       ),
       body: ListView(
         padding: EdgeInsets.only(bottom: 100),

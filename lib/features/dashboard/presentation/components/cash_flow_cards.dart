@@ -6,12 +6,12 @@ class CashFlowCards extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final transactionsAsyncValue = ref.watch(transactionListProvider);
+    final selectedMonth = ref.watch(selectedMonthProvider);
 
     return transactionsAsyncValue.when(
       data: (transactions) {
-        final now = DateTime.now();
-        final currentMonth = now.month;
-        final currentYear = now.year;
+        final currentMonth = selectedMonth.month;
+        final currentYear = selectedMonth.year;
 
         final lastMonthDate = DateTime(currentYear, currentMonth - 1);
         final lastMonth = lastMonthDate.month;
@@ -52,7 +52,7 @@ class CashFlowCards extends ConsumerWidget {
           children: [
             Expanded(
               child: TransactionCard(
-                title: 'Income • ${DateTime.now().toMonthName()}',
+                title: AppLocalizations.of(context)!.income,
                 amount: currentMonthIncome,
                 amountLastMonth: lastMonthIncome,
                 percentDifference: incomePercentDifference,
@@ -68,7 +68,7 @@ class CashFlowCards extends ConsumerWidget {
             const Gap(AppSpacing.spacing12),
             Expanded(
               child: TransactionCard(
-                title: 'Expense • ${DateTime.now().toMonthName()}',
+                title: AppLocalizations.of(context)!.expense,
                 amount: currentMonthExpense,
                 amountLastMonth: lastMonthExpense,
                 percentDifference: expensePercentDifference,
@@ -93,9 +93,9 @@ class CashFlowCards extends ConsumerWidget {
       ),
       error: (error, stack) => Row(
         children: [
-          Expanded(child: Center(child: Text('Error loading income data'))),
+          Expanded(child: Center(child: Text(AppLocalizations.of(context)!.errorLoadingIncomeData))),
           const Gap(AppSpacing.spacing12),
-          Expanded(child: Center(child: Text('Error loading expense data'))),
+          Expanded(child: Center(child: Text(AppLocalizations.of(context)!.errorLoadingExpenseData))),
         ],
       ),
     );

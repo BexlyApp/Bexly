@@ -7,6 +7,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/buttons/secondary_button.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 
 class TransactionImagePicker extends ConsumerWidget {
@@ -27,7 +28,7 @@ class TransactionImagePicker extends ConsumerWidget {
                   imageNotifier.saveImage();
                 });
               },
-              label: 'Camera',
+              label: context.l10n.camera,
               icon: HugeIcons.strokeRoundedCamera01,
             ),
           ),
@@ -41,7 +42,7 @@ class TransactionImagePicker extends ConsumerWidget {
                 imageNotifier.saveImage();
               });
             },
-            label: 'Gallery',
+            label: context.l10n.gallery,
             icon: HugeIcons.strokeRoundedImage01,
           ),
         ),

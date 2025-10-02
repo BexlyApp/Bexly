@@ -8,6 +8,7 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/text_style_extensions.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/transaction/presentation/components/transaction_tile.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
@@ -33,7 +34,7 @@ class TransactionGroupedCard extends ConsumerWidget {
         ),
         child: Center(
           child: Text(
-            'No transactions to display.',
+            context.l10n.noTransactionsToDisplay,
             style: AppTextStyles.body3,
           ),
         ),
@@ -63,7 +64,8 @@ class TransactionGroupedCard extends ConsumerWidget {
       itemCount: sortedDateKeys.length,
       itemBuilder: (context, index) {
         final dateKey = sortedDateKeys[index];
-        final transactionsForDay = groupedByDate[dateKey]!;
+        final transactionsForDay = groupedByDate[dateKey]!
+          ..sort((a, b) => b.date.compareTo(a.date)); // Sort transactions within each day (newest first)
 
         final double dayTotal = transactionsForDay.fold(0.0, (sum, item) {
           if (item.transactionType == TransactionType.income) {

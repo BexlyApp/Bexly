@@ -4,6 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/date_picker/custom_date_picker.dart';
 import 'package:bexly/core/components/form_fields/custom_select_field.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/date_picker_provider.dart';
 
@@ -25,7 +26,7 @@ class TransactionDatePicker extends ConsumerWidget {
     return CustomSelectField(
       context: context,
       controller: dateFieldController,
-      label: 'Set a date',
+      label: context.l10n.setDate,
       hint: DateTime.now().toRelativeDayFormatted(
         showTime: true,
         use24Hours: false,
@@ -37,7 +38,7 @@ class TransactionDatePicker extends ConsumerWidget {
 
         CustomDatePicker.selectSingleDate(
           context,
-          title: 'Transaction Date & Time',
+          title: context.l10n.transactionDateTime,
           selectedDate: initialdate ?? DateTime.now(),
           onDateTimeChanged: (date) {
             selectedDateNotifier.state = date;
