@@ -8,12 +8,12 @@ import 'package:bexly/core/utils/logger.dart';
 /// Simple one-way sync service that uploads local data to Firestore
 /// when user is authenticated
 class SimpleSyncService {
-  final PockawDatabase _localDb;
+  final AppDatabase _localDb;
   final FirebaseFirestore _firestore;
   final String? _userId;
 
   SimpleSyncService({
-    required PockawDatabase localDb,
+    required AppDatabase localDb,
     required FirebaseFirestore firestore,
     String? userId,
   })  : _localDb = localDb,
