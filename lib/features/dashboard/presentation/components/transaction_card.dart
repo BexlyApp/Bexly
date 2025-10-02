@@ -47,9 +47,43 @@ class TransactionCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: AppTextStyles.body3.copyWith(color: titleColor),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: AppTextStyles.body3.copyWith(color: titleColor),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.spacing8,
+                      vertical: AppSpacing.spacing4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statsBackgroundColor,
+                      borderRadius: BorderRadius.circular(AppRadius.radiusFull),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          percentDifference.isNegative
+                              ? HugeIcons.strokeRoundedArrowDown01
+                              : HugeIcons.strokeRoundedArrowUp01,
+                          size: 14,
+                          color: statsIconColor,
+                        ),
+                        const Gap(AppSpacing.spacing2),
+                        Text(
+                          '${percentDifference.toStringAsFixed(1)}%',
+                          style: AppTextStyles.body5.copyWith(
+                            color: statsForegroundColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const Gap(AppSpacing.spacing8),
               Row(
@@ -72,36 +106,6 @@ class TransactionCard extends ConsumerWidget {
                     ),
                   ),
                 ],
-              ),
-              const Gap(AppSpacing.spacing8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.spacing8,
-                  vertical: AppSpacing.spacing4,
-                ),
-                decoration: BoxDecoration(
-                  color: statsBackgroundColor,
-                  borderRadius: BorderRadius.circular(AppRadius.radiusFull),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      percentDifference.isNegative
-                          ? HugeIcons.strokeRoundedArrowDown01
-                          : HugeIcons.strokeRoundedArrowUp01,
-                      size: 14,
-                      color: statsIconColor,
-                    ),
-                    const Gap(AppSpacing.spacing2),
-                    Text(
-                      '${percentDifference.toStringAsFixed(1)}%',
-                      style: AppTextStyles.body5.copyWith(
-                        color: statsForegroundColor,
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),

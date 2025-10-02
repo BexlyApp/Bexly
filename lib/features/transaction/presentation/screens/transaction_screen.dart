@@ -7,6 +7,7 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/transaction/presentation/components/transaction_grouped_card.dart';
 import 'package:bexly/features/transaction/presentation/components/transaction_summary_card.dart';
 import 'package:bexly/features/transaction/presentation/components/transaction_tab_bar.dart';
@@ -25,7 +26,7 @@ class TransactionScreen extends ConsumerWidget {
       context: context,
       showBackButton: false,
       showBalance: true,
-      title: 'My Transactions',
+      title: context.l10n.myTransactions,
       actions: [
         CustomIconButton(
           context,
@@ -43,7 +44,7 @@ class TransactionScreen extends ConsumerWidget {
       body: allTransactionsAsyncValue.when(
         data: (allTransactions) {
           if (allTransactions.isEmpty) {
-            return const Center(child: Text('No transactions recorded yet.'));
+            return Center(child: Text(context.l10n.noTransactionsRecorded));
           }
 
           // 1. Extract unique months from transactions
@@ -53,13 +54,13 @@ class TransactionScreen extends ConsumerWidget {
               .toList();
 
           // 2. Sort months in descending order (most recent first)
-          uniqueMonthYears.sort((a, b) => a.compareTo(b));
+          uniqueMonthYears.sort((a, b) => b.compareTo(a));
 
           if (uniqueMonthYears.isEmpty) {
             // This case should ideally be covered by allTransactions.isEmpty,
             // but as a fallback.
-            return const Center(
-              child: Text('No transactions with valid dates found.'),
+            return Center(
+              child: Text(context.l10n.noTransactionsWithValidDates),
             );
           }
 
@@ -97,7 +98,7 @@ class TransactionScreen extends ConsumerWidget {
                         // but good for robustness.
                         return Center(
                           child: Text(
-                            'No transactions for ${tabMonthDate.month}/${tabMonthDate.year}.',
+                            context.l10n.noTransactionsForMonth,
                           ),
                         );
                       }

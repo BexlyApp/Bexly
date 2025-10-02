@@ -6,6 +6,7 @@ class SpendingProgressChart extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final transactionsAsyncValue = ref.watch(transactionListProvider);
+    final selectedMonth = ref.watch(selectedMonthProvider);
 
     // Define a list of colors for categories
     final List<Color> categoryColors = [
@@ -19,17 +20,16 @@ class SpendingProgressChart extends ConsumerWidget {
 
     return transactionsAsyncValue.when(
       data: (transactions) {
-        final now = DateTime.now();
         final currentMonthExpenses = transactions.where((t) {
-          return t.date.year == now.year &&
-              t.date.month == now.month &&
+          return t.date.year == selectedMonth.year &&
+              t.date.month == selectedMonth.month &&
               t.transactionType == TransactionType.expense;
         }).toList();
 
         if (currentMonthExpenses.isEmpty) {
           return Column(
             children: [
-              _buildHeader(context),
+              _buildHeader(context, selectedMonth),
               const Gap(AppSpacing.spacing8),
               CustomProgressIndicator(
                 value: 0,
@@ -66,7 +66,7 @@ class SpendingProgressChart extends ConsumerWidget {
 
         return Column(
           children: [
-            _buildHeader(context),
+            _buildHeader(context, selectedMonth),
             const Gap(AppSpacing.spacing8),
             if (topCategories.isNotEmpty)
               Row(
@@ -142,27 +142,30 @@ class SpendingProgressChart extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator.adaptive()),
-      error: (error, stack) =>
-          Center(child: Text('Error loading spending data: $error')),
+      error: (error, stack) => Consumer(
+        builder: (context, ref, child) {
+          return Center(child: Text(context.l10n.errorLoadingSpendingData));
+        },
+      ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, DateTime selectedMonth) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          'My spending this month',
+          context.l10n.mySpendingThisMonth,
           style: AppTextStyles.body4.copyWith(
             fontVariations: [AppFontWeights.medium],
           ),
         ),
         InkWell(
           onTap: () {
-            context.push(Routes.basicMonthlyReports, extra: DateTime.now());
+            context.push(Routes.basicMonthlyReports, extra: selectedMonth);
           },
           child: Text(
-            'View report',
+            context.l10n.viewReport,
             style: AppTextStyles.body5.copyWith(
               decoration: TextDecoration.underline,
             ),

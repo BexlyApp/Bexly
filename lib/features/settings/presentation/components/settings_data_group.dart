@@ -9,23 +9,23 @@ class SettingsDataGroup extends ConsumerWidget {
     final isAuthenticated = authState != null;
 
     return SettingsGroupHolder(
-      title: 'Data Management',
+      title: context.l10n.dataManagement,
       settingTiles: [
         MenuTileButton(
-          label: 'Backup & Restore',
+          label: context.l10n.backupAndRestore,
           icon: HugeIcons.strokeRoundedDatabaseSync01,
           onTap: () {
             context.push(Routes.backupAndRestore);
           },
         ),
         MenuTileButton(
-          label: 'Delete My Data',
+          label: context.l10n.deleteMyData,
           icon: HugeIcons.strokeRoundedDelete01,
           onTap: () => context.push(Routes.accountDeletion),
         ),
         if (isAuthenticated)
           MenuTileButton(
-            label: 'Sign Out',
+            label: context.l10n.signOut,
             icon: HugeIcons.strokeRoundedLogout01,
             onTap: () async {
               // Show confirmation dialog
@@ -33,14 +33,14 @@ class SettingsDataGroup extends ConsumerWidget {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: Text(
-                    'Sign Out',
+                    context.l10n.signOut,
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   content: Text(
-                    'Are you sure you want to sign out?',
+                    context.l10n.signOutConfirm,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -53,7 +53,7 @@ class SettingsDataGroup extends ConsumerWidget {
                         foregroundColor: Theme.of(context).colorScheme.primary,
                       ),
                       child: Text(
-                        'Cancel',
+                        context.l10n.cancel,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -68,7 +68,7 @@ class SettingsDataGroup extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       ),
                       child: Text(
-                        'Sign Out',
+                        context.l10n.signOut,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -100,7 +100,7 @@ class SettingsDataGroup extends ConsumerWidget {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Error signing out: ${e.toString()}'),
+                        content: Text('${context.l10n.errorSigningOut}: ${e.toString()}'),
                         backgroundColor: Colors.red,
                       ),
                     );

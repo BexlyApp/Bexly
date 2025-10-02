@@ -17,8 +17,8 @@ class RecentTransactionList extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Recent Transactions',
+                Text(
+                  context.l10n.recentTransactions,
                   style: AppTextStyles.heading6,
                 ),
                 const Gap(AppSpacing.spacing16),
@@ -28,7 +28,7 @@ class RecentTransactionList extends ConsumerWidget {
                       vertical: AppSpacing.spacing20,
                     ),
                     child: Text(
-                      'No transactions yet.',
+                      context.l10n.noTransactionsYet,
                       style: AppTextStyles.body3,
                     ),
                   ),
@@ -50,7 +50,7 @@ class RecentTransactionList extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Recent Transactions', style: AppTextStyles.heading6),
+              Text(context.l10n.recentTransactions, style: AppTextStyles.heading6),
               const Gap(AppSpacing.spacing16),
               ListView.separated(
                 shrinkWrap: true,
@@ -71,7 +71,11 @@ class RecentTransactionList extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => Center(child: Text('Error: $error')),
+      error: (error, stackTrace) => Consumer(
+        builder: (context, ref, child) {
+          return Center(child: Text(context.l10n.errorLoading));
+        },
+      ),
     );
   }
 }

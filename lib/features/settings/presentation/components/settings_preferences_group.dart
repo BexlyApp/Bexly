@@ -7,13 +7,30 @@ class SettingsPreferencesGroup extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentLanguage = ref.watch(languageProvider);
 
+    final l10n = AppLocalizations.of(context)!;
+
     return SettingsGroupHolder(
-      title: 'Preferences',
+      title: l10n.preferences,
       settingTiles: [
-        MenuTileButton(
-          label: 'Language',
-          icon: HugeIcons.strokeRoundedTranslation,
+        ListTile(
           onTap: () => _showLanguageDialog(context, ref),
+          tileColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+            ),
+          ),
+          leading: Icon(
+            HugeIcons.strokeRoundedTranslation,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          title: Text(
+            l10n.language,
+            style: AppTextStyles.body3.copyWith(
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -28,11 +45,17 @@ class SettingsPreferencesGroup extends ConsumerWidget {
                   color: AppColors.neutral600,
                 ),
               ),
+              const Gap(8),
+              Icon(
+                HugeIcons.strokeRoundedArrowRight01,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                size: 20,
+              ),
             ],
           ),
         ),
         MenuTileButton(
-          label: 'Notifications',
+          label: l10n.notifications,
           icon: HugeIcons.strokeRoundedNotification01,
           onTap: () => context.push(Routes.comingSoon),
         ),
@@ -46,7 +69,7 @@ class SettingsPreferencesGroup extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Select Language'),
+        title: Text(AppLocalizations.of(context)!.selectLanguage),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: availableLanguages.map((language) {
@@ -84,7 +107,7 @@ class SettingsPreferencesGroup extends ConsumerWidget {
                   // Show confirmation snackbar
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Language changed to ${value.name}'),
+                      content: Text(AppLocalizations.of(context)!.languageChanged(value.name)),
                       duration: const Duration(seconds: 2),
                     ),
                   );
@@ -96,7 +119,7 @@ class SettingsPreferencesGroup extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
         ],
       ),

@@ -6,6 +6,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/date_picker/custom_date_picker.dart';
 import 'package:bexly/core/components/form_fields/custom_select_field.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/date_picker_provider.dart';
 
@@ -27,7 +28,7 @@ class TransactionFilterDatePicker extends HookConsumerWidget {
     return CustomSelectField(
       context: context,
       controller: controller,
-      label: 'Set a date range',
+      label: context.l10n.setDateRange,
       hint: '1 June 2025 - 31 July 2024',
       prefixIcon: HugeIcons.strokeRoundedCalendar01,
       onTap: () async {

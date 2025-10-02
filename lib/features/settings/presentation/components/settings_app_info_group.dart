@@ -8,10 +8,10 @@ class SettingsAppInfoGroup extends ConsumerWidget {
   @override
   Widget build(BuildContext context, ref) {
     return SettingsGroupHolder(
-      title: 'App Info',
+      title: context.l10n.appInfo,
       settingTiles: [
         MenuTileButton(
-          label: 'Privacy Policy',
+          label: context.l10n.privacyPolicy,
           icon: HugeIcons.strokeRoundedLegalHammer,
           suffixIcon: HugeIcons.strokeRoundedSquareArrowUpRight,
           onTap: () {
@@ -19,7 +19,7 @@ class SettingsAppInfoGroup extends ConsumerWidget {
           },
         ),
         MenuTileButton(
-          label: 'Terms and Conditions',
+          label: context.l10n.termsAndConditions,
           icon: HugeIcons.strokeRoundedFileExport,
           suffixIcon: HugeIcons.strokeRoundedSquareArrowUpRight,
           onTap: () {
@@ -27,13 +27,13 @@ class SettingsAppInfoGroup extends ConsumerWidget {
           },
         ),
         MenuTileButton(
-          label: 'Report Log File',
+          label: context.l10n.reportLogFile,
           icon: HugeIcons.strokeRoundedFileCorrupt,
           onTap: () => context.openBottomSheet(child: ReportLogFileDialog()),
         ),
         if (kDebugMode)
           MenuTileButton(
-            label: 'Developer Portal',
+            label: context.l10n.developerPortal,
             icon: HugeIcons.strokeRoundedCode,
             onTap: () => context.push(Routes.developerPortal),
           ),

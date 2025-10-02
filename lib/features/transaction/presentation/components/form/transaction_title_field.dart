@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/form_fields/custom_text_field.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 
 class TransactionTitleField extends HookConsumerWidget {
   final TextEditingController controller;
@@ -17,8 +18,8 @@ class TransactionTitleField extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return CustomTextField(
       controller: controller,
-      label: 'Title (max. 50)',
-      hint: 'Lunch with my friends',
+      label: context.l10n.titleMax50,
+      hint: context.l10n.lunchWithFriendsHint,
       prefixIcon: HugeIcons.strokeRoundedArrangeByLettersAZ,
       textInputAction: TextInputAction.next,
       keyboardType: TextInputType.name,

@@ -5,14 +5,28 @@ class Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.spacing20),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(child: GreetingCard()),
-          ActionButton(),
-        ],
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.spacing20,
+          AppSpacing.spacing8,
+          AppSpacing.spacing20,
+          AppSpacing.spacing12,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: GreetingCard()),
+                ActionButton(),
+              ],
+            ),
+            const Gap(AppSpacing.spacing8),
+            const MonthNavigator(),
+          ],
+        ),
       ),
     );
   }

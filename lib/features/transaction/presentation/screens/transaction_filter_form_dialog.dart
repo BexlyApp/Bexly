@@ -10,6 +10,7 @@ import 'package:bexly/core/components/form_fields/custom_text_field.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/transaction/data/model/transaction_filter_model.dart';
 import 'package:bexly/features/transaction/presentation/components/filter_form/transaction_filter_category_selector.dart';
 import 'package:bexly/features/transaction/presentation/components/filter_form/transaction_filter_type_selector.dart';
@@ -29,7 +30,7 @@ class TransactionFilterFormDialog extends HookConsumerWidget {
     );
 
     return CustomBottomSheet(
-      title: 'Search & Filters',
+      title: context.l10n.searchAndFilters,
       child: Form(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -41,8 +42,8 @@ class TransactionFilterFormDialog extends HookConsumerWidget {
             ),
             CustomTextField(
               controller: formState.keywordController,
-              hint: 'Dinner with ...',
-              label: 'Search with keyword',
+              hint: context.l10n.dinnerWithHint,
+              label: context.l10n.searchWithKeyword,
             ),
             TransactionFilterCategorySelector(
               controller:
@@ -60,7 +61,7 @@ class TransactionFilterFormDialog extends HookConsumerWidget {
               children: [
                 Expanded(
                   child: CustomNumericField(
-                    label: 'Min. Amount',
+                    label: context.l10n.minAmount,
                     hint: '100,000',
                     icon: HugeIcons.strokeRoundedMoney03,
                     appendCurrencySymbolToHint: true,
@@ -69,7 +70,7 @@ class TransactionFilterFormDialog extends HookConsumerWidget {
                 ),
                 Expanded(
                   child: CustomNumericField(
-                    label: 'Max. Amount',
+                    label: context.l10n.maxAmount,
                     hint: '2,500,000',
                     icon: HugeIcons.strokeRoundedMoney03,
                     appendCurrencySymbolToHint: true,
@@ -79,12 +80,12 @@ class TransactionFilterFormDialog extends HookConsumerWidget {
               ],
             ),
             PrimaryButton(
-              label: 'Apply Filters',
+              label: context.l10n.applyFilters,
               onPressed: () => formState.applyFilter(ref, context),
             ),
             TextButton(
               child: Text(
-                'Reset Filters',
+                context.l10n.resetFilters,
                 style: AppTextStyles.body2.copyWith(color: AppColors.red),
               ),
               onPressed: () {
@@ -92,9 +93,9 @@ class TransactionFilterFormDialog extends HookConsumerWidget {
                   context: context,
                   showDragHandle: true,
                   builder: (context) => AlertBottomSheet(
-                    title: 'Reset Filters',
+                    title: context.l10n.resetFilters,
                     content: Text(
-                      'Continue to reset transaction filters?',
+                      context.l10n.continueResetFilters,
                       style: AppTextStyles.body2,
                     ),
                     onConfirm: () {
