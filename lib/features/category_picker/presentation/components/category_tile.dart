@@ -6,6 +6,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/category_picker/presentation/components/category_icon.dart';
 
@@ -56,7 +57,12 @@ class CategoryTile extends StatelessWidget {
               ),
             ),
             const Gap(AppSpacing.spacing8),
-            Expanded(child: Text(category.title, style: AppTextStyles.body3)),
+            Expanded(
+              child: Text(
+                context.l10n.getCategoryName(category.id),
+                style: AppTextStyles.body3,
+              ),
+            ),
             if (suffixIcon != null)
               CustomIconButton(
                 context,

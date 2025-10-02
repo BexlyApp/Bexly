@@ -8,6 +8,7 @@ import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/extensions/text_style_extensions.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
@@ -102,7 +103,7 @@ class TransactionTile extends ConsumerWidget {
                         ),
                         const Gap(AppSpacing.spacing2),
                         AutoSizeText(
-                          transaction.category.title,
+                          context.l10n.getCategoryName(transaction.category.id),
                           style: AppTextStyles.body4,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
