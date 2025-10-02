@@ -49,7 +49,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 10; // Increment for chat messages table fix
+  int get schemaVersion => 11; // Add cloudId field for cloud sync
 
   @override
   MigrationStrategy get migration {
@@ -77,6 +77,22 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Created chat_messages table', label: 'database');
           } catch (e) {
             Log.d('Chat messages table might already exist: $e', label: 'database');
+          }
+          return;
+        }
+
+        // For version 11, add cloudId column to sync tables
+        if (from < 11) {
+          try {
+            await m.addColumn(wallets, wallets.cloudId);
+            await m.addColumn(transactions, transactions.cloudId);
+            await m.addColumn(categories, categories.cloudId);
+            await m.addColumn(budgets, budgets.cloudId);
+            await m.addColumn(goals, goals.cloudId);
+            await m.addColumn(checklistItems, checklistItems.cloudId);
+            Log.i('Added cloudId columns for cloud sync', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add cloudId columns: $e', label: 'database');
           }
           return;
         }

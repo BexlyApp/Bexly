@@ -55,8 +55,11 @@ keystore.properties
 *.freezed.dart
 *.g.dart
 
-firebase.json
-lib/firebase_options.dart
+# Note: firebase_options.dart is intentionally committed
+# Firebase API keys are designed to be public and protected by:
+# - Firebase Security Rules
+# - App Check
+# - API restrictions (bundle ID, package name, HTTP referrers)
 
 .github/instructions/pockaw-instruction.instructions.md
 ref
