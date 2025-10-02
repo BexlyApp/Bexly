@@ -5,6 +5,7 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/features/reports/presentation/riverpod/filtered_transactions_provider.dart';
 import 'package:bexly/core/constants/app_colors.dart';

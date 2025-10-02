@@ -11,7 +11,7 @@ class SpendingByCategoryChart extends ConsumerWidget {
 
     return transactionsAsync.when(
       data: (transactions) {
-        final expenseData = _processData(transactions);
+        final expenseData = _processData(context, transactions);
 
         if (expenseData.isEmpty) {
           return const SizedBox(
@@ -112,22 +112,30 @@ class SpendingByCategoryChart extends ConsumerWidget {
     );
   }
 
-  List<_ChartData> _processData(List<TransactionModel> transactions) {
-    final Map<String, double> categoryExpenses = {};
+  List<_ChartData> _processData(
+    BuildContext context,
+    List<TransactionModel> transactions,
+  ) {
+    final Map<int, double> categoryExpenses = {};
 
     for (var transaction in transactions) {
       if (transaction.transactionType == TransactionType.expense) {
-        final categoryName = transaction.category.title;
-        categoryExpenses.update(
-          categoryName,
-          (value) => value + transaction.amount,
-          ifAbsent: () => transaction.amount,
-        );
+        final categoryId = transaction.category.id;
+        if (categoryId != null) {
+          categoryExpenses.update(
+            categoryId,
+            (value) => value + transaction.amount,
+            ifAbsent: () => transaction.amount,
+          );
+        }
       }
     }
 
     return categoryExpenses.entries
-        .map((entry) => _ChartData(entry.key, entry.value))
+        .map((entry) => _ChartData(
+              context.l10n.getCategoryName(entry.key),
+              entry.value,
+            ))
         .toList();
   }
 }

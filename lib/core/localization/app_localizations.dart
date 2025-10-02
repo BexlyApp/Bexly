@@ -190,7 +190,78 @@ class AppLocalizations {
       'reportLogFile': 'Report Log File',
       'developerPortal': 'Developer Portal',
       'profile': 'Profile',
-      'personalDetails': 'Personal Details'
+      'personalDetails': 'Personal Details',
+      // Main categories
+      'categoryFoodDrinks': 'Food & Drinks',
+      'categoryTransportation': 'Transportation',
+      'categoryHousing': 'Housing',
+      'categoryEntertainment': 'Entertainment',
+      'categoryHealth': 'Health',
+      'categoryShopping': 'Shopping',
+      'categoryEducation': 'Education',
+      'categoryTravel': 'Travel',
+      'categoryFinance': 'Finance',
+      'categoryUtilities': 'Utilities',
+      // Food & Drinks subcategories
+      'categoryGroceries': 'Groceries',
+      'categoryRestaurants': 'Restaurants',
+      'categoryCoffee': 'Coffee',
+      'categorySnacks': 'Snacks',
+      'categoryTakeout': 'Takeout',
+      // Transportation subcategories
+      'categoryPublicTransport': 'Public Transport',
+      'categoryFuelGas': 'Fuel/Gas',
+      'categoryTaxiRideshare': 'Taxi & Rideshare',
+      'categoryVehicleMaintenance': 'Vehicle Maintenance',
+      'categoryParking': 'Parking',
+      // Housing subcategories
+      'categoryRent': 'Rent',
+      'categoryMortgage': 'Mortgage',
+      'categoryUtilitiesHousing': 'Utilities',
+      'categoryMaintenance': 'Maintenance',
+      'categoryPropertyTax': 'Property Tax',
+      // Entertainment subcategories
+      'categoryMovies': 'Movies',
+      'categoryStreaming': 'Streaming',
+      'categoryGaming': 'Gaming',
+      'categoryEvents': 'Events',
+      'categorySubscriptions': 'Subscriptions',
+      // Health subcategories
+      'categoryDoctorVisits': 'Doctor Visits',
+      'categoryPharmacy': 'Pharmacy',
+      'categoryInsurance': 'Insurance',
+      'categoryFitness': 'Fitness',
+      'categoryDental': 'Dental',
+      // Shopping subcategories
+      'categoryClothing': 'Clothing',
+      'categoryElectronics': 'Electronics',
+      'categoryShoes': 'Shoes',
+      'categoryAccessories': 'Accessories',
+      'categoryOnlineShopping': 'Online Shopping',
+      // Education subcategories
+      'categoryTuition': 'Tuition',
+      'categoryBooks': 'Books',
+      'categoryOnlineCourses': 'Online Courses',
+      'categoryWorkshops': 'Workshops',
+      'categorySchoolSupplies': 'School Supplies',
+      // Travel subcategories
+      'categoryFlights': 'Flights',
+      'categoryHotels': 'Hotels',
+      'categoryTours': 'Tours',
+      'categoryTransport': 'Transport',
+      'categorySouvenirs': 'Souvenirs',
+      // Finance subcategories
+      'categoryLoanPayments': 'Loan Payments',
+      'categorySavings': 'Savings',
+      'categoryInvestments': 'Investments',
+      'categoryCreditCard': 'Credit Card',
+      'categoryBankFees': 'Bank Fees',
+      // Utilities subcategories
+      'categoryElectricity': 'Electricity',
+      'categoryWater': 'Water',
+      'categoryGas': 'Gas',
+      'categoryInternet': 'Internet',
+      'categoryPhone': 'Phone',
     },
     'vi': {
       'appTitle': 'Bexly',
@@ -372,7 +443,78 @@ class AppLocalizations {
       'reportLogFile': 'Báo cáo file log',
       'developerPortal': 'Cổng nhà phát triển',
       'profile': 'Hồ sơ',
-      'personalDetails': 'Thông tin cá nhân'
+      'personalDetails': 'Thông tin cá nhân',
+      // Main categories
+      'categoryFoodDrinks': 'Ăn uống',
+      'categoryTransportation': 'Di chuyển',
+      'categoryHousing': 'Nhà ở',
+      'categoryEntertainment': 'Giải trí',
+      'categoryHealth': 'Sức khỏe',
+      'categoryShopping': 'Mua sắm',
+      'categoryEducation': 'Giáo dục',
+      'categoryTravel': 'Du lịch',
+      'categoryFinance': 'Tài chính',
+      'categoryUtilities': 'Tiện ích',
+      // Food & Drinks subcategories
+      'categoryGroceries': 'Siêu thị',
+      'categoryRestaurants': 'Nhà hàng',
+      'categoryCoffee': 'Cà phê',
+      'categorySnacks': 'Đồ ăn vặt',
+      'categoryTakeout': 'Gọi mang về',
+      // Transportation subcategories
+      'categoryPublicTransport': 'Xe công cộng',
+      'categoryFuelGas': 'Xăng dầu',
+      'categoryTaxiRideshare': 'Taxi & xe ôm',
+      'categoryVehicleMaintenance': 'Bảo dưỡng xe',
+      'categoryParking': 'Gửi xe',
+      // Housing subcategories
+      'categoryRent': 'Tiền thuê nhà',
+      'categoryMortgage': 'Trả góp nhà',
+      'categoryUtilitiesHousing': 'Tiện ích',
+      'categoryMaintenance': 'Bảo trì',
+      'categoryPropertyTax': 'Thuế tài sản',
+      // Entertainment subcategories
+      'categoryMovies': 'Phim ảnh',
+      'categoryStreaming': 'Dịch vụ streaming',
+      'categoryGaming': 'Game',
+      'categoryEvents': 'Sự kiện',
+      'categorySubscriptions': 'Đăng ký',
+      // Health subcategories
+      'categoryDoctorVisits': 'Khám bác sĩ',
+      'categoryPharmacy': 'Nhà thuốc',
+      'categoryInsurance': 'Bảo hiểm',
+      'categoryFitness': 'Thể dục',
+      'categoryDental': 'Nha khoa',
+      // Shopping subcategories
+      'categoryClothing': 'Quần áo',
+      'categoryElectronics': 'Điện tử',
+      'categoryShoes': 'Giày dép',
+      'categoryAccessories': 'Phụ kiện',
+      'categoryOnlineShopping': 'Mua sắm online',
+      // Education subcategories
+      'categoryTuition': 'Học phí',
+      'categoryBooks': 'Sách vở',
+      'categoryOnlineCourses': 'Khóa học online',
+      'categoryWorkshops': 'Hội thảo',
+      'categorySchoolSupplies': 'Văn phòng phẩm',
+      // Travel subcategories
+      'categoryFlights': 'Vé máy bay',
+      'categoryHotels': 'Khách sạn',
+      'categoryTours': 'Tour du lịch',
+      'categoryTransport': 'Di chuyển',
+      'categorySouvenirs': 'Quà lưu niệm',
+      // Finance subcategories
+      'categoryLoanPayments': 'Trả nợ',
+      'categorySavings': 'Tiết kiệm',
+      'categoryInvestments': 'Đầu tư',
+      'categoryCreditCard': 'Thẻ tín dụng',
+      'categoryBankFees': 'Phí ngân hàng',
+      // Utilities subcategories
+      'categoryElectricity': 'Điện',
+      'categoryWater': 'Nước',
+      'categoryGas': 'Gas',
+      'categoryInternet': 'Internet',
+      'categoryPhone': 'Điện thoại',
     },
   };
 
@@ -577,6 +719,89 @@ class AppLocalizations {
       return '$count giờ trước';
     }
     return count == 1 ? '1 hour ago' : '$count hours ago';
+  }
+
+  // Category ID to translation key mapping
+  static const Map<int, String> _categoryIdToKey = {
+    // Main categories
+    1: 'categoryFoodDrinks',
+    2: 'categoryTransportation',
+    3: 'categoryHousing',
+    4: 'categoryEntertainment',
+    5: 'categoryHealth',
+    6: 'categoryShopping',
+    7: 'categoryEducation',
+    8: 'categoryTravel',
+    9: 'categoryFinance',
+    10: 'categoryUtilities',
+    // Food & Drinks subcategories
+    101: 'categoryGroceries',
+    102: 'categoryRestaurants',
+    103: 'categoryCoffee',
+    104: 'categorySnacks',
+    105: 'categoryTakeout',
+    // Transportation subcategories
+    201: 'categoryPublicTransport',
+    202: 'categoryFuelGas',
+    203: 'categoryTaxiRideshare',
+    204: 'categoryVehicleMaintenance',
+    205: 'categoryParking',
+    // Housing subcategories
+    301: 'categoryRent',
+    302: 'categoryMortgage',
+    303: 'categoryUtilitiesHousing',
+    304: 'categoryMaintenance',
+    305: 'categoryPropertyTax',
+    // Entertainment subcategories
+    401: 'categoryMovies',
+    402: 'categoryStreaming',
+    403: 'categoryGaming',
+    404: 'categoryEvents',
+    405: 'categorySubscriptions',
+    // Health subcategories
+    501: 'categoryDoctorVisits',
+    502: 'categoryPharmacy',
+    503: 'categoryInsurance',
+    504: 'categoryFitness',
+    505: 'categoryDental',
+    // Shopping subcategories
+    601: 'categoryClothing',
+    602: 'categoryElectronics',
+    603: 'categoryShoes',
+    604: 'categoryAccessories',
+    605: 'categoryOnlineShopping',
+    // Education subcategories
+    701: 'categoryTuition',
+    702: 'categoryBooks',
+    703: 'categoryOnlineCourses',
+    704: 'categoryWorkshops',
+    705: 'categorySchoolSupplies',
+    // Travel subcategories
+    801: 'categoryFlights',
+    802: 'categoryHotels',
+    803: 'categoryTours',
+    804: 'categoryTransport',
+    805: 'categorySouvenirs',
+    // Finance subcategories
+    901: 'categoryLoanPayments',
+    902: 'categorySavings',
+    903: 'categoryInvestments',
+    904: 'categoryCreditCard',
+    905: 'categoryBankFees',
+    // Utilities subcategories
+    1001: 'categoryElectricity',
+    1002: 'categoryWater',
+    1003: 'categoryGas',
+    1004: 'categoryInternet',
+    1005: 'categoryPhone',
+  };
+
+  // Get localized category name by ID
+  String getCategoryName(int? categoryId) {
+    if (categoryId == null) return 'Unknown Category';
+    final key = _categoryIdToKey[categoryId];
+    if (key == null) return 'Unknown Category';
+    return get(key);
   }
 }
 
