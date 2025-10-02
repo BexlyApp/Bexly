@@ -7,13 +7,202 @@ import 'package:bexly/core/utils/logger.dart';
 abstract class AIService {
   Future<String> sendMessage(String message);
   Stream<String> sendMessageStream(String message);
+  void updateRecentTransactions(String recentTransactionsContext);
 }
 
-class OpenAIService implements AIService {
+/// Mixin for shared prompt generation logic across AI services
+mixin AIServicePromptMixin {
+  List<String> get categories;
+  String get recentTransactionsContext;
+
+  /// System instruction defining AI's core behavior and personality
+  String get systemInstruction => '''You are Bexly AI - a personal finance assistant helping users manage their money through natural conversation.
+
+LANGUAGE RULES:
+- ALWAYS respond in the same language as the user's message
+- Vietnamese input → Vietnamese response
+- English input → English response
+- Be friendly, concise, and helpful''';
+
+  /// Context about available categories and wallet information
+  String get contextSection => '''
+AVAILABLE CATEGORIES:
+${categories.isEmpty ? '(No categories configured)' : categories.join(', ')}
+
+CATEGORY MATCHING RULES:
+- MUST use EXACT category name from the list above
+- Graphics card / VGA / màn hình / monitor / PC parts → "Electronics"
+- Phone / laptop / tablet / computer → "Electronics"
+- Clothes / áo / quần → "Clothing"
+- Food / ăn uống / cafe / restaurant → "Food & Drinks"
+- Taxi / xe bus / grab → "Transportation"
+- Only use "Others" if NO category matches''';
+
+  /// Amount parsing rules for Vietnamese and English
+  String get amountParsingRules => '''
+AMOUNT RECOGNITION RULES:
+
+Vietnamese shorthand:
+- "300k" → 300,000 VND
+- "2.5tr" / "2tr5" → 2,500,000 VND
+- "70tr" → 70,000,000 VND
+- Numbers may use dots/spaces as separators (1.000.000 or 1 000 000)
+
+Currency detection:
+- "\$100" OR "100 đô" → 100 USD (đô = dollar)
+- "100 đồng" OR "100 đồng Việt Nam" OR "100 VND" → 100 VND
+- "1 triệu đô" → 1,000,000 USD (NOT VND!)
+- "1 triệu đồng" → 1,000,000 VND (NOT USD!)
+
+CRITICAL: Always include "currency" field in ACTION_JSON ("USD" or "VND")''';
+
+  /// JSON schema definitions for all available actions
+  String get actionSchemas => '''
+ACTION JSON SCHEMAS:
+
+After your response, return ACTION_JSON on a new line with ONE of these schemas:
+
+1. create_expense:
+{"action":"create_expense","amount":<number>,"currency":"USD|VND","description":"<string>","category":"<string>"}
+
+2. create_income:
+{"action":"create_income","amount":<number>,"currency":"USD|VND","description":"<string>","category":"<string>"}
+
+3. create_budget:
+{"action":"create_budget","amount":<number>,"currency":"USD|VND","category":"<string>","period":"monthly|weekly|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?,"isRoutine":<boolean>?}
+
+4. create_goal:
+{"action":"create_goal","title":"<string>","targetAmount":<number>,"currency":"USD|VND","currentAmount":<number>?,"deadline":"YYYY-MM-DD"?,"notes":"<string>"?}
+
+5. get_balance:
+{"action":"get_balance"}
+
+6. get_summary:
+{"action":"get_summary","range":"today|week|month|quarter|year|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?}
+
+7. list_transactions:
+{"action":"list_transactions","range":"today|week|month|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?,"limit":<number>?}
+
+8. update_transaction:
+{"action":"update_transaction","transactionId":<number>,"amount":<number>?,"currency":"USD|VND"?,"description":"<string>"?,"category":"<string>"?,"date":"YYYY-MM-DD"?}
+
+9. delete_transaction:
+{"action":"delete_transaction","transactionId":<number>}
+
+Format: ACTION_JSON: <json_object>''';
+
+  /// Business rules for handling different request types
+  String get businessRules => '''
+BUSINESS RULES:
+
+1. Spending/expenses → create_expense
+2. Income/salary/bonus → create_income
+3. Budget/budget planning → create_budget (default: monthly period)
+4. Financial goals/savings targets → create_goal
+5. Balance inquiry → get_balance
+6. Summary/reports → get_summary
+7. Transaction listing → list_transactions
+8. Edit/update existing transaction → update_transaction (requires transactionId)
+9. Delete/remove transaction → delete_transaction (requires transactionId)
+
+EXPENSE vs INCOME CLASSIFICATION - CRITICAL:
+
+ALWAYS EXPENSE (create_expense):
+- Trả nợ / Pay debt / Repay loan → EXPENSE (money going OUT)
+- Mua / Buy / Purchase → EXPENSE
+- Trả tiền / Payment → EXPENSE
+- Chi phí / Cost / Fee → EXPENSE
+- Nợ / Debt payment → EXPENSE
+- Cho vay / Lend money → EXPENSE (money going OUT)
+
+ALWAYS INCOME (create_income):
+- Thu nhập / Income / Salary → INCOME
+- Nhận tiền / Receive money → INCOME
+- Bán / Sell → INCOME
+- Thưởng / Bonus → INCOME
+- Lãi / Interest earned → INCOME
+- Vay / Borrow money → INCOME (money coming IN)
+- Thu nợ / Collect debt → INCOME (money coming IN)
+
+TRANSACTION ID CONTEXT:
+- Recent transactions will be provided in conversation history
+- When user says "sửa giao dịch vừa rồi" or "update last transaction", use the most recent transaction ID
+- When user specifies which transaction (e.g., "the 265tr purchase"), find matching transaction by amount or description
+
+IMPORTANT RESTRICTIONS:
+- NEVER modify wallet balance directly
+- If user wants to "set balance to X", explain they must record transactions
+- Goals have target amounts, NOT current money (currentAmount is optional progress tracker)
+
+CONTEXT AWARENESS - CRITICAL:
+- ONLY return ACTION_JSON when user is CREATING or REQUESTING something
+- DO NOT return ACTION_JSON when:
+  * User is answering YOUR question
+  * User is providing clarification or additional info
+  * User is having a conversation without clear intent to create transaction
+- If unsure, ask for confirmation before creating ACTION_JSON
+
+Example of WRONG behavior:
+AI: "Ban da mua card man hinh NVIDA RTX Pro 6000, nhung minh can biet gia cua no de ghi nhan chi tieu. Ban co the cho minh biet gia khong?"
+User: "A toi mua het 265tr"
+AI: [WRONG] Returns ACTION_JSON to create expense
+AI: [CORRECT] "Đã ghi nhận chi tiêu 265,000,000 VND... ACTION_JSON: {..."
+
+The difference: User was ANSWERING a question vs INITIATING a new request.''';
+
+  /// Example showing expected format
+  String get exampleSection => '''
+EXAMPLES:
+
+Correct - User initiates:
+User: "lunch 300k"
+AI: "Đã ghi nhận chi tiêu 300,000 VND cho bữa trưa.
+ACTION_JSON: {"action":"create_expense","amount":300000,"currency":"VND","description":"Lunch","category":"Food & Dining"}"
+
+Correct - AI asks first, user confirms:
+User: "Tôi mua card đồ họa"
+AI: "Bạn đã mua card đồ họa, nhưng mình cần biết giá để ghi nhận chi tiêu. Bạn có thể cho mình biết giá không?"
+User: "265tr"
+AI: "Đã ghi nhận chi tiêu 265,000,000 VND cho card đồ họa.
+ACTION_JSON: {"action":"create_expense","amount":265000000,"currency":"VND","description":"Graphics card","category":"Others"}"''';
+
+  /// Recent transactions context section
+  String get recentTransactionsSection => recentTransactionsContext.isEmpty
+      ? ''
+      : '''
+RECENT TRANSACTIONS:
+$recentTransactionsContext
+
+When user references transactions (e.g., "sửa giao dịch vừa rồi", "xóa cái 265tr"), use the transaction ID from this list.''';
+
+  /// Build complete system prompt
+  String get systemPrompt => '''$systemInstruction
+
+$contextSection
+
+$recentTransactionsSection
+
+$amountParsingRules
+
+$actionSchemas
+
+$businessRules
+
+$exampleSection''';
+}
+
+class OpenAIService with AIServicePromptMixin implements AIService {
   final String apiKey;
   final String baseUrl;
   final String model;
+
+  @override
   final List<String> categories;
+
+  String _recentTransactionsContext = '';
+
+  @override
+  String get recentTransactionsContext => _recentTransactionsContext;
 
   OpenAIService({
     required this.apiKey,
@@ -22,6 +211,12 @@ class OpenAIService implements AIService {
     this.categories = const [],
   }) {
     Log.d('OpenAIService initialized with model: $model, categories: ${categories.length}', label: 'AI Service');
+  }
+
+  @override
+  void updateRecentTransactions(String recentTransactionsContext) {
+    _recentTransactionsContext = recentTransactionsContext;
+    Log.d('Updated recent transactions context (${recentTransactionsContext.length} chars)', label: 'AI Service');
   }
 
   /// System instruction defining AI's core behavior and personality
@@ -38,7 +233,14 @@ LANGUAGE RULES:
 AVAILABLE CATEGORIES:
 ${categories.isEmpty ? '(No categories configured)' : categories.join(', ')}
 
-If user mentions a category not in the list, use "Others".''';
+CATEGORY MATCHING RULES:
+- MUST use EXACT category name from the list above
+- Graphics card / VGA / màn hình / monitor / PC parts → "Electronics"
+- Phone / laptop / tablet / computer → "Electronics"
+- Clothes / áo / quần → "Clothing"
+- Food / ăn uống / cafe / restaurant → "Food & Drinks"
+- Taxi / xe bus / grab → "Transportation"
+- Only use "Others" if NO category matches''';
 
   /// Amount parsing rules for Vietnamese and English
   String get _amountParsingRules => '''
@@ -85,6 +287,12 @@ After your response, return ACTION_JSON on a new line with ONE of these schemas:
 7. list_transactions:
 {"action":"list_transactions","range":"today|week|month|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?,"limit":<number>?}
 
+8. update_transaction:
+{"action":"update_transaction","transactionId":<number>,"amount":<number>?,"currency":"USD|VND"?,"description":"<string>"?,"category":"<string>"?,"date":"YYYY-MM-DD"?}
+
+9. delete_transaction:
+{"action":"delete_transaction","transactionId":<number>}
+
 Format: ACTION_JSON: <json_object>''';
 
   /// Business rules for handling different request types
@@ -98,6 +306,13 @@ BUSINESS RULES:
 5. Balance inquiry → get_balance
 6. Summary/reports → get_summary
 7. Transaction listing → list_transactions
+8. Edit/update existing transaction → update_transaction (requires transactionId)
+9. Delete/remove transaction → delete_transaction (requires transactionId)
+
+TRANSACTION ID CONTEXT:
+- Recent transactions will be provided in conversation history
+- When user says "sửa giao dịch vừa rồi" or "update last transaction", use the most recent transaction ID
+- When user specifies which transaction (e.g., "the 265tr purchase"), find matching transaction by amount or description
 
 IMPORTANT RESTRICTIONS:
 - NEVER modify wallet balance directly
@@ -136,10 +351,21 @@ User: "265tr"
 AI: "Đã ghi nhận chi tiêu 265,000,000 VND cho card đồ họa.
 ACTION_JSON: {"action":"create_expense","amount":265000000,"currency":"VND","description":"Graphics card","category":"Others"}"''';
 
+  /// Recent transactions context section
+  String get _recentTransactionsSection => _recentTransactionsContext.isEmpty
+      ? ''
+      : '''
+RECENT TRANSACTIONS:
+$_recentTransactionsContext
+
+When user references transactions (e.g., "sửa giao dịch vừa rồi", "xóa cái 265tr"), use the transaction ID from this list.''';
+
   /// Build complete system prompt
   String get _systemPrompt => '''$_systemInstruction
 
 $_contextSection
+
+$_recentTransactionsSection
 
 $_amountParsingRules
 
@@ -181,7 +407,7 @@ $_exampleSection''';
           'messages': [
             {
               'role': 'system',
-              'content': _systemPrompt,
+              'content': systemPrompt,
             },
             {
               'role': 'user',
@@ -257,10 +483,18 @@ $_exampleSection''';
   }
 }
 
-class GeminiService implements AIService {
+class GeminiService with AIServicePromptMixin implements AIService {
   final String apiKey;
   final String model;
+
+  @override
   final List<String> categories;
+
+  String _recentTransactionsContext = '';
+
+  @override
+  String get recentTransactionsContext => _recentTransactionsContext;
+
   late final GenerativeModel _model;
 
   GeminiService({
@@ -279,6 +513,12 @@ class GeminiService implements AIService {
     );
   }
 
+  @override
+  void updateRecentTransactions(String recentTransactionsContext) {
+    _recentTransactionsContext = recentTransactionsContext;
+    Log.d('Updated recent transactions context (${recentTransactionsContext.length} chars)', label: 'AI Service');
+  }
+
   /// System instruction defining AI's core behavior and personality
   String get _systemInstruction => '''You are Bexly AI - a personal finance assistant helping users manage their money through natural conversation.
 
@@ -293,7 +533,14 @@ LANGUAGE RULES:
 AVAILABLE CATEGORIES:
 ${categories.isEmpty ? '(No categories configured)' : categories.join(', ')}
 
-If user mentions a category not in the list, use "Others".''';
+CATEGORY MATCHING RULES:
+- MUST use EXACT category name from the list above
+- Graphics card / VGA / màn hình / monitor / PC parts → "Electronics"
+- Phone / laptop / tablet / computer → "Electronics"
+- Clothes / áo / quần → "Clothing"
+- Food / ăn uống / cafe / restaurant → "Food & Drinks"
+- Taxi / xe bus / grab → "Transportation"
+- Only use "Others" if NO category matches''';
 
   /// Amount parsing rules for Vietnamese and English
   String get _amountParsingRules => '''
@@ -340,6 +587,12 @@ After your response, return ACTION_JSON on a new line with ONE of these schemas:
 7. list_transactions:
 {"action":"list_transactions","range":"today|week|month|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?,"limit":<number>?}
 
+8. update_transaction:
+{"action":"update_transaction","transactionId":<number>,"amount":<number>?,"currency":"USD|VND"?,"description":"<string>"?,"category":"<string>"?,"date":"YYYY-MM-DD"?}
+
+9. delete_transaction:
+{"action":"delete_transaction","transactionId":<number>}
+
 Format: ACTION_JSON: <json_object>''';
 
   /// Business rules for handling different request types
@@ -353,6 +606,13 @@ BUSINESS RULES:
 5. Balance inquiry → get_balance
 6. Summary/reports → get_summary
 7. Transaction listing → list_transactions
+8. Edit/update existing transaction → update_transaction (requires transactionId)
+9. Delete/remove transaction → delete_transaction (requires transactionId)
+
+TRANSACTION ID CONTEXT:
+- Recent transactions will be provided in conversation history
+- When user says "sửa giao dịch vừa rồi" or "update last transaction", use the most recent transaction ID
+- When user specifies which transaction (e.g., "the 265tr purchase"), find matching transaction by amount or description
 
 IMPORTANT RESTRICTIONS:
 - NEVER modify wallet balance directly
@@ -391,10 +651,21 @@ User: "265tr"
 AI: "Đã ghi nhận chi tiêu 265,000,000 VND cho card đồ họa.
 ACTION_JSON: {"action":"create_expense","amount":265000000,"currency":"VND","description":"Graphics card","category":"Others"}"''';
 
+  /// Recent transactions context section
+  String get _recentTransactionsSection => _recentTransactionsContext.isEmpty
+      ? ''
+      : '''
+RECENT TRANSACTIONS:
+$_recentTransactionsContext
+
+When user references transactions (e.g., "sửa giao dịch vừa rồi", "xóa cái 265tr"), use the transaction ID from this list.''';
+
   /// Build complete system prompt
   String get _systemPrompt => '''$_systemInstruction
 
 $_contextSection
+
+$_recentTransactionsSection
 
 $_amountParsingRules
 
@@ -417,7 +688,7 @@ $_exampleSection''';
       // Create chat with system instruction
       final chat = _model.startChat(
         history: [
-          Content.text(_systemPrompt),
+          Content.text(systemPrompt),
         ],
       );
 
