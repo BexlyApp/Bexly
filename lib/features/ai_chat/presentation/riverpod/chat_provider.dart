@@ -15,11 +15,14 @@ import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
 import 'package:bexly/features/budget/data/model/budget_model.dart';
 import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
+import 'package:bexly/features/goal/data/model/goal_model.dart';
+import 'package:bexly/features/goal/presentation/riverpod/goals_list_provider.dart';
 import 'package:bexly/features/ai_chat/presentation/riverpod/chat_dao_provider.dart';
 import 'package:bexly/core/database/pockaw_database.dart' as db;
 import 'package:drift/drift.dart' as drift;
+// import 'package:bexly/core/services/sync/data_sync_service.dart';
 
-// AI Service Provider
+// AI Service Provider - Supports both OpenAI and Gemini
 final aiServiceProvider = Provider<AIService>((ref) {
   // Get categories from database
   final categoriesAsync = ref.watch(hierarchicalCategoriesProvider);
@@ -32,17 +35,46 @@ final aiServiceProvider = Provider<AIService>((ref) {
   final wallet = ref.read(activeWalletProvider).valueOrNull;
   final walletCurrency = wallet?.currency ?? 'VND';
 
-  // Always use OpenAI service - user must provide API key
-  final apiKey = LLMDefaultConfig.apiKey.isEmpty
-      ? 'USER_MUST_PROVIDE_API_KEY'
-      : LLMDefaultConfig.apiKey;
+  // Check which AI provider to use
+  final provider = LLMDefaultConfig.provider;
 
-  Log.d('Using OpenAI Service with wallet currency: $walletCurrency', label: 'Chat Provider');
-  return OpenAIService(
-    apiKey: apiKey,
-    model: LLMDefaultConfig.model,
-    categories: categories,
-  );
+  if (provider == 'gemini') {
+    // Use Gemini service
+    final apiKey = LLMDefaultConfig.geminiApiKey.isEmpty
+        ? 'USER_MUST_PROVIDE_API_KEY'
+        : LLMDefaultConfig.geminiApiKey;
+
+    if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length > 10) {
+      final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
+      Log.d('Using Gemini Service with API key: $maskedKey, model: ${LLMDefaultConfig.geminiModel}, currency: $walletCurrency', label: 'Chat Provider');
+    } else {
+      Log.e('Invalid or missing Gemini API key!', label: 'Chat Provider');
+    }
+
+    return GeminiService(
+      apiKey: apiKey,
+      model: LLMDefaultConfig.geminiModel,
+      categories: categories,
+    );
+  } else {
+    // Default to OpenAI service
+    final apiKey = LLMDefaultConfig.apiKey.isEmpty
+        ? 'USER_MUST_PROVIDE_API_KEY'
+        : LLMDefaultConfig.apiKey;
+
+    if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length > 10) {
+      final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
+      Log.d('Using OpenAI Service with API key: $maskedKey, model: ${LLMDefaultConfig.model}, currency: $walletCurrency', label: 'Chat Provider');
+    } else {
+      Log.e('Invalid or missing OpenAI API key!', label: 'Chat Provider');
+    }
+
+    return OpenAIService(
+      apiKey: apiKey,
+      model: LLMDefaultConfig.model,
+      categories: categories,
+    );
+  }
 });
 
 // Chat State Provider - Using autoDispose to manage lifecycle
@@ -245,6 +277,40 @@ class ChatNotifier extends StateNotifier<ChatState> {
                 displayMessage += '\n\n✅ Created $period budget of $amountText for $categoryName.';
                 break;
               }
+            case 'create_goal':
+              {
+                Log.d('Processing create_goal action: $action', label: 'Chat Provider');
+
+                final wallet = _ref.read(activeWalletProvider).valueOrNull;
+                if (wallet == null) {
+                  displayMessage += '\n\n❌ No active wallet selected.';
+                  break;
+                }
+
+                // Handle currency conversion if needed
+                final walletCurrency = wallet.currency ?? 'VND';
+                double targetAmount = (action['targetAmount'] as num).toDouble();
+                double currentAmount = ((action['currentAmount'] ?? 0) as num).toDouble();
+                final aiCurrency = action['currency'] ?? 'VND';
+
+                // Convert VND to USD if wallet uses USD
+                if (aiCurrency == 'VND' && walletCurrency == 'USD') {
+                  targetAmount = targetAmount / 25000;
+                  currentAmount = currentAmount / 25000;
+                }
+
+                await _createGoalFromAction({
+                  ...action,
+                  'targetAmount': targetAmount,
+                  'currentAmount': currentAmount,
+                });
+
+                final targetAmountText = _formatAmount(targetAmount, currency: walletCurrency);
+                final goalTitle = action['title']?.toString() ?? 'New Goal';
+
+                displayMessage += '\n\n✅ Created goal "$goalTitle" with target of $targetAmountText.';
+                break;
+              }
             case 'get_balance':
               {
                 final balanceText = await _getActiveWalletBalanceText();
@@ -272,37 +338,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
           Log.e('Failed to parse AI action: $e', label: 'Chat Provider');
           // If JSON parsing fails, just show original response without JSON
         }
-      } else {
-        // Fallback: Try to infer action directly from user's message when model didn't include ACTION_JSON
-        final inferred = await _inferActionFromText(userMessage.content);
-        if (inferred != null) {
-          try {
-            await _createTransactionFromAction(inferred);
-            final isIncome = inferred['action'] == 'create_income';
-            final wallet = _ref.read(activeWalletProvider).valueOrNull;
-            // Use wallet currency or default to VND
-            final currency = wallet?.currency ?? 'VND';
-            final walletName = wallet?.name ?? 'My Wallet';
-            final amountText = _formatAmount(inferred['amount'] as num, currency: currency);
-            final dateText = _formatDatePhrase(DateTime.now());
-
-            // Show conversion info if amount was parsed from VND but wallet uses different currency
-            String conversionNote = '';
-            if (currency == 'USD' && !userMessage.content.toLowerCase().contains(RegExp(r'\$|usd|dollar'))) {
-              // Likely VND amount converted to USD
-              final originalVnd = (inferred['amount'] as num) * 25000;
-              conversionNote = ' (from ${_formatAmount(originalVnd, currency: 'VND')})';
-            }
-
-            final confirmText = isIncome
-                ? 'Recorded income of ' + amountText + conversionNote + ' to "' + walletName + '" for ' + (inferred['description']).toString() + ' (Category: ' + (inferred['category']).toString() + ') on ' + dateText + '.'
-                : 'Recorded expense of ' + amountText + conversionNote + ' from "' + walletName + '" for ' + (inferred['description']).toString() + ' (Category: ' + (inferred['category']).toString() + ') on ' + dateText + '.';
-            displayMessage += '\n\n✅ ' + confirmText;
-          } catch (e) {
-            Log.e('Fallback create transaction failed: $e', label: 'Chat Provider');
-          }
-        }
       }
+      // REMOVED: Fallback inference logic
+      // The AI should explicitly return ACTION_JSON when user wants to create a transaction
+      // Otherwise, responding to AI questions with numbers would incorrectly create transactions
 
       final aiMessage = ChatMessage(
         id: _uuid.v4(),
@@ -326,24 +365,41 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       Log.e('Error sending message: $error', label: 'Chat Provider');
 
+      // Parse error message for user-friendly display
+      String userFriendlyMessage = 'Sorry, an error occurred. Please try again later.';
+      String errorString = error.toString();
+
+      if (errorString.contains('Invalid API key')) {
+        userFriendlyMessage = 'Invalid API key configured. Please check your OpenAI API key in the .env file.';
+      } else if (errorString.contains('Rate limit')) {
+        userFriendlyMessage = 'Too many requests. Please wait a moment and try again.';
+      } else if (errorString.contains('temporarily unavailable')) {
+        userFriendlyMessage = 'The AI service is temporarily unavailable. Please try again later.';
+      } else if (errorString.contains('Failed host lookup') || errorString.contains('SocketException')) {
+        userFriendlyMessage = 'Network connection error. Please check your internet connection.';
+      }
+
       state = state.copyWith(
         isLoading: false,
         isTyping: false,
-        error: error.toString(),
+        error: errorString,
       );
 
       // Add error message to chat
       final errorMessage = ChatMessage(
         id: _uuid.v4(),
-        content: 'Sorry, an error occurred. Please try again later.',
+        content: userFriendlyMessage,
         isFromUser: false,
         timestamp: DateTime.now(),
-        error: error.toString(),
+        error: errorString,
       );
 
       state = state.copyWith(
         messages: [...state.messages, errorMessage],
       );
+
+      // Save error message to database
+      await _saveMessageToDatabase(errorMessage);
     }
   }
 
@@ -384,9 +440,17 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(error: null);
   }
 
-  void clearChat() {
+  void clearChat() async {
     _cancelTypingEffect();
+
+    // Clear messages from database
+    final dao = _ref.read(chatMessageDaoProvider);
+    await dao.clearAllMessages();
+
+    // Reset state
     state = const ChatState();
+
+    // Re-initialize with welcome message
     _initializeChat();
   }
 
@@ -528,6 +592,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       Log.d('Transaction list provider invalidated, UI should update', label: 'TRANSACTION_DEBUG');
 
+      // TODO: Re-enable cloud sync after fixing data_sync_service.dart
+      // try {
+      //   Log.d('Triggering immediate cloud sync...', label: 'TRANSACTION_DEBUG');
+      //   _ref.read(dataSyncServiceProvider.notifier).syncAll();
+      //   Log.d('Cloud sync triggered successfully', label: 'TRANSACTION_DEBUG');
+      // } catch (e) {
+      //   Log.i('Cloud sync failed (may not be authenticated): $e', label: 'TRANSACTION_DEBUG');
+      // }
+
       Log.d('_createTransactionFromAction COMPLETE', label: 'TRANSACTION_DEBUG');
       Log.d('========================================', label: 'TRANSACTION_DEBUG');
     } catch (e, stackTrace) {
@@ -632,9 +705,94 @@ class ChatNotifier extends StateNotifier<ChatState> {
       // Invalidate budget list to refresh UI
       _ref.invalidate(budgetListProvider);
 
+      // TODO: Re-enable cloud sync after fixing data_sync_service.dart
+      // try {
+      //   Log.d('Triggering immediate cloud sync...', label: 'BUDGET_DEBUG');
+      //   _ref.read(dataSyncServiceProvider.notifier).syncAll();
+      //   Log.d('Cloud sync triggered successfully', label: 'BUDGET_DEBUG');
+      // } catch (e) {
+      //   Log.i('Cloud sync failed (may not be authenticated): $e', label: 'BUDGET_DEBUG');
+      // }
+
     } catch (e, stackTrace) {
       Log.e('Failed to create budget: $e', label: 'BUDGET_ERROR');
       Log.e('Stack trace: $stackTrace', label: 'BUDGET_ERROR');
+    }
+  }
+
+  Future<void> _createGoalFromAction(Map<String, dynamic> action) async {
+    Log.d('Creating goal from action: $action', label: 'GOAL_DEBUG');
+
+    try {
+      final title = action['title']?.toString() ?? 'New Goal';
+      final targetAmount = (action['targetAmount'] as num).toDouble();
+      final currentAmount = ((action['currentAmount'] ?? 0) as num).toDouble();
+      final notes = action['notes']?.toString();
+
+      // Parse deadline if provided
+      final now = DateTime.now();
+      DateTime endDate;
+
+      if (action['deadline'] != null) {
+        try {
+          endDate = DateTime.parse(action['deadline']);
+        } catch (e) {
+          // Default to 1 year from now if parsing fails
+          endDate = DateTime(now.year + 1, now.month, now.day);
+        }
+      } else {
+        // Default to 1 year from now
+        endDate = DateTime(now.year + 1, now.month, now.day);
+      }
+
+      final goal = GoalModel(
+        title: title,
+        targetAmount: targetAmount,
+        currentAmount: currentAmount,
+        startDate: now,
+        endDate: endDate,
+        description: notes,
+        createdAt: now,
+      );
+
+      Log.d('Creating goal: title=$title, target=$targetAmount, deadline=$endDate', label: 'GOAL_DEBUG');
+
+      // Save goal to database
+      final database = _ref.read(databaseProvider);
+
+      // Convert GoalModel to GoalsCompanion for insert
+      final companion = db.GoalsCompanion(
+        title: drift.Value(goal.title),
+        targetAmount: drift.Value(goal.targetAmount),
+        currentAmount: drift.Value(goal.currentAmount),
+        startDate: drift.Value(goal.startDate),
+        endDate: drift.Value(goal.endDate),
+        iconName: drift.Value(goal.iconName),
+        description: drift.Value(goal.description),
+        createdAt: drift.Value(goal.createdAt ?? now),
+        associatedAccountId: drift.Value(goal.associatedAccountId),
+        pinned: drift.Value(goal.pinned),
+      );
+
+      await database.goalDao.addGoal(companion);
+
+      Log.d('Goal created successfully', label: 'GOAL_DEBUG');
+
+      // Invalidate goal list to refresh UI
+      _ref.invalidate(goalsListProvider);
+
+      // TODO: Re-enable cloud sync after fixing data_sync_service.dart
+      // try {
+      //   Log.d('Triggering immediate cloud sync...', label: 'GOAL_DEBUG');
+      //   _ref.read(dataSyncServiceProvider.notifier).syncAll();
+      //   Log.d('Cloud sync triggered successfully', label: 'GOAL_DEBUG');
+      // } catch (e) {
+      //   Log.i('Cloud sync failed (may not be authenticated): $e', label: 'GOAL_DEBUG');
+      // }
+
+    } catch (e, stackTrace) {
+      Log.e('Failed to create goal: $e', label: 'GOAL_ERROR');
+      Log.e('Stack trace: $stackTrace', label: 'GOAL_ERROR');
     }
   }
 
