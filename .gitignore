@@ -63,3 +63,15 @@ keystore.properties
 
 .github/instructions/pockaw-instruction.instructions.md
 ref
+
+# Test and temporary files
+DOS-Me/
+node_modules/
+package-lock.json
+package.json
+firebase.json
+*.test.html
+analyze_*.js
+input.txt
+reload.txt
+docs/REF_ANALYSIS.md
