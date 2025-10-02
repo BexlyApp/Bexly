@@ -195,7 +195,7 @@ class AppLocalizations {
     'vi': {
       'appTitle': 'Bexly',
       'home': 'Trang chủ',
-      'aiChat': 'Trò chuyện AI',
+      'aiChat': 'AI Chat',
       'add': 'Thêm',
       'history': 'Lịch sử',
       'planning': 'Kế hoạch',
