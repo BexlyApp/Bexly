@@ -12,6 +12,9 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/services/auth/dos_me_auth_service.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
+import 'package:bexly/core/services/sync/cloud_sync_service.dart';
+import 'package:bexly/core/services/sync/sync_trigger_service.dart';
+import 'package:bexly/core/database/database_provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'dart:io' show Platform;
 
@@ -104,6 +107,22 @@ class LoginScreen extends HookConsumerWidget {
 
         debugPrint('Firebase authentication successful');
 
+        // Trigger initial sync if first time login
+        if (context.mounted) {
+          final syncService = ref.read(cloudSyncServiceProvider);
+          final localDb = ref.read(databaseProvider);
+          final userId = dosmeAuth.currentUser?.uid;
+
+          if (userId != null) {
+            await SyncTriggerService.triggerInitialSyncIfNeeded(
+              syncService,
+              context: context,
+              localDb: localDb,
+              userId: userId,
+            );
+          }
+        }
+
         if (context.mounted) {
           context.go('/');
         }
@@ -154,6 +173,22 @@ class LoginScreen extends HookConsumerWidget {
             await dosmeAuth.signInWithCredential(credential);
 
             debugPrint('Firebase authentication with Facebook successful');
+
+            // Trigger initial sync if first time login
+            if (context.mounted) {
+              final syncService = ref.read(cloudSyncServiceProvider);
+              final localDb = ref.read(databaseProvider);
+              final userId = dosmeAuth.currentUser?.uid;
+
+              if (userId != null) {
+                await SyncTriggerService.triggerInitialSyncIfNeeded(
+                  syncService,
+                  context: context,
+                  localDb: localDb,
+                  userId: userId,
+                );
+              }
+            }
 
             if (context.mounted) {
               context.go('/');
@@ -226,6 +261,22 @@ class LoginScreen extends HookConsumerWidget {
         }
 
         debugPrint('Firebase authentication with Apple successful');
+
+        // Trigger initial sync if first time login
+        if (context.mounted) {
+          final syncService = ref.read(cloudSyncServiceProvider);
+          final localDb = ref.read(databaseProvider);
+          final userId = dosmeAuth.currentUser?.uid;
+
+          if (userId != null) {
+            await SyncTriggerService.triggerInitialSyncIfNeeded(
+              syncService,
+              context: context,
+              localDb: localDb,
+              userId: userId,
+            );
+          }
+        }
 
         if (context.mounted) {
           context.go('/');

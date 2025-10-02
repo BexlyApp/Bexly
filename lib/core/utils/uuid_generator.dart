@@ -19,11 +19,6 @@ class UuidGenerator {
     return _uuid.v7();
   }
 
-  /// Generate a new UUID v7 with custom timestamp
-  static String generateWithTimestamp(DateTime timestamp) {
-    return _uuid.v7(config: V7Options(timestamp));
-  }
-
   /// Validate if a string is a valid UUID
   static bool isValid(String? uuid) {
     if (uuid == null || uuid.isEmpty) return false;
