@@ -8,15 +8,18 @@ class WalletAmountEditButton extends ConsumerWidget {
       context,
       onPressed: () {
         final activeWallet = ref.read(activeWalletProvider).valueOrNull;
-        final defaultCurrencies = ref.read(currenciesStaticProvider);
 
         if (activeWallet != null) {
-          final selectedCurrency = defaultCurrencies.firstWhere(
-            (currency) => currency.isoCode == activeWallet.currency,
-            orElse: () => defaultCurrencies.first,
-          );
+          final defaultCurrencies = ref.read(currenciesStaticProvider);
 
-          ref.read(currencyProvider.notifier).state = selectedCurrency;
+          // Only set currency if currencies list is available
+          if (defaultCurrencies.isNotEmpty) {
+            final selectedCurrency = defaultCurrencies.firstWhere(
+              (currency) => currency.isoCode == activeWallet.currency,
+              orElse: () => defaultCurrencies.first,
+            );
+            ref.read(currencyProvider.notifier).state = selectedCurrency;
+          }
 
           showModalBottomSheet(
             context: context,
@@ -28,7 +31,7 @@ class WalletAmountEditButton extends ConsumerWidget {
       },
       icon: HugeIcons.strokeRoundedEdit02,
       themeMode: context.themeMode,
-      iconSize: IconSize.tiny,
+      iconSize: IconSize.small, // Changed from tiny to small for better tap target
     );
   }
 }

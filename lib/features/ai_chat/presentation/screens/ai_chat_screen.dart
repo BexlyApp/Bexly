@@ -5,6 +5,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/presentation/riverpod/chat_provider.dart';
 
@@ -16,97 +17,60 @@ class AIChatScreen extends HookConsumerWidget {
     final chatState = ref.watch(chatProvider);
     final chatNotifier = ref.read(chatProvider.notifier);
     final textController = useTextEditingController();
-    final scrollController = useScrollController();
-
-    // Auto scroll to bottom when new messages arrive
-    useEffect(() {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (scrollController.hasClients) {
-          scrollController.animateTo(
-            scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-      return null;
-    }, [chatState.messages.length]);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary500, AppColors.primary700],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.smart_toy_outlined,
-                color: AppColors.light,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.spacing8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Bexly AI Assistant',
-                  style: AppTextStyles.body2,
-                ),
-                Text(
-                  chatState.isTyping ? 'Typing...' : 'Ready to help',
-                  style: AppTextStyles.body4.copyWith(
-                    color: chatState.isTyping
-                        ? AppColors.green100
-                        : AppColors.neutral400,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Clear chat'),
-                  content: const Text(
-                    'Are you sure you want to clear all chat history?',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        chatNotifier.clearChat();
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Clear'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            icon: const Icon(Icons.clear_all),
-          ),
-        ],
-      ),
       body: SafeArea(
         child: Column(
           children: [
+            // AI Assistant header
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.spacing16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary500, AppColors.primary700],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.smart_toy_outlined,
+                      color: AppColors.light,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.spacing12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)?.aiAssistantTitle ?? 'Bexly AI Assistant',
+                          style: AppTextStyles.heading5,
+                        ),
+                        Text(
+                          chatState.isTyping
+                            ? (AppLocalizations.of(context)?.aiAssistantTyping ?? 'Typing...')
+                            : (AppLocalizations.of(context)?.aiAssistantReady ?? 'Ready to help'),
+                          style: AppTextStyles.body4.copyWith(
+                            color: chatState.isTyping
+                                ? AppColors.green100
+                                : AppColors.neutral400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: AppColors.neutral200),
             // Error banner
             if (chatState.error != null)
               Container(
@@ -123,7 +87,7 @@ class AIChatScreen extends HookConsumerWidget {
                     const SizedBox(width: AppSpacing.spacing8),
                     Expanded(
                       child: Text(
-                        'An error occurred. Please try again.',
+                        AppLocalizations.of(context)?.errorOccurred ?? 'An error occurred. Please try again.',
                         style: AppTextStyles.body4.copyWith(
                           color: AppColors.red600,
                         ),
@@ -141,17 +105,19 @@ class AIChatScreen extends HookConsumerWidget {
                 ),
               ),
 
-            // Messages list
+            // Messages list (reversed so newest message is at bottom)
             Expanded(
               child: ListView.builder(
-                controller: scrollController,
+                reverse: true,
                 padding: const EdgeInsets.all(AppSpacing.spacing16),
                 itemCount: chatState.messages.length,
                 itemBuilder: (context, index) {
-                  final message = chatState.messages[index];
+                  // Reverse index to show newest at bottom
+                  final reversedIndex = chatState.messages.length - 1 - index;
+                  final message = chatState.messages[reversedIndex];
                   return _MessageBubble(
                     message: message,
-                    isLast: index == chatState.messages.length - 1,
+                    isLast: index == 0, // First item in reversed list is last message
                   );
                 },
               ),
@@ -273,7 +239,7 @@ class _MessageBubble extends StatelessWidget {
                 const SizedBox(height: AppSpacing.spacing4),
 
                 Text(
-                  _formatTime(message.timestamp),
+                  _formatTime(context, message.timestamp),
                   style: AppTextStyles.body5.copyWith(
                     color: AppColors.neutral400,
                   ),
@@ -303,16 +269,17 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime dateTime) {
+  String _formatTime(BuildContext context, DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
+    final l10n = AppLocalizations.of(context);
 
     if (difference.inMinutes < 1) {
-      return 'Just now';
+      return l10n?.justNow ?? 'Just now';
     } else if (difference.inHours < 1) {
-      return '${difference.inMinutes} minutes ago';
+      return l10n?.minutesAgo(difference.inMinutes) ?? '${difference.inMinutes} minutes ago';
     } else if (difference.inDays < 1) {
-      return '${difference.inHours} hours ago';
+      return l10n?.hoursAgo(difference.inHours) ?? '${difference.inHours} hours ago';
     } else {
       return '${dateTime.day}/${dateTime.month} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     }
@@ -418,7 +385,7 @@ class _ChatInput extends HookWidget {
                   enabled: !isLoading,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
-                hintText: 'Type your message...',
+                hintText: AppLocalizations.of(context)?.typeYourMessage ?? 'Type your message...',
                 hintStyle: AppTextStyles.body2.copyWith(
                   color: AppColors.neutral400,
                 ),

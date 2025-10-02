@@ -15,7 +15,7 @@ class WalletAmountVisibilityButton extends ConsumerWidget {
           ? HugeIcons.strokeRoundedView
           : HugeIcons.strokeRoundedViewOffSlash,
       themeMode: context.themeMode,
-      iconSize: IconSize.tiny,
+      iconSize: IconSize.small, // Changed from tiny to small for consistency
     );
   }
 }
