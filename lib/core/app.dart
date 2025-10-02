@@ -1,11 +1,14 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_constants.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/router/app_router.dart';
+import 'package:bexly/features/settings/presentation/riverpod/language_provider.dart';
 import 'package:bexly/features/theme_switcher/presentation/riverpod/theme_mode_provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:toastification/toastification.dart';
@@ -22,6 +25,7 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final currentLanguage = ref.watch(languageProvider);
 
     final buttonShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(8.0),
@@ -163,6 +167,17 @@ class MyApp extends ConsumerWidget {
         theme: lightTheme,
         darkTheme: darkTheme,
         themeMode: themeMode, // Set the theme mode from the provider
+        locale: Locale(currentLanguage.code),
+        supportedLocales: const [
+          Locale('en', ''),
+          Locale('vi', ''),
+        ],
+        localizationsDelegates: const [
+          AppLocalizationsDelegate(),
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         builder: (context, child) => ResponsiveBreakpoints.builder(
           child: MediaQuery(
             data: MediaQuery.of(context).copyWith(

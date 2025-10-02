@@ -6,6 +6,7 @@ import 'package:bexly/core/components/buttons/circle_button.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
@@ -17,6 +18,7 @@ class MobileBottomAppBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(pageControllerProvider);
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       decoration: BoxDecoration(
@@ -52,11 +54,11 @@ class MobileBottomAppBar extends ConsumerWidget {
         items: [
           BottomNavigationBarItem(
             icon: Icon(HugeIcons.strokeRoundedHome01),
-            label: 'Home',
+            label: l10n.home,
           ),
           BottomNavigationBarItem(
             icon: Icon(HugeIcons.strokeRoundedAiChat01),
-            label: 'AI Chat',
+            label: l10n.aiChat,
           ),
           BottomNavigationBarItem(
             icon: Container(
@@ -73,15 +75,15 @@ class MobileBottomAppBar extends ConsumerWidget {
                 size: 16,
               ),
             ),
-            label: 'Add',
+            label: l10n.add,
           ),
           BottomNavigationBarItem(
             icon: Icon(HugeIcons.strokeRoundedReceiptDollar),
-            label: 'History',
+            label: l10n.history,
           ),
           BottomNavigationBarItem(
             icon: Icon(HugeIcons.strokeRoundedTarget02),
-            label: 'Planning',
+            label: l10n.planning,
           ),
         ],
       ),

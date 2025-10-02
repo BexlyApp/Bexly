@@ -27,8 +27,15 @@ final aiServiceProvider = Provider<AIService>((ref) {
   // Get categories from database
   final categoriesAsync = ref.watch(hierarchicalCategoriesProvider);
   final List<String> categories = categoriesAsync.maybeWhen(
-    data: (cats) => cats.map((c) => c.title).toList(),
-    orElse: () => <String>[],
+    data: (cats) {
+      final categoryNames = cats.map((c) => c.title).toList();
+      Log.d('Categories loaded for AI: ${categoryNames.join(", ")}', label: 'Chat Provider');
+      return categoryNames;
+    },
+    orElse: () {
+      Log.i('Categories not loaded yet, using empty list', label: 'Chat Provider');
+      return <String>[];
+    },
   );
 
   // Get wallet currency for context (use read to avoid rebuild)
@@ -166,6 +173,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
     await _saveMessageToDatabase(userMessage);
 
     try {
+      // Update AI with recent transactions context before sending message
+      await _updateRecentTransactionsContext();
+
       // Start typing indicator
       _startTypingEffect();
 
@@ -327,6 +337,34 @@ class ChatNotifier extends StateNotifier<ChatState> {
               {
                 final listText = await _getTransactionsListText(action);
                 displayMessage += '\n\n' + listText;
+                break;
+              }
+            case 'update_transaction':
+              {
+                Log.d('Processing update_transaction action: $action', label: 'Chat Provider');
+
+                final wallet = _ref.read(activeWalletProvider).valueOrNull;
+                if (wallet == null) {
+                  displayMessage += '\n\n❌ No active wallet selected.';
+                  break;
+                }
+
+                final updateResult = await _updateTransactionFromAction(action);
+                displayMessage += '\n\n' + updateResult;
+                break;
+              }
+            case 'delete_transaction':
+              {
+                Log.d('Processing delete_transaction action: $action', label: 'Chat Provider');
+
+                final wallet = _ref.read(activeWalletProvider).valueOrNull;
+                if (wallet == null) {
+                  displayMessage += '\n\n❌ No active wallet selected.';
+                  break;
+                }
+
+                final deleteResult = await _deleteTransactionFromAction(action);
+                displayMessage += '\n\n' + deleteResult;
                 break;
               }
             default:
@@ -1073,6 +1111,200 @@ class ChatNotifier extends StateNotifier<ChatState> {
       _ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
     } catch (e) {
       Log.e('adjust wallet after create failed: $e', label: 'Chat Provider');
+    }
+  }
+
+  Future<String> _updateTransactionFromAction(Map<String, dynamic> action) async {
+    try {
+      final transactionId = (action['transactionId'] as num).toInt();
+      Log.d('Updating transaction ID: $transactionId', label: 'UPDATE_TRANSACTION');
+
+      // Get transaction from database
+      final db = _ref.read(databaseProvider);
+      final transactions = await db.transactionDao.watchFilteredTransactionsWithDetails(
+        walletId: _ref.read(activeWalletProvider).valueOrNull?.id ?? 0,
+        filter: null,
+      ).first;
+
+      final transaction = transactions.firstWhereOrNull((t) => t.id == transactionId);
+      if (transaction == null) {
+        return '❌ Transaction not found (ID: $transactionId).';
+      }
+
+      // Store old values for wallet balance adjustment
+      final oldAmount = transaction.amount;
+      final oldType = transaction.transactionType;
+
+      // Update fields if provided
+      double? newAmount = action['amount'] != null ? (action['amount'] as num).toDouble() : null;
+      String? newDescription = action['description'];
+      String? newCategoryName = action['category'];
+      DateTime? newDate = action['date'] != null ? DateTime.parse(action['date']) : null;
+
+      // Handle currency conversion
+      if (newAmount != null && action['currency'] != null) {
+        final wallet = _ref.read(activeWalletProvider).valueOrNull;
+        final walletCurrency = wallet?.currency ?? 'VND';
+        final aiCurrency = action['currency'];
+
+        if (aiCurrency == 'VND' && walletCurrency == 'USD') {
+          newAmount = newAmount / 25000;
+        }
+      }
+
+      // Get category if changed
+      CategoryModel? newCategory;
+      if (newCategoryName != null) {
+        final categories = _ref.read(hierarchicalCategoriesProvider).valueOrNull ?? [];
+        newCategory = categories.firstWhereOrNull(
+          (c) => c.title.toLowerCase() == newCategoryName.toLowerCase(),
+        );
+        newCategory ??= categories.firstWhereOrNull(
+          (c) => c.title.toLowerCase().contains(newCategoryName.toLowerCase()) ||
+                 newCategoryName.toLowerCase().contains(c.title.toLowerCase()),
+        );
+        newCategory ??= transaction.category; // Keep old category if not found
+      }
+
+      // Create updated transaction
+      final updatedTransaction = transaction.copyWith(
+        amount: newAmount ?? transaction.amount,
+        title: newDescription ?? transaction.title,
+        category: newCategory ?? transaction.category,
+        date: newDate ?? transaction.date,
+      );
+
+      // Update in database
+      await db.transactionDao.updateTransaction(updatedTransaction);
+
+      // Adjust wallet balance (reverse old, apply new)
+      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      if (wallet != null) {
+        double balanceAdjustment = 0;
+
+        // Reverse old transaction
+        if (oldType == TransactionType.income) {
+          balanceAdjustment -= oldAmount;
+        } else {
+          balanceAdjustment += oldAmount;
+        }
+
+        // Apply new transaction
+        if (updatedTransaction.transactionType == TransactionType.income) {
+          balanceAdjustment += updatedTransaction.amount;
+        } else {
+          balanceAdjustment -= updatedTransaction.amount;
+        }
+
+        final updatedWallet = wallet.copyWith(balance: wallet.balance + balanceAdjustment);
+        await db.walletDao.updateWallet(updatedWallet);
+        _ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
+      }
+
+      // Invalidate providers to refresh UI
+      _ref.invalidate(transactionListProvider);
+
+      final amountText = _formatAmount(updatedTransaction.amount, currency: wallet?.currency ?? 'VND');
+      return '✅ Updated transaction: ${updatedTransaction.title} → $amountText (${updatedTransaction.category.title})';
+    } catch (e, stackTrace) {
+      Log.e('Failed to update transaction: $e', label: 'UPDATE_TRANSACTION');
+      Log.e('Stack trace: $stackTrace', label: 'UPDATE_TRANSACTION');
+      return '❌ Failed to update transaction: $e';
+    }
+  }
+
+  Future<String> _deleteTransactionFromAction(Map<String, dynamic> action) async {
+    try {
+      final transactionId = (action['transactionId'] as num).toInt();
+      Log.d('Deleting transaction ID: $transactionId', label: 'DELETE_TRANSACTION');
+
+      // Get transaction from database
+      final db = _ref.read(databaseProvider);
+      final transactions = await db.transactionDao.watchFilteredTransactionsWithDetails(
+        walletId: _ref.read(activeWalletProvider).valueOrNull?.id ?? 0,
+        filter: null,
+      ).first;
+
+      final transaction = transactions.firstWhereOrNull((t) => t.id == transactionId);
+      if (transaction == null) {
+        return '❌ Transaction not found (ID: $transactionId).';
+      }
+
+      // Store info for confirmation message
+      final amount = transaction.amount;
+      final description = transaction.title;
+      final type = transaction.transactionType;
+
+      // Delete from database
+      await db.transactionDao.deleteTransaction(transactionId);
+
+      // Adjust wallet balance (reverse the transaction)
+      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      if (wallet != null) {
+        double balanceAdjustment = 0;
+
+        if (type == TransactionType.income) {
+          balanceAdjustment -= amount; // Remove income
+        } else {
+          balanceAdjustment += amount; // Remove expense (add back)
+        }
+
+        final updatedWallet = wallet.copyWith(balance: wallet.balance + balanceAdjustment);
+        await db.walletDao.updateWallet(updatedWallet);
+        _ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
+      }
+
+      // Invalidate providers to refresh UI
+      _ref.invalidate(transactionListProvider);
+
+      final amountText = _formatAmount(amount, currency: wallet?.currency ?? 'VND');
+      return '✅ Deleted transaction: $description ($amountText)';
+    } catch (e, stackTrace) {
+      Log.e('Failed to delete transaction: $e', label: 'DELETE_TRANSACTION');
+      Log.e('Stack trace: $stackTrace', label: 'DELETE_TRANSACTION');
+      return '❌ Failed to delete transaction: $e';
+    }
+  }
+
+  /// Update AI service with recent transactions context
+  Future<void> _updateRecentTransactionsContext() async {
+    try {
+      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      if (wallet == null || wallet.id == null) {
+        Log.d('No active wallet or wallet ID is null, skipping transaction context update', label: 'Chat Provider');
+        return;
+      }
+
+      // Get recent 10 transactions
+      final db = _ref.read(databaseProvider);
+      final transactions = await db.transactionDao.watchFilteredTransactionsWithDetails(
+        walletId: wallet.id!,
+        filter: null,
+      ).first;
+
+      // Take only the 10 most recent
+      final recentTransactions = transactions.take(10).toList();
+
+      if (recentTransactions.isEmpty) {
+        Log.d('No recent transactions to provide to AI', label: 'Chat Provider');
+        _aiService.updateRecentTransactions('');
+        return;
+      }
+
+      // Format transactions as context string
+      final context = StringBuffer();
+      for (final tx in recentTransactions) {
+        final amountText = _formatAmount(tx.amount, currency: wallet.currency);
+        final typeIcon = tx.transactionType == TransactionType.income ? '📈' : '📉';
+        context.writeln('#${tx.id} - $typeIcon $amountText - ${tx.title} (${tx.category.title})');
+      }
+
+      final contextString = context.toString().trim();
+      Log.d('Updating AI with recent transactions:\n$contextString', label: 'Chat Provider');
+      _aiService.updateRecentTransactions(contextString);
+    } catch (e, stackTrace) {
+      Log.e('Failed to update recent transactions context: $e', label: 'Chat Provider');
+      Log.e('Stack trace: $stackTrace', label: 'Chat Provider');
     }
   }
 
