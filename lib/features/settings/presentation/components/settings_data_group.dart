@@ -82,6 +82,9 @@ class SettingsDataGroup extends ConsumerWidget {
 
               if (shouldLogout == true && context.mounted) {
                 try {
+                  // Reset sync status on logout
+                  await SyncTriggerService.resetSyncStatus();
+
                   // Sign out from Firebase (DOS-Me)
                   final dosmeApp = FirebaseInitService.dosmeApp;
                   if (dosmeApp != null) {

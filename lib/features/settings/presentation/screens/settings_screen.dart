@@ -32,6 +32,7 @@ import 'package:bexly/features/theme_switcher/presentation/components/theme_mode
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/core/services/sync/sync_trigger_service.dart';
 
 part '../components/app_version_info.dart';
 part '../components/profile_card.dart';

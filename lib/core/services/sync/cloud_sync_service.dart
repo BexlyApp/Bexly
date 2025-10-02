@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/database/database_provider.dart';
@@ -14,12 +14,12 @@ import 'package:bexly/core/utils/uuid_generator.dart';
 /// - Cloud data: UUID v7 (cloudId) as document ID
 /// - Mapping: cloudId stored in local database for sync
 class CloudSyncService {
-  final PockawDatabase _localDb;
+  final AppDatabase _localDb;
   final FirebaseFirestore _firestore;
   final String? _userId;
 
   CloudSyncService({
-    required PockawDatabase localDb,
+    required AppDatabase localDb,
     required FirebaseFirestore firestore,
     String? userId,
   })  : _localDb = localDb,
@@ -65,9 +65,10 @@ class CloudSyncService {
 
       // Update local database with cloudId if it was just generated
       if (wallet.cloudId == null) {
-        await _localDb.walletDao.updateWallet(
+        await (_localDb.update(_localDb.wallets)
+              ..where((w) => w.id.equals(wallet.id)))
+            .write(
           WalletsCompanion(
-            id: Value(wallet.id),
             cloudId: Value(cloudId),
             updatedAt: Value(DateTime.now()),
           ),

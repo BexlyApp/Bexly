@@ -35,6 +35,14 @@ class Log {
     _console('$message', label: 'info_$label', logToFile: logToFile);
   }
 
+  static void w(
+    dynamic message, {
+    String label = 'log',
+    bool logToFile = true,
+  }) {
+    _console('$message', label: 'warning_$label', logToFile: logToFile);
+  }
+
   static void e(
     dynamic message, {
     String label = 'log',
