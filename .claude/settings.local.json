@@ -126,7 +126,22 @@
       "Bash(nc localhost 58864)",
       "Bash(nc localhost 63890)",
       "Bash(git rm:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(git stash:*)",
+      "Bash(dart run build_runner build:*)",
+      "Bash(nc localhost 49156)",
+      "Bash(del nul)",
+      "Bash(taskkill:*)",
+      "Bash(D:/Dev/flutter/bin/flutter clean)",
+      "Bash(ping:*)",
+      "Bash(D:/Dev/flutter/bin/flutter analyze)",
+      "Read(//c/Users/JOY/AppData/Local/Android/**)",
+      "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" shell pm clear com.joy.bexly)",
+      "Bash(nc localhost 56542)",
+      "Bash(D:/Dev/flutter/bin/flutter analyze lib/core/services/sync/)",
+      "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" install -r \"d:\\Projects\\Bexly\\build\\app\\outputs\\flutter-apk\\app-release.apk\")",
+      "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" uninstall com.joy.bexly)",
+      "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" install \"d:\\Projects\\Bexly\\build\\app\\outputs\\flutter-apk\\app-release.apk\")"
     ],
     "deny": [],
     "ask": []
