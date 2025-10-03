@@ -89,6 +89,9 @@ After your response, return ACTION_JSON on a new line with ONE of these schemas:
 9. delete_transaction:
 {"action":"delete_transaction","transactionId":<number>}
 
+10. create_wallet:
+{"action":"create_wallet","name":"<string>","currency":"USD|VND","initialBalance":<number>?,"iconName":"<string>"?,"colorHex":"<string>"?}
+
 Format: ACTION_JSON: <json_object>''';
 
   /// Business rules for handling different request types
@@ -104,6 +107,7 @@ BUSINESS RULES:
 7. Transaction listing → list_transactions
 8. Edit/update existing transaction → update_transaction (requires transactionId)
 9. Delete/remove transaction → delete_transaction (requires transactionId)
+10. Create new wallet → create_wallet (initialBalance defaults to 0 if not specified)
 
 EXPENSE vs INCOME CLASSIFICATION - CRITICAL:
 

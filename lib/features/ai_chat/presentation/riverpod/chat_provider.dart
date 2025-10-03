@@ -10,6 +10,7 @@ import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/features/category/presentation/riverpod/category_providers.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
@@ -367,6 +368,14 @@ class ChatNotifier extends StateNotifier<ChatState> {
                 displayMessage += '\n\n' + deleteResult;
                 break;
               }
+            case 'create_wallet':
+              {
+                Log.d('Processing create_wallet action: $action', label: 'Chat Provider');
+
+                final createResult = await _createWalletFromAction(action);
+                displayMessage += '\n\n' + createResult;
+                break;
+              }
             default:
               {
                 Log.d('Unknown action: $actionType', label: 'Chat Provider');
@@ -403,18 +412,19 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       Log.e('Error sending message: $error', label: 'Chat Provider');
 
-      // Parse error message for user-friendly display
-      String userFriendlyMessage = 'Sorry, an error occurred. Please try again later.';
+      // Show detailed error message for debugging
       String errorString = error.toString();
+      String userFriendlyMessage = 'Error: $errorString';
 
+      // Parse error message for user-friendly display
       if (errorString.contains('Invalid API key')) {
-        userFriendlyMessage = 'Invalid API key configured. Please check your OpenAI API key in the .env file.';
+        userFriendlyMessage = 'Invalid API key: $errorString';
       } else if (errorString.contains('Rate limit')) {
-        userFriendlyMessage = 'Too many requests. Please wait a moment and try again.';
+        userFriendlyMessage = 'Rate limit: $errorString';
       } else if (errorString.contains('temporarily unavailable')) {
-        userFriendlyMessage = 'The AI service is temporarily unavailable. Please try again later.';
+        userFriendlyMessage = 'Service unavailable: $errorString';
       } else if (errorString.contains('Failed host lookup') || errorString.contains('SocketException')) {
-        userFriendlyMessage = 'Network connection error. Please check your internet connection.';
+        userFriendlyMessage = 'Network error: $errorString';
       }
 
       state = state.copyWith(
@@ -1210,6 +1220,40 @@ class ChatNotifier extends StateNotifier<ChatState> {
       Log.e('Failed to update transaction: $e', label: 'UPDATE_TRANSACTION');
       Log.e('Stack trace: $stackTrace', label: 'UPDATE_TRANSACTION');
       return '❌ Failed to update transaction: $e';
+    }
+  }
+
+  Future<String> _createWalletFromAction(Map<String, dynamic> action) async {
+    try {
+      final name = (action['name'] as String?) ?? 'New Wallet';
+      final currency = (action['currency'] as String?) ?? 'VND';
+      final initialBalance = (action['initialBalance'] as num?)?.toDouble() ?? 0.0;
+      final iconName = (action['iconName'] as String?) ?? 'wallet';
+      final colorHex = (action['colorHex'] as String?) ?? '#4CAF50';
+
+      Log.d('Creating wallet: $name, currency: $currency, balance: $initialBalance', label: 'CREATE_WALLET');
+
+      // Create wallet model
+      final wallet = WalletModel(
+        name: name,
+        currency: currency,
+        balance: initialBalance,
+        iconName: iconName,
+        colorHex: colorHex,
+      );
+
+      // Save to database
+      final db = _ref.read(databaseProvider);
+      final walletId = await db.walletDao.addWallet(wallet);
+
+      final createdWallet = wallet.copyWith(id: walletId);
+      final amountText = _formatAmount(initialBalance, currency: currency);
+
+      return '✅ Created wallet "$name" with initial balance of $amountText';
+    } catch (e, stackTrace) {
+      Log.e('Failed to create wallet: $e', label: 'CREATE_WALLET');
+      Log.e('Stack trace: $stackTrace', label: 'CREATE_WALLET');
+      return '❌ Failed to create wallet: $e';
     }
   }
 
