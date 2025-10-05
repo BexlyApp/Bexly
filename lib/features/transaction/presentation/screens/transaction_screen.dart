@@ -19,7 +19,7 @@ class TransactionScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final allTransactionsAsyncValue = ref.watch(transactionListProvider);
+    final allTransactionsAsyncValue = ref.watch(allTransactionsProvider);
     final isFilterActive = ref.watch(transactionFilterProvider);
 
     return CustomScaffold(

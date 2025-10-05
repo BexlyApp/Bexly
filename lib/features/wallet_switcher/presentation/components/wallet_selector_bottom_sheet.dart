@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:bexly/core/components/bottom_sheets/alert_bottom_sheet.dart';
 import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_filter_provider.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
@@ -16,7 +16,7 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final allWalletsAsync = ref.watch(allWalletsStreamProvider);
-    final activeWalletAsync = ref.watch(activeWalletProvider);
+    final selectedWallet = ref.watch(dashboardWalletFilterProvider);
 
     return CustomBottomSheet(
       title: 'Select Wallet',
@@ -30,20 +30,55 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
               ),
             );
           }
+          // Check if currently showing total (selectedWallet is null)
+          final isShowingTotal = selectedWallet == null;
+
           return ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: wallets.length,
+            itemCount: wallets.length + 1, // +1 for "Total" option
             itemBuilder: (context, index) {
-              final wallet = wallets[index];
-              final bool isSelected =
-                  activeWalletAsync.valueOrNull?.id == wallet.id;
+              // First item is "Total (All Wallets)"
+              if (index == 0) {
+                return ListTile(
+                  title: Text('Total Balance', style: AppTextStyles.body1),
+                  dense: true,
+                  leading: const Icon(HugeIcons.strokeRoundedWallet01),
+                  subtitle: Text(
+                    'View combined balance from all wallets',
+                    style: AppTextStyles.body3,
+                  ),
+                  trailing: Icon(
+                    isShowingTotal
+                        ? HugeIcons.strokeRoundedCheckmarkCircle01
+                        : HugeIcons.strokeRoundedCircle,
+                    color: isShowingTotal ? Colors.green : Colors.grey,
+                  ),
+                  onTap: () {
+                    // If callback provided, we can't select "Total" (need specific wallet)
+                    if (onWalletSelected != null) {
+                      return;
+                    }
+
+                    if (isShowingTotal) {
+                      context.pop(); // Already showing total, just close
+                      return;
+                    }
+
+                    // Set filter to null to show total
+                    ref.read(dashboardWalletFilterProvider.notifier).state = null;
+                    context.pop(); // Close the bottom sheet
+                  },
+                );
+              }
+
+              // Other items are individual wallets
+              final wallet = wallets[index - 1]; // -1 because first item is Total
+              final bool isSelected = selectedWallet?.id == wallet.id;
 
               return ListTile(
                 title: Text(wallet.name, style: AppTextStyles.body1),
                 dense: true,
-                // You can add icons or other details here
-                // leading: wallet.iconName != null ? Icon(...) : null,
                 subtitle: Text(
                   '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}',
                   style: AppTextStyles.body3,
@@ -58,31 +93,19 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
                   // If callback provided, just call it (for budget form use)
                   if (onWalletSelected != null) {
                     onWalletSelected!(wallet);
+                    context.pop();
                     return;
                   }
 
-                  // Otherwise, show confirmation for switching active wallet
-                  if (isSelected) return;
-                  showModalBottomSheet(
-                    context: context,
-                    showDragHandle: true,
-                    builder: (context) {
-                      return AlertBottomSheet(
-                        title: 'Switch Wallet',
-                        content: Text(
-                          'Are you sure you want to switch to ${wallet.name}?',
-                          style: AppTextStyles.body2,
-                        ),
-                        onConfirm: () {
-                          ref
-                              .read(activeWalletProvider.notifier)
-                              .setActiveWallet(wallet);
-                          context.pop(); // Close the dialog
-                          context.pop(); // Close the bottom sheet
-                        },
-                      );
-                    },
-                  );
+                  // Already selected, just close
+                  if (isSelected) {
+                    context.pop();
+                    return;
+                  }
+
+                  // Set wallet filter (no confirmation needed - just a filter)
+                  ref.read(dashboardWalletFilterProvider.notifier).state = wallet;
+                  context.pop(); // Close the bottom sheet
                 },
               );
             },

@@ -48,13 +48,19 @@ Vietnamese shorthand:
 - "70tr" → 70,000,000 VND
 - Numbers may use dots/spaces as separators (1.000.000 or 1 000 000)
 
-Currency detection:
-- "\$100" OR "100 đô" → 100 USD (đô = dollar)
-- "100 đồng" OR "100 đồng Việt Nam" OR "100 VND" → 100 VND
-- "1 triệu đô" → 1,000,000 USD (NOT VND!)
-- "1 triệu đồng" → 1,000,000 VND (NOT USD!)
+Currency detection (CRITICAL - READ CAREFULLY):
+- "đô" / "dollar" / "\$" → ALWAYS USD, NEVER VND
+  Examples: "100 đô" = 100 USD, "2000 đô" = 2000 USD, "1 triệu đô" = 1,000,000 USD
+- "đồng" / "VND" / "Việt Nam đồng" → ALWAYS VND, NEVER USD
+  Examples: "100 đồng" = 100 VND, "2000 đồng" = 2000 VND, "1tr đồng" = 1,000,000 VND
+- NO CURRENCY MENTIONED → Use wallet default (VND if not specified)
 
-CRITICAL: Always include "currency" field in ACTION_JSON ("USD" or "VND")''';
+CRITICAL RULES:
+1. "đô" ≠ "đồng" - These are DIFFERENT words!
+2. "đô" = USD (American dollar)
+3. "đồng" = VND (Vietnamese dong)
+4. ALWAYS include "currency" field in ACTION_JSON ("USD" or "VND")
+5. Double-check currency before generating JSON''';
 
   /// JSON schema definitions for all available actions
   String get actionSchemas => '''
@@ -256,13 +262,19 @@ Vietnamese shorthand:
 - "70tr" → 70,000,000 VND
 - Numbers may use dots/spaces as separators (1.000.000 or 1 000 000)
 
-Currency detection:
-- "\$100" OR "100 đô" → 100 USD (đô = dollar)
-- "100 đồng" OR "100 đồng Việt Nam" OR "100 VND" → 100 VND
-- "1 triệu đô" → 1,000,000 USD (NOT VND!)
-- "1 triệu đồng" → 1,000,000 VND (NOT USD!)
+Currency detection (CRITICAL - READ CAREFULLY):
+- "đô" / "dollar" / "\$" → ALWAYS USD, NEVER VND
+  Examples: "100 đô" = 100 USD, "2000 đô" = 2000 USD, "1 triệu đô" = 1,000,000 USD
+- "đồng" / "VND" / "Việt Nam đồng" → ALWAYS VND, NEVER USD
+  Examples: "100 đồng" = 100 VND, "2000 đồng" = 2000 VND, "1tr đồng" = 1,000,000 VND
+- NO CURRENCY MENTIONED → Use wallet default (VND if not specified)
 
-CRITICAL: Always include "currency" field in ACTION_JSON ("USD" or "VND")''';
+CRITICAL RULES:
+1. "đô" ≠ "đồng" - These are DIFFERENT words!
+2. "đô" = USD (American dollar)
+3. "đồng" = VND (Vietnamese dong)
+4. ALWAYS include "currency" field in ACTION_JSON ("USD" or "VND")
+5. Double-check currency before generating JSON''';
 
   /// JSON schema definitions for all available actions
   String get _actionSchemas => '''
@@ -556,13 +568,19 @@ Vietnamese shorthand:
 - "70tr" → 70,000,000 VND
 - Numbers may use dots/spaces as separators (1.000.000 or 1 000 000)
 
-Currency detection:
-- "\$100" OR "100 đô" → 100 USD (đô = dollar)
-- "100 đồng" OR "100 đồng Việt Nam" OR "100 VND" → 100 VND
-- "1 triệu đô" → 1,000,000 USD (NOT VND!)
-- "1 triệu đồng" → 1,000,000 VND (NOT USD!)
+Currency detection (CRITICAL - READ CAREFULLY):
+- "đô" / "dollar" / "\$" → ALWAYS USD, NEVER VND
+  Examples: "100 đô" = 100 USD, "2000 đô" = 2000 USD, "1 triệu đô" = 1,000,000 USD
+- "đồng" / "VND" / "Việt Nam đồng" → ALWAYS VND, NEVER USD
+  Examples: "100 đồng" = 100 VND, "2000 đồng" = 2000 VND, "1tr đồng" = 1,000,000 VND
+- NO CURRENCY MENTIONED → Use wallet default (VND if not specified)
 
-CRITICAL: Always include "currency" field in ACTION_JSON ("USD" or "VND")''';
+CRITICAL RULES:
+1. "đô" ≠ "đồng" - These are DIFFERENT words!
+2. "đô" = USD (American dollar)
+3. "đồng" = VND (Vietnamese dong)
+4. ALWAYS include "currency" field in ACTION_JSON ("USD" or "VND")
+5. Double-check currency before generating JSON''';
 
   /// JSON schema definitions for all available actions
   String get _actionSchemas => '''

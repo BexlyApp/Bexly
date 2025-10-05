@@ -213,46 +213,40 @@ class ChatNotifier extends StateNotifier<ChatState> {
             case 'create_expense':
             case 'create_income':
               {
-                // Get wallet currency to handle amount conversion
-                final wallet = _ref.read(activeWalletProvider).valueOrNull;
-                final walletCurrency = wallet?.currency ?? 'VND';
-
-                // Convert amount if needed (AI returns VND by default)
+                // Get currency from AI action
                 double amount = (action['amount'] as num).toDouble();
                 final aiCurrency = action['currency'] ?? 'VND';
 
-                Log.d('AI action amount: $amount $aiCurrency, Wallet currency: $walletCurrency', label: 'AI_CURRENCY');
+                Log.d('AI action: amount=$amount, currency=$aiCurrency', label: 'AI_CURRENCY');
 
-                // Convert VND to USD if wallet uses USD
-                if (aiCurrency == 'VND' && walletCurrency == 'USD') {
-                  amount = amount / 25000; // Simple conversion rate
-                  Log.d('Converted VND to USD: $amount', label: 'AI_CURRENCY');
+                // Find wallet matching AI currency, or use active wallet
+                final allWallets = await _ref.read(walletListProvider.future);
+                WalletModel? wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
+
+                if (wallet == null) {
+                  // No wallet with matching currency, use active wallet
+                  wallet = _ref.read(activeWalletProvider).valueOrNull;
+                  Log.d('No wallet found for $aiCurrency, using active wallet: ${wallet?.currency}', label: 'AI_CURRENCY');
+                } else {
+                  Log.d('Found wallet "${wallet.name}" for currency $aiCurrency', label: 'AI_CURRENCY');
                 }
 
-                // Update action with converted amount
-                action['amount'] = amount;
+                final walletCurrency = wallet?.currency ?? 'VND';
 
                 final description = action['description'];
                 final category = action['category'];
                 Log.d('Creating transaction: action=${action['action']}, amount=$amount $walletCurrency, desc=$description, cat=$category', label: 'Chat Provider');
 
-                await _createTransactionFromAction(action);
+                await _createTransactionFromAction(action, wallet: wallet);
 
                 final isIncome = actionType == 'create_income';
                 final amountText = _formatAmount(amount, currency: walletCurrency);
                 final dateText = _formatDatePhrase(DateTime.now());
                 final walletName = wallet?.name ?? 'My Wallet';
 
-                // Show conversion info if currency was converted
-                String conversionNote = '';
-                if (aiCurrency == 'VND' && walletCurrency == 'USD') {
-                  final vndAmount = (action['amount'] as num) * 25000;
-                  conversionNote = ' (from ${_formatAmount(vndAmount, currency: 'VND')})';
-                }
-
                 final confirmText = isIncome
-                    ? 'Recorded income of ' + amountText + conversionNote + ' to "' + walletName + '" for ' + (action['description']).toString() + ' (Category: ' + (action['category']).toString() + ') on ' + dateText + '.'
-                    : 'Recorded expense of ' + amountText + conversionNote + ' from "' + walletName + '" for ' + (action['description']).toString() + ' (Category: ' + (action['category']).toString() + ') on ' + dateText + '.';
+                    ? 'Recorded income of ' + amountText + ' to "' + walletName + '" for ' + (action['description']).toString() + ' (Category: ' + (action['category']).toString() + ') on ' + dateText + '.'
+                    : 'Recorded expense of ' + amountText + ' from "' + walletName + '" for ' + (action['description']).toString() + ' (Category: ' + (action['category']).toString() + ') on ' + dateText + '.';
                 displayMessage += '\n\n✅ ' + confirmText;
                 break;
               }
@@ -502,7 +496,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     _initializeChat();
   }
 
-  Future<void> _createTransactionFromAction(Map<String, dynamic> action) async {
+  Future<void> _createTransactionFromAction(Map<String, dynamic> action, {WalletModel? wallet}) async {
     try {
       // Print to console for debugging
       print('========================================');
@@ -513,11 +507,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
       Log.d('_createTransactionFromAction START', label: 'TRANSACTION_DEBUG');
       Log.d('Action received: $action', label: 'TRANSACTION_DEBUG');
 
-      // Get current wallet - IMPORTANT: Use read to get current value
-      final walletState = _ref.read(activeWalletProvider);
-      Log.d('Wallet state: $walletState', label: 'TRANSACTION_DEBUG');
+      // Use provided wallet or get current wallet
+      wallet ??= _ref.read(activeWalletProvider).valueOrNull;
 
-      final wallet = walletState.valueOrNull;
       if (wallet == null || wallet.id == null) {
         Log.e('ERROR: No wallet available or wallet ID is null!', label: 'TRANSACTION_DEBUG');
         return;
@@ -634,9 +626,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
       // This ensures the transaction list is refreshed after insert
       Log.d('Forcing transaction provider refresh...', label: 'TRANSACTION_DEBUG');
 
-      // Only invalidate transaction list, not wallet providers
+      // Invalidate both transaction providers to update UI
       // Wallet balance is already updated via _adjustWalletBalanceAfterCreate
       _ref.invalidate(transactionListProvider);
+      _ref.invalidate(allTransactionsProvider);
 
       Log.d('Transaction list provider invalidated, UI should update', label: 'TRANSACTION_DEBUG');
 

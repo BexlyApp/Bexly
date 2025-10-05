@@ -14,6 +14,7 @@ class CustomCurrencyChip extends StatelessWidget {
   final Color? borderColor;
   final IconData? icon;
   final Color? iconColor;
+  final String? countryCodeOverride; // Override to use country code instead of currency code
   const CustomCurrencyChip({
     super.key,
     required this.currencyCode,
@@ -23,6 +24,7 @@ class CustomCurrencyChip extends StatelessWidget {
     this.icon,
     this.iconColor,
     this.borderColor,
+    this.countryCodeOverride,
   });
 
   @override
@@ -40,14 +42,23 @@ class CustomCurrencyChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CountryFlag.fromCurrencyCode(
-            currencyCode,
-            theme: ImageTheme(
-              width: 20,
-              height: 14,
-              shape: RoundedRectangle(AppRadius.radius4),
-            ),
-          ),
+          countryCodeOverride != null
+              ? CountryFlag.fromCountryCode(
+                  countryCodeOverride!,
+                  theme: ImageTheme(
+                    width: 20,
+                    height: 14,
+                    shape: RoundedRectangle(AppRadius.radius4),
+                  ),
+                )
+              : CountryFlag.fromCurrencyCode(
+                  currencyCode,
+                  theme: ImageTheme(
+                    width: 20,
+                    height: 14,
+                    shape: RoundedRectangle(AppRadius.radius4),
+                  ),
+                ),
           const Gap(AppSpacing.spacing4),
           Text(label, style: AppTextStyles.body4.copyWith(color: foreground)),
         ],

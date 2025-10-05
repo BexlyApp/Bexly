@@ -7,7 +7,7 @@ class RecentTransactionList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Added WidgetRef
-    final asyncTransactions = ref.watch(transactionListProvider);
+    final asyncTransactions = ref.watch(allTransactionsProvider);
 
     return asyncTransactions.when(
       data: (allTransactions) {

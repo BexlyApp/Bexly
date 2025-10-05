@@ -16,6 +16,7 @@ class Routes {
   static const String categoryIconAssetPicker = '/category-pick-icon-asset';
   // static const String categoryForm = '/category-form';
   static const String manageWallets = '/manage-wallets';
+  static const String baseCurrencySetting = '/base-currency-setting';
   static const String goalDetails = '/goal-details';
   static const String budgetDetails = '/budget-details';
   static const String budgetForm = '/budget-form';

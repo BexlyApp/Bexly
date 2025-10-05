@@ -44,6 +44,9 @@ extension WalletModelUtils on WalletModel {
 
   Currency currencyByIsoCode(WidgetRef ref) {
     final currencies = ref.read(currenciesStaticProvider);
-    return currencies.fromIsoCode(currency) ?? CurrencyLocalDataSource.dummy;
+    print('DEBUG currencyByIsoCode - Looking for: $currency in ${currencies.length} currencies');
+    final found = currencies.fromIsoCode(currency);
+    print('DEBUG currencyByIsoCode - Found: ${found?.isoCode ?? "null, using dummy"}');
+    return found ?? CurrencyLocalDataSource.dummy;
   }
 }

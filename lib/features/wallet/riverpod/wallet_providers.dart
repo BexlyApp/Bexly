@@ -1,5 +1,6 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 // import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart'; // No longer needed for hardcoded list
@@ -25,21 +26,11 @@ class ActiveWalletNotifier extends StateNotifier<AsyncValue<WalletModel?>> {
     initializeActiveWallet();
   }
 
-  // Renamed to fetchAndSetInitialWallet for clarity
+  // Initialize with null to show total balance by default
   Future<void> initializeActiveWallet() async {
     try {
-      final db = _ref.read(databaseProvider);
-      // Attempt to get the first wallet from the database
-      // Using watchAllWallets().first might be problematic if the stream doesn't emit quickly during init.
-      final wallets = await db.walletDao.watchAllWallets().first;
-      if (wallets.isNotEmpty) {
-        state = AsyncValue.data(wallets.first);
-      } else {
-        // This case should ideally not happen if default wallets are populated.
-        // If it does, it means no wallets exist.
-        // change to defaultWallets.first to avoid null value
-        state = const AsyncValue.data(null); // No active wallet
-      }
+      // Default to showing total balance (null = show all wallets combined)
+      state = const AsyncValue.data(null);
     } catch (e, s) {
       state = AsyncValue.error(e, s);
     }
@@ -108,3 +99,68 @@ final activeWalletProvider =
     ) {
       return ActiveWalletNotifier(ref);
     });
+
+/// Provider to calculate total balance grouped by currency from all wallets.
+/// Returns a Map where key is currency ISO code and value is total balance.
+final totalBalanceProvider = Provider<Map<String, double>>((ref) {
+  final walletsAsync = ref.watch(allWalletsStreamProvider);
+
+  return walletsAsync.when(
+    data: (wallets) {
+      final Map<String, double> totals = {};
+
+      for (final wallet in wallets) {
+        final currency = wallet.currency;
+        totals[currency] = (totals[currency] ?? 0.0) + wallet.balance;
+      }
+
+      return totals;
+    },
+    loading: () => {},
+    error: (_, __) => {},
+  );
+});
+
+/// Provider to calculate total balance converted to base currency
+/// This is async because it needs to fetch exchange rates
+final totalBalanceConvertedProvider = FutureProvider<double>((ref) async {
+  try {
+    final walletsAsync = ref.watch(allWalletsStreamProvider);
+    final baseCurrency = ref.watch(baseCurrencyProvider);
+    final rateCache = ref.watch(exchangeRateCacheProvider.notifier);
+
+    // Wait for wallets to load
+    final wallets = walletsAsync.maybeWhen(
+      data: (data) => data,
+      orElse: () => <WalletModel>[],
+    );
+
+    if (wallets.isEmpty) {
+      return 0.0;
+    }
+
+    double total = 0.0;
+
+    for (final wallet in wallets) {
+      if (wallet.currency == baseCurrency) {
+        // Same currency, just add
+        total += wallet.balance;
+      } else {
+        // Convert to base currency
+        try {
+          final rate = await rateCache.getRate(wallet.currency, baseCurrency);
+          total += wallet.balance * rate;
+        } catch (e) {
+          Log.e('Failed to get exchange rate for ${wallet.currency} -> $baseCurrency: $e', label: 'TotalBalance');
+          // If rate fetch fails, just add the amount as-is (fallback)
+          total += wallet.balance;
+        }
+      }
+    }
+
+    return total;
+  } catch (e) {
+    Log.e('Error calculating total balance: $e', label: 'TotalBalance');
+    return 0.0;
+  }
+});

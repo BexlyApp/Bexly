@@ -37,8 +37,10 @@ class SplashScreen extends HookConsumerWidget {
 
           // Fetch currencies and populate the static provider
           // Using ref.read(currenciesProvider.future) to get the future directly
+          Log.d('Starting to load currencies...', label: 'currencies');
           try {
             final currencyList = await ref.read(currenciesProvider.future);
+            Log.d('Loaded ${currencyList.length} currencies from provider', label: 'currencies');
             ref.read(currenciesStaticProvider.notifier).state = currencyList;
             Log.d(currencyList.length, label: 'currencies populated');
 

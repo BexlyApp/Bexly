@@ -7,7 +7,15 @@ class ProfileCard extends ConsumerWidget {
   Widget build(BuildContext context, ref) {
     final auth = ref.watch(authStateProvider);
     final colorScheme = Theme.of(context).colorScheme;
-    final wallet = ref.watch(activeWalletProvider).value ?? wallets.first;
+
+    // Use base currency for text display
+    final baseCurrency = ref.watch(baseCurrencyProvider);
+    final currencies = ref.watch(currenciesStaticProvider);
+    final currencyObj = currencies.fromIsoCode(baseCurrency);
+
+    // Use language for flag display
+    final currentLanguage = ref.watch(languageProvider);
+    final countryCode = _getCountryCodeFromLanguage(currentLanguage.code);
     return Row(
       children: [
         CircleAvatar(
@@ -43,9 +51,9 @@ class ProfileCard extends ConsumerWidget {
             ),
             const Gap(AppSpacing.spacing8),
             CustomCurrencyChip(
-              currencyCode: wallet.currency,
-              label:
-                  '${wallet.currencyByIsoCode(ref).symbol} - ${wallet.currencyByIsoCode(ref).country}',
+              currencyCode: baseCurrency,
+              countryCodeOverride: countryCode,
+              label: '${currencyObj?.symbol ?? baseCurrency} - ${currencyObj?.name ?? baseCurrency}',
               background: context.purpleBackground,
               borderColor: context.purpleBorderLighter,
               foreground: context.purpleText,
@@ -54,5 +62,27 @@ class ProfileCard extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  String _getCountryCodeFromLanguage(String languageCode) {
+    // Map language codes to country codes
+    switch (languageCode.toLowerCase()) {
+      case 'vi':
+        return 'VN'; // Vietnam
+      case 'en':
+        return 'US'; // United States
+      case 'zh':
+        return 'CN'; // China
+      case 'ja':
+        return 'JP'; // Japan
+      case 'ko':
+        return 'KR'; // Korea
+      case 'th':
+        return 'TH'; // Thailand
+      case 'id':
+        return 'ID'; // Indonesia
+      default:
+        return 'US'; // Default to US
+    }
   }
 }

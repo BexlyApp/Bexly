@@ -20,6 +20,7 @@ class CustomTextField extends TextField {
     super.maxLines,
     super.onChanged,
     super.onTap,
+    super.enabled,
     BuildContext? context,
     bool isRequired = false,
     Widget? customCounter,
