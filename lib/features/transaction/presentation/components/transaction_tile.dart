@@ -29,11 +29,7 @@ class TransactionTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
-    final currency = ref
-        .read(activeWalletProvider)
-        .value
-        ?.currencyByIsoCode(ref)
-        .symbol;
+    final currency = transaction.wallet.currencyByIsoCode(ref).symbol ?? transaction.wallet.currency;
 
     return InkWell(
       onTap: () {

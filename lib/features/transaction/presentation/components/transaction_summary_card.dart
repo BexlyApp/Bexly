@@ -12,6 +12,9 @@ import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
+import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 
 class TransactionSummaryCard extends ConsumerWidget {
   final List<TransactionModel> transactions;
@@ -19,11 +22,10 @@ class TransactionSummaryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
-    final currency = ref
-        .read(activeWalletProvider)
-        .value
-        ?.currencyByIsoCode(ref)
-        .symbol;
+    // Use base currency for display
+    final baseCurrency = ref.read(baseCurrencyProvider);
+    final currencies = ref.read(currenciesStaticProvider);
+    final currency = currencies.fromIsoCode(baseCurrency)?.symbol ?? baseCurrency;
 
     return Container(
       width: double.infinity,

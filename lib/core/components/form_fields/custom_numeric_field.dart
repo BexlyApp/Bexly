@@ -22,6 +22,7 @@ class CustomNumericField extends ConsumerWidget {
   final bool appendCurrencySymbolToHint;
   final bool isRequired;
   final bool autofocus;
+  final bool enabled;
 
   const CustomNumericField({
     super.key,
@@ -37,6 +38,7 @@ class CustomNumericField extends ConsumerWidget {
     this.appendCurrencySymbolToHint = false,
     this.isRequired = false,
     this.autofocus = false,
+    this.enabled = true,
   });
 
   @override
@@ -126,6 +128,7 @@ class CustomNumericField extends ConsumerWidget {
       onChanged: onChanged,
       isRequired: isRequired,
       autofocus: autofocus,
+      enabled: enabled,
     );
   }
 }

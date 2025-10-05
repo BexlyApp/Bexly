@@ -141,7 +141,11 @@
       "Bash(D:/Dev/flutter/bin/flutter analyze lib/core/services/sync/)",
       "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" install -r \"d:\\Projects\\Bexly\\build\\app\\outputs\\flutter-apk\\app-release.apk\")",
       "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" uninstall com.joy.bexly)",
-      "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" install \"d:\\Projects\\Bexly\\build\\app\\outputs\\flutter-apk\\app-release.apk\")"
+      "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" install \"d:\\Projects\\Bexly\\build\\app\\outputs\\flutter-apk\\app-release.apk\")",
+      "Bash(nc localhost 63832)",
+      "Bash(nc localhost 60223)",
+      "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" logcat -c)",
+      "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" logcat -s flutter:D)"
     ],
     "deny": [],
     "ask": []

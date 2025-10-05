@@ -5,11 +5,17 @@ class CashFlowCards extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transactionsAsyncValue = ref.watch(transactionListProvider);
+    final transactionsAsyncValue = ref.watch(allTransactionsProvider);
     final selectedMonth = ref.watch(selectedMonthProvider);
+    final selectedWallet = ref.watch(dashboardWalletFilterProvider);
 
     return transactionsAsyncValue.when(
       data: (transactions) {
+        // Filter by wallet if selected
+        final filteredTransactions = selectedWallet != null
+            ? transactions.where((t) => t.wallet.id == selectedWallet.id).toList()
+            : transactions;
+
         final currentMonth = selectedMonth.month;
         final currentYear = selectedMonth.year;
 
@@ -20,7 +26,7 @@ class CashFlowCards extends ConsumerWidget {
         // Calculate current month's income and expenses
         double currentMonthIncome = 0;
         double currentMonthExpense = 0;
-        for (var t in transactions) {
+        for (var t in filteredTransactions) {
           if (t.date.year == currentYear && t.date.month == currentMonth) {
             if (t.transactionType == TransactionType.income) {
               currentMonthIncome += t.amount;
@@ -33,7 +39,7 @@ class CashFlowCards extends ConsumerWidget {
         // Calculate last month's income and expenses
         double lastMonthIncome = 0;
         double lastMonthExpense = 0;
-        for (var t in transactions) {
+        for (var t in filteredTransactions) {
           if (t.date.year == lastMonthYear && t.date.month == lastMonth) {
             if (t.transactionType == TransactionType.income) {
               lastMonthIncome += t.amount;

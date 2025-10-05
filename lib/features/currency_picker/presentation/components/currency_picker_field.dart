@@ -15,7 +15,12 @@ import 'package:bexly/features/currency_picker/presentation/riverpod/currency_pi
 
 class CurrencyPickerField extends HookConsumerWidget {
   final Currency? defaultCurrency;
-  const CurrencyPickerField({super.key, this.defaultCurrency});
+  final bool enabled;
+  const CurrencyPickerField({
+    super.key,
+    this.defaultCurrency,
+    this.enabled = true,
+  });
 
   @override
   Widget build(BuildContext context, ref) {
@@ -38,16 +43,19 @@ class CurrencyPickerField extends HookConsumerWidget {
           hint: 'USD',
           prefixIcon: HugeIcons.strokeRoundedFlag01,
           readOnly: true,
-          onTap: () async {
-            KeyboardService.closeKeyboard();
-            final Currency? selectedCurrency = await context.push(
-              Routes.currencyListTile,
-            );
-            if (selectedCurrency != null) {
-              ref.read(currencyProvider.notifier).state = selectedCurrency;
-              currencyController.text = selectedCurrency.symbolWithCountry;
-            }
-          },
+          enabled: enabled,
+          onTap: enabled
+              ? () async {
+                  KeyboardService.closeKeyboard();
+                  final Currency? selectedCurrency = await context.push(
+                    Routes.currencyListTile,
+                  );
+                  if (selectedCurrency != null) {
+                    ref.read(currencyProvider.notifier).state = selectedCurrency;
+                    currencyController.text = selectedCurrency.symbolWithCountry;
+                  }
+                }
+              : null,
         ),
         Positioned(
           right: 10,

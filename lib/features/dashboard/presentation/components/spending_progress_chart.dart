@@ -5,8 +5,9 @@ class SpendingProgressChart extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transactionsAsyncValue = ref.watch(transactionListProvider);
+    final transactionsAsyncValue = ref.watch(allTransactionsProvider);
     final selectedMonth = ref.watch(selectedMonthProvider);
+    final selectedWallet = ref.watch(dashboardWalletFilterProvider);
 
     // Define a list of colors for categories
     final List<Color> categoryColors = [
@@ -20,7 +21,12 @@ class SpendingProgressChart extends ConsumerWidget {
 
     return transactionsAsyncValue.when(
       data: (transactions) {
-        final currentMonthExpenses = transactions.where((t) {
+        // Filter by wallet if selected
+        final filteredTransactions = selectedWallet != null
+            ? transactions.where((t) => t.wallet.id == selectedWallet.id).toList()
+            : transactions;
+
+        final currentMonthExpenses = filteredTransactions.where((t) {
           return t.date.year == selectedMonth.year &&
               t.date.month == selectedMonth.month &&
               t.transactionType == TransactionType.expense;

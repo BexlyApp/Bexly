@@ -62,3 +62,10 @@ final transactionDetailsProvider = StreamProvider.autoDispose.family<Transaction
 final transactionFilterProvider = StateProvider<TransactionFilter?>(
   (ref) => null,
 );
+
+/// Provider for dashboard - returns ALL transactions across all wallets
+/// This is used by dashboard components that need to show/filter all transactions
+final allTransactionsProvider = StreamProvider.autoDispose<List<TransactionModel>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.transactionDao.watchAllTransactionsWithDetails();
+});

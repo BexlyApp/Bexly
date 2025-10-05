@@ -5,6 +5,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
+import 'package:bexly/core/utils/logger.dart';
 
 class BexlySplashScreen extends HookConsumerWidget {
   const BexlySplashScreen({super.key});
@@ -19,6 +21,16 @@ class BexlySplashScreen extends HookConsumerWidget {
       // Schedule navigation after frame is built
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         print('BexlySplashScreen - Post frame callback started');
+
+        // Load currencies first
+        try {
+          Log.d('Loading currencies...', label: 'BexlySplashScreen');
+          final currencyList = await ref.read(currenciesProvider.future);
+          ref.read(currenciesStaticProvider.notifier).state = currencyList;
+          Log.d('Loaded ${currencyList.length} currencies', label: 'BexlySplashScreen');
+        } catch (e) {
+          Log.e('Failed to load currencies: $e', label: 'BexlySplashScreen');
+        }
 
         // Small delay for splash screen visibility
         await Future.delayed(const Duration(seconds: 2));

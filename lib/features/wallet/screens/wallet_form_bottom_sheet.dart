@@ -75,15 +75,19 @@ class WalletFormBottomSheet extends HookConsumerWidget {
               maxLength: 15,
               customCounterText: '',
             ),
-            CurrencyPickerField(defaultCurrency: currency),
+            CurrencyPickerField(
+              defaultCurrency: currency,
+              enabled: !isEditing, // Disable currency change when editing
+            ),
             CustomNumericField(
               controller: balanceController,
-              label: 'Initial Balance',
+              label: isEditing ? 'Current Balance (read-only)' : 'Initial Balance',
               hint: '1,000.00',
               icon: HugeIcons.strokeRoundedMoney01,
               isRequired: true,
               appendCurrencySymbolToHint: true,
               useSelectedCurrency: true,
+              enabled: !isEditing, // Disable balance change when editing
               // autofocus: !isEditing, // Optional: autofocus if adding new
             ),
             PrimaryButton(
@@ -117,6 +121,10 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                     Log.d(newWallet.toJson(), label: 'new wallet');
                     int id = await db.walletDao.addWallet(newWallet);
                     Log.d(id, label: 'new wallet');
+
+                    // Set newly created wallet as active
+                    final createdWallet = newWallet.copyWith(id: id);
+                    ref.read(activeWalletProvider.notifier).setActiveWallet(createdWallet);
                   }
 
                   onSave?.call(

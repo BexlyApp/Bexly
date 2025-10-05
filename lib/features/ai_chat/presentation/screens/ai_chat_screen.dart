@@ -384,6 +384,9 @@ class _ChatInput extends HookWidget {
                   minLines: 1,
                   enabled: !isLoading,
                   textCapitalization: TextCapitalization.sentences,
+                  style: AppTextStyles.body2.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                   decoration: InputDecoration(
                 hintText: AppLocalizations.of(context)?.typeYourMessage ?? 'Type your message...',
                 hintStyle: AppTextStyles.body2.copyWith(
@@ -413,7 +416,7 @@ class _ChatInput extends HookWidget {
                   ),
                 ),
                 filled: true,
-                fillColor: AppColors.light,
+                fillColor: Theme.of(context).colorScheme.surface,
               ),
               onSubmitted: (value) {
                 if (value.trim().isNotEmpty && !isLoading) {
