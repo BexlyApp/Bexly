@@ -1,6 +1,6 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/database/database_provider.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/category_table.dart'
     show CategoryTableExtensions; // Import for toModel()
 import 'package:bexly/features/category/data/model/category_model.dart';

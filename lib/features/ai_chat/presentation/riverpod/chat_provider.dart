@@ -19,7 +19,7 @@ import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dar
 import 'package:bexly/features/goal/data/model/goal_model.dart';
 import 'package:bexly/features/goal/presentation/riverpod/goals_list_provider.dart';
 import 'package:bexly/features/ai_chat/presentation/riverpod/chat_dao_provider.dart';
-import 'package:bexly/core/database/pockaw_database.dart' as db;
+import 'package:bexly/core/database/app_database.dart' as db;
 import 'package:drift/drift.dart' as drift;
 // import 'package:bexly/core/services/sync/data_sync_service.dart';
 
@@ -220,7 +220,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
                 Log.d('AI action: amount=$amount, currency=$aiCurrency', label: 'AI_CURRENCY');
 
                 // Find wallet matching AI currency, or use active wallet
-                final allWallets = await _ref.read(walletListProvider.future);
+                final walletsAsync = _ref.read(allWalletsStreamProvider);
+                final allWallets = walletsAsync.valueOrNull ?? [];
                 WalletModel? wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
 
                 if (wallet == null) {

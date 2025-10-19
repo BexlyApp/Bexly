@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import '../pockaw_database.dart';
+import '../app_database.dart';
 import '../tables/chat_messages_table.dart';
 
 part 'chat_message_dao.g.dart';

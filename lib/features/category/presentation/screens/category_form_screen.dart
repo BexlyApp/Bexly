@@ -17,7 +17,7 @@ import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/database/database_provider.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/utils/logger.dart';

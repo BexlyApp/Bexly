@@ -145,7 +145,22 @@
       "Bash(nc localhost 63832)",
       "Bash(nc localhost 60223)",
       "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" logcat -c)",
-      "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" logcat -s flutter:D)"
+      "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" logcat -s flutter:D)",
+      "Bash(mkdir -p \"d:\\Projects\\Bexly\\lib\\features\\subscription\\data\\model\")",
+      "Bash(del \"d:\\Projects\\Bexly\\lib\\features\\recurring\\data\\model\\recurring_model.dart\")",
+      "Bash(D:/Dev/flutter/bin/dart run build_runner build --delete-conflicting-outputs)",
+      "Bash(D:Devflutterbinflutter.bat pub run build_runner build --delete-conflicting-outputs)",
+      "Bash(call D:Devflutterbinflutter.bat pub run build_runner build --delete-conflicting-outputs)",
+      "Bash(/d/Dev/flutter/bin/flutter.bat pub run build_runner build --delete-conflicting-outputs)",
+      "Bash(call D:/Dev/flutter/bin/flutter.bat emulators)",
+      "Bash(/d/Dev/flutter/bin/flutter.bat emulators)",
+      "Bash(\"C:/Users/JOY/AppData/Local/Android/Sdk/platform-tools/adb.exe\" devices)",
+      "Bash(\"D:/SDK/Android/emulator/emulator.exe\" -list-avds)",
+      "Bash(\"D:/SDK/Android/emulator/emulator.exe\" -avd Medium_Phone_API_36.1)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" start-server)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" devices)",
+      "Bash(export ANDROID_HOME=\"D:/SDK/Android\")",
+      "Bash(export PATH=\"$ANDROID_HOME/platform-tools:$PATH\")"
     ],
     "deny": [],
     "ask": []

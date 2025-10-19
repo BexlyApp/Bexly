@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/services/sync/conflict_resolution_service.dart';
 import 'package:bexly/core/components/dialogs/conflict_resolution_dialog.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/utils/logger.dart';
 
 /// Service to trigger initial sync when user logs in for the first time
