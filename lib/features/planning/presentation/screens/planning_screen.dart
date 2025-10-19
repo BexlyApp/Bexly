@@ -8,13 +8,14 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/features/budget/presentation/screens/budget_screen.dart';
 import 'package:bexly/features/goal/presentation/screens/goal_screen.dart';
+import 'package:bexly/features/recurring/presentation/screens/recurring_screen.dart';
 
 class PlanningScreen extends HookConsumerWidget {
   const PlanningScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tabController = useTabController(initialLength: 2);
+    final tabController = useTabController(initialLength: 3);
     final currentTab = useState(0);
     final l10n = AppLocalizations.of(context)!;
 
@@ -53,6 +54,10 @@ class PlanningScreen extends HookConsumerWidget {
                   text: l10n.goals,
                   icon: const Icon(Icons.flag),
                 ),
+                const Tab(
+                  text: 'Recurring',
+                  icon: Icon(Icons.repeat),
+                ),
               ],
             ),
           ),
@@ -65,6 +70,9 @@ class PlanningScreen extends HookConsumerWidget {
 
                 // Goals tab - hiển thị GoalScreen
                 GoalScreen(),
+
+                // Recurring tab - hiển thị RecurringScreen
+                RecurringScreen(),
               ],
             ),
           ),
