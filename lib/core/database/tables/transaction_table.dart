@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';

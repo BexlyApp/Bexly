@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/database/database_provider.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/utils/uuid_generator.dart';

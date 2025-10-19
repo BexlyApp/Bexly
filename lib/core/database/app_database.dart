@@ -9,6 +9,7 @@ import 'package:bexly/core/database/daos/goal_dao.dart';
 import 'package:bexly/core/database/daos/user_dao.dart';
 import 'package:bexly/core/database/daos/wallet_dao.dart'; // Import new DAO
 import 'package:bexly/core/database/daos/chat_message_dao.dart';
+import 'package:bexly/core/database/daos/recurring_dao.dart';
 import 'package:bexly/core/database/tables/budgets_table.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/transaction_table.dart';
@@ -17,11 +18,12 @@ import 'package:bexly/core/database/tables/goal_table.dart';
 import 'package:bexly/core/database/tables/users.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart'; // Import new table
 import 'package:bexly/core/database/tables/chat_messages_table.dart';
+import 'package:bexly/core/database/tables/recurrings_table.dart';
 import 'package:bexly/core/services/data_population_service/category_population_service.dart';
 import 'package:bexly/core/services/data_population_service/wallet_population_service.dart'; // Import new population service
 import 'package:bexly/core/utils/logger.dart';
 
-part 'pockaw_database.g.dart';
+part 'app_database.g.dart';
 
 @DriftDatabase(
   tables: [
@@ -33,6 +35,7 @@ part 'pockaw_database.g.dart';
     Wallets,
     Budgets,
     ChatMessages,
+    Recurrings,
   ],
   daos: [
     UserDao,
@@ -43,13 +46,14 @@ part 'pockaw_database.g.dart';
     WalletDao,
     BudgetDao,
     ChatMessageDao,
+    RecurringDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 11; // Add cloudId field for cloud sync
+  int get schemaVersion => 12; // Add Recurrings table for recurring payments/bills/subscriptions
 
   @override
   MigrationStrategy get migration {
@@ -93,6 +97,16 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Added cloudId columns for cloud sync', label: 'database');
           } catch (e) {
             Log.e('Failed to add cloudId columns: $e', label: 'database');
+          }
+        }
+
+        // For version 12, add recurrings table
+        if (from < 12) {
+          try {
+            await m.createTable(recurrings);
+            Log.i('Created recurrings table for recurring payments', label: 'database');
+          } catch (e) {
+            Log.e('Failed to create recurrings table: $e', label: 'database');
           }
           return;
         }

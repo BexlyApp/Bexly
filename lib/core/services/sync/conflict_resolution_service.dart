@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import 'package:drift/drift.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/utils/logger.dart';
 
 /// Data structure for sync conflict information
