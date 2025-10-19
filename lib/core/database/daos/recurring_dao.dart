@@ -203,6 +203,17 @@ class RecurringDao extends DatabaseAccessor<AppDatabase> with _$RecurringDaoMixi
         .asyncMap(_mapRecurrings);
   }
 
+  /// Get recurring payments by status
+  Stream<List<RecurringModel>> watchRecurringsByStatus(RecurringStatus status) {
+    return (select(recurrings)
+          ..where((r) => r.status.equals(status.toDbValue()))
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.nextDueDate, mode: OrderingMode.asc),
+          ]))
+        .watch()
+        .asyncMap(_mapRecurrings);
+  }
+
   /// Add a new recurring payment
   Future<int> addRecurring(RecurringModel recurringModel) {
     return into(recurrings).insert(
