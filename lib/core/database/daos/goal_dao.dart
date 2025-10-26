@@ -1,21 +1,43 @@
 import 'package:drift/drift.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/goal_table.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
 
 part 'goal_dao.g.dart';
 
 @DriftAccessor(tables: [Goals])
 class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
-  GoalDao(super.db);
+  final Ref? _ref;
+
+  GoalDao(super.db, [this._ref]);
 
   // ─── CRUD for Goals ─────────────────────────────
 
   /// Inserts a new Goal, returns its auto-incremented ID
   Future<int> addGoal(GoalsCompanion entry) async {
     Log.d('addGoal → ${entry.toString()}', label: 'goal');
+
+    // 1. Save to local database
     final id = await into(goals).insert(entry);
     Log.d('Goal inserted with id=$id', label: 'goal');
+
+    // 2. Upload to cloud (if sync available)
+    if (_ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        final savedGoal = await getGoalById(id);
+        if (savedGoal != null) {
+          await syncService.uploadGoal(savedGoal.toModel());
+        }
+      } catch (e, stack) {
+        Log.e('Failed to upload goal to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local save succeeded
+      }
+    }
+
     return id;
   }
 
@@ -54,16 +76,49 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
   /// Updates an existing goal (matching by .id)
   Future<bool> updateGoal(Goal goal) async {
     Log.d('✏️  updateGoal → ${goal.toString()}', label: 'goal');
+
+    // 1. Update local database
     final success = await update(goals).replace(goal);
     Log.d('✔️  updateGoal success=$success', label: 'goal');
+
+    // 2. Upload to cloud (if sync available)
+    if (success && _ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.uploadGoal(goal.toModel());
+      } catch (e, stack) {
+        Log.e('Failed to upload goal update to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local update succeeded
+      }
+    }
+
     return success;
   }
 
   /// Deletes a goal by its ID
   Future<int> deleteGoal(int id) async {
     Log.d('🗑️  deleteGoal → id=$id', label: 'goal');
+
+    // 1. Get goal to retrieve cloudId
+    final goal = await getGoalById(id);
+
+    // 2. Delete from local database
     final count = await (delete(goals)..where((g) => g.id.equals(id))).go();
     Log.d('✔️  deleteGoal deleted $count row(s)', label: 'goal');
+
+    // 3. Delete from cloud (if sync available and has cloudId)
+    if (count > 0 && _ref != null && goal != null && goal.cloudId != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.deleteGoalFromCloud(goal.cloudId!);
+      } catch (e, stack) {
+        Log.e('Failed to delete goal from cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local delete succeeded
+      }
+    }
+
     return count;
   }
 
