@@ -95,6 +95,12 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
     return budgetData != null ? _mapBudget(budgetData) : null;
   }
 
+  /// Get budget by cloud ID (for sync operations)
+  Future<Budget?> getBudgetByCloudId(String cloudId) {
+    return (select(budgets)..where((b) => b.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
   // Watch a single budget by ID
   Stream<BudgetModel?> watchBudgetById(int id) {
     return (select(

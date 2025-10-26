@@ -67,6 +67,12 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return (select(transactions)..where((g) => g.id.equals(id))).watchSingle();
   }
 
+  /// Get transaction by cloud ID (for sync operations)
+  Future<Transaction?> getTransactionByCloudId(String cloudId) {
+    return (select(transactions)..where((t) => t.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
   /// Watches all transactions with their associated category and wallet details.
   Stream<List<TransactionModel>> watchAllTransactionsWithDetails() {
     final query = select(transactions).join([
