@@ -87,6 +87,7 @@ extension TransactionTableExtensions on Transaction {
   }) {
     return TransactionModel(
       id: id,
+      cloudId: cloudId,
       transactionType: TransactionTypeDBMapping.fromDbValue(transactionType),
       amount: amount,
       date: date,
@@ -96,6 +97,8 @@ extension TransactionTableExtensions on Transaction {
       notes: notes,
       imagePath: imagePath,
       isRecurring: isRecurring,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
   }
 }
@@ -112,5 +115,30 @@ extension TransactionTypeDBMapping on TransactionType {
     }
     // Fallback or throw error if value is out of bounds
     throw ArgumentError('Invalid integer value for TransactionType: $value');
+  }
+}
+
+/// Extension methods for TransactionModel to convert to Drift companion
+extension TransactionModelExtensions on TransactionModel {
+  TransactionsCompanion toCompanion({bool isInsert = false}) {
+    return TransactionsCompanion(
+      id: isInsert
+          ? const Value.absent()
+          : (id == null ? const Value.absent() : Value(id!)),
+      cloudId: cloudId == null ? const Value.absent() : Value(cloudId),
+      transactionType: Value(transactionType.toDbValue()),
+      amount: Value(amount),
+      date: Value(date),
+      title: Value(title.trim()),
+      categoryId: Value(category.id!),
+      walletId: Value(wallet.id!),
+      notes: Value(notes?.trim()),
+      imagePath: Value(imagePath),
+      isRecurring: Value(isRecurring),
+      createdAt: createdAt != null
+          ? Value(createdAt!)
+          : (isInsert ? Value(DateTime.now()) : const Value.absent()),
+      updatedAt: updatedAt != null ? Value(updatedAt!) : Value(DateTime.now()),
+    );
   }
 }

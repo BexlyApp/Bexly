@@ -24,6 +24,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   ) async {
     return TransactionModel(
       id: transactionData.id,
+      cloudId: transactionData.cloudId,
       // Use the actual enum value from the database integer
       // This is safer than relying on index directly if enum order changes
       transactionType: TransactionType.values.firstWhere(
@@ -37,6 +38,8 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       notes: transactionData.notes,
       imagePath: transactionData.imagePath,
       isRecurring: transactionData.isRecurring,
+      createdAt: transactionData.createdAt,
+      updatedAt: transactionData.updatedAt,
     );
   }
 
