@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
@@ -880,6 +881,282 @@ class RealtimeSyncService {
     } catch (e, stack) {
       Log.e('Failed to update goal from cloud: $e', label: 'sync');
       Log.e('Stack: $stack', label: 'sync');
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // UPLOAD METHODS (Local → Cloud)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Upload a wallet to Firestore (create or update)
+  Future<void> uploadWallet(WalletModel wallet) async {
+    if (!isAuthenticated) {
+      Log.w('Cannot upload wallet: User not authenticated', label: 'sync');
+      return;
+    }
+
+    try {
+      final collection = _getUserCollection('wallets');
+
+      // Generate cloudId if not exists
+      final cloudId = wallet.cloudId ?? const Uuid().v7();
+
+      final data = {
+        'name': wallet.name,
+        'balance': wallet.balance,
+        'currency': wallet.currency,
+        'iconName': wallet.iconName,
+        'colorHex': wallet.colorHex,
+        'createdAt': wallet.createdAt ?? DateTime.now(),
+        'updatedAt': DateTime.now(),
+      };
+
+      await collection.doc(cloudId).set(data, SetOptions(merge: true));
+
+      // Update local wallet with cloudId if it was generated
+      if (wallet.cloudId == null && wallet.id != null) {
+        final updatedWallet = wallet.copyWith(cloudId: cloudId);
+        await _db.walletDao.updateWallet(updatedWallet);
+      }
+
+      Log.i('Uploaded wallet to cloud: ${wallet.name}', label: 'sync');
+    } catch (e, stack) {
+      Log.e('Failed to upload wallet: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      rethrow;
+    }
+  }
+
+  /// Delete a wallet from Firestore
+  Future<void> deleteWalletFromCloud(String cloudId) async {
+    if (!isAuthenticated) return;
+
+    try {
+      final collection = _getUserCollection('wallets');
+      await collection.doc(cloudId).delete();
+      Log.i('Deleted wallet from cloud: $cloudId', label: 'sync');
+    } catch (e, stack) {
+      Log.e('Failed to delete wallet from cloud: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      rethrow;
+    }
+  }
+
+  /// Upload a category to Firestore
+  Future<void> uploadCategory(CategoryModel category) async {
+    if (!isAuthenticated) {
+      Log.w('Cannot upload category: User not authenticated', label: 'sync');
+      return;
+    }
+
+    try {
+      final collection = _getUserCollection('categories');
+
+      final cloudId = category.cloudId ?? const Uuid().v7();
+
+      final data = {
+        'title': category.title,
+        'icon': category.icon,
+        'iconBackground': category.iconBackground,
+        'iconType': category.iconTypeValue,
+        'parentId': category.parentId,
+        'description': category.description,
+        'createdAt': category.createdAt ?? DateTime.now(),
+        'updatedAt': DateTime.now(),
+      };
+
+      await collection.doc(cloudId).set(data, SetOptions(merge: true));
+
+      Log.i('Uploaded category to cloud: ${category.title}', label: 'sync');
+    } catch (e, stack) {
+      Log.e('Failed to upload category: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      rethrow;
+    }
+  }
+
+  /// Delete a category from Firestore
+  Future<void> deleteCategoryFromCloud(String cloudId) async {
+    if (!isAuthenticated) return;
+
+    try {
+      final collection = _getUserCollection('categories');
+      await collection.doc(cloudId).delete();
+      Log.i('Deleted category from cloud: $cloudId', label: 'sync');
+    } catch (e, stack) {
+      Log.e('Failed to delete category from cloud: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      rethrow;
+    }
+  }
+
+  /// Upload a transaction to Firestore
+  Future<void> uploadTransaction(TransactionModel transaction) async {
+    if (!isAuthenticated) {
+      Log.w('Cannot upload transaction: User not authenticated', label: 'sync');
+      return;
+    }
+
+    try {
+      // Ensure category and wallet have cloudIds
+      if (transaction.category.cloudId == null) {
+        Log.w('Transaction category missing cloudId, uploading category first', label: 'sync');
+        await uploadCategory(transaction.category);
+      }
+
+      if (transaction.wallet.cloudId == null) {
+        Log.w('Transaction wallet missing cloudId, uploading wallet first', label: 'sync');
+        await uploadWallet(transaction.wallet);
+      }
+
+      final collection = _getUserCollection('transactions');
+
+      final cloudId = transaction.cloudId ?? const Uuid().v7();
+
+      final data = {
+        'transactionType': transaction.transactionType.index,
+        'amount': transaction.amount,
+        'date': transaction.date,
+        'title': transaction.title,
+        'categoryCloudId': transaction.category.cloudId!,
+        'walletCloudId': transaction.wallet.cloudId!,
+        'notes': transaction.notes,
+        'imagePath': transaction.imagePath,
+        'isRecurring': transaction.isRecurring,
+        'createdAt': transaction.createdAt ?? DateTime.now(),
+        'updatedAt': DateTime.now(),
+      };
+
+      await collection.doc(cloudId).set(data, SetOptions(merge: true));
+
+      Log.i('Uploaded transaction to cloud: ${transaction.title}', label: 'sync');
+    } catch (e, stack) {
+      Log.e('Failed to upload transaction: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      rethrow;
+    }
+  }
+
+  /// Delete a transaction from Firestore
+  Future<void> deleteTransactionFromCloud(String cloudId) async {
+    if (!isAuthenticated) return;
+
+    try {
+      final collection = _getUserCollection('transactions');
+      await collection.doc(cloudId).delete();
+      Log.i('Deleted transaction from cloud: $cloudId', label: 'sync');
+    } catch (e, stack) {
+      Log.e('Failed to delete transaction from cloud: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      rethrow;
+    }
+  }
+
+  /// Upload a budget to Firestore
+  Future<void> uploadBudget(BudgetModel budget) async {
+    if (!isAuthenticated) {
+      Log.w('Cannot upload budget: User not authenticated', label: 'sync');
+      return;
+    }
+
+    try {
+      // Ensure category and wallet have cloudIds
+      if (budget.category.cloudId == null) {
+        await uploadCategory(budget.category);
+      }
+
+      if (budget.wallet.cloudId == null) {
+        await uploadWallet(budget.wallet);
+      }
+
+      final collection = _getUserCollection('budgets');
+
+      final cloudId = budget.cloudId ?? const Uuid().v7();
+
+      final data = {
+        'categoryCloudId': budget.category.cloudId!,
+        'walletCloudId': budget.wallet.cloudId!,
+        'amount': budget.amount,
+        'startDate': budget.startDate,
+        'endDate': budget.endDate,
+        'isRoutine': budget.isRoutine,
+        'createdAt': budget.createdAt ?? DateTime.now(),
+        'updatedAt': DateTime.now(),
+      };
+
+      await collection.doc(cloudId).set(data, SetOptions(merge: true));
+
+      Log.i('Uploaded budget to cloud', label: 'sync');
+    } catch (e, stack) {
+      Log.e('Failed to upload budget: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      rethrow;
+    }
+  }
+
+  /// Delete a budget from Firestore
+  Future<void> deleteBudgetFromCloud(String cloudId) async {
+    if (!isAuthenticated) return;
+
+    try {
+      final collection = _getUserCollection('budgets');
+      await collection.doc(cloudId).delete();
+      Log.i('Deleted budget from cloud: $cloudId', label: 'sync');
+    } catch (e, stack) {
+      Log.e('Failed to delete budget from cloud: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      rethrow;
+    }
+  }
+
+  /// Upload a goal to Firestore
+  Future<void> uploadGoal(GoalModel goal) async {
+    if (!isAuthenticated) {
+      Log.w('Cannot upload goal: User not authenticated', label: 'sync');
+      return;
+    }
+
+    try {
+      final collection = _getUserCollection('goals');
+
+      final cloudId = goal.cloudId ?? const Uuid().v7();
+
+      final data = {
+        'title': goal.title,
+        'targetAmount': goal.targetAmount,
+        'currentAmount': goal.currentAmount,
+        'startDate': goal.startDate,
+        'endDate': goal.endDate,
+        'iconName': goal.iconName,
+        'description': goal.description,
+        'associatedAccountId': goal.associatedAccountId,
+        'pinned': goal.pinned,
+        'createdAt': goal.createdAt ?? DateTime.now(),
+        'updatedAt': DateTime.now(),
+      };
+
+      await collection.doc(cloudId).set(data, SetOptions(merge: true));
+
+      Log.i('Uploaded goal to cloud: ${goal.title}', label: 'sync');
+    } catch (e, stack) {
+      Log.e('Failed to upload goal: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      rethrow;
+    }
+  }
+
+  /// Delete a goal from Firestore
+  Future<void> deleteGoalFromCloud(String cloudId) async {
+    if (!isAuthenticated) return;
+
+    try {
+      final collection = _getUserCollection('goals');
+      await collection.doc(cloudId).delete();
+      Log.i('Deleted goal from cloud: $cloudId', label: 'sync');
+    } catch (e, stack) {
+      Log.e('Failed to delete goal from cloud: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      rethrow;
     }
   }
 }
