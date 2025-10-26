@@ -40,11 +40,14 @@ extension WalletTableExtensions on Wallet {
   WalletModel toModel() {
     return WalletModel(
       id: id,
+      cloudId: cloudId,
       name: name,
       balance: balance,
       currency: currency,
       iconName: iconName,
       colorHex: colorHex,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
   }
 }
@@ -57,14 +60,17 @@ extension WalletModelExtensions on WalletModel {
       id: isInsert
           ? const Value.absent()
           : (id == null ? const Value.absent() : Value(id!)),
+      cloudId: cloudId == null ? const Value.absent() : Value(cloudId),
       name: Value(name),
       balance: Value(balance),
       currency: Value(currency),
       iconName: Value(iconName),
       colorHex: Value(colorHex),
-      // createdAt is handled by default on insert
-      createdAt: isInsert ? Value(DateTime.now()) : const Value.absent(),
-      updatedAt: Value(DateTime.now()),
+      // createdAt: use provided value or current time on insert
+      createdAt: createdAt != null
+          ? Value(createdAt!)
+          : (isInsert ? Value(DateTime.now()) : const Value.absent()),
+      updatedAt: updatedAt != null ? Value(updatedAt!) : Value(DateTime.now()),
     );
   }
 }
