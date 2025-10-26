@@ -1,14 +1,18 @@
 import 'package:drift/drift.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
 
 part 'wallet_dao.g.dart';
 
 @DriftAccessor(tables: [Wallets])
 class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
-  WalletDao(super.db);
+  final Ref? _ref;
+
+  WalletDao(super.db, [this._ref]);
 
   WalletModel _mapToWalletModel(Wallet walletData) {
     return walletData.toModel();
@@ -57,8 +61,27 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
 
   Future<int> addWallet(WalletModel walletModel) async {
     Log.d('Saving New Wallet: ${walletModel.toJson()}', label: 'wallet');
+
+    // 1. Save to local database
     final companion = walletModel.toCompanion(isInsert: true);
-    return await into(wallets).insert(companion);
+    final id = await into(wallets).insert(companion);
+
+    // 2. Upload to cloud (if sync available)
+    if (_ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        final savedWallet = await getWalletById(id);
+        if (savedWallet != null) {
+          await syncService.uploadWallet(savedWallet.toModel());
+        }
+      } catch (e, stack) {
+        Log.e('Failed to upload wallet to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local save succeeded
+      }
+    }
+
+    return id;
   }
 
   Future<bool> updateWallet(WalletModel walletModel) async {
@@ -67,14 +90,49 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
       Log.e('Wallet ID is null, cannot update.');
       return false;
     }
+
+    // 1. Update local database
     final companion = walletModel.toCompanion();
-    return await update(wallets).replace(companion);
+    final success = await update(wallets).replace(companion);
+
+    // 2. Upload to cloud (if sync available)
+    if (success && _ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.uploadWallet(walletModel);
+      } catch (e, stack) {
+        Log.e('Failed to upload wallet update to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local update succeeded
+      }
+    }
+
+    return success;
   }
 
   /// Deletes a wallet by its ID.
-  Future<int> deleteWallet(int id) {
+  Future<int> deleteWallet(int id) async {
     Log.d('Deleting Wallet with ID: $id', label: 'wallet');
-    return (delete(wallets)..where((w) => w.id.equals(id))).go();
+
+    // 1. Get wallet to retrieve cloudId
+    final wallet = await getWalletById(id);
+
+    // 2. Delete from local database
+    final count = await (delete(wallets)..where((w) => w.id.equals(id))).go();
+
+    // 3. Delete from cloud (if sync available and has cloudId)
+    if (count > 0 && _ref != null && wallet != null && wallet.cloudId != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.deleteWalletFromCloud(wallet.cloudId!);
+      } catch (e, stack) {
+        Log.e('Failed to delete wallet from cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local delete succeeded
+      }
+    }
+
+    return count;
   }
 
   Future<void> upsertWallet(WalletModel walletModel) async {
