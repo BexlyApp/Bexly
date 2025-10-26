@@ -1,16 +1,20 @@
 import 'package:drift/drift.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/budgets_table.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/budget/data/model/budget_model.dart';
+import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
 
 part 'budget_dao.g.dart';
 
 @DriftAccessor(tables: [Budgets, Categories, Wallets])
 class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
-  BudgetDao(super.db);
+  final Ref? _ref;
+
+  BudgetDao(super.db, [this._ref]);
 
   Future<BudgetModel> _mapBudget(Budget budgetData) async {
     final wallet = await db.walletDao.getWalletById(budgetData.walletId);
@@ -111,8 +115,11 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
   }
 
   // Add a new budget
-  Future<int> addBudget(BudgetModel budgetModel) {
-    return into(budgets).insert(
+  Future<int> addBudget(BudgetModel budgetModel) async {
+    Log.d('Adding new budget', label: 'budget');
+
+    // 1. Save to local database
+    final id = await into(budgets).insert(
       BudgetsCompanion.insert(
         walletId: budgetModel.wallet.id!,
         categoryId: budgetModel.category.id!,
@@ -122,6 +129,23 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
         isRoutine: budgetModel.isRoutine,
       ),
     );
+
+    // 2. Upload to cloud (if sync available)
+    if (_ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        final savedBudget = await getBudgetById(id);
+        if (savedBudget != null) {
+          await syncService.uploadBudget(savedBudget);
+        }
+      } catch (e, stack) {
+        Log.e('Failed to upload budget to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local save succeeded
+      }
+    }
+
+    return id;
   }
 
   // Get all budgets (for backup)
@@ -130,9 +154,12 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
   }
 
   // Update an existing budget
-  Future<bool> updateBudget(BudgetModel budgetModel) {
-    if (budgetModel.id == null) return Future.value(false);
-    return (update(budgets)..where((b) => b.id.equals(budgetModel.id!)))
+  Future<bool> updateBudget(BudgetModel budgetModel) async {
+    if (budgetModel.id == null) return false;
+    Log.d('Updating budget: ${budgetModel.id}', label: 'budget');
+
+    // 1. Update local database
+    final count = await (update(budgets)..where((b) => b.id.equals(budgetModel.id!)))
         .write(
           BudgetsCompanion(
             walletId: Value(budgetModel.wallet.id!),
@@ -141,14 +168,49 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
             startDate: Value(budgetModel.startDate),
             endDate: Value(budgetModel.endDate),
             isRoutine: Value(budgetModel.isRoutine),
+            updatedAt: Value(DateTime.now()),
           ),
-        )
-        .then((count) => count > 0);
+        );
+    final success = count > 0;
+
+    // 2. Upload to cloud (if sync available)
+    if (success && _ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.uploadBudget(budgetModel);
+      } catch (e, stack) {
+        Log.e('Failed to upload budget update to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local update succeeded
+      }
+    }
+
+    return success;
   }
 
   // Delete a budget
-  Future<int> deleteBudget(int id) {
-    return (delete(budgets)..where((b) => b.id.equals(id))).go();
+  Future<int> deleteBudget(int id) async {
+    Log.d('Deleting budget with ID: $id', label: 'budget');
+
+    // 1. Get budget to retrieve cloudId
+    final budget = await (select(budgets)..where((b) => b.id.equals(id))).getSingleOrNull();
+
+    // 2. Delete from local database
+    final count = await (delete(budgets)..where((b) => b.id.equals(id))).go();
+
+    // 3. Delete from cloud (if sync available and has cloudId)
+    if (count > 0 && _ref != null && budget != null && budget.cloudId != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.deleteBudgetFromCloud(budget.cloudId!);
+      } catch (e, stack) {
+        Log.e('Failed to delete budget from cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local delete succeeded
+      }
+    }
+
+    return count;
   }
 
   // Helper method to get spent amount for a budget

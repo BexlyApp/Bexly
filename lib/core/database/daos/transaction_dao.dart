@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/transaction_table.dart';
@@ -6,6 +7,7 @@ import 'package:bexly/core/database/tables/wallet_table.dart'; // Import WalletT
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/transaction/data/model/transaction_filter_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
 
 part 'transaction_dao.g.dart';
 
@@ -14,7 +16,9 @@ part 'transaction_dao.g.dart';
 )
 class TransactionDao extends DatabaseAccessor<AppDatabase>
     with _$TransactionDaoMixin {
-  TransactionDao(super.db);
+  final Ref? _ref;
+
+  TransactionDao(super.db, [this._ref]);
 
   /// Helper to convert a database row (Transaction, Category, Wallet) to a TransactionModel.
   Future<TransactionModel> _mapToTransactionModel(
@@ -180,6 +184,8 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       'Saving New Transaction: ${transactionModel.toJson()}',
       label: 'transaction',
     );
+
+    // 1. Save to local database
     final companion = TransactionsCompanion(
       transactionType: Value(transactionModel.transactionType.toDbValue()),
       amount: Value(transactionModel.amount),
@@ -195,7 +201,30 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       createdAt: Value(DateTime.now()),
       updatedAt: Value(DateTime.now()),
     );
-    return await into(transactions).insert(companion);
+    final id = await into(transactions).insert(companion);
+
+    // 2. Upload to cloud (if sync available)
+    if (_ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        final savedTransaction = await (select(transactions)..where((t) => t.id.equals(id))).getSingleOrNull();
+        if (savedTransaction != null) {
+          // Fetch category and wallet for complete model
+          final category = await (select(categories)..where((c) => c.id.equals(savedTransaction.categoryId))).getSingleOrNull();
+          final wallet = await (select(db.wallets)..where((w) => w.id.equals(savedTransaction.walletId))).getSingleOrNull();
+          if (category != null && wallet != null) {
+            final model = await _mapToTransactionModel(savedTransaction, category, wallet);
+            await syncService.uploadTransaction(model);
+          }
+        }
+      } catch (e, stack) {
+        Log.e('Failed to upload transaction to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local save succeeded
+      }
+    }
+
+    return id;
   }
 
   /// Updates an existing transaction.
@@ -204,6 +233,8 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       'Updating Transaction: ${transactionModel.toJson()}',
       label: 'transaction',
     );
+
+    // 1. Update local database
     final companion = TransactionsCompanion(
       // For `update(table).replace(companion)`, the companion must include the primary key.
       // transactionModel.id is expected to be non-null for an update operation.
@@ -222,12 +253,46 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       isRecurring: Value(transactionModel.isRecurring),
       updatedAt: Value(DateTime.now()),
     );
-    return await update(transactions).replace(companion);
+    final success = await update(transactions).replace(companion);
+
+    // 2. Upload to cloud (if sync available)
+    if (success && _ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.uploadTransaction(transactionModel);
+      } catch (e, stack) {
+        Log.e('Failed to upload transaction update to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local update succeeded
+      }
+    }
+
+    return success;
   }
 
   /// Deletes a transaction by its ID.
-  Future<int> deleteTransaction(int id) {
-    return (delete(transactions)..where((tbl) => tbl.id.equals(id))).go();
+  Future<int> deleteTransaction(int id) async {
+    Log.d('Deleting transaction with ID: $id', label: 'transaction');
+
+    // 1. Get transaction to retrieve cloudId
+    final transaction = await (select(transactions)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+    // 2. Delete from local database
+    final count = await (delete(transactions)..where((tbl) => tbl.id.equals(id))).go();
+
+    // 3. Delete from cloud (if sync available and has cloudId)
+    if (count > 0 && _ref != null && transaction != null && transaction.cloudId != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.deleteTransactionFromCloud(transaction.cloudId!);
+      } catch (e, stack) {
+        Log.e('Failed to delete transaction from cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local delete succeeded
+      }
+    }
+
+    return count;
   }
 
   /// Upserts a transaction: inserts if new, updates if exists by ID.
