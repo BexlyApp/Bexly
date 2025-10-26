@@ -21,8 +21,7 @@ class CustomFab extends StatelessWidget {
       }
     }
 
-    return Container(
-      color: Colors.yellow,
+    return SizedBox(
       height: 80,
       child: Row(
         children: [

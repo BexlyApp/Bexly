@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
@@ -18,125 +19,78 @@ class AIChatScreen extends HookConsumerWidget {
     final chatNotifier = ref.read(chatProvider.notifier);
     final textController = useTextEditingController();
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // AI Assistant header
+    return CustomScaffold(
+      context: context,
+      showBackButton: false,
+      showBalance: false,
+      title: AppLocalizations.of(context)?.aiAssistantTitle ?? 'Bexly AI Assistant',
+      body: Column(
+        children: [
+          // Error banner
+          if (chatState.error != null)
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.spacing16),
+              color: AppColors.redAlpha10,
               child: Row(
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary500, AppColors.primary700],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                  Icon(
+                    Icons.error_outline,
+                    color: AppColors.red600,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.spacing8),
+                  Expanded(
+                    child: Text(
+                      AppLocalizations.of(context)?.errorOccurred ?? 'An error occurred. Please try again.',
+                      style: AppTextStyles.body4.copyWith(
+                        color: AppColors.red600,
                       ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.smart_toy_outlined,
-                      color: AppColors.light,
-                      size: 24,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.spacing12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          AppLocalizations.of(context)?.aiAssistantTitle ?? 'Bexly AI Assistant',
-                          style: AppTextStyles.heading5,
-                        ),
-                        Text(
-                          chatState.isTyping
-                            ? (AppLocalizations.of(context)?.aiAssistantTyping ?? 'Typing...')
-                            : (AppLocalizations.of(context)?.aiAssistantReady ?? 'Ready to help'),
-                          style: AppTextStyles.body4.copyWith(
-                            color: chatState.isTyping
-                                ? AppColors.green100
-                                : AppColors.neutral400,
-                          ),
-                        ),
-                      ],
+                  IconButton(
+                    onPressed: chatNotifier.clearError,
+                    icon: Icon(
+                      Icons.close,
+                      color: AppColors.red600,
+                      size: 18,
                     ),
                   ),
                 ],
               ),
             ),
-            Divider(height: 1, color: AppColors.neutral200),
-            // Error banner
-            if (chatState.error != null)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.spacing16),
-                color: AppColors.redAlpha10,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      color: AppColors.red600,
-                      size: 20,
-                    ),
-                    const SizedBox(width: AppSpacing.spacing8),
-                    Expanded(
-                      child: Text(
-                        AppLocalizations.of(context)?.errorOccurred ?? 'An error occurred. Please try again.',
-                        style: AppTextStyles.body4.copyWith(
-                          color: AppColors.red600,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: chatNotifier.clearError,
-                      icon: Icon(
-                        Icons.close,
-                        color: AppColors.red600,
-                        size: 18,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
-            // Messages list (reversed so newest message is at bottom)
-            Expanded(
-              child: ListView.builder(
-                reverse: true,
-                padding: const EdgeInsets.all(AppSpacing.spacing16),
-                itemCount: chatState.messages.length,
-                itemBuilder: (context, index) {
-                  // Reverse index to show newest at bottom
-                  final reversedIndex = chatState.messages.length - 1 - index;
-                  final message = chatState.messages[reversedIndex];
-                  return _MessageBubble(
-                    message: message,
-                    isLast: index == 0, // First item in reversed list is last message
-                  );
-                },
-              ),
+          // Messages list (reversed so newest message is at bottom)
+          Expanded(
+            child: ListView.builder(
+              reverse: true,
+              padding: const EdgeInsets.all(AppSpacing.spacing16),
+              itemCount: chatState.messages.length,
+              itemBuilder: (context, index) {
+                // Reverse index to show newest at bottom
+                final reversedIndex = chatState.messages.length - 1 - index;
+                final message = chatState.messages[reversedIndex];
+                return _MessageBubble(
+                  message: message,
+                  isLast: index == 0, // First item in reversed list is last message
+                );
+              },
             ),
+          ),
 
-            // Input field
-            Container(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              child: _ChatInput(
-                controller: textController,
-                onSend: (message) {
-                  chatNotifier.sendMessage(message);
-                  textController.clear();
-                },
-                isLoading: chatState.isLoading,
-              ),
+          // Input field
+          Container(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: _ChatInput(
+              controller: textController,
+              onSend: (message) {
+                chatNotifier.sendMessage(message);
+                textController.clear();
+              },
+              isLoading: chatState.isLoading,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

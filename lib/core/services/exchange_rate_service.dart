@@ -51,13 +51,25 @@ Give me ONLY the number:''';
       );
 
       final rateText = response.text?.trim() ?? '';
-      Log.d('AI response: $rateText', label: 'ExchangeRate');
+      Log.d('AI raw response: $rateText', label: 'ExchangeRate');
+
+      // Extract numeric value from response (handle various formats)
+      // Remove common text patterns: "The exchange rate is", "approximately", etc.
+      final cleanText = rateText
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^\d.,\s]'), '') // Keep only digits, dots, commas, spaces
+          .replaceAll(',', '') // Remove thousand separators
+          .trim()
+          .split(RegExp(r'\s+')) // Split by whitespace
+          .firstWhere((s) => s.isNotEmpty, orElse: () => '');
+
+      Log.d('Cleaned text: $cleanText', label: 'ExchangeRate');
 
       // Parse the rate
-      final rate = double.tryParse(rateText.replaceAll(',', ''));
+      final rate = double.tryParse(cleanText);
 
       if (rate == null || rate <= 0) {
-        Log.e('Invalid exchange rate received: $rateText', label: 'ExchangeRate');
+        Log.e('Invalid exchange rate - raw: "$rateText", cleaned: "$cleanText"', label: 'ExchangeRate');
         throw Exception('Could not parse exchange rate from AI response');
       }
 
@@ -68,6 +80,12 @@ Give me ONLY the number:''';
       rethrow;
     }
   }
+
+  /// Hardcoded fallback rates (updated periodically)
+  static const Map<String, double> _fallbackRates = {
+    'VND_USD': 0.00004, // 1 VND = 0.00004 USD (1 USD = 25,000 VND)
+    'USD_VND': 25000.0, // 1 USD = 25,000 VND
+  };
 
   /// Get multiple exchange rates at once
   /// Returns a map where key is "FROM_TO" and value is the rate
@@ -99,6 +117,7 @@ Give me ONLY the number:''';
   }
 
   /// Convert amount from one currency to another
+  /// Priority: AI (most accurate) → Hardcoded fallback → Exception
   Future<double> convertAmount({
     required double amount,
     required String fromCurrency,
@@ -108,7 +127,33 @@ Give me ONLY the number:''';
       return amount;
     }
 
-    final rate = await getExchangeRate(fromCurrency, toCurrency);
-    return amount * rate;
+    // Try AI first (most accurate, real-time rate)
+    try {
+      final rate = await getExchangeRate(fromCurrency, toCurrency);
+      return amount * rate;
+    } catch (e) {
+      Log.e('AI exchange rate failed: $e, trying fallback', label: 'ExchangeRate');
+
+      // Fallback: Try hardcoded rate
+      final rateKey = '${fromCurrency}_$toCurrency';
+      if (_fallbackRates.containsKey(rateKey)) {
+        final rate = _fallbackRates[rateKey]!;
+        Log.d('Using hardcoded fallback rate: 1 $fromCurrency = $rate $toCurrency', label: 'ExchangeRate');
+        return amount * rate;
+      }
+
+      // Last resort: Reverse lookup of hardcoded rate
+      final reverseKey = '${toCurrency}_$fromCurrency';
+      if (_fallbackRates.containsKey(reverseKey)) {
+        final reverseRate = _fallbackRates[reverseKey]!;
+        final rate = 1.0 / reverseRate;
+        Log.d('Using reverse hardcoded fallback: 1 $fromCurrency = $rate $toCurrency', label: 'ExchangeRate');
+        return amount * rate;
+      }
+
+      // No fallback available, rethrow original error
+      Log.e('No fallback rate available for $fromCurrency -> $toCurrency', label: 'ExchangeRate');
+      rethrow;
+    }
   }
 }

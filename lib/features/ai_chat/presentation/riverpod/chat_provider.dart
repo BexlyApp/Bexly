@@ -18,9 +18,13 @@ import 'package:bexly/features/budget/data/model/budget_model.dart';
 import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
 import 'package:bexly/features/goal/data/model/goal_model.dart';
 import 'package:bexly/features/goal/presentation/riverpod/goals_list_provider.dart';
+import 'package:bexly/features/recurring/data/model/recurring_model.dart';
+import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
 import 'package:bexly/features/ai_chat/presentation/riverpod/chat_dao_provider.dart';
 import 'package:bexly/core/database/app_database.dart' as db;
 import 'package:drift/drift.dart' as drift;
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
+import 'package:bexly/features/settings/presentation/riverpod/language_provider.dart';
 // import 'package:bexly/core/services/sync/data_sync_service.dart';
 
 // AI Service Provider - Supports both OpenAI and Gemini
@@ -371,6 +375,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
                 displayMessage += '\n\n' + createResult;
                 break;
               }
+            case 'create_recurring':
+              {
+                Log.d('Processing create_recurring action: $action', label: 'Chat Provider');
+
+                final createResult = await _createRecurringFromAction(action);
+                // Replace displayMessage instead of appending (to avoid mixing languages)
+                displayMessage = createResult;
+                break;
+              }
             default:
               {
                 Log.d('Unknown action: $actionType', label: 'Chat Provider');
@@ -509,7 +522,19 @@ class ChatNotifier extends StateNotifier<ChatState> {
       Log.d('Action received: $action', label: 'TRANSACTION_DEBUG');
 
       // Use provided wallet or get current wallet
-      wallet ??= _ref.read(activeWalletProvider).valueOrNull;
+      if (wallet == null) {
+        wallet = _ref.read(activeWalletProvider).valueOrNull;
+
+        // If still no wallet, try to get first available wallet
+        if (wallet == null) {
+          final walletsAsync = _ref.read(allWalletsStreamProvider);
+          final allWallets = walletsAsync.valueOrNull ?? [];
+          if (allWallets.isNotEmpty) {
+            wallet = allWallets.first;
+            Log.d('No active wallet, using first available: ${wallet.name}', label: 'TRANSACTION_DEBUG');
+          }
+        }
+      }
 
       if (wallet == null || wallet.id == null) {
         Log.e('ERROR: No wallet available or wallet ID is null!', label: 'TRANSACTION_DEBUG');
@@ -1248,6 +1273,206 @@ class ChatNotifier extends StateNotifier<ChatState> {
       Log.e('Failed to create wallet: $e', label: 'CREATE_WALLET');
       Log.e('Stack trace: $stackTrace', label: 'CREATE_WALLET');
       return '❌ Failed to create wallet: $e';
+    }
+  }
+
+  Future<String> _createRecurringFromAction(Map<String, dynamic> action) async {
+    try {
+      final name = (action['name'] as String?) ?? 'New Recurring';
+      final amount = (action['amount'] as num?)?.toDouble() ?? 0.0;
+      final aiCurrency = (action['currency'] as String?) ?? 'VND';
+      final categoryName = (action['category'] as String?) ?? 'Others';
+      final frequencyString = (action['frequency'] as String?) ?? 'monthly';
+      final nextDueDateString = action['nextDueDate'] as String?;
+      final enableReminder = (action['enableReminder'] as bool?) ?? true;
+      final autoCharge = (action['autoCharge'] as bool?) ?? true; // Default to true (charge immediately)
+      final notes = action['notes'] as String?;
+
+      Log.d('Creating recurring: $name, amount: $amount, aiCurrency: $aiCurrency, frequency: $frequencyString', label: 'CREATE_RECURRING');
+      Log.d('AI Action received: ${action.toString()}', label: 'CREATE_RECURRING');
+
+      // Find wallet matching currency
+      final walletsAsync = _ref.read(allWalletsStreamProvider);
+      final allWallets = walletsAsync.valueOrNull ?? [];
+      WalletModel? wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
+
+      if (wallet == null) {
+        wallet = _ref.read(activeWalletProvider).valueOrNull;
+      }
+
+      if (wallet == null) {
+        return '❌ No wallet found. Please create a wallet first.';
+      }
+
+      // Find category with fallback logic
+      final categoriesAsync = _ref.read(hierarchicalCategoriesProvider);
+      final categories = categoriesAsync.valueOrNull ?? [];
+
+      if (categories.isEmpty) {
+        return '❌ No categories available.';
+      }
+
+      CategoryModel? category;
+
+      // Exact match (case insensitive)
+      category = categories.firstWhereOrNull(
+        (c) => c.title.toLowerCase() == categoryName.toLowerCase(),
+      );
+
+      // If no exact match, try contains match
+      if (category == null) {
+        category = categories.firstWhereOrNull(
+          (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
+                 categoryName.toLowerCase().contains(c.title.toLowerCase()),
+        );
+      }
+
+      // If still no match, use "Others" or first category
+      if (category == null) {
+        category = categories.firstWhereOrNull((c) => c.title == 'Others') ?? categories.first;
+        Log.d('Category "$categoryName" not found, using fallback: ${category.title}', label: 'CREATE_RECURRING');
+      }
+
+      // Parse frequency
+      RecurringFrequency frequency;
+      switch (frequencyString.toLowerCase()) {
+        case 'daily':
+          frequency = RecurringFrequency.daily;
+          break;
+        case 'weekly':
+          frequency = RecurringFrequency.weekly;
+          break;
+        case 'yearly':
+          frequency = RecurringFrequency.yearly;
+          break;
+        case 'monthly':
+        default:
+          frequency = RecurringFrequency.monthly;
+      }
+
+      // Parse First Billing Date (nextDueDate)
+      DateTime nextDueDate = DateTime.now();
+      if (nextDueDateString != null) {
+        try {
+          nextDueDate = DateTime.parse(nextDueDateString);
+        } catch (e) {
+          Log.w('Failed to parse next due date, using current date', label: 'CREATE_RECURRING');
+        }
+      }
+
+      // startDate kept for backward compatibility, set to same as nextDueDate
+      final startDate = nextDueDate;
+
+      // Convert amount if currencies don't match
+      // IMPORTANT: Recurring should always be stored in wallet currency!
+      double recurringAmount = amount;
+      String conversionInfo = '';
+
+      if (aiCurrency != wallet.currency) {
+        try {
+          final exchangeService = _ref.read(exchangeRateServiceProvider);
+          recurringAmount = await exchangeService.convertAmount(
+            amount: amount,
+            fromCurrency: aiCurrency,
+            toCurrency: wallet.currency,
+          );
+          conversionInfo = ' (converted from $amount $aiCurrency)';
+          Log.d('Converted $amount $aiCurrency to $recurringAmount ${wallet.currency}', label: 'CREATE_RECURRING');
+        } catch (e) {
+          Log.e('Failed to convert currency: $e', label: 'CREATE_RECURRING');
+          return '❌ Failed to convert currency from $aiCurrency to ${wallet.currency}. Please check your internet connection or try again.';
+        }
+      }
+
+      // Create recurring model with converted amount and wallet currency
+      final recurring = RecurringModel(
+        name: name,
+        amount: recurringAmount,
+        wallet: wallet,
+        category: category,
+        currency: wallet.currency,  // Use wallet currency, not AI currency!
+        frequency: frequency,
+        startDate: startDate,
+        nextDueDate: nextDueDate,
+        status: RecurringStatus.active,
+        enableReminder: enableReminder,
+        reminderDaysBefore: 1,
+        autoCharge: autoCharge,
+        notes: notes,
+      );
+
+      // Save to database
+      final db = _ref.read(databaseProvider);
+      await db.recurringDao.addRecurring(recurring);
+
+      // If autoCharge is true, create the first transaction immediately
+      if (autoCharge) {
+        // Use the converted amount (same as recurring)
+        final transaction = TransactionModel(
+          transactionType: TransactionType.expense,
+          amount: recurringAmount,
+          date: DateTime.now(),
+          title: name,
+          category: category,
+          wallet: wallet,
+          notes: notes ?? 'Auto-charged from recurring payment',
+        );
+        await db.transactionDao.addTransaction(transaction);
+        Log.d('Created initial transaction for recurring payment', label: 'CREATE_RECURRING');
+      }
+
+      // Format response with conversion info
+      final amountText = _formatAmount(recurringAmount, currency: wallet.currency);
+
+      // Get app language setting (default)
+      final appLanguage = _ref.read(languageProvider).code;
+
+      // Detect if user is using a different language from app setting
+      final userMessages = state.messages.where((m) => m.isFromUser).toList();
+      final lastUserMessage = userMessages.isNotEmpty ? userMessages.last.content.toLowerCase() : '';
+      final hasVietnameseChars = lastUserMessage.contains(RegExp(r'[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]'));
+
+      // Use Vietnamese if: app is set to Vietnamese OR user is typing Vietnamese
+      final useVietnamese = appLanguage == 'vi' || (appLanguage == 'en' && hasVietnameseChars);
+
+      String frequencyText;
+      String message;
+
+      if (useVietnamese) {
+        // Vietnamese response
+        switch (frequency) {
+          case RecurringFrequency.daily:
+            frequencyText = 'hàng ngày';
+            break;
+          case RecurringFrequency.weekly:
+            frequencyText = 'hàng tuần';
+            break;
+          case RecurringFrequency.monthly:
+            frequencyText = 'hàng tháng';
+            break;
+          case RecurringFrequency.quarterly:
+            frequencyText = 'hàng quý';
+            break;
+          case RecurringFrequency.yearly:
+            frequencyText = 'hàng năm';
+            break;
+          case RecurringFrequency.custom:
+            frequencyText = 'tùy chỉnh';
+            break;
+        }
+        message = '✅ Đã ghi nhận chi tiêu định kỳ "$name" - $amountText $frequencyText từ ví "${wallet.name}" (${category.title})$conversionInfo${autoCharge ? '. Sẽ tự động trừ tiền $frequencyText từ hôm nay.' : '.'}';
+      } else {
+        // English response
+        frequencyText = frequency.displayName;
+        final conversionInfoEn = conversionInfo.isNotEmpty ? ' (converted from $amount $aiCurrency)' : '';
+        message = '✅ Created recurring payment "$name" - $amountText $frequencyText from "${wallet.name}" (${category.title})$conversionInfoEn${autoCharge ? '. Will auto-charge $frequencyText starting today.' : '.'}';
+      }
+
+      return message;
+    } catch (e, stackTrace) {
+      Log.e('Failed to create recurring: $e', label: 'CREATE_RECURRING');
+      Log.e('Stack trace: $stackTrace', label: 'CREATE_RECURRING');
+      return '❌ Failed to create recurring: $e';
     }
   }
 

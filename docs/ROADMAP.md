@@ -11,6 +11,119 @@ This document outlines the development roadmap for Pockaw, focusing on transform
 - ✅ Basic analytics
 - ✅ Offline-first with SQLite
 - ✅ Android release (Play Store beta)
+- ✅ AI chat assistant (Gemini integration)
+- ✅ Recurring payments UI (list and form screens)
+- ✅ Planning features (budgets and goals)
+
+---
+
+## Phase 0: Bank Integration & Compliance (Q1 2025) 🔥 PRIORITY
+
+### 0.1 Plaid Integration Setup
+**Priority: CRITICAL | Timeline: 2 weeks | Status: 🚧 IN PROGRESS**
+
+Features:
+- Plaid account setup and API configuration
+- Development environment testing (Sandbox mode)
+- Link Token generation endpoint
+- Public token exchange flow
+- Access token secure storage
+
+Technical:
+- `plaid_flutter` package integration
+- Firebase Cloud Functions for token exchange
+- Flutter Secure Storage for token management
+- Plaid webhook handler setup
+
+Products to integrate:
+- ✅ Transactions ($0.30/account/month)
+- ✅ Balance ($0.10/account/month)
+- 🔜 Recurring Transactions ($0.15/account/month) - Phase 2
+
+### 0.2 Bank Connection UI/UX
+**Priority: CRITICAL | Timeline: 1 week**
+
+Features:
+- Plaid Link integration in app
+- Bank account selection flow
+- Connection status management
+- Disconnect/reconnect functionality
+- Multi-bank support
+
+UI Components:
+- Bank connection settings screen
+- Connected accounts list
+- Account health indicators
+- Transaction sync status
+- Manual sync trigger
+
+### 0.3 Transaction Sync Engine
+**Priority: HIGH | Timeline: 2 weeks**
+
+Features:
+- Initial transaction import (24-month history)
+- Incremental sync (daily/webhook-based)
+- Transaction deduplication logic
+- Category mapping from Plaid to Bexly
+- Conflict resolution (manual vs synced)
+
+Technical:
+- Background sync service
+- Webhook receiver for real-time updates
+- Transaction matching algorithm
+- Sync status tracking per account
+
+### 0.4 Security & Compliance
+**Priority: CRITICAL | Timeline: 1 week**
+
+Documentation:
+- ✅ Privacy Policy (GDPR/CCPA compliant)
+- ✅ Terms of Service
+- ✅ Data Retention & Deletion Policy
+- ✅ Security questionnaire responses
+
+Technical Implementation:
+- Database encryption (SQLCipher)
+- Plaid token encryption at rest
+- Secure communication (HTTPS/TLS)
+- User consent management
+- Account deletion workflow
+
+### 0.5 Compliance & Legal
+**Priority: CRITICAL | Timeline: 1 week**
+
+Tasks:
+- ✅ Complete Plaid security questionnaire
+- ✅ Background check policy documentation
+- 🔜 Publish Privacy Policy at bexly.app/privacy
+- 🔜 Publish Terms of Service at bexly.app/terms
+- 🔜 Implement consent dialogs
+- 🔜 Data deletion automation (Cloud Functions)
+
+Legal Documents:
+- Data Processing Agreement (DPA) template
+- User consent logging
+- GDPR Article 17 compliance (Right to Erasure)
+- GLBA 7-year retention for financial data
+
+### 0.6 Production Readiness
+**Priority: HIGH | Timeline: 1 week**
+
+Requirements before Plaid Production approval:
+- [ ] Privacy Policy published and linked in app
+- [ ] Terms of Service published and linked in app
+- [ ] Consent flow implemented (pre-Plaid Link)
+- [ ] Data deletion functionality (30-day grace period)
+- [ ] Automated cleanup jobs (Cloud Functions)
+- [ ] Security audit checklist completed
+- [ ] Plaid Production application submitted
+- [ ] Test with 5-10 beta users in Sandbox
+
+Monitoring:
+- Plaid API error tracking
+- Sync failure alerts
+- Token expiration monitoring
+- User consent audit logs
 
 ---
 
@@ -60,25 +173,45 @@ Features:
 ## Phase 2: Bill & Subscription Tracking (Q1-Q2 2025)
 
 ### 2.1 Recurring Transaction Management
-**Priority: HIGH | Timeline: 2 weeks**
+**Priority: HIGH | Timeline: 2 weeks | Status: ✅ COMPLETED**
 
 Features:
-- Add recurring transactions (daily/weekly/monthly/yearly)
-- Auto-create transactions on schedule
-- Notification before due date
-- Track payment history
-- Pause/resume subscriptions
+- ✅ Add recurring transactions (daily/weekly/monthly/yearly)
+- ✅ List view with 3 tabs (Active, All, Paused)
+- ✅ Form screen for add/edit (bottom sheet style)
+- ✅ Category and wallet selection
+- ✅ Enable reminder toggle
+- ✅ Auto charge toggle
+- 🔜 Auto-create transactions on schedule
+- 🔜 Notification before due date
+- 🔜 Track payment history
 
 Database Schema:
 ```sql
 recurring_transactions:
   - id
-  - transaction_template
-  - frequency (enum)
+  - name
+  - amount
+  - wallet_id (FK)
+  - category_id (FK)
+  - currency
+  - frequency (enum: daily/weekly/monthly/yearly)
+  - start_date
   - next_due_date
-  - is_active
-  - notification_days_before
+  - status (enum: active/paused/cancelled)
+  - enable_reminder
+  - reminder_days_before
+  - auto_charge
+  - notes
+  - created_at
+  - updated_at
 ```
+
+Next Steps:
+- 🔜 Background job to auto-create transactions
+- 🔜 Integration with Plaid Recurring Transactions API
+- 🔜 Push notifications for due dates
+- 🔜 Smart detection of recurring patterns from transaction history
 
 ### 2.2 Subscription Analytics
 **Priority: MEDIUM | Timeline: 1 week**
@@ -273,19 +406,25 @@ Features:
 - Manual backups
 - Basic categories
 
-### Premium ($2.99/month) - Phase 1
+### Premium ($6.99/month) - Phase 1
 - Unlimited wallets
 - Cloud sync
 - Receipt photos
 - Recurring transactions
 - Bill tracking
+- **Bank account sync (Plaid integration)**
+- Real-time balance updates
+- Automatic transaction import
 
-### Pro ($5.99/month) - Phase 3
-- AI features
-- OCR scanning
+### Pro ($9.99/month) - Phase 3
+- Everything in Premium
+- AI-powered insights
+- OCR receipt scanning
 - Advanced analytics
 - Custom reports
+- Auto-detect recurring payments (Plaid Recurring API)
 - Priority support
+- Export to Excel/PDF
 
 ### Business ($9.99/month) - Phase 5
 - Team collaboration
@@ -306,7 +445,8 @@ Features:
 ### Monetization
 - 5% free-to-premium conversion
 - <3% monthly churn
-- $50+ LTV per premium user
+- $70+ LTV per premium user (increased due to Plaid value-add)
+- Target: 1,000 paid users to cover Plaid costs (~$400/mo at $0.40/user)
 
 ### Engagement
 - 60% weekly active users
@@ -342,17 +482,33 @@ Features:
 
 ## Next Steps
 
-1. **Immediate** (Next 2 weeks):
-   - Implement receipt photo capture
-   - Add recurring transaction support
-   - Launch Firebase integration
+1. **Immediate** (Next 2 weeks) - Phase 0 Critical Path:
+   - ✅ Complete Plaid security questionnaire
+   - 🔜 Publish Privacy Policy and Terms of Service
+   - 🔜 Implement user consent dialogs
+   - 🔜 Setup Firebase Cloud Functions for Plaid
+   - 🔜 Integrate Plaid Flutter SDK
+   - 🔜 Build bank connection UI
+   - 🔜 Test in Plaid Sandbox with 5 users
 
-2. **Short-term** (Next month):
-   - Complete invoice scanner
-   - Build bill calendar
-   - Release premium tier
+2. **Short-term** (Next month) - Plaid Production Launch:
+   - 🔜 Implement transaction sync engine
+   - 🔜 Add data deletion automation
+   - 🔜 Submit Plaid Production application
+   - 🔜 Launch Premium tier ($6.99/mo with bank sync)
+   - 🔜 Beta test with 50 paid users
+   - 🔜 Monitor Plaid costs and sync reliability
 
-3. **Long-term** (Next quarter):
+3. **Mid-term** (2-3 months) - Feature Enhancement:
+   - Auto-detect recurring payments (Plaid Recurring API)
+   - Receipt photo capture
+   - Push notifications for bills
+   - Invoice scanner
+   - Budget vs actual tracking with bank data
+
+4. **Long-term** (Next quarter) - Scale & Optimize:
    - Launch OCR features
    - Deploy web application
-   - Implement AI assistant
+   - Optimize Plaid costs (caching, smart sync)
+   - Expand to Canada market
+   - Implement fraud detection
