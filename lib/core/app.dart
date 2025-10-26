@@ -8,6 +8,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/router/app_router.dart';
+import 'package:bexly/core/services/sync/sync_manager_widget.dart';
 import 'package:bexly/features/settings/presentation/riverpod/language_provider.dart';
 import 'package:bexly/features/theme_switcher/presentation/riverpod/theme_mode_provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
@@ -159,58 +160,60 @@ class MyApp extends ConsumerWidget {
       ),
     );
 
-    return ToastificationWrapper(
-      child: MaterialApp.router(
-        key: rootKey,
-        title: AppConstants.appName,
-        debugShowCheckedModeBanner: false,
-        theme: lightTheme,
-        darkTheme: darkTheme,
-        themeMode: themeMode, // Set the theme mode from the provider
-        locale: Locale(currentLanguage.code),
-        supportedLocales: const [
-          Locale('en', ''),
-          Locale('vi', ''),
-        ],
-        localizationsDelegates: const [
-          AppLocalizationsDelegate(),
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        builder: (context, child) => ResponsiveBreakpoints.builder(
-          child: MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: MediaQuery.of(
-                context,
-              ).textScaler.clamp(minScaleFactor: 0.8, maxScaleFactor: 1.2),
-            ),
-            child: child!,
-          ),
-          breakpoints: [
-            const Breakpoint(
-              start: 0,
-              end: AppConstants.mobileBreakpointEnd,
-              name: MOBILE,
-            ),
-            const Breakpoint(
-              start: AppConstants.tabletBreakpointStart,
-              end: AppConstants.tabletBreakpointEnd,
-              name: TABLET,
-            ),
-            const Breakpoint(
-              start: AppConstants.desktopBreakpointStart,
-              end: AppConstants.desktopBreakpointEnd,
-              name: DESKTOP,
-            ),
-            const Breakpoint(
-              start: AppConstants.fourKBreakpointStart,
-              end: double.infinity,
-              name: '4K',
-            ),
+    return SyncManagerWidget(
+      child: ToastificationWrapper(
+        child: MaterialApp.router(
+          key: rootKey,
+          title: AppConstants.appName,
+          debugShowCheckedModeBanner: false,
+          theme: lightTheme,
+          darkTheme: darkTheme,
+          themeMode: themeMode, // Set the theme mode from the provider
+          locale: Locale(currentLanguage.code),
+          supportedLocales: const [
+            Locale('en', ''),
+            Locale('vi', ''),
           ],
+          localizationsDelegates: const [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          builder: (context, child) => ResponsiveBreakpoints.builder(
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: MediaQuery.of(
+                  context,
+                ).textScaler.clamp(minScaleFactor: 0.8, maxScaleFactor: 1.2),
+              ),
+              child: child!,
+            ),
+            breakpoints: [
+              const Breakpoint(
+                start: 0,
+                end: AppConstants.mobileBreakpointEnd,
+                name: MOBILE,
+              ),
+              const Breakpoint(
+                start: AppConstants.tabletBreakpointStart,
+                end: AppConstants.tabletBreakpointEnd,
+                name: TABLET,
+              ),
+              const Breakpoint(
+                start: AppConstants.desktopBreakpointStart,
+                end: AppConstants.desktopBreakpointEnd,
+                name: DESKTOP,
+              ),
+              const Breakpoint(
+                start: AppConstants.fourKBreakpointStart,
+                end: double.infinity,
+                name: '4K',
+              ),
+            ],
+          ),
+          routerConfig: router,
         ),
-        routerConfig: router,
       ),
     );
   }
