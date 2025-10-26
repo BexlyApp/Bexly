@@ -32,6 +32,12 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
   }
 
+  /// Get category by cloud ID (for sync operations)
+  Future<Category?> getCategoryByCloudId(String cloudId) {
+    return (select(categories)..where((c) => c.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
   Future<List<Category>> getCategoriesByIds(List<int> ids) async {
     if (ids.isEmpty) return [];
     return (select(categories)..where((c) => c.id.isIn(ids))).get();

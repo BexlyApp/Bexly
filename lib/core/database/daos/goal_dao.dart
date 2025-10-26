@@ -45,6 +45,12 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
     return (select(goals)..where((g) => g.id.equals(id))).getSingleOrNull();
   }
 
+  /// Get goal by cloud ID (for sync operations)
+  Future<Goal?> getGoalByCloudId(String cloudId) {
+    return (select(goals)..where((g) => g.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
   /// Updates an existing goal (matching by .id)
   Future<bool> updateGoal(Goal goal) async {
     Log.d('✏️  updateGoal → ${goal.toString()}', label: 'goal');
