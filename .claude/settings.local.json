@@ -200,7 +200,8 @@
       "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 uninstall com.joy.bexly)",
       "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 install \"d:\\Projects\\Bexly\\build\\app\\outputs\\flutter-apk\\app-release.apk\")",
       "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -c)",
-      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 shell am start -n com.joy.bexly/com.joy.bexly.MainActivity)"
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 shell am start -n com.joy.bexly/com.joy.bexly.MainActivity)",
+      "Bash(/d/Dev/flutter/bin/dart run build_runner build:*)"
     ],
     "deny": [],
     "ask": []

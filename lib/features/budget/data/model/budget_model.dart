@@ -12,6 +12,9 @@ abstract class BudgetModel with _$BudgetModel {
   const factory BudgetModel({
     int? id,
 
+    /// Cloud ID (UUID v7) for syncing with Firestore
+    String? cloudId,
+
     /// The source of funds for this budget (e.g., "Primary Wallet", "Savings Account").
     required WalletModel wallet,
 
@@ -29,6 +32,12 @@ abstract class BudgetModel with _$BudgetModel {
 
     /// Indicates whether this budget is a recurring or routine budget.
     required bool isRoutine,
+
+    /// Timestamp when budget was created
+    DateTime? createdAt,
+
+    /// Timestamp when budget was last updated
+    DateTime? updatedAt,
   }) = _BudgetModel;
 
   /// Creates a `BudgetModel` instance from a JSON map.
