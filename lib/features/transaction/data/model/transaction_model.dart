@@ -11,6 +11,7 @@ enum TransactionType { income, expense, transfer }
 abstract class TransactionModel with _$TransactionModel {
   const factory TransactionModel({
     int? id,
+    String? cloudId,
     required TransactionType transactionType,
     required double amount,
     required DateTime date,
@@ -20,6 +21,8 @@ abstract class TransactionModel with _$TransactionModel {
     String? notes,
     String? imagePath,
     bool? isRecurring,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) = _TransactionModel;
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) =>

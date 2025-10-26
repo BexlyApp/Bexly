@@ -15,6 +15,9 @@ abstract class WalletModel with _$WalletModel {
     /// The unique identifier for the wallet.
     int? id,
 
+    /// Cloud ID (UUID v7) for syncing with Firestore
+    String? cloudId,
+
     /// The name of the wallet (e.g., "Primary Checking", "Savings").
     @Default('My Wallet') String name,
 
@@ -29,6 +32,12 @@ abstract class WalletModel with _$WalletModel {
 
     /// Optional: The color associated with this wallet, stored as a hex string or int.
     String? colorHex, // Or int colorValue
+
+    /// Timestamp when wallet was created
+    DateTime? createdAt,
+
+    /// Timestamp when wallet was last updated
+    DateTime? updatedAt,
   }) = _WalletModel;
 
   /// Creates a `WalletModel` instance from a JSON map.
