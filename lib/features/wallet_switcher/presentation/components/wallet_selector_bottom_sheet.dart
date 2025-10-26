@@ -18,6 +18,9 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
     final allWalletsAsync = ref.watch(allWalletsStreamProvider);
     final selectedWallet = ref.watch(dashboardWalletFilterProvider);
 
+    // If used in form context (onWalletSelected provided), hide "Total Balance"
+    final bool isFormContext = onWalletSelected != null;
+
     return CustomBottomSheet(
       title: 'Select Wallet',
       child: allWalletsAsync.when(
@@ -36,10 +39,11 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
           return ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: wallets.length + 1, // +1 for "Total" option
+            // If form context: show only wallets, else show "Total" + wallets
+            itemCount: isFormContext ? wallets.length : wallets.length + 1,
             itemBuilder: (context, index) {
-              // First item is "Total (All Wallets)"
-              if (index == 0) {
+              // First item is "Total (All Wallets)" - only if NOT form context
+              if (!isFormContext && index == 0) {
                 return ListTile(
                   title: Text('Total Balance', style: AppTextStyles.body1),
                   dense: true,
@@ -55,11 +59,6 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
                     color: isShowingTotal ? Colors.green : Colors.grey,
                   ),
                   onTap: () {
-                    // If callback provided, we can't select "Total" (need specific wallet)
-                    if (onWalletSelected != null) {
-                      return;
-                    }
-
                     if (isShowingTotal) {
                       context.pop(); // Already showing total, just close
                       return;
@@ -73,7 +72,9 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
               }
 
               // Other items are individual wallets
-              final wallet = wallets[index - 1]; // -1 because first item is Total
+              // If form context: use index directly, else -1 for "Total" offset
+              final walletIndex = isFormContext ? index : index - 1;
+              final wallet = wallets[walletIndex];
               final bool isSelected = selectedWallet?.id == wallet.id;
 
               return ListTile(

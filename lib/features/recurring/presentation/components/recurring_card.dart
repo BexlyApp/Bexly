@@ -45,14 +45,16 @@ class RecurringCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       recurring.name,
-                      style: AppTextStyles.heading4,
+                      style: AppTextStyles.body2.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Text(
                     '${recurring.amount.toPriceFormat()} ${recurring.currency}',
-                    style: AppTextStyles.heading4.copyWith(
+                    style: AppTextStyles.numericMedium.copyWith(
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),

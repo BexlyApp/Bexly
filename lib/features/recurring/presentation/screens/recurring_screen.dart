@@ -3,6 +3,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/features/recurring/presentation/riverpod/recurring_providers.dart';
 import 'package:bexly/features/recurring/presentation/components/recurring_card.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
@@ -13,102 +15,65 @@ class RecurringScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedTab = useState<int>(0);
+    final tabController = useTabController(initialLength: 3);
 
     return CustomScaffold(
       context: context,
       title: 'Recurring Payments',
+      showBackButton: false,
+      showBalance: true,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const RecurringFormScreen(),
-            ),
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            showDragHandle: true,
+            useSafeArea: true,
+            builder: (context) => const RecurringFormScreen(),
           );
         },
         child: const Icon(Icons.add),
       ),
       body: Column(
         children: [
-          // Tab Bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _TabButton(
-                    label: 'Active',
-                    isSelected: selectedTab.value == 0,
-                    onTap: () => selectedTab.value = 0,
-                  ),
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: TabBar(
+              controller: tabController,
+              indicatorColor: AppColors.primary600,
+              indicatorWeight: 3,
+              labelColor: AppColors.primary600,
+              unselectedLabelColor: AppColors.neutral400,
+              labelStyle: AppTextStyles.body2.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              tabs: const [
+                Tab(
+                  text: 'Active',
+                  icon: Icon(Icons.check_circle_outline),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _TabButton(
-                    label: 'All',
-                    isSelected: selectedTab.value == 1,
-                    onTap: () => selectedTab.value = 1,
-                  ),
+                Tab(
+                  text: 'All',
+                  icon: Icon(Icons.list),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _TabButton(
-                    label: 'Paused',
-                    isSelected: selectedTab.value == 2,
-                    onTap: () => selectedTab.value = 2,
-                  ),
+                Tab(
+                  text: 'Paused',
+                  icon: Icon(Icons.pause_circle_outline),
                 ),
               ],
             ),
           ),
-
-          // Content
           Expanded(
-            child: selectedTab.value == 0
-                ? const _ActiveRecurringsTab()
-                : selectedTab.value == 1
-                    ? const _AllRecurringsTab()
-                    : const _PausedRecurringsTab(),
+            child: TabBarView(
+              controller: tabController,
+              children: const [
+                _ActiveRecurringsTab(),
+                _AllRecurringsTab(),
+                _PausedRecurringsTab(),
+              ],
+            ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _TabButton extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _TabButton({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: isSelected
-                ? Theme.of(context).colorScheme.onPrimary
-                : Theme.of(context).colorScheme.onSurface,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
       ),
     );
   }
