@@ -39,13 +39,15 @@ class GoalFormService {
       await actions.update(
         Goal(
           id: goal.id ?? 0,
+          cloudId: goal.cloudId,
           title: goal.title,
           description: goal.description,
           targetAmount: goal.targetAmount,
           currentAmount: goal.currentAmount,
           startDate: goal.startDate,
           endDate: goal.endDate,
-          createdAt: DateTime.now(),
+          createdAt: goal.createdAt ?? DateTime.now(),
+          updatedAt: DateTime.now(),
           iconName: goal.iconName,
           associatedAccountId: goal.associatedAccountId,
           pinned: goal.pinned,
