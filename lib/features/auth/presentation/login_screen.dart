@@ -18,6 +18,7 @@ import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/package_info/package_info_provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'dart:io' show Platform;
+import 'package:flutter/services.dart';
 
 class LoginScreen extends HookConsumerWidget {
   const LoginScreen({super.key});
@@ -80,8 +81,18 @@ class LoginScreen extends HookConsumerWidget {
     Future<void> handleGoogleSignIn() async {
       isLoading.value = true;
       try {
-        // Create GoogleSignIn instance - let it auto-detect client ID from google-services.json
-        final googleSignIn = GoogleSignIn();
+        // Auto-detect OAuth client from google-services.json
+        // Android: Uses android_client_info with matching SHA-1 (client_type: 1)
+        // iOS: Needs explicit clientId
+        final googleSignIn = GoogleSignIn(
+          clientId: Platform.isIOS
+              ? '368090586626-po4m5b4jbtvpfg7ubv622qq3phiq7pmp.apps.googleusercontent.com'
+              : null,
+        );
+        // Sign out any cached session to force re-consent/account chooser on first attempt
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
         final googleUser = await googleSignIn.signIn();
 
         if (googleUser == null) {
@@ -93,9 +104,13 @@ class LoginScreen extends HookConsumerWidget {
         // Get authentication tokens
         final googleAuth = await googleUser.authentication;
 
-        // Create Firebase credential
+        // Create Firebase credential (require idToken; accessToken optional but helpful)
+        if (googleAuth.idToken == null) {
+          throw Exception('Missing ID token from Google. Please try again.');
+        }
         final credential = GoogleAuthProvider.credential(
           idToken: googleAuth.idToken,
+          accessToken: googleAuth.accessToken,
         );
 
         // Sign in to Firebase using DOS-Me app
@@ -128,13 +143,30 @@ class LoginScreen extends HookConsumerWidget {
         if (context.mounted) {
           context.go('/');
         }
+      } on PlatformException catch (e) {
+        debugPrint('Google Sign In PlatformException: code=${e.code}, message=${e.message}, details=${e.details}');
+        if (context.mounted) {
+          final code = e.code;
+          String message = e.message ?? 'Google Sign-In failed';
+          if (code == 'sign_in_failed' && (message.contains('10') || (e.details?.toString().contains('10') ?? false))) {
+            message = 'Configuration error (code 10). Kiểm tra SHA-1/SHA-256 và OAuth client.';
+          }
+          toastification.show(
+            context: context,
+            title: const Text('Google Login Failed'),
+            description: Text('[$code] $message'),
+            type: ToastificationType.error,
+            style: ToastificationStyle.fillColored,
+            autoCloseDuration: const Duration(seconds: 5),
+          );
+        }
       } catch (e) {
         debugPrint('Google Sign In Error: $e');
         if (context.mounted) {
           toastification.show(
             context: context,
             title: const Text('Google Login Failed'),
-            description: Text('${e.toString()}'),
+            description: Text(e.toString()),
             type: ToastificationType.error,
             style: ToastificationStyle.fillColored,
             autoCloseDuration: const Duration(seconds: 4),
