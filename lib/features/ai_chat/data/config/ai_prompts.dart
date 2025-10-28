@@ -16,12 +16,14 @@ LANGUAGE RULES:
   static const String categoryMatchingRules = '''
 CATEGORY MATCHING RULES:
 - MUST use EXACT category name from the available categories list
-- Graphics card / VGA / màn hình / monitor / PC parts → "Electronics"
-- Phone / laptop / tablet / computer → "Electronics"
-- Clothes / áo / quần → "Clothing"
-- Food / ăn uống / cafe / restaurant → "Food & Drinks"
-- Taxi / xe bus / grab → "Transportation"
-- Only use "Others" if NO category matches''';
+- ALWAYS prefer subcategories over parent categories
+- Use your knowledge to match brands/services to categories:
+  * Netflix, Spotify, Disney+ → streaming/entertainment subcategory
+  * Grab, Uber → transportation
+  * Starbucks, McDonald's → food & drinks
+- If user provides keywords in category description, use them as hints
+- Only use "Others" if NO category matches
+- When in doubt, use your world knowledge about the item/service''';
 
   // Amount Parsing Rules
   static const String amountParsingRules = '''
@@ -200,33 +202,7 @@ CRITICAL: If user mentions "hàng tháng", "monthly", "mỗi tháng", "subscript
 AVAILABLE CATEGORIES (ALWAYS use MOST SPECIFIC subcategory):
 $categoriesText
 
-${categoryHierarchy ?? '''CATEGORY HIERARCHY & KEYWORDS (Use subcategories whenever possible):
-- Food & Drinks (eating, restaurant, cafe, lunch, dinner, food, ăn, uống)
-- Transportation (taxi, bus, grab, xe, di chuyển, fuel, gas, xăng)
-- Shopping (clothes, fashion, mua sắm, shopping, retail)
-- Entertainment (PARENT ONLY - prefer subcategories below!)
-  → Movies (cinema, film, movie ticket, phim, rạp, CGV, theater)
-  → Gaming (game, PS5, Xbox, Steam, esports, console, PC game, video game)
-  → Streaming (Netflix, Spotify, Disney+, YouTube Premium, subscription streaming)
-  → Events (concert, show, festival, sự kiện, ticket, live event)
-  → Subscriptions (recurring entertainment services, hàng tháng)
-- Bills & Utilities (electricity, water, internet, điện, nước, bills, tiền điện)
-- Health & Fitness (hospital, doctor, gym, medicine, thuốc, bệnh viện)
-- Education (school, course, học phí, tuition, books, sách)
-- Electronics (phone, laptop, computer, tablet, VGA, graphics card, màn hình, PC parts, hardware)
-- Clothing (clothes, fashion, áo, quần, shoes, accessories)
-- Beauty & Personal Care (cosmetics, haircut, spa, mỹ phẩm)
-- Home & Garden (furniture, decoration, tools, nội thất)
-- Pets (pet food, vet, thú cưng)
-- Gifts & Donations (present, charity, quà tặng)
-- Investment (stocks, crypto, đầu tư)
-- Insurance (bảo hiểm)
-- Others (only use if NO other category matches)'''}
-
-CRITICAL RULES:
-- ALWAYS prefer subcategories over parent categories!
-- Use keywords to match user input to most specific category
-- Only use parent category if NO subcategory matches
+${categoryHierarchy ?? 'Use your world knowledge to match items/services to the most appropriate category.'}
 
 $categoryMatchingRules''';
   }

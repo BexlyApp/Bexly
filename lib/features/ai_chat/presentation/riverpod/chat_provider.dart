@@ -40,6 +40,39 @@ class CategoryInfo {
     this.parentId,
     this.subCategories = const [],
   });
+
+  /// Build hierarchy text for LLM
+  String toHierarchyText({int indent = 0}) {
+    final buffer = StringBuffer();
+    final prefix = indent == 0 ? '-' : '  ' * indent + '→';
+
+    // Category name with keywords if available
+    if (keywords != null && keywords!.isNotEmpty) {
+      buffer.write('$prefix $title ($keywords)');
+    } else {
+      buffer.write('$prefix $title');
+    }
+
+    // Add subcategories
+    if (subCategories.isNotEmpty) {
+      for (final sub in subCategories) {
+        buffer.write('\n${sub.toHierarchyText(indent: indent + 1)}');
+      }
+    }
+
+    return buffer.toString();
+  }
+
+  /// Build hierarchy for all categories
+  static String buildCategoryHierarchy(List<CategoryInfo> categories) {
+    if (categories.isEmpty) return '';
+
+    final buffer = StringBuffer('CATEGORY HIERARCHY (prefer subcategories):\n');
+    for (final cat in categories) {
+      buffer.write('${cat.toHierarchyText()}\n');
+    }
+    return buffer.toString().trim();
+  }
 }
 
 // AI Service Provider - Supports both OpenAI and Gemini
@@ -67,7 +100,13 @@ final aiServiceProvider = Provider<AIService>((ref) {
     return [cat.title, ...cat.subCategories.map((sub) => sub.title)];
   }).toList();
 
+  // Build dynamic hierarchy text from database
+  final categoryHierarchy = CategoryInfo.buildCategoryHierarchy(categoryInfos);
+
   Log.d('Categories loaded for AI: ${categories.join(", ")}', label: 'Chat Provider');
+  if (categoryHierarchy.isNotEmpty) {
+    Log.d('Category Hierarchy:\n$categoryHierarchy', label: 'Chat Provider');
+  }
 
   // Get wallet currency for context (use read to avoid rebuild)
   final wallet = ref.read(activeWalletProvider).valueOrNull;
