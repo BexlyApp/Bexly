@@ -193,10 +193,40 @@ ACTION_JSON: {"action":"create_recurring","name":"Điện nước","amount":5000
 CRITICAL: If user mentions "hàng tháng", "monthly", "mỗi tháng", "subscription" → MUST use create_recurring, NOT create_expense!''';
 
   /// Build context section with available categories
-  static String buildContextSection(List<String> categories) {
+  static String buildContextSection(List<String> categories, {String? categoryHierarchy}) {
+    final categoriesText = categories.isEmpty ? '(No categories configured)' : categories.join(', ');
+
     return '''
-AVAILABLE CATEGORIES:
-${categories.isEmpty ? '(No categories configured)' : categories.join(', ')}
+AVAILABLE CATEGORIES (ALWAYS use MOST SPECIFIC subcategory):
+$categoriesText
+
+${categoryHierarchy ?? '''CATEGORY HIERARCHY & KEYWORDS (Use subcategories whenever possible):
+- Food & Drinks (eating, restaurant, cafe, lunch, dinner, food, ăn, uống)
+- Transportation (taxi, bus, grab, xe, di chuyển, fuel, gas, xăng)
+- Shopping (clothes, fashion, mua sắm, shopping, retail)
+- Entertainment (PARENT ONLY - prefer subcategories below!)
+  → Movies (cinema, film, movie ticket, phim, rạp, CGV, theater)
+  → Gaming (game, PS5, Xbox, Steam, esports, console, PC game, video game)
+  → Streaming (Netflix, Spotify, Disney+, YouTube Premium, subscription streaming)
+  → Events (concert, show, festival, sự kiện, ticket, live event)
+  → Subscriptions (recurring entertainment services, hàng tháng)
+- Bills & Utilities (electricity, water, internet, điện, nước, bills, tiền điện)
+- Health & Fitness (hospital, doctor, gym, medicine, thuốc, bệnh viện)
+- Education (school, course, học phí, tuition, books, sách)
+- Electronics (phone, laptop, computer, tablet, VGA, graphics card, màn hình, PC parts, hardware)
+- Clothing (clothes, fashion, áo, quần, shoes, accessories)
+- Beauty & Personal Care (cosmetics, haircut, spa, mỹ phẩm)
+- Home & Garden (furniture, decoration, tools, nội thất)
+- Pets (pet food, vet, thú cưng)
+- Gifts & Donations (present, charity, quà tặng)
+- Investment (stocks, crypto, đầu tư)
+- Insurance (bảo hiểm)
+- Others (only use if NO other category matches)'''}
+
+CRITICAL RULES:
+- ALWAYS prefer subcategories over parent categories!
+- Use keywords to match user input to most specific category
+- Only use parent category if NO subcategory matches
 
 $categoryMatchingRules''';
   }
