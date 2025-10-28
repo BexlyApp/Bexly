@@ -10,6 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
+import 'package:bexly/core/components/bottom_sheets/alert_bottom_sheet.dart';
 import 'package:bexly/core/components/buttons/circle_button.dart';
 import 'package:bexly/core/components/buttons/menu_tile_button.dart';
 import 'package:bexly/core/components/chips/custom_currency_chip.dart';

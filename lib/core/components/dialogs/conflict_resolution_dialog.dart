@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:bexly/core/services/sync/conflict_resolution_service.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
 
 /// Dialog to resolve sync conflicts between local and cloud data
 class ConflictResolutionDialog extends StatelessWidget {
@@ -16,36 +18,45 @@ class ConflictResolutionDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM dd, yyyy HH:mm');
 
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(
-            Icons.warning_amber_rounded,
-            color: Colors.orange,
-            size: 28,
-          ),
-          const Gap(12),
-          Expanded(
-            child: Text(
-              'Sync Conflict Detected',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.spacing20,
+        AppSpacing.spacing12,
+        AppSpacing.spacing20,
+        AppSpacing.spacing32,
       ),
-      content: SingleChildScrollView(
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Title with warning icon
+            Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 32,
+                ),
+                const Gap(12),
+                Expanded(
+                  child: Text(
+                    'Sync Conflict Detected',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Gap(AppSpacing.spacing16),
+
+            // Description
             Text(
               'You have data on both this device and in the cloud. Please choose which data to keep:',
-              style: TextStyle(fontSize: 14),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-            const Gap(24),
+            const Gap(AppSpacing.spacing24),
 
             // Local Data Card
             _DataCard(
@@ -56,7 +67,7 @@ class ConflictResolutionDialog extends StatelessWidget {
               dateFormat: dateFormat,
               color: Colors.blue,
             ),
-            const Gap(16),
+            const Gap(AppSpacing.spacing16),
 
             // Cloud Data Card
             _DataCard(
@@ -67,7 +78,7 @@ class ConflictResolutionDialog extends StatelessWidget {
               dateFormat: dateFormat,
               color: Colors.green,
             ),
-            const Gap(16),
+            const Gap(AppSpacing.spacing16),
 
             // Warning
             Container(
@@ -100,30 +111,57 @@ class ConflictResolutionDialog extends StatelessWidget {
                 ],
               ),
             ),
+            const Gap(AppSpacing.spacing24),
+
+            // Buttons - 3 buttons vertical stacking
+            Column(
+              spacing: AppSpacing.spacing12,
+              children: [
+                // Use Cloud Data button (primary action)
+                SizedBox(
+                  width: double.infinity,
+                  child: PrimaryButton(
+                    label: 'Use Cloud Data',
+                    onPressed: () => Navigator.pop(context, ConflictResolution.useCloud),
+                  ),
+                ),
+
+                // Use Local Data button (secondary action)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonal(
+                    onPressed: () => Navigator.pop(context, ConflictResolution.useLocal),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.blue.shade100,
+                      foregroundColor: Colors.blue.shade900,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text('Use Local Data'),
+                  ),
+                ),
+
+                // Cancel button (tertiary action)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, null),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, null),
-          child: Text('Cancel'),
-        ),
-        FilledButton.tonal(
-          onPressed: () => Navigator.pop(context, ConflictResolution.useLocal),
-          style: FilledButton.styleFrom(
-            backgroundColor: Colors.blue.shade100,
-            foregroundColor: Colors.blue.shade900,
-          ),
-          child: Text('Use Local Data'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, ConflictResolution.useCloud),
-          style: FilledButton.styleFrom(
-            backgroundColor: Colors.green.shade600,
-          ),
-          child: Text('Use Cloud Data'),
-        ),
-      ],
     );
   }
 }

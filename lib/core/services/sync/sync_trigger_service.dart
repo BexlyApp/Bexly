@@ -62,9 +62,12 @@ class SyncTriggerService {
         // Show conflict resolution dialog
         Log.w('Conflict detected, showing resolution dialog', label: 'sync');
 
-        final resolution = await showDialog<ConflictResolution>(
+        final resolution = await showModalBottomSheet<ConflictResolution>(
           context: context,
-          barrierDismissible: false,
+          isDismissible: false,
+          enableDrag: false,
+          showDragHandle: true,
+          isScrollControlled: true,
           builder: (context) => ConflictResolutionDialog(
             conflictInfo: conflictInfo,
           ),

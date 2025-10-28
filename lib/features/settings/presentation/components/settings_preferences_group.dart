@@ -66,62 +66,75 @@ class SettingsPreferencesGroup extends ConsumerWidget {
   void _showLanguageDialog(BuildContext context, WidgetRef ref) {
     final currentLanguage = ref.read(languageProvider);
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.selectLanguage),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: availableLanguages.map((language) {
-            return RadioListTile<Language>(
-              title: Row(
-                children: [
-                  Text(
-                    language.flag,
-                    style: const TextStyle(fontSize: 24),
-                  ),
-                  const Gap(12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(language.name),
-                      if (language.nativeName != language.name)
-                        Text(
-                          language.nativeName,
-                          style: AppTextStyles.body4.copyWith(
-                            color: AppColors.neutral500,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-              value: language,
-              groupValue: currentLanguage,
-              onChanged: (Language? value) {
-                if (value != null) {
-                  ref.read(languageProvider.notifier).setLanguage(value);
-                  Navigator.of(context).pop();
-
-                  // Show confirmation snackbar
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(AppLocalizations.of(context)!.languageChanged(value.name)),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                }
-              },
-            );
-          }).toList(),
+      showDragHandle: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.spacing20,
+          AppSpacing.spacing12,
+          AppSpacing.spacing20,
+          AppSpacing.spacing32,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(AppLocalizations.of(context)!.cancel),
-          ),
-        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title
+            Text(
+              AppLocalizations.of(context)!.selectLanguage,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Gap(AppSpacing.spacing20),
+
+            // Language options
+            ...availableLanguages.map((language) {
+              return RadioListTile<Language>(
+                title: Row(
+                  children: [
+                    Text(
+                      language.flag,
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                    const Gap(12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(language.name),
+                        if (language.nativeName != language.name)
+                          Text(
+                            language.nativeName,
+                            style: AppTextStyles.body4.copyWith(
+                              color: AppColors.neutral500,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+                value: language,
+                groupValue: currentLanguage,
+                onChanged: (Language? value) {
+                  if (value != null) {
+                    ref.read(languageProvider.notifier).setLanguage(value);
+                    Navigator.of(context).pop();
+
+                    // Show confirmation snackbar
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(AppLocalizations.of(context)!.languageChanged(value.name)),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+              );
+            }).toList(),
+          ],
+        ),
       ),
     );
   }
