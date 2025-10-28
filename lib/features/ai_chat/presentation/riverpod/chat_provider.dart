@@ -27,21 +27,47 @@ import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/features/settings/presentation/riverpod/language_provider.dart';
 // import 'package:bexly/core/services/sync/data_sync_service.dart';
 
+// Simple category info for AI
+class CategoryInfo {
+  final String title;
+  final String? keywords; // from description field
+  final int? parentId;
+  final List<CategoryInfo> subCategories;
+
+  CategoryInfo({
+    required this.title,
+    this.keywords,
+    this.parentId,
+    this.subCategories = const [],
+  });
+}
+
 // AI Service Provider - Supports both OpenAI and Gemini
 final aiServiceProvider = Provider<AIService>((ref) {
-  // Get categories from database
+  // Get categories from database with hierarchy and keywords
   final categoriesAsync = ref.watch(hierarchicalCategoriesProvider);
-  final List<String> categories = categoriesAsync.maybeWhen(
+  final List<CategoryInfo> categoryInfos = categoriesAsync.maybeWhen(
     data: (cats) {
-      final categoryNames = cats.map((c) => c.title).toList();
-      Log.d('Categories loaded for AI: ${categoryNames.join(", ")}', label: 'Chat Provider');
-      return categoryNames;
+      return cats.map((c) => CategoryInfo(
+        title: c.title,
+        keywords: c.description,
+        parentId: c.parentId,
+        subCategories: c.subCategories?.map((sub) => CategoryInfo(
+          title: sub.title,
+          keywords: sub.description,
+          parentId: sub.parentId,
+        )).toList() ?? [],
+      )).toList();
     },
-    orElse: () {
-      Log.i('Categories not loaded yet, using empty list', label: 'Chat Provider');
-      return <String>[];
-    },
+    orElse: () => <CategoryInfo>[],
   );
+
+  // Build category names list for backward compatibility
+  final List<String> categories = categoryInfos.expand((cat) {
+    return [cat.title, ...cat.subCategories.map((sub) => sub.title)];
+  }).toList();
+
+  Log.d('Categories loaded for AI: ${categories.join(", ")}', label: 'Chat Provider');
 
   // Get wallet currency for context (use read to avoid rebuild)
   final wallet = ref.read(activeWalletProvider).valueOrNull;
