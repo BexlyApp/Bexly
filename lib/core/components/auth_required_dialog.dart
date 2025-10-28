@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gap/gap.dart';
+import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
+import 'package:bexly/core/components/buttons/button_state.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
 
 class AuthRequiredDialog extends StatelessWidget {
   final String featureName;
@@ -17,8 +21,9 @@ class AuthRequiredDialog extends StatelessWidget {
     required String featureName,
     required String description,
   }) async {
-    return showDialog<bool>(
+    return showModalBottomSheet<bool>(
       context: context,
+      showDragHandle: true,
       builder: (context) => AuthRequiredDialog(
         featureName: featureName,
         description: description,
@@ -30,27 +35,28 @@ class AuthRequiredDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      icon: Icon(
-        Icons.lock_outline,
-        size: 48,
-        color: theme.colorScheme.primary,
-      ),
-      title: Text(
-        'Sign In Required',
-        style: theme.textTheme.headlineSmall,
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
+    return CustomBottomSheet(
+      title: 'Sign In Required',
+      child: Column(
+        spacing: AppSpacing.spacing20,
         children: [
+          // Lock icon
+          Icon(
+            Icons.lock_outline,
+            size: 64,
+            color: theme.colorScheme.primary,
+          ),
+
+          // Feature name
           Text(
             featureName,
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
             ),
             textAlign: TextAlign.center,
           ),
-          const Gap(8),
+
+          // Description
           Text(
             description,
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -58,7 +64,8 @@ class AuthRequiredDialog extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const Gap(16),
+
+          // Info box
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -84,22 +91,34 @@ class AuthRequiredDialog extends StatelessWidget {
               ],
             ),
           ),
+
+          const Gap(AppSpacing.spacing12),
+
+          // Buttons
+          Row(
+            spacing: AppSpacing.spacing12,
+            children: [
+              Expanded(
+                child: PrimaryButton(
+                  label: 'Cancel',
+                  isOutlined: true,
+                  state: ButtonState.outlinedActive,
+                  onPressed: () => Navigator.pop(context, false),
+                ),
+              ),
+              Expanded(
+                child: PrimaryButton(
+                  label: 'Sign In',
+                  onPressed: () {
+                    Navigator.pop(context, true);
+                    context.push('/login');
+                  },
+                ),
+              ),
+            ],
+          ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          onPressed: () {
-            Navigator.pop(context, true);
-            context.push('/login');
-          },
-          icon: const Icon(Icons.login, size: 18),
-          label: const Text('Sign In'),
-        ),
-      ],
     );
   }
 }

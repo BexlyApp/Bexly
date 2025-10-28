@@ -15,6 +15,7 @@ import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/services/sync/sync_trigger_service.dart';
 import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/services/package_info/package_info_provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'dart:io' show Platform;
 
@@ -30,6 +31,7 @@ class LoginScreen extends HookConsumerWidget {
     final formKey = useMemoized(() => GlobalKey<FormState>());
 
     final authService = ref.read(dosmeAuthServiceProvider);
+    final packageInfoService = ref.watch(packageInfoServiceProvider);
 
     Future<void> handleLogin() async {
       if (!formKey.currentState!.validate()) return;
@@ -78,7 +80,7 @@ class LoginScreen extends HookConsumerWidget {
     Future<void> handleGoogleSignIn() async {
       isLoading.value = true;
       try {
-        // Create GoogleSignIn instance with configuration
+        // Create GoogleSignIn instance - let it auto-detect client ID from google-services.json
         final googleSignIn = GoogleSignIn();
         final googleUser = await googleSignIn.signIn();
 
@@ -511,6 +513,15 @@ class LoginScreen extends HookConsumerWidget {
                         ),
                       ),
                     ),
+                  ),
+                  const Gap(24),
+                  // Version number
+                  Text(
+                    'v${packageInfoService.version}+${packageInfoService.buildNumber}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),

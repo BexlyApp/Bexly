@@ -41,8 +41,9 @@ class SplashScreen extends HookConsumerWidget {
         if (!context.mounted) return;
 
         try {
-          // Check authentication state
-          final authState = ref.read(authStateProvider);
+          // Check authentication state - read the actual User value from AsyncValue
+          final authAsyncValue = ref.read(authStateProvider);
+          final currentUser = authAsyncValue.valueOrNull;
 
           // Check if user has skipped auth before
           final prefs = await SharedPreferences.getInstance();
@@ -50,19 +51,31 @@ class SplashScreen extends HookConsumerWidget {
 
           if (!context.mounted) return;
 
-          if (authState != null) {
-            // User is authenticated
-            Log.d('User authenticated, navigating to main', label: 'SplashScreen');
-            context.go('/');
+          if (currentUser != null) {
+            // User is authenticated with Firebase
+            Log.d('User authenticated (${currentUser.email}), navigating to main', label: 'SplashScreen');
+            // Clear guest mode and hasSkippedAuth flag
+            ref.read(isGuestModeProvider.notifier).state = false;
+            await prefs.setBool('hasSkippedAuth', false);
+
+            if (context.mounted) {
+              context.go('/');
+            }
           } else if (hasSkippedAuth) {
             // User has used guest mode before
-            Log.d('Guest mode, navigating to main', label: 'SplashScreen');
+            Log.d('Guest mode active, navigating to main', label: 'SplashScreen');
             ref.read(isGuestModeProvider.notifier).state = true;
-            context.go('/');
+
+            if (context.mounted) {
+              context.go('/');
+            }
           } else {
-            // First time user, show login
-            Log.d('First time user, navigating to login', label: 'SplashScreen');
-            context.go('/login');
+            // First time user OR logged out, show login
+            Log.d('No auth state, navigating to login', label: 'SplashScreen');
+
+            if (context.mounted) {
+              context.go('/login');
+            }
           }
         } catch (e) {
           Log.e('Navigation error: $e', label: 'SplashScreen');
