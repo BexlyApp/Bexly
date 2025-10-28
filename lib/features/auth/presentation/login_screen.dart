@@ -124,25 +124,39 @@ class LoginScreen extends HookConsumerWidget {
 
         debugPrint('Firebase authentication successful');
 
-        // Trigger initial sync if first time login
+        // Trigger initial sync with timeout protection
         if (context.mounted) {
           final syncService = ref.read(cloudSyncServiceProvider);
           final localDb = ref.read(databaseProvider);
           final userId = dosmeAuth.currentUser?.uid;
 
           if (userId != null) {
-            await SyncTriggerService.triggerInitialSyncIfNeeded(
-              syncService,
-              context: context,
-              localDb: localDb,
-              userId: userId,
-            );
+            debugPrint('Starting initial sync for user: $userId');
+            try {
+              await SyncTriggerService.triggerInitialSyncIfNeeded(
+                syncService,
+                context: context,
+                localDb: localDb,
+                userId: userId,
+              ).timeout(
+                const Duration(seconds: 30),
+                onTimeout: () {
+                  debugPrint('⚠️ Sync timeout after 30s, continuing anyway');
+                },
+              );
+              debugPrint('✅ Initial sync completed or skipped');
+            } catch (e) {
+              debugPrint('❌ Sync error (non-fatal): $e');
+              // Continue even if sync fails
+            }
           }
         }
 
+        debugPrint('Navigating to main screen');
         if (context.mounted) {
           context.go('/');
         }
+        debugPrint('Navigation completed');
       } on PlatformException catch (e) {
         debugPrint('Google Sign In PlatformException: code=${e.code}, message=${e.message}, details=${e.details}');
         if (context.mounted) {
@@ -296,25 +310,28 @@ class LoginScreen extends HookConsumerWidget {
 
         debugPrint('Firebase authentication with Apple successful');
 
+        // TODO: TEMPORARILY DISABLED - Sync causing app to hang after auth
         // Trigger initial sync if first time login
-        if (context.mounted) {
-          final syncService = ref.read(cloudSyncServiceProvider);
-          final localDb = ref.read(databaseProvider);
-          final userId = dosmeAuth.currentUser?.uid;
+        // if (context.mounted) {
+        //   final syncService = ref.read(cloudSyncServiceProvider);
+        //   final localDb = ref.read(databaseProvider);
+        //   final userId = dosmeAuth.currentUser?.uid;
 
-          if (userId != null) {
-            await SyncTriggerService.triggerInitialSyncIfNeeded(
-              syncService,
-              context: context,
-              localDb: localDb,
-              userId: userId,
-            );
-          }
-        }
+        //   if (userId != null) {
+        //     await SyncTriggerService.triggerInitialSyncIfNeeded(
+        //       syncService,
+        //       context: context,
+        //       localDb: localDb,
+        //       userId: userId,
+        //     );
+        //   }
+        // }
 
+        debugPrint('Auth successful, navigating to main screen');
         if (context.mounted) {
           context.go('/');
         }
+        debugPrint('Navigation completed');
       } catch (e) {
         debugPrint('Apple Sign In Error: $e');
         if (context.mounted) {

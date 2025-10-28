@@ -62,6 +62,8 @@ class ConflictResolutionDialog extends StatelessWidget {
             _DataCard(
               title: '📱 This Device (Local)',
               itemCount: conflictInfo.localItemCount,
+              walletCount: conflictInfo.localWalletCount,
+              transactionCount: conflictInfo.localTransactionCount,
               lastUpdate: conflictInfo.localLastUpdate,
               latestTransaction: conflictInfo.latestLocalTransaction,
               dateFormat: dateFormat,
@@ -73,6 +75,8 @@ class ConflictResolutionDialog extends StatelessWidget {
             _DataCard(
               title: '☁️ Cloud Data',
               itemCount: conflictInfo.cloudItemCount,
+              walletCount: conflictInfo.cloudWalletCount,
+              transactionCount: conflictInfo.cloudTransactionCount,
               lastUpdate: conflictInfo.cloudLastUpdate,
               latestTransaction: conflictInfo.latestCloudTransaction,
               dateFormat: dateFormat,
@@ -169,6 +173,8 @@ class ConflictResolutionDialog extends StatelessWidget {
 class _DataCard extends StatelessWidget {
   final String title;
   final int itemCount;
+  final int walletCount;
+  final int transactionCount;
   final DateTime? lastUpdate;
   final String? latestTransaction;
   final DateFormat dateFormat;
@@ -177,6 +183,8 @@ class _DataCard extends StatelessWidget {
   const _DataCard({
     required this.title,
     required this.itemCount,
+    required this.walletCount,
+    required this.transactionCount,
     required this.lastUpdate,
     required this.latestTransaction,
     required this.dateFormat,
@@ -213,20 +221,43 @@ class _DataCard extends StatelessWidget {
             value: '$itemCount',
           ),
           const Gap(8),
+          _InfoRow(
+            icon: Icons.account_balance_wallet,
+            label: 'Wallets:',
+            value: '$walletCount',
+          ),
+          const Gap(8),
+          _InfoRow(
+            icon: Icons.receipt,
+            label: 'Transactions:',
+            value: '$transactionCount',
+          ),
+          const Gap(8),
           if (lastUpdate != null)
             _InfoRow(
               icon: Icons.access_time,
               label: 'Last updated:',
               value: dateFormat.format(lastUpdate!),
+            )
+          else
+            _InfoRow(
+              icon: Icons.access_time,
+              label: 'Last updated:',
+              value: 'No transaction data',
             ),
-          if (latestTransaction != null) ...[
-            const Gap(8),
+          const Gap(8),
+          if (latestTransaction != null)
             _InfoRow(
               icon: Icons.receipt,
               label: 'Latest transaction:',
               value: latestTransaction!,
+            )
+          else
+            _InfoRow(
+              icon: Icons.receipt,
+              label: 'Latest transaction:',
+              value: 'None',
             ),
-          ],
         ],
       ),
     );
