@@ -59,7 +59,7 @@ class SyncTriggerService {
       final conflictInfo = await conflictService.detectConflict();
 
       if (conflictInfo != null && context.mounted) {
-        // Show conflict resolution dialog
+        // Real conflict detected - show resolution dialog
         Log.w('Conflict detected, showing resolution dialog', label: 'sync');
 
         final resolution = await showModalBottomSheet<ConflictResolution>(
@@ -90,9 +90,10 @@ class SyncTriggerService {
           await syncService.fullSync();
         }
       } else {
-        // No conflict, perform normal sync
-        Log.i('No conflict, performing full sync...', label: 'sync');
-        await syncService.fullSync();
+        // No conflict detected (auto-resolved or one side empty)
+        // This means data is already synced or safe to merge
+        Log.i('✅ No conflict - data already synced or safe to merge. Skipping full sync.', label: 'sync');
+        // Don't call fullSync() here - it will be handled by real-time sync going forward
       }
 
       // Mark as synced

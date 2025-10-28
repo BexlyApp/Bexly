@@ -11,6 +11,10 @@ class SyncConflictInfo {
   final DateTime? cloudLastUpdate;
   final String? latestLocalTransaction;
   final String? latestCloudTransaction;
+  final int localWalletCount;
+  final int cloudWalletCount;
+  final int localTransactionCount;
+  final int cloudTransactionCount;
 
   SyncConflictInfo({
     required this.localItemCount,
@@ -19,6 +23,10 @@ class SyncConflictInfo {
     this.cloudLastUpdate,
     this.latestLocalTransaction,
     this.latestCloudTransaction,
+    required this.localWalletCount,
+    required this.cloudWalletCount,
+    required this.localTransactionCount,
+    required this.cloudTransactionCount,
   });
 }
 
@@ -45,17 +53,23 @@ class ConflictResolutionService {
   Future<SyncConflictInfo?> detectConflict() async {
     try {
       // Check if cloud data exists
+      Log.i('🔍 Querying cloud wallets (limit 1)...', label: 'sync');
       final cloudWallets = await _userCollection
           .doc('wallets')
           .collection('items')
           .limit(1)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 10));
+      Log.i('✓ Cloud wallets query completed: ${cloudWallets.docs.length} docs', label: 'sync');
 
+      Log.i('🔍 Querying cloud transactions (limit 1)...', label: 'sync');
       final cloudTransactions = await _userCollection
           .doc('transactions')
           .collection('items')
           .limit(1)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 10));
+      Log.i('✓ Cloud transactions query completed: ${cloudTransactions.docs.length} docs', label: 'sync');
 
       // If no cloud data exists, no conflict
       if (cloudWallets.docs.isEmpty && cloudTransactions.docs.isEmpty) {
@@ -73,21 +87,47 @@ class ConflictResolutionService {
         return null;
       }
 
-      // Both local and cloud have data - conflict detected!
-      Log.w('Conflict detected: both local and cloud have data', label: 'sync');
+      // Both local and cloud have data - potential conflict detected!
+      Log.w('Potential conflict: both local and cloud have data', label: 'sync');
 
       // Get cloud data counts and latest updates
+      Log.i('🔍 Querying all cloud wallets...', label: 'sync');
       final allCloudWallets = await _userCollection
           .doc('wallets')
           .collection('items')
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 10));
+      Log.i('✓ All cloud wallets query completed: ${allCloudWallets.docs.length} docs', label: 'sync');
 
+      // Fetch all cloud transactions and find latest locally (no orderBy to avoid index requirement)
+      Log.i('🔍 Querying all cloud transactions...', label: 'sync');
       final allCloudTransactions = await _userCollection
           .doc('transactions')
           .collection('items')
-          .orderBy('updatedAt', descending: true)
-          .limit(1)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 10));
+      Log.i('✓ All cloud transactions query completed: ${allCloudTransactions.docs.length} docs', label: 'sync');
+
+      // AUTO-RESOLVE LOGIC: Check if this is a trivial conflict that can be auto-resolved
+      final localWalletCount = localWallets.length;
+      final cloudWalletCount = allCloudWallets.docs.length;
+      final localTxCount = localTransactions.length;
+      final cloudTxCount = allCloudTransactions.docs.length;
+
+      // Rule 1: If both have same counts and ZERO transactions -> Auto-merge (no data loss risk)
+      if (localWalletCount == cloudWalletCount && localTxCount == 0 && cloudTxCount == 0) {
+        Log.i('✅ Auto-resolve: Same wallet count ($localWalletCount) and no transactions on either side. No conflict needed.', label: 'sync');
+        return null; // No conflict dialog needed
+      }
+
+      // Rule 2: If one side has ONLY wallets (no transactions) and counts match -> Prefer the side with more recent data or just merge
+      if (localTxCount == 0 && cloudTxCount == 0 && localWalletCount == cloudWalletCount) {
+        Log.i('✅ Auto-resolve: Both sides have $localWalletCount wallet(s) and 0 transactions. Safe to merge.', label: 'sync');
+        return null;
+      }
+
+      // If we reach here, it's a real conflict that needs user decision
+      Log.w('⚠️ Real conflict detected - user decision required', label: 'sync');
 
       // Get latest transaction info
       String? latestLocalTx;
@@ -99,13 +139,18 @@ class ConflictResolutionService {
         localLastUpdate = latest.updatedAt;
       }
 
+      // Find latest cloud transaction by iterating (instead of using orderBy)
       String? latestCloudTx;
       DateTime? cloudLastUpdate;
       if (allCloudTransactions.docs.isNotEmpty) {
-        final latestDoc = allCloudTransactions.docs.first;
-        final data = latestDoc.data() as Map<String, dynamic>;
-        latestCloudTx = '${data['title']} (${data['amount']})';
-        cloudLastUpdate = (data['updatedAt'] as Timestamp).toDate();
+        for (final doc in allCloudTransactions.docs) {
+          final data = doc.data();
+          final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+          if (updatedAt != null && (cloudLastUpdate == null || updatedAt.isAfter(cloudLastUpdate))) {
+            cloudLastUpdate = updatedAt;
+            latestCloudTx = '${data['title']} (${data['amount']})';
+          }
+        }
       }
 
       return SyncConflictInfo(
@@ -115,6 +160,10 @@ class ConflictResolutionService {
         cloudLastUpdate: cloudLastUpdate,
         latestLocalTransaction: latestLocalTx,
         latestCloudTransaction: latestCloudTx,
+        localWalletCount: localWallets.length,
+        cloudWalletCount: allCloudWallets.docs.length,
+        localTransactionCount: localTransactions.length,
+        cloudTransactionCount: allCloudTransactions.docs.length,
       );
     } catch (e) {
       Log.e('Error detecting conflict: $e', label: 'sync');
@@ -168,13 +217,16 @@ class ConflictResolutionService {
   /// Download all cloud data to local database
   Future<void> _downloadCloudData() async {
     // Download wallets
+    Log.i('🔍 Downloading cloud wallets...', label: 'sync');
     final walletsSnapshot = await _userCollection
         .doc('wallets')
         .collection('items')
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 10));
+    Log.i('✓ Downloaded ${walletsSnapshot.docs.length} wallets', label: 'sync');
 
     for (final doc in walletsSnapshot.docs) {
-      final data = doc.data() as Map<String, dynamic>;
+      final data = doc.data();
       await _localDb.into(_localDb.wallets).insert(
         WalletsCompanion(
           cloudId: Value(doc.id),
@@ -190,13 +242,16 @@ class ConflictResolutionService {
     }
 
     // Download transactions
+    Log.i('🔍 Downloading cloud transactions...', label: 'sync');
     final transactionsSnapshot = await _userCollection
         .doc('transactions')
         .collection('items')
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 10));
+    Log.i('✓ Downloaded ${transactionsSnapshot.docs.length} transactions', label: 'sync');
 
     for (final doc in transactionsSnapshot.docs) {
-      final data = doc.data() as Map<String, dynamic>;
+      final data = doc.data();
       await (_localDb.into(_localDb.transactions)).insert(
         TransactionsCompanion.insert(
           transactionType: data['transactionType'] as int,
@@ -215,31 +270,37 @@ class ConflictResolutionService {
       );
     }
 
-    Log.i('Downloaded ${walletsSnapshot.docs.length} wallets and ${transactionsSnapshot.docs.length} transactions', label: 'sync');
+    Log.i('✅ Downloaded ${walletsSnapshot.docs.length} wallets and ${transactionsSnapshot.docs.length} transactions', label: 'sync');
   }
 
   /// Clear all cloud data
   Future<void> _clearCloudData() async {
     // Delete all wallets
+    Log.i('🔍 Fetching cloud wallets to delete...', label: 'sync');
     final walletsSnapshot = await _userCollection
         .doc('wallets')
         .collection('items')
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 10));
+    Log.i('✓ Fetched ${walletsSnapshot.docs.length} wallets to delete', label: 'sync');
 
     for (final doc in walletsSnapshot.docs) {
       await doc.reference.delete();
     }
 
     // Delete all transactions
+    Log.i('🔍 Fetching cloud transactions to delete...', label: 'sync');
     final transactionsSnapshot = await _userCollection
         .doc('transactions')
         .collection('items')
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 10));
+    Log.i('✓ Fetched ${transactionsSnapshot.docs.length} transactions to delete', label: 'sync');
 
     for (final doc in transactionsSnapshot.docs) {
       await doc.reference.delete();
     }
 
-    Log.i('Cleared cloud data', label: 'sync');
+    Log.i('✅ Cleared cloud data', label: 'sync');
   }
 }
