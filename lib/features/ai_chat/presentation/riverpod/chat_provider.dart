@@ -64,13 +64,46 @@ class CategoryInfo {
   }
 
   /// Build hierarchy for all categories
+  /// Optimized for LLM reasoning - clear structure with step-by-step guidance
   static String buildCategoryHierarchy(List<CategoryInfo> categories) {
     if (categories.isEmpty) return '';
 
-    final buffer = StringBuffer('CATEGORY HIERARCHY (prefer subcategories):\n');
+    final buffer = StringBuffer();
+
+    // Header with clear instruction
+    buffer.write('CATEGORY SELECTION PROCESS:\n');
+    buffer.write('Step 1: Read the transaction description\n');
+    buffer.write('Step 2: Find the matching category group below\n');
+    buffer.write('Step 3: Choose the SPECIFIC subcategory (marked with →)\n');
+    buffer.write('Step 4: Return ONLY the subcategory name in your JSON\n\n');
+
+    buffer.write('AVAILABLE CATEGORIES:\n\n');
+
     for (final cat in categories) {
-      buffer.write('${cat.toHierarchyText()}\n');
+      if (cat.subCategories.isNotEmpty) {
+        // Parent category with subcategories
+        final parentDesc = cat.keywords != null && cat.keywords!.isNotEmpty ? ' - ${cat.keywords}' : '';
+        buffer.write('📁 ${cat.title}$parentDesc\n');
+        for (final sub in cat.subCategories) {
+          final subDesc = sub.keywords != null && sub.keywords!.isNotEmpty ? ' (${sub.keywords})' : '';
+          buffer.write('   → ${sub.title}$subDesc\n');
+        }
+        buffer.write('\n');
+      } else {
+        // Standalone category
+        final desc = cat.keywords != null && cat.keywords!.isNotEmpty ? ' (${cat.keywords})' : '';
+        buffer.write('→ ${cat.title}$desc\n');
+      }
     }
+
+    // Clear examples at the end
+    buffer.write('\nEXAMPLES - Learn from these:\n');
+    buffer.write('✅ "Spotify subscription" → Answer: "Streaming" (NOT "Entertainment")\n');
+    buffer.write('✅ "Netflix monthly" → Answer: "Streaming" (NOT "Entertainment")\n');
+    buffer.write('✅ "Buy groceries" → Answer: "Groceries" (specify from which group)\n');
+    buffer.write('❌ NEVER return "Entertainment" or "Shopping" - these are groups, not categories!\n');
+    buffer.write('❌ NEVER make up category names - ONLY use names marked with →\n');
+
     return buffer.toString().trim();
   }
 }
@@ -95,15 +128,26 @@ final aiServiceProvider = Provider<AIService>((ref) {
     orElse: () => <CategoryInfo>[],
   );
 
-  // Build category names list for backward compatibility
+  // Build category names list - ONLY include leaf categories (subcategories or standalone)
   final List<String> categories = categoryInfos.expand((cat) {
-    return [cat.title, ...cat.subCategories.map((sub) => sub.title)];
+    if (cat.subCategories.isNotEmpty) {
+      // Parent with subcategories - ONLY include subcategories, NOT parent
+      return cat.subCategories.map((sub) => sub.title);
+    } else {
+      // Standalone category - include it
+      return [cat.title];
+    }
   }).toList();
 
   // Build dynamic hierarchy text from database
   final categoryHierarchy = CategoryInfo.buildCategoryHierarchy(categoryInfos);
 
   Log.d('Categories loaded for AI: ${categories.join(", ")}', label: 'Chat Provider');
+  print('========== CATEGORY DEBUG ==========');
+  print('categoryInfos count: ${categoryInfos.length}');
+  print('categoryHierarchy length: ${categoryHierarchy.length}');
+  print('categoryHierarchy:\n$categoryHierarchy');
+  print('====================================');
   if (categoryHierarchy.isNotEmpty) {
     Log.d('Category Hierarchy:\n$categoryHierarchy', label: 'Chat Provider');
   }
@@ -132,6 +176,7 @@ final aiServiceProvider = Provider<AIService>((ref) {
       apiKey: apiKey,
       model: LLMDefaultConfig.geminiModel,
       categories: categories,
+      categoryHierarchy: categoryHierarchy,
     );
   } else {
     // Default to OpenAI service
@@ -150,6 +195,7 @@ final aiServiceProvider = Provider<AIService>((ref) {
       apiKey: apiKey,
       model: LLMDefaultConfig.model,
       categories: categories,
+      categoryHierarchy: categoryHierarchy,
     );
   }
 });
@@ -609,35 +655,49 @@ class ChatNotifier extends StateNotifier<ChatState> {
       Log.d('Using wallet: ${wallet.name} (id: ${wallet.id}, balance: ${wallet.balance} ${wallet.currency})', label: 'TRANSACTION_DEBUG');
 
       // Get categories and find matching one
+      // CRITICAL: hierarchicalCategoriesProvider returns only PARENT categories!
+      // We need to FLATTEN to include ALL subcategories for matching
       final categoriesAsync = _ref.read(hierarchicalCategoriesProvider);
       Log.d('Categories async state: $categoriesAsync', label: 'TRANSACTION_DEBUG');
 
-      final categories = categoriesAsync.maybeWhen(
+      final hierarchicalCategories = categoriesAsync.maybeWhen(
         data: (cats) => cats,
         orElse: () => [],
       );
-      Log.d('Available categories count: ${categories.length}', label: 'TRANSACTION_DEBUG');
+      Log.d('Available hierarchical categories count: ${hierarchicalCategories.length}', label: 'TRANSACTION_DEBUG');
 
-      if (categories.isEmpty) {
+      if (hierarchicalCategories.isEmpty) {
         Log.e('ERROR: No categories available!', label: 'TRANSACTION_DEBUG');
         return;
       }
 
+      // Flatten hierarchy to include subcategories
+      final List<CategoryModel> allCategories = [];
+      for (final cat in hierarchicalCategories) {
+        if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
+          // Has subcategories - add ONLY subcategories (NOT parent)
+          allCategories.addAll(cat.subCategories!);
+        } else {
+          // Standalone category - add it
+          allCategories.add(cat);
+        }
+      }
+
       final categoryName = action['category'] as String;
       Log.d('Looking for category: "$categoryName"', label: 'TRANSACTION_DEBUG');
-      Log.d('Available categories: ${categories.map((c) => c.title).join(", ")}', label: 'TRANSACTION_DEBUG');
+      Log.d('Available flattened categories: ${allCategories.map((c) => c.title).join(", ")}', label: 'TRANSACTION_DEBUG');
 
       // Try exact match first, then fuzzy match, then default
       CategoryModel? category;
 
       // Exact match (case insensitive)
-      category = categories.firstWhereOrNull(
+      category = allCategories.firstWhereOrNull(
         (c) => c.title.toLowerCase() == categoryName.toLowerCase(),
       );
 
       // If no exact match, try contains match
       if (category == null) {
-        category = categories.firstWhereOrNull(
+        category = allCategories.firstWhereOrNull(
           (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
                  categoryName.toLowerCase().contains(c.title.toLowerCase()),
         );
@@ -645,9 +705,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       // If still no match, use "Others" or first category
       if (category == null) {
-        category = categories.firstWhereOrNull((c) => c.title == 'Others') ??
-                  categories.firstOrNull ??
-                  categories.first;
+        category = allCategories.firstWhereOrNull((c) => c.title == 'Others') ??
+                  allCategories.firstOrNull ??
+                  allCategories.first;
         Log.d('Category "$categoryName" not found, using: ${category?.title}', label: 'TRANSACTION_DEBUG');
       }
 
@@ -762,24 +822,43 @@ class ChatNotifier extends StateNotifier<ChatState> {
       }
 
       // Get category
+      // CRITICAL: hierarchicalCategoriesProvider returns only PARENT categories!
+      // We need to FLATTEN to include ALL subcategories for matching
       final categoryName = action['category']?.toString() ?? 'Others';
-      final categories = _ref.read(hierarchicalCategoriesProvider).valueOrNull ?? [];
+      final hierarchicalCategories = _ref.read(hierarchicalCategoriesProvider).valueOrNull ?? [];
+
+      if (hierarchicalCategories.isEmpty) {
+        Log.e('No categories available for budget', label: 'BUDGET_DEBUG');
+        return;
+      }
+
+      // Flatten hierarchy to include subcategories
+      final List<CategoryModel> allCategories = [];
+      for (final cat in hierarchicalCategories) {
+        if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
+          // Has subcategories - add ONLY subcategories (NOT parent)
+          allCategories.addAll(cat.subCategories!);
+        } else {
+          // Standalone category - add it
+          allCategories.add(cat);
+        }
+      }
 
       // Find matching category (case-insensitive, partial match)
-      var category = categories.firstWhereOrNull(
+      var category = allCategories.firstWhereOrNull(
         (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
                categoryName.toLowerCase().contains(c.title.toLowerCase())
       );
 
       // If no match, try exact match
-      category ??= categories.firstWhereOrNull(
+      category ??= allCategories.firstWhereOrNull(
         (c) => c.title.toLowerCase() == categoryName.toLowerCase()
       );
 
       // If still no match, use "Others" or first category
       if (category == null) {
-        category = categories.firstWhereOrNull((c) => c.title == 'Others') ??
-                  categories.firstOrNull;
+        category = allCategories.firstWhereOrNull((c) => c.title == 'Others') ??
+                  allCategories.firstOrNull;
         if (category == null) {
           Log.e('No categories available for budget', label: 'BUDGET_DEBUG');
           return;
@@ -1370,31 +1449,55 @@ class ChatNotifier extends StateNotifier<ChatState> {
       }
 
       // Find category with fallback logic
+      // CRITICAL: hierarchicalCategoriesProvider returns only PARENT categories!
+      // We need to FLATTEN to include ALL subcategories for matching
       final categoriesAsync = _ref.read(hierarchicalCategoriesProvider);
-      final categories = categoriesAsync.valueOrNull ?? [];
+      final hierarchicalCategories = categoriesAsync.valueOrNull ?? [];
 
-      if (categories.isEmpty) {
+      if (hierarchicalCategories.isEmpty) {
         return '❌ No categories available.';
       }
+
+      // Flatten hierarchy to include subcategories
+      final List<CategoryModel> allCategories = [];
+      for (final cat in hierarchicalCategories) {
+        if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
+          // Has subcategories - add ONLY subcategories (NOT parent)
+          allCategories.addAll(cat.subCategories!);
+        } else {
+          // Standalone category - add it
+          allCategories.add(cat);
+        }
+      }
+
+      Log.d('Flattened categories for matching: ${allCategories.map((c) => c.title).join(", ")}', label: 'CREATE_RECURRING');
+      Log.d('Looking for category: "$categoryName"', label: 'CREATE_RECURRING');
 
       CategoryModel? category;
 
       // Exact match (case insensitive)
-      category = categories.firstWhereOrNull(
+      category = allCategories.firstWhereOrNull(
         (c) => c.title.toLowerCase() == categoryName.toLowerCase(),
       );
 
+      if (category != null) {
+        Log.d('Found EXACT match: "${category.title}"', label: 'CREATE_RECURRING');
+      }
+
       // If no exact match, try contains match
       if (category == null) {
-        category = categories.firstWhereOrNull(
+        category = allCategories.firstWhereOrNull(
           (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
                  categoryName.toLowerCase().contains(c.title.toLowerCase()),
         );
+        if (category != null) {
+          Log.d('Found CONTAINS match: "${category.title}" for "$categoryName"', label: 'CREATE_RECURRING');
+        }
       }
 
       // If still no match, use "Others" or first category
       if (category == null) {
-        category = categories.firstWhereOrNull((c) => c.title == 'Others') ?? categories.first;
+        category = allCategories.firstWhereOrNull((c) => c.title == 'Others') ?? allCategories.first;
         Log.d('Category "$categoryName" not found, using fallback: ${category.title}', label: 'CREATE_RECURRING');
       }
 

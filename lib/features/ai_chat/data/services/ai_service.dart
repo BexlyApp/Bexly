@@ -15,16 +15,18 @@ abstract class AIService {
 mixin AIServicePromptMixin {
   List<String> get categories;
   String get recentTransactionsContext;
+  String? get categoryHierarchy => null; // Optional hierarchy text
 
   /// Build complete system prompt using centralized config
   String get systemPrompt => AIPrompts.buildSystemPrompt(
         categories: categories,
         recentTransactionsContext: recentTransactionsContext,
+        categoryHierarchy: categoryHierarchy,
       );
 
   // Legacy getters for backwards compatibility (all delegate to AIPrompts)
   String get systemInstruction => AIPrompts.systemInstruction;
-  String get contextSection => AIPrompts.buildContextSection(categories);
+  String get contextSection => AIPrompts.buildContextSection(categories, categoryHierarchy: categoryHierarchy);
   String get amountParsingRules => AIPrompts.amountParsingRules;
   String get actionSchemas => AIPrompts.actionSchemas;
   String get businessRules => AIPrompts.businessRules;
@@ -41,6 +43,9 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   @override
   final List<String> categories;
 
+  @override
+  final String? categoryHierarchy;
+
   String _recentTransactionsContext = '';
 
   @override
@@ -51,6 +56,7 @@ class OpenAIService with AIServicePromptMixin implements AIService {
     this.baseUrl = 'https://api.openai.com/v1',
     this.model = 'gpt-4o-mini',
     this.categories = const [],
+    this.categoryHierarchy,
   }) {
     Log.d('OpenAIService initialized with model: $model, categories: ${categories.length}', label: 'AI Service');
   }
@@ -102,11 +108,11 @@ class OpenAIService with AIServicePromptMixin implements AIService {
               'content': message,
             }
           ],
-          // Force deterministic output for schema adherence
-          'temperature': 0,
+          // Lower temperature for more focused responses
+          'temperature': 0.3,
           // Encourage JSON structure even if not strict JSON mode
           'response_format': { 'type': 'text' },
-          'max_tokens': 500,
+          'max_tokens': 2000, // Increased for reasoning + JSON
             }),
           )
           .timeout(
@@ -178,6 +184,9 @@ class GeminiService with AIServicePromptMixin implements AIService {
   @override
   final List<String> categories;
 
+  @override
+  final String? categoryHierarchy;
+
   String _recentTransactionsContext = '';
 
   @override
@@ -187,6 +196,7 @@ class GeminiService with AIServicePromptMixin implements AIService {
     required this.apiKey,
     this.model = 'gemini-2.5-flash',
     this.categories = const [],
+    this.categoryHierarchy,
   }) {
     Log.d('GeminiService initialized with model: $model, categories: ${categories.length}', label: 'AI Service');
   }
@@ -209,14 +219,17 @@ class GeminiService with AIServicePromptMixin implements AIService {
         throw Exception('No Gemini API key configured. Please add GEMINI_API_KEY to your .env file.');
       }
 
+      // Log system prompt for debugging
+      Log.d('System Prompt:\n$systemPrompt', label: 'Gemini Service');
+
       // Create model with system instruction (cached, not counted in tokens!)
       final modelWithSystemPrompt = GenerativeModel(
         model: model,
         apiKey: apiKey,
         systemInstruction: Content.text(systemPrompt),
         generationConfig: GenerationConfig(
-          temperature: 0.7,
-          maxOutputTokens: 500,
+          temperature: 0.3, // Lower temp for more focused responses
+          maxOutputTokens: 2000, // Increase limit for reasoning + JSON
         ),
       );
 
@@ -236,6 +249,11 @@ class GeminiService with AIServicePromptMixin implements AIService {
 
       final content = response.text ?? '';
       Log.d('Gemini Response content: $content', label: 'Gemini Service');
+
+      // FORCE print for debugging - works in release mode
+      print('========== GEMINI RAW RESPONSE ==========');
+      print(content);
+      print('=========================================');
 
       return content.trim();
     } catch (e) {

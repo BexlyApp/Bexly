@@ -39,8 +39,11 @@ class SyncTriggerService {
     required String userId,
   }) async {
     try {
+      Log.i('📍 triggerInitialSyncIfNeeded START', label: 'sync');
+
       // Check if already synced before
       final hasSynced = await hasSyncedBefore();
+      Log.i('📍 hasSynced check result: $hasSynced', label: 'sync');
 
       if (hasSynced) {
         Log.i('User has synced before, skipping initial sync', label: 'sync');
@@ -56,7 +59,9 @@ class SyncTriggerService {
         userId: userId,
       );
 
+      Log.i('📍 Calling detectConflict()...', label: 'sync');
       final conflictInfo = await conflictService.detectConflict();
+      Log.i('📍 detectConflict() returned: ${conflictInfo != null ? "CONFLICT DETECTED" : "NO CONFLICT"}', label: 'sync');
 
       if (conflictInfo != null && context.mounted) {
         // Real conflict detected - show resolution dialog
@@ -91,9 +96,27 @@ class SyncTriggerService {
         }
       } else {
         // No conflict detected (auto-resolved or one side empty)
-        // This means data is already synced or safe to merge
-        Log.i('✅ No conflict - data already synced or safe to merge. Skipping full sync.', label: 'sync');
-        // Don't call fullSync() here - it will be handled by real-time sync going forward
+        // Check if we need to pull cloud data
+        final localTransactions = await localDb.transactionDao.getAllTransactions();
+        final localWallets = await localDb.walletDao.getAllWallets();
+
+        if (localTransactions.isEmpty && localWallets.isEmpty) {
+          // Local is empty - might have cloud data to pull
+          Log.i('🔄 Local database empty, checking for cloud data to pull...', label: 'sync');
+
+          try {
+            // Try to pull cloud data
+            await conflictService.useCloudData();
+            Log.i('✅ Successfully pulled cloud data to empty local database', label: 'sync');
+          } catch (e) {
+            Log.w('Failed to pull cloud data (might not exist): $e', label: 'sync');
+            // Continue - no data in cloud is OK
+          }
+        } else {
+          // Data already synced or safe to merge
+          Log.i('✅ No conflict - data already synced or safe to merge. Skipping full sync.', label: 'sync');
+          // Don't call fullSync() here - it will be handled by real-time sync going forward
+        }
       }
 
       // Mark as synced

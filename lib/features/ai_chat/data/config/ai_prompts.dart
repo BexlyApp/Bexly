@@ -15,15 +15,18 @@ LANGUAGE RULES:
   // Category Matching Rules
   static const String categoryMatchingRules = '''
 CATEGORY MATCHING RULES:
-- MUST use EXACT category name from the available categories list
-- ALWAYS prefer subcategories over parent categories
-- Use your knowledge to match brands/services to categories:
-  * Netflix, Spotify, Disney+ → streaming/entertainment subcategory
-  * Grab, Uber → transportation
-  * Starbucks, McDonald's → food & drinks
-- If user provides keywords in category description, use them as hints
-- Only use "Others" if NO category matches
-- When in doubt, use your world knowledge about the item/service''';
+- CRITICAL: MUST use EXACT category name from the available categories list!
+- CRITICAL: ALWAYS prefer subcategories (with → prefix) over parent categories!
+- CRITICAL: Use the category hierarchy above to find the MOST SPECIFIC subcategory!
+- NEVER use parent category if a matching subcategory exists!
+- Look at keywords in category descriptions to guide your choice
+- Examples based on the category hierarchy:
+  * Netflix, Spotify, Disney+ → Look for "Streaming" subcategory under Entertainment
+  * Subscription services → Look for "Subscriptions" subcategory
+  * Grab, Uber → Look for Transportation subcategory
+  * Starbucks, McDonald's → Look for Food/Restaurant subcategory
+- Only use "Others" if absolutely NO category matches
+- When in doubt, carefully review the category hierarchy and choose the most specific match''';
 
   // Amount Parsing Rules
   static const String amountParsingRules = '''
@@ -196,13 +199,23 @@ CRITICAL: If user mentions "hàng tháng", "monthly", "mỗi tháng", "subscript
 
   /// Build context section with available categories
   static String buildContextSection(List<String> categories, {String? categoryHierarchy}) {
-    final categoriesText = categories.isEmpty ? '(No categories configured)' : categories.join(', ');
-
-    return '''
+    // If hierarchy is provided, use it; otherwise fall back to flat list
+    final String categoriesSection;
+    if (categoryHierarchy != null && categoryHierarchy.isNotEmpty) {
+      // Use hierarchy (already includes header)
+      categoriesSection = categoryHierarchy;
+    } else {
+      // Fall back to flat list
+      final categoriesText = categories.isEmpty ? '(No categories configured)' : categories.join(', ');
+      categoriesSection = '''
 AVAILABLE CATEGORIES (ALWAYS use MOST SPECIFIC subcategory):
 $categoriesText
 
-${categoryHierarchy ?? 'Use your world knowledge to match items/services to the most appropriate category.'}
+Use your world knowledge to match items/services to the most appropriate category.''';
+    }
+
+    return '''
+$categoriesSection
 
 $categoryMatchingRules''';
   }
@@ -222,10 +235,11 @@ When user references transactions (e.g., "sửa giao dịch vừa rồi", "xóa 
   static String buildSystemPrompt({
     required List<String> categories,
     required String recentTransactionsContext,
+    String? categoryHierarchy,
   }) {
     return '''$systemInstruction
 
-${buildContextSection(categories)}
+${buildContextSection(categories, categoryHierarchy: categoryHierarchy)}
 
 ${buildRecentTransactionsSection(recentTransactionsContext)}
 
