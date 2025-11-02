@@ -10,14 +10,13 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
-import 'package:bexly/core/services/auth/dos_me_auth_service.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/services/sync/sync_trigger_service.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/package_info/package_info_provider.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 
 class LoginScreen extends HookConsumerWidget {
@@ -31,7 +30,7 @@ class LoginScreen extends HookConsumerWidget {
     final obscurePassword = useState(true);
     final formKey = useMemoized(() => GlobalKey<FormState>());
 
-    final authService = ref.read(dosmeAuthServiceProvider);
+    final bexlyAuth = ref.watch(bexlyAuthProvider);
     final packageInfoService = ref.watch(packageInfoServiceProvider);
 
     Future<void> handleLogin() async {
@@ -39,10 +38,9 @@ class LoginScreen extends HookConsumerWidget {
 
       isLoading.value = true;
       try {
-        await authService.signInWithEmailAndPassword(
+        await bexlyAuth.signInWithEmailAndPassword(
           email: emailController.text.trim(),
           password: passwordController.text,
-          tenantType: TenantType.public,
         );
 
         if (context.mounted) {
@@ -82,13 +80,7 @@ class LoginScreen extends HookConsumerWidget {
       isLoading.value = true;
       try {
         // Auto-detect OAuth client from google-services.json
-        // Android: Uses android_client_info with matching SHA-1 (client_type: 1)
-        // iOS: Needs explicit clientId
-        final googleSignIn = GoogleSignIn(
-          clientId: Platform.isIOS
-              ? '368090586626-po4m5b4jbtvpfg7ubv622qq3phiq7pmp.apps.googleusercontent.com'
-              : null,
-        );
+        final googleSignIn = GoogleSignIn();
         // Sign out any cached session to force re-consent/account chooser on first attempt
         try {
           await googleSignIn.signOut();
@@ -113,25 +105,27 @@ class LoginScreen extends HookConsumerWidget {
           accessToken: googleAuth.accessToken,
         );
 
-        // Sign in to Firebase using DOS-Me app
-        final dosmeApp = FirebaseInitService.dosmeApp;
-        if (dosmeApp == null) {
-          throw Exception('DOS-Me Firebase not initialized');
+        // Sign in to Firebase using Bexly app
+        final bexlyApp = FirebaseInitService.bexlyApp;
+        if (bexlyApp == null) {
+          throw Exception('Bexly Firebase not initialized');
         }
 
-        final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
-        await dosmeAuth.signInWithCredential(credential);
+        final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
+        await bexlyAuth.signInWithCredential(credential);
 
-        debugPrint('Firebase authentication successful');
+        Log.i('Firebase authentication successful', label: 'auth');
+        print('🔐 Firebase authentication successful');
 
         // Trigger initial sync with timeout protection
         if (context.mounted) {
           final syncService = ref.read(cloudSyncServiceProvider);
           final localDb = ref.read(databaseProvider);
-          final userId = dosmeAuth.currentUser?.uid;
+          final userId = bexlyAuth.currentUser?.uid;
 
           if (userId != null) {
-            debugPrint('Starting initial sync for user: $userId');
+            Log.i('Starting initial sync for user: $userId', label: 'auth');
+            print('🔄 Starting initial sync for user: $userId');
             try {
               await SyncTriggerService.triggerInitialSyncIfNeeded(
                 syncService,
@@ -141,22 +135,27 @@ class LoginScreen extends HookConsumerWidget {
               ).timeout(
                 const Duration(seconds: 30),
                 onTimeout: () {
-                  debugPrint('⚠️ Sync timeout after 30s, continuing anyway');
+                  Log.w('⚠️ Sync timeout after 30s, continuing anyway', label: 'auth');
+                  print('⚠️ Sync timeout after 30s, continuing anyway');
                 },
               );
-              debugPrint('✅ Initial sync completed or skipped');
+              Log.i('✅ Initial sync completed or skipped', label: 'auth');
+              print('✅ Initial sync completed or skipped');
             } catch (e) {
-              debugPrint('❌ Sync error (non-fatal): $e');
+              Log.e('❌ Sync error (non-fatal): $e', label: 'auth');
+              print('❌ Sync error (non-fatal): $e');
               // Continue even if sync fails
             }
           }
         }
 
-        debugPrint('Navigating to main screen');
+        Log.i('Navigating to main screen', label: 'auth');
+        print('🧭 Navigating to main screen');
         if (context.mounted) {
           context.go('/');
         }
-        debugPrint('Navigation completed');
+        Log.i('Navigation completed', label: 'auth');
+        print('✅ Navigation completed');
       } on PlatformException catch (e) {
         debugPrint('Google Sign In PlatformException: code=${e.code}, message=${e.message}, details=${e.details}');
         if (context.mounted) {
@@ -211,14 +210,14 @@ class LoginScreen extends HookConsumerWidget {
               accessToken.tokenString,
             );
 
-            // Sign in to Firebase using DOS-Me app
-            final dosmeApp = FirebaseInitService.dosmeApp;
-            if (dosmeApp == null) {
-              throw Exception('DOS-Me Firebase not initialized');
+            // Sign in to Firebase using Bexly app
+            final bexlyApp = FirebaseInitService.bexlyApp;
+            if (bexlyApp == null) {
+              throw Exception('Bexly Firebase not initialized');
             }
 
-            final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
-            await dosmeAuth.signInWithCredential(credential);
+            final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
+            await bexlyAuth.signInWithCredential(credential);
 
             debugPrint('Firebase authentication with Facebook successful');
 
@@ -226,7 +225,7 @@ class LoginScreen extends HookConsumerWidget {
             if (context.mounted) {
               final syncService = ref.read(cloudSyncServiceProvider);
               final localDb = ref.read(databaseProvider);
-              final userId = dosmeAuth.currentUser?.uid;
+              final userId = bexlyAuth.currentUser?.uid;
 
               if (userId != null) {
                 await SyncTriggerService.triggerInitialSyncIfNeeded(
@@ -293,14 +292,14 @@ class LoginScreen extends HookConsumerWidget {
           accessToken: credential.authorizationCode,
         );
 
-        // Sign in to Firebase using DOS-Me app
-        final dosmeApp = FirebaseInitService.dosmeApp;
-        if (dosmeApp == null) {
-          throw Exception('DOS-Me Firebase not initialized');
+        // Sign in to Firebase using Bexly app
+        final bexlyApp = FirebaseInitService.bexlyApp;
+        if (bexlyApp == null) {
+          throw Exception('Bexly Firebase not initialized');
         }
 
-        final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
-        final userCredential = await dosmeAuth.signInWithCredential(authCredential);
+        final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
+        final userCredential = await bexlyAuth.signInWithCredential(authCredential);
 
         // If this is the first time, save the user info
         if (credential.email != null || credential.givenName != null) {
@@ -310,22 +309,21 @@ class LoginScreen extends HookConsumerWidget {
 
         debugPrint('Firebase authentication with Apple successful');
 
-        // TODO: TEMPORARILY DISABLED - Sync causing app to hang after auth
         // Trigger initial sync if first time login
-        // if (context.mounted) {
-        //   final syncService = ref.read(cloudSyncServiceProvider);
-        //   final localDb = ref.read(databaseProvider);
-        //   final userId = dosmeAuth.currentUser?.uid;
+        if (context.mounted) {
+          final syncService = ref.read(cloudSyncServiceProvider);
+          final localDb = ref.read(databaseProvider);
+          final userId = bexlyAuth.currentUser?.uid;
 
-        //   if (userId != null) {
-        //     await SyncTriggerService.triggerInitialSyncIfNeeded(
-        //       syncService,
-        //       context: context,
-        //       localDb: localDb,
-        //       userId: userId,
-        //     );
-        //   }
-        // }
+          if (userId != null) {
+            await SyncTriggerService.triggerInitialSyncIfNeeded(
+              syncService,
+              context: context,
+              localDb: localDb,
+              userId: userId,
+            );
+          }
+        }
 
         debugPrint('Auth successful, navigating to main screen');
         if (context.mounted) {
