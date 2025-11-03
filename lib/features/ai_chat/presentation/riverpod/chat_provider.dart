@@ -1383,7 +1383,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   Future<void> _adjustWalletBalanceAfterCreate(TransactionModel newTransaction) async {
     try {
-      final db = _ref.read(databaseProvider);
+      final walletDao = _ref.read(walletDaoProvider);
       final wallet = _ref.read(activeWalletProvider).valueOrNull;
       if (wallet == null || wallet.id == null) return;
       double balanceChange = 0.0;
@@ -1393,7 +1393,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         balanceChange -= newTransaction.amount;
       }
       final updatedWallet = wallet.copyWith(balance: wallet.balance + balanceChange);
-      await db.walletDao.updateWallet(updatedWallet);
+      await walletDao.updateWallet(updatedWallet);
       _ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
     } catch (e) {
       Log.e('adjust wallet after create failed: $e', label: 'Chat Provider');
@@ -1484,7 +1484,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
         }
 
         final updatedWallet = wallet.copyWith(balance: wallet.balance + balanceAdjustment);
-        await db.walletDao.updateWallet(updatedWallet);
+        final walletDao = _ref.read(walletDaoProvider);
+        await walletDao.updateWallet(updatedWallet);
         _ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
       }
 
@@ -1520,8 +1521,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
       );
 
       // Save to database
-      final db = _ref.read(databaseProvider);
-      final walletId = await db.walletDao.addWallet(wallet);
+      final walletDao = _ref.read(walletDaoProvider);
+      final walletId = await walletDao.addWallet(wallet);
 
       final createdWallet = wallet.copyWith(id: walletId);
       final amountText = _formatAmount(initialBalance, currency: currency);
@@ -1798,7 +1799,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
         }
 
         final updatedWallet = wallet.copyWith(balance: wallet.balance + balanceAdjustment);
-        await db.walletDao.updateWallet(updatedWallet);
+        final walletDao = _ref.read(walletDaoProvider);
+        await walletDao.updateWallet(updatedWallet);
         _ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
       }
 
