@@ -79,10 +79,12 @@ class SyncTriggerService {
       // IMPORTANT: Use Bexly Firebase app instance, NOT dos-me!
       final bexlyFirestore = FirebaseFirestore.instanceFor(app: FirebaseInitService.bexlyApp, databaseId: "bexly");
 
+      final walletDao = ref.read(walletDaoProvider);
       final conflictService = ConflictResolutionService(
         localDb: localDb,
         firestore: bexlyFirestore,
         userId: userId,
+        walletDao: walletDao,
       );
 
       Log.i('📍 Calling detectConflict()...', label: 'sync');
@@ -221,8 +223,9 @@ class SyncTriggerService {
             if (walletsAfterError.isEmpty) {
               Log.i('📦 No cloud data and no local wallets, populating defaults...', label: 'sync');
               print('📦 No wallets found, creating default wallet...');
-              await localDb.populateData();
-              Log.i('✅ Default data populated after cloud pull failure', label: 'sync');
+              final walletDao = ref.read(walletDaoProvider);
+              await WalletPopulationService.populateWithDao(walletDao);
+              Log.i('✅ Default wallet populated after cloud pull failure', label: 'sync');
               print('✅ Default wallet created');
             }
           }
