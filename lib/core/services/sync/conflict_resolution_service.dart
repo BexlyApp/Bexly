@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import 'package:drift/drift.dart';
 import 'package:bexly/core/database/app_database.dart';
+import 'package:bexly/core/database/daos/wallet_dao.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/services/data_population_service/category_population_service.dart';
+import 'package:bexly/core/services/data_population_service/wallet_population_service.dart';
 
 /// Data structure for sync conflict information
 class SyncConflictInfo {
@@ -35,14 +38,17 @@ class ConflictResolutionService {
   final AppDatabase _localDb;
   final FirebaseFirestore _firestore;
   final String _userId;
+  final WalletDao? _walletDao;
 
   ConflictResolutionService({
     required AppDatabase localDb,
     required FirebaseFirestore firestore,
     required String userId,
+    WalletDao? walletDao,
   })  : _localDb = localDb,
         _firestore = firestore,
-        _userId = userId;
+        _userId = userId,
+        _walletDao = walletDao;
 
   /// Get user's data collection reference
   CollectionReference get _userCollection {
@@ -176,11 +182,14 @@ class ConflictResolutionService {
     try {
       Log.i('Using cloud data, clearing local data...', label: 'sync');
 
-      // Clear all local data
+      // Clear all local data EXCEPT system default categories
       await _localDb.transaction(() async {
         await _localDb.delete(_localDb.transactions).go();
         await _localDb.delete(_localDb.wallets).go();
-        await _localDb.delete(_localDb.categories).go();
+        // CRITICAL: Only delete non-system categories to preserve defaults
+        await (_localDb.delete(_localDb.categories)
+          ..where((c) => c.isSystemDefault.equals(false)))
+          .go();
         await _localDb.delete(_localDb.budgets).go();
         await _localDb.delete(_localDb.goals).go();
         await _localDb.delete(_localDb.checklistItems).go();
@@ -188,6 +197,33 @@ class ConflictResolutionService {
 
       // Download cloud data
       await _downloadCloudData();
+
+      // CRITICAL: Ensure we ALWAYS have at least one wallet
+      // App cannot function without a wallet!
+      final wallets = await _localDb.walletDao.getAllWallets();
+      if (wallets.isEmpty) {
+        Log.i('📦 No wallets after cloud pull, populating defaults...', label: 'sync');
+        if (_walletDao != null) {
+          // Use walletDao with sync support if available
+          await WalletPopulationService.populateWithDao(_walletDao);
+        } else {
+          // Fallback to no-sync population
+          await WalletPopulationService.populate(_localDb);
+        }
+        Log.i('✅ Default wallet populated', label: 'sync');
+      }
+
+      // CRITICAL: Ensure we ALWAYS have categories
+      // If cloud has categories, they were downloaded above
+      // If cloud is empty, create default categories
+      final categories = await _localDb.categoryDao.getAllCategories();
+      if (categories.isEmpty) {
+        Log.i('📦 No categories from cloud, creating defaults...', label: 'sync');
+        await CategoryPopulationService.populate(_localDb);
+        Log.i('✅ Default categories created', label: 'sync');
+      } else {
+        Log.i('✅ Categories loaded from cloud: ${categories.length}', label: 'sync');
+      }
 
       Log.i('✅ Successfully replaced local data with cloud data', label: 'sync');
     } catch (e) {
@@ -216,61 +252,154 @@ class ConflictResolutionService {
 
   /// Download all cloud data to local database
   Future<void> _downloadCloudData() async {
-    // Download wallets
-    Log.i('🔍 Downloading cloud wallets...', label: 'sync');
-    final walletsSnapshot = await _userCollection
-        .doc('wallets')
-        .collection('items')
-        .get()
-        .timeout(const Duration(seconds: 10));
-    Log.i('✓ Downloaded ${walletsSnapshot.docs.length} wallets', label: 'sync');
+    try {
+      // Download categories
+      print('🔍 [DOWNLOAD] Starting category download...');
+      final categoriesSnapshot = await _userCollection
+          .doc('categories')
+          .collection('items')
+          .get()
+          .timeout(const Duration(seconds: 10));
+      print('✓ [DOWNLOAD] Downloaded ${categoriesSnapshot.docs.length} categories');
 
-    for (final doc in walletsSnapshot.docs) {
-      final data = doc.data();
-      await _localDb.into(_localDb.wallets).insert(
-        WalletsCompanion(
-          cloudId: Value(doc.id),
-          name: Value(data['name'] as String),
-          balance: Value(data['balance'] as double),
-          currency: Value(data['currency'] as String),
-          iconName: Value(data['iconName'] as String?),
-          colorHex: Value(data['colorHex'] as String?),
-          createdAt: Value((data['createdAt'] as Timestamp).toDate()),
-          updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
-        ),
-      );
+      for (final doc in categoriesSnapshot.docs) {
+        final data = doc.data();
+        final cloudId = doc.id;
+
+        // Check if category with this cloudId already exists
+        final existingCategory = await (_localDb.select(_localDb.categories)
+          ..where((c) => c.cloudId.equals(cloudId)))
+          .getSingleOrNull();
+
+        if (existingCategory != null) {
+          // Update existing category
+          // CRITICAL: Preserve isSystemDefault flag - never allow cloud to override it
+          await (_localDb.update(_localDb.categories)
+            ..where((c) => c.cloudId.equals(cloudId)))
+            .write(CategoriesCompanion(
+              title: Value(data['title'] as String),
+              icon: Value(data['icon'] as String),
+              iconBackground: Value(data['iconBackground'] as String),
+              iconType: Value(data['iconType']?.toString()),
+              parentId: Value(data['parentId'] as int?),
+              description: Value(data['description'] as String?),
+              // Note: isSystemDefault is NOT updated - preserve local value
+              updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
+            ));
+        } else {
+          // Insert new category
+          await _localDb.into(_localDb.categories).insert(
+            CategoriesCompanion(
+              cloudId: Value(cloudId),
+              title: Value(data['title'] as String),
+              icon: Value(data['icon'] as String),
+              iconBackground: Value(data['iconBackground'] as String),
+              iconType: Value(data['iconType']?.toString()),
+              parentId: Value(data['parentId'] as int?),
+              description: Value(data['description'] as String?),
+              isSystemDefault: Value(data['isSystemDefault'] as bool? ?? false),
+              createdAt: Value((data['createdAt'] as Timestamp).toDate()),
+              updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
+            ),
+          );
+        }
+      }
+      print('✅ [DOWNLOAD] Categories inserted to local DB');
+
+      // Download wallets
+      print('🔍 [DOWNLOAD] Starting wallet download...');
+      final walletsSnapshot = await _userCollection
+          .doc('wallets')
+          .collection('items')
+          .get()
+          .timeout(const Duration(seconds: 10));
+      print('✓ [DOWNLOAD] Downloaded ${walletsSnapshot.docs.length} wallets from cloud');
+
+      for (final doc in walletsSnapshot.docs) {
+        final data = doc.data();
+        final cloudId = doc.id;
+
+        // Check if wallet with this cloudId already exists
+        final existingWallet = await (_localDb.select(_localDb.wallets)
+          ..where((w) => w.cloudId.equals(cloudId)))
+          .getSingleOrNull();
+
+        if (existingWallet != null) {
+          // Update existing wallet
+          await (_localDb.update(_localDb.wallets)
+            ..where((w) => w.cloudId.equals(cloudId)))
+            .write(WalletsCompanion(
+              name: Value(data['name'] as String),
+              balance: Value(data['balance'] as double),
+              currency: Value(data['currency'] as String),
+              iconName: Value(data['iconName'] as String?),
+              colorHex: Value(data['colorHex'] as String?),
+              updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
+            ));
+        } else {
+          // Insert new wallet
+          await _localDb.into(_localDb.wallets).insert(
+            WalletsCompanion(
+              cloudId: Value(cloudId),
+              name: Value(data['name'] as String),
+              balance: Value(data['balance'] as double),
+              currency: Value(data['currency'] as String),
+              iconName: Value(data['iconName'] as String?),
+              colorHex: Value(data['colorHex'] as String?),
+              createdAt: Value((data['createdAt'] as Timestamp).toDate()),
+              updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
+            ),
+          );
+        }
+      }
+      print('✅ [DOWNLOAD] Wallets inserted to local DB');
+
+      // Download transactions
+      print('🔍 [DOWNLOAD] Starting transaction download...');
+      final transactionsSnapshot = await _userCollection
+          .doc('transactions')
+          .collection('items')
+          .get()
+          .timeout(const Duration(seconds: 10));
+      print('✓ [DOWNLOAD] Downloaded ${transactionsSnapshot.docs.length} transactions from cloud');
+
+      for (final doc in transactionsSnapshot.docs) {
+        final data = doc.data();
+
+        // Skip transactions with null categoryId or walletId (data integrity issue)
+        final categoryId = data['categoryId'] as int?;
+        final walletId = data['walletId'] as int?;
+
+        if (categoryId == null || walletId == null) {
+          print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} with null categoryId=$categoryId or walletId=$walletId');
+          continue;
+        }
+
+        await (_localDb.into(_localDb.transactions)).insert(
+          TransactionsCompanion.insert(
+            transactionType: data['transactionType'] as int,
+            amount: data['amount'] as double,
+            date: (data['date'] as Timestamp).toDate(),
+            title: data['title'] as String,
+            categoryId: categoryId,
+            walletId: walletId,
+            cloudId: Value(doc.id),
+            notes: Value(data['notes'] as String?),
+            imagePath: Value(data['imagePath'] as String?),
+            isRecurring: Value(data['isRecurring'] as bool?),
+            createdAt: Value((data['createdAt'] as Timestamp).toDate()),
+            updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
+          ),
+        );
+      }
+      print('✅ [DOWNLOAD] Transactions inserted to local DB');
+
+      print('✅ [DOWNLOAD] COMPLETE: ${categoriesSnapshot.docs.length} categories, ${walletsSnapshot.docs.length} wallets, ${transactionsSnapshot.docs.length} transactions');
+    } catch (e, stackTrace) {
+      print('❌ [DOWNLOAD] ERROR during download: $e');
+      print('❌ [DOWNLOAD] Stack trace: $stackTrace');
+      rethrow;
     }
-
-    // Download transactions
-    Log.i('🔍 Downloading cloud transactions...', label: 'sync');
-    final transactionsSnapshot = await _userCollection
-        .doc('transactions')
-        .collection('items')
-        .get()
-        .timeout(const Duration(seconds: 10));
-    Log.i('✓ Downloaded ${transactionsSnapshot.docs.length} transactions', label: 'sync');
-
-    for (final doc in transactionsSnapshot.docs) {
-      final data = doc.data();
-      await (_localDb.into(_localDb.transactions)).insert(
-        TransactionsCompanion.insert(
-          transactionType: data['transactionType'] as int,
-          amount: data['amount'] as double,
-          date: (data['date'] as Timestamp).toDate(),
-          title: data['title'] as String,
-          categoryId: data['categoryId'] as int,
-          walletId: data['walletId'] as int,
-          cloudId: Value(doc.id),
-          notes: Value(data['notes'] as String?),
-          imagePath: Value(data['imagePath'] as String?),
-          isRecurring: Value(data['isRecurring'] as bool?),
-          createdAt: Value((data['createdAt'] as Timestamp).toDate()),
-          updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
-        ),
-      );
-    }
-
-    Log.i('✅ Downloaded ${walletsSnapshot.docs.length} wallets and ${transactionsSnapshot.docs.length} transactions', label: 'sync');
   }
 
   /// Clear all cloud data
