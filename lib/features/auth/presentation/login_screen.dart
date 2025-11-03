@@ -132,6 +132,7 @@ class LoginScreen extends HookConsumerWidget {
                 context: context,
                 localDb: localDb,
                 userId: userId,
+                ref: ref,
               ).timeout(
                 const Duration(seconds: 30),
                 onTimeout: () {
@@ -233,6 +234,7 @@ class LoginScreen extends HookConsumerWidget {
                   context: context,
                   localDb: localDb,
                   userId: userId,
+                  ref: ref,
                 );
               }
             }
@@ -321,6 +323,7 @@ class LoginScreen extends HookConsumerWidget {
               context: context,
               localDb: localDb,
               userId: userId,
+              ref: ref,
             );
           }
         }

@@ -105,12 +105,12 @@ class WalletFormBottomSheet extends HookConsumerWidget {
 
                 // return;
 
-                final db = ref.read(databaseProvider);
+                final walletDao = ref.read(walletDaoProvider);
                 try {
                   if (isEditing) {
                     Log.d(newWallet.toJson(), label: 'edit wallet');
                     // update the wallet
-                    bool success = await db.walletDao.updateWallet(newWallet);
+                    bool success = await walletDao.updateWallet(newWallet);
                     Log.d(success, label: 'edit wallet');
 
                     // only update active wallet if condition is met
@@ -119,7 +119,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                         .updateActiveWallet(newWallet);
                   } else {
                     Log.d(newWallet.toJson(), label: 'new wallet');
-                    int id = await db.walletDao.addWallet(newWallet);
+                    int id = await walletDao.addWallet(newWallet);
                     Log.d(id, label: 'new wallet');
 
                     // Set newly created wallet as active
@@ -157,19 +157,38 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                         style: AppTextStyles.body2,
                       ),
                       confirmText: 'Delete',
-                      onConfirm: () {
-                        // final db = ref.read(databaseProvider);
-                        // db.walletDao.deleteWallet(wallet!.id!);
-                        context.pop(); // close this dialog
-                        context.pop(); // close form dialog
-                        toastification.show(
-                          autoCloseDuration: Duration(seconds: 3),
-                          showProgressBar: true,
-                          description: Text(
-                            'Delete a wallet is coming soon...',
-                            style: AppTextStyles.body2,
-                          ),
-                        );
+                      onConfirm: () async {
+                        final walletDao = ref.read(walletDaoProvider);
+                        try {
+                          await walletDao.deleteWallet(wallet!.id!);
+
+                          if (context.mounted) {
+                            context.pop(); // close this dialog
+                            context.pop(); // close form dialog
+
+                            toastification.show(
+                              autoCloseDuration: Duration(seconds: 3),
+                              showProgressBar: true,
+                              description: Text(
+                                'Wallet "${wallet!.name}" deleted successfully',
+                                style: AppTextStyles.body2,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          Log.e('Failed to delete wallet: $e', label: 'wallet_form');
+                          if (context.mounted) {
+                            context.pop(); // close dialog on error
+                            toastification.show(
+                              autoCloseDuration: Duration(seconds: 3),
+                              showProgressBar: true,
+                              description: Text(
+                                'Error deleting wallet: $e',
+                                style: AppTextStyles.body2,
+                              ),
+                            );
+                          }
+                        }
                       },
                     ),
                   );
