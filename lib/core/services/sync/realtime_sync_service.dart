@@ -1,12 +1,14 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
+import 'package:drift/drift.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/goal_table.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
@@ -16,16 +18,16 @@ import 'package:bexly/features/goal/data/model/goal_model.dart';
 /// Real-time sync service using Firestore snapshots
 /// Implements bidirectional sync with Last-Write-Wins conflict resolution
 class RealtimeSyncService {
-  final FirebaseFirestore _firestore;
+  final firestore.FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
   final AppDatabase _db;
 
   // Snapshot listeners subscriptions
-  StreamSubscription<QuerySnapshot>? _walletsListener;
-  StreamSubscription<QuerySnapshot>? _transactionsListener;
-  StreamSubscription<QuerySnapshot>? _categoriesListener;
-  StreamSubscription<QuerySnapshot>? _budgetsListener;
-  StreamSubscription<QuerySnapshot>? _goalsListener;
+  StreamSubscription<firestore.QuerySnapshot>? _walletsListener;
+  StreamSubscription<firestore.QuerySnapshot>? _transactionsListener;
+  StreamSubscription<firestore.QuerySnapshot>? _categoriesListener;
+  StreamSubscription<firestore.QuerySnapshot>? _budgetsListener;
+  StreamSubscription<firestore.QuerySnapshot>? _goalsListener;
 
   // Sync state
   bool _isInitialSyncComplete = false;
@@ -33,11 +35,11 @@ class RealtimeSyncService {
 
   RealtimeSyncService({
     required AppDatabase db,
-    FirebaseFirestore? firestore,
+    firestore.FirebaseFirestore? firestoreInstance,
     FirebaseAuth? auth,
   })  : _db = db,
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+        _firestore = firestoreInstance ?? firestore.FirebaseFirestore.instanceFor(app: FirebaseInitService.bexlyApp, databaseId: "bexly"),
+        _auth = auth ?? FirebaseAuth.instanceFor(app: FirebaseInitService.bexlyApp);
 
   String? get _userId => _auth.currentUser?.uid;
 
@@ -46,7 +48,7 @@ class RealtimeSyncService {
   bool get isSyncing => _isSyncing;
 
   /// Get user's data collection reference
-  CollectionReference _getUserCollection(String collectionName) {
+  firestore.CollectionReference _getUserCollection(String collectionName) {
     if (_userId == null) throw Exception('User not logged in');
     return _firestore
         .collection('users')
@@ -143,14 +145,14 @@ class RealtimeSyncService {
     );
   }
 
-  Future<void> _handleWalletChange(DocumentChange change) async {
+  Future<void> _handleWalletChange(firestore.DocumentChange change) async {
     final doc = change.doc;
     final data = doc.data() as Map<String, dynamic>?;
 
     if (data == null) return;
 
     final cloudId = doc.id;
-    final remoteUpdatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+    final remoteUpdatedAt = (data['updatedAt'] as firestore.Timestamp?)?.toDate();
 
     Log.d(
       'Wallet change: ${change.type.name} - $cloudId',
@@ -158,8 +160,8 @@ class RealtimeSyncService {
     );
 
     switch (change.type) {
-      case DocumentChangeType.added:
-      case DocumentChangeType.modified:
+      case firestore.DocumentChangeType.added:
+      case firestore.DocumentChangeType.modified:
         // Check if we already have this wallet locally
         final localWallet = await _db.walletDao.getWalletByCloudId(cloudId);
 
@@ -185,7 +187,7 @@ class RealtimeSyncService {
         }
         break;
 
-      case DocumentChangeType.removed:
+      case firestore.DocumentChangeType.removed:
         // Wallet deleted from cloud - delete locally
         final localWallet = await _db.walletDao.getWalletByCloudId(cloudId);
         if (localWallet != null) {
@@ -208,8 +210,8 @@ class RealtimeSyncService {
         currency: data['currency'] as String? ?? 'IDR',
         iconName: data['iconName'] as String?,
         colorHex: data['colorHex'] as String?,
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate(),
+        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate(),
       );
 
       await _db.walletDao.addWallet(wallet);
@@ -234,8 +236,8 @@ class RealtimeSyncService {
         currency: data['currency'] as String? ?? 'IDR',
         iconName: data['iconName'] as String?,
         colorHex: data['colorHex'] as String?,
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate(),
+        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate(),
       );
 
       await _db.walletDao.updateWallet(wallet);
@@ -278,14 +280,14 @@ class RealtimeSyncService {
     );
   }
 
-  Future<void> _handleCategoryChange(DocumentChange change) async {
+  Future<void> _handleCategoryChange(firestore.DocumentChange change) async {
     final doc = change.doc;
     final data = doc.data() as Map<String, dynamic>?;
 
     if (data == null) return;
 
     final cloudId = doc.id;
-    final remoteUpdatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+    final remoteUpdatedAt = (data['updatedAt'] as firestore.Timestamp?)?.toDate();
 
     Log.d(
       'Category change: ${change.type.name} - $cloudId',
@@ -293,8 +295,8 @@ class RealtimeSyncService {
     );
 
     switch (change.type) {
-      case DocumentChangeType.added:
-      case DocumentChangeType.modified:
+      case firestore.DocumentChangeType.added:
+      case firestore.DocumentChangeType.modified:
         final localCategory =
             await _db.categoryDao.getCategoryByCloudId(cloudId);
 
@@ -311,10 +313,20 @@ class RealtimeSyncService {
         }
         break;
 
-      case DocumentChangeType.removed:
+      case firestore.DocumentChangeType.removed:
         final localCategory =
             await _db.categoryDao.getCategoryByCloudId(cloudId);
         if (localCategory != null) {
+          // CRITICAL: Never delete system default categories
+          // These are protected to prevent data loss during sync conflicts
+          if (localCategory.isSystemDefault) {
+            Log.w(
+              'Ignoring cloud delete request for system default category: ${localCategory.title}',
+              label: 'sync',
+            );
+            return;
+          }
+
           await _db.categoryDao.deleteCategoryById(localCategory.id);
           Log.d('Deleted local category: ${localCategory.id}', label: 'sync');
         }
@@ -335,8 +347,9 @@ class RealtimeSyncService {
         iconTypeValue: data['iconType'] as String? ?? '',
         parentId: data['parentId'] as int?,
         description: data['description'] as String? ?? '',
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+        isSystemDefault: data['isSystemDefault'] as bool? ?? false,
+        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate(),
+        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate(),
       );
 
       final companion = category.toCompanion(isInsert: true);
@@ -362,6 +375,7 @@ class RealtimeSyncService {
       }
 
       // Create updated category entity
+      // CRITICAL: Preserve isSystemDefault flag - never allow cloud to override it
       final updatedCategory = Category(
         id: localId,
         cloudId: cloudId,
@@ -371,8 +385,9 @@ class RealtimeSyncService {
         iconType: data['iconType'] as String?,
         parentId: data['parentId'] as int?,
         description: data['description'] as String?,
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? existingCategory.createdAt,
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        isSystemDefault: existingCategory.isSystemDefault, // Preserve local flag
+        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate() ?? existingCategory.createdAt,
+        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
       );
 
       await _db.categoryDao.updateCategory(updatedCategory);
@@ -415,14 +430,14 @@ class RealtimeSyncService {
     );
   }
 
-  Future<void> _handleTransactionChange(DocumentChange change) async {
+  Future<void> _handleTransactionChange(firestore.DocumentChange change) async {
     final doc = change.doc;
     final data = doc.data() as Map<String, dynamic>?;
 
     if (data == null) return;
 
     final cloudId = doc.id;
-    final remoteUpdatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+    final remoteUpdatedAt = (data['updatedAt'] as firestore.Timestamp?)?.toDate();
 
     Log.d(
       'Transaction change: ${change.type.name} - $cloudId',
@@ -430,8 +445,8 @@ class RealtimeSyncService {
     );
 
     switch (change.type) {
-      case DocumentChangeType.added:
-      case DocumentChangeType.modified:
+      case firestore.DocumentChangeType.added:
+      case firestore.DocumentChangeType.modified:
         final localTransaction =
             await _db.transactionDao.getTransactionByCloudId(cloudId);
 
@@ -451,7 +466,7 @@ class RealtimeSyncService {
         }
         break;
 
-      case DocumentChangeType.removed:
+      case firestore.DocumentChangeType.removed:
         final localTransaction =
             await _db.transactionDao.getTransactionByCloudId(cloudId);
         if (localTransaction != null) {
@@ -499,15 +514,15 @@ class RealtimeSyncService {
         transactionType: TransactionType.values[
             data['transactionType'] as int? ?? TransactionType.expense.index],
         amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
-        date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        date: (data['date'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
         title: data['title'] as String? ?? 'Transaction',
         category: category.toModel(),
         wallet: wallet.toModel(),
         notes: data['notes'] as String?,
         imagePath: data['imagePath'] as String?,
         isRecurring: data['isRecurring'] as bool?,
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate(),
+        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate(),
       );
 
       await _db.transactionDao.addTransaction(transaction);
@@ -556,15 +571,15 @@ class RealtimeSyncService {
         transactionType: TransactionType.values[
             data['transactionType'] as int? ?? TransactionType.expense.index],
         amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
-        date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        date: (data['date'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
         title: data['title'] as String? ?? 'Transaction',
         category: category.toModel(),
         wallet: wallet.toModel(),
         notes: data['notes'] as String?,
         imagePath: data['imagePath'] as String?,
         isRecurring: data['isRecurring'] as bool?,
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate(),
+        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate(),
       );
 
       await _db.transactionDao.updateTransaction(transaction);
@@ -610,14 +625,14 @@ class RealtimeSyncService {
     );
   }
 
-  Future<void> _handleBudgetChange(DocumentChange change) async {
+  Future<void> _handleBudgetChange(firestore.DocumentChange change) async {
     final doc = change.doc;
     final data = doc.data() as Map<String, dynamic>?;
 
     if (data == null) return;
 
     final cloudId = doc.id;
-    final remoteUpdatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+    final remoteUpdatedAt = (data['updatedAt'] as firestore.Timestamp?)?.toDate();
 
     Log.d(
       'Budget change: ${change.type.name} - $cloudId',
@@ -625,8 +640,8 @@ class RealtimeSyncService {
     );
 
     switch (change.type) {
-      case DocumentChangeType.added:
-      case DocumentChangeType.modified:
+      case firestore.DocumentChangeType.added:
+      case firestore.DocumentChangeType.modified:
         final localBudget = await _db.budgetDao.getBudgetByCloudId(cloudId);
 
         if (localBudget == null) {
@@ -641,7 +656,7 @@ class RealtimeSyncService {
         }
         break;
 
-      case DocumentChangeType.removed:
+      case firestore.DocumentChangeType.removed:
         final localBudget = await _db.budgetDao.getBudgetByCloudId(cloudId);
         if (localBudget != null) {
           await _db.budgetDao.deleteBudget(localBudget.id);
@@ -682,11 +697,11 @@ class RealtimeSyncService {
         wallet: wallet.toModel(),
         category: category.toModel(),
         amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
-        startDate: (data['startDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        endDate: (data['endDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        startDate: (data['startDate'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
+        endDate: (data['endDate'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
         isRoutine: data['isRoutine'] as bool? ?? false,
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate(),
+        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate(),
       );
 
       await _db.budgetDao.addBudget(budget);
@@ -730,11 +745,11 @@ class RealtimeSyncService {
         wallet: wallet.toModel(),
         category: category.toModel(),
         amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
-        startDate: (data['startDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        endDate: (data['endDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        startDate: (data['startDate'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
+        endDate: (data['endDate'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
         isRoutine: data['isRoutine'] as bool? ?? false,
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate(),
+        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate(),
       );
 
       await _db.budgetDao.updateBudget(budget);
@@ -777,14 +792,14 @@ class RealtimeSyncService {
     );
   }
 
-  Future<void> _handleGoalChange(DocumentChange change) async {
+  Future<void> _handleGoalChange(firestore.DocumentChange change) async {
     final doc = change.doc;
     final data = doc.data() as Map<String, dynamic>?;
 
     if (data == null) return;
 
     final cloudId = doc.id;
-    final remoteUpdatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+    final remoteUpdatedAt = (data['updatedAt'] as firestore.Timestamp?)?.toDate();
 
     Log.d(
       'Goal change: ${change.type.name} - $cloudId',
@@ -792,8 +807,8 @@ class RealtimeSyncService {
     );
 
     switch (change.type) {
-      case DocumentChangeType.added:
-      case DocumentChangeType.modified:
+      case firestore.DocumentChangeType.added:
+      case firestore.DocumentChangeType.modified:
         final localGoal = await _db.goalDao.getGoalByCloudId(cloudId);
 
         if (localGoal == null) {
@@ -807,7 +822,7 @@ class RealtimeSyncService {
         }
         break;
 
-      case DocumentChangeType.removed:
+      case firestore.DocumentChangeType.removed:
         final localGoal = await _db.goalDao.getGoalByCloudId(cloudId);
         if (localGoal != null) {
           await _db.goalDao.deleteGoal(localGoal.id);
@@ -827,12 +842,12 @@ class RealtimeSyncService {
         title: data['title'] as String? ?? 'Goal',
         targetAmount: (data['targetAmount'] as num?)?.toDouble() ?? 0.0,
         currentAmount: (data['currentAmount'] as num?)?.toDouble() ?? 0.0,
-        startDate: (data['startDate'] as Timestamp?)?.toDate(),
-        endDate: (data['endDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        startDate: (data['startDate'] as firestore.Timestamp?)?.toDate(),
+        endDate: (data['endDate'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
         iconName: data['iconName'] as String?,
         description: data['description'] as String?,
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate(),
+        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate(),
         associatedAccountId: data['associatedAccountId'] as int?,
         pinned: data['pinned'] as bool? ?? false,
       );
@@ -866,12 +881,12 @@ class RealtimeSyncService {
         title: data['title'] as String? ?? 'Goal',
         targetAmount: (data['targetAmount'] as num?)?.toDouble() ?? 0.0,
         currentAmount: (data['currentAmount'] as num?)?.toDouble() ?? 0.0,
-        startDate: (data['startDate'] as Timestamp?)?.toDate(),
-        endDate: (data['endDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        startDate: (data['startDate'] as firestore.Timestamp?)?.toDate(),
+        endDate: (data['endDate'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
         iconName: data['iconName'] as String?,
         description: data['description'] as String?,
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? existingGoal.createdAt,
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate() ?? existingGoal.createdAt,
+        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
         associatedAccountId: data['associatedAccountId'] as int?,
         pinned: data['pinned'] as bool?,
       );
@@ -911,12 +926,43 @@ class RealtimeSyncService {
         'updatedAt': DateTime.now(),
       };
 
-      await collection.doc(cloudId).set(data, SetOptions(merge: true));
+      await collection.doc(cloudId).set(data, firestore.SetOptions(merge: true));
 
       // Update local wallet with cloudId if it was generated
       if (wallet.cloudId == null && wallet.id != null) {
-        final updatedWallet = wallet.copyWith(cloudId: cloudId);
-        await _db.walletDao.updateWallet(updatedWallet);
+        // Re-read wallet first to check current cloudId in database
+        final currentWallet = await (_db.select(_db.wallets)
+          ..where((w) => w.id.equals(wallet.id!)))
+          .getSingleOrNull();
+
+        if (currentWallet?.cloudId == null) {
+          try {
+            // Check if cloudId already exists in database for a DIFFERENT wallet
+            final existingWallet = await (_db.select(_db.wallets)
+              ..where((w) => w.cloudId.equals(cloudId)))
+              .getSingleOrNull();
+
+            if (existingWallet != null && existingWallet.id != wallet.id) {
+              // CloudId exists for a DIFFERENT wallet - this shouldn't happen!
+              // This means there's a duplicate wallet or stale data
+              print('[UPLOAD_DEBUG] ⚠️ CloudId $cloudId already exists for DIFFERENT wallet: ${existingWallet.name} (id=${existingWallet.id}). Current: ${wallet.name} (id=${wallet.id})');
+            } else {
+              // CloudId doesn't exist or exists for SAME wallet - safe to update
+              await (_db.update(_db.wallets)..where((w) => w.id.equals(wallet.id!)))
+                  .write(WalletsCompanion(cloudId: Value(cloudId)));
+              print('[UPLOAD_DEBUG] Updated wallet cloudId in local database: ${wallet.name} -> $cloudId');
+            }
+          } catch (e) {
+            // If UNIQUE constraint error, the cloudId already exists - skip silently
+            if (e.toString().contains('UNIQUE constraint')) {
+              print('[UPLOAD_DEBUG] ⚠️ CloudId $cloudId already exists (UNIQUE constraint). Skipping update for ${wallet.name}');
+            } else {
+              rethrow;
+            }
+          }
+        } else {
+          print('[UPLOAD_DEBUG] Wallet already has cloudId in database: ${wallet.name} -> ${currentWallet?.cloudId}');
+        }
       }
 
       Log.i('Uploaded wallet to cloud: ${wallet.name}', label: 'sync');
@@ -950,9 +996,11 @@ class RealtimeSyncService {
     }
 
     try {
+      print('[UPLOAD_DEBUG] uploadCategory called for: ${category.title} (id=${category.id}, cloudId=${category.cloudId})');
       final collection = _getUserCollection('categories');
 
       final cloudId = category.cloudId ?? const Uuid().v7();
+      print('[UPLOAD_DEBUG] Using cloudId: $cloudId (was null: ${category.cloudId == null})');
 
       final data = {
         'title': category.title,
@@ -961,11 +1009,49 @@ class RealtimeSyncService {
         'iconType': category.iconTypeValue,
         'parentId': category.parentId,
         'description': category.description,
+        'isSystemDefault': category.isSystemDefault,
         'createdAt': category.createdAt ?? DateTime.now(),
         'updatedAt': DateTime.now(),
       };
 
-      await collection.doc(cloudId).set(data, SetOptions(merge: true));
+      await collection.doc(cloudId).set(data, firestore.SetOptions(merge: true));
+
+      // Update local category with cloudId if it was generated
+      if (category.cloudId == null && category.id != null) {
+        // Re-read category first to check current cloudId in database
+        final currentCategory = await (_db.select(_db.categories)
+          ..where((c) => c.id.equals(category.id!)))
+          .getSingleOrNull();
+
+        if (currentCategory?.cloudId == null) {
+          try {
+            // Check if cloudId already exists in database for a DIFFERENT category
+            final existingCategory = await (_db.select(_db.categories)
+              ..where((c) => c.cloudId.equals(cloudId)))
+              .getSingleOrNull();
+
+            if (existingCategory != null && existingCategory.id != category.id) {
+              // CloudId exists for a DIFFERENT category - this shouldn't happen!
+              // This means there's a duplicate category or stale data
+              print('[UPLOAD_DEBUG] ⚠️ CloudId $cloudId already exists for DIFFERENT category: ${existingCategory.title} (id=${existingCategory.id}). Current: ${category.title} (id=${category.id})');
+            } else {
+              // CloudId doesn't exist or exists for SAME category - safe to update
+              await (_db.update(_db.categories)..where((c) => c.id.equals(category.id!)))
+                  .write(CategoriesCompanion(cloudId: Value(cloudId)));
+              print('[UPLOAD_DEBUG] Updated category cloudId in local database: ${category.title} -> $cloudId');
+            }
+          } catch (e) {
+            // If UNIQUE constraint error, the cloudId already exists - skip silently
+            if (e.toString().contains('UNIQUE constraint')) {
+              print('[UPLOAD_DEBUG] ⚠️ CloudId $cloudId already exists (UNIQUE constraint). Skipping update for ${category.title}');
+            } else {
+              rethrow;
+            }
+          }
+        } else {
+          print('[UPLOAD_DEBUG] Category already has cloudId in database: ${category.title} -> ${currentCategory?.cloudId}');
+        }
+      }
 
       Log.i('Uploaded category to cloud: ${category.title}', label: 'sync');
     } catch (e, stack) {
@@ -999,14 +1085,33 @@ class RealtimeSyncService {
 
     try {
       // Ensure category and wallet have cloudIds
-      if (transaction.category.cloudId == null) {
+      String? categoryCloudId = transaction.category.cloudId;
+      String? walletCloudId = transaction.wallet.cloudId;
+
+      if (categoryCloudId == null) {
         Log.w('Transaction category missing cloudId, uploading category first', label: 'sync');
         await uploadCategory(transaction.category);
+        // Re-read category from database to get cloudId
+        final updatedCategory = await (_db.select(_db.categories)
+          ..where((c) => c.id.equals(transaction.category.id!)))
+          .getSingleOrNull();
+        categoryCloudId = updatedCategory?.cloudId;
+        print('[UPLOAD_DEBUG] Re-read category cloudId: $categoryCloudId');
       }
 
-      if (transaction.wallet.cloudId == null) {
+      if (walletCloudId == null) {
         Log.w('Transaction wallet missing cloudId, uploading wallet first', label: 'sync');
         await uploadWallet(transaction.wallet);
+        // Re-read wallet from database to get cloudId
+        final updatedWallet = await (_db.select(_db.wallets)
+          ..where((w) => w.id.equals(transaction.wallet.id!)))
+          .getSingleOrNull();
+        walletCloudId = updatedWallet?.cloudId;
+        print('[UPLOAD_DEBUG] Re-read wallet cloudId: $walletCloudId');
+      }
+
+      if (categoryCloudId == null || walletCloudId == null) {
+        throw Exception('Failed to get cloudIds for category or wallet after upload');
       }
 
       final collection = _getUserCollection('transactions');
@@ -1018,8 +1123,8 @@ class RealtimeSyncService {
         'amount': transaction.amount,
         'date': transaction.date,
         'title': transaction.title,
-        'categoryCloudId': transaction.category.cloudId!,
-        'walletCloudId': transaction.wallet.cloudId!,
+        'categoryCloudId': categoryCloudId,
+        'walletCloudId': walletCloudId,
         'notes': transaction.notes,
         'imagePath': transaction.imagePath,
         'isRecurring': transaction.isRecurring,
@@ -1027,7 +1132,7 @@ class RealtimeSyncService {
         'updatedAt': DateTime.now(),
       };
 
-      await collection.doc(cloudId).set(data, SetOptions(merge: true));
+      await collection.doc(cloudId).set(data, firestore.SetOptions(merge: true));
 
       Log.i('Uploaded transaction to cloud: ${transaction.title}', label: 'sync');
     } catch (e, stack) {
@@ -1084,7 +1189,7 @@ class RealtimeSyncService {
         'updatedAt': DateTime.now(),
       };
 
-      await collection.doc(cloudId).set(data, SetOptions(merge: true));
+      await collection.doc(cloudId).set(data, firestore.SetOptions(merge: true));
 
       Log.i('Uploaded budget to cloud', label: 'sync');
     } catch (e, stack) {
@@ -1135,7 +1240,7 @@ class RealtimeSyncService {
         'updatedAt': DateTime.now(),
       };
 
-      await collection.doc(cloudId).set(data, SetOptions(merge: true));
+      await collection.doc(cloudId).set(data, firestore.SetOptions(merge: true));
 
       Log.i('Uploaded goal to cloud: ${goal.title}', label: 'sync');
     } catch (e, stack) {
