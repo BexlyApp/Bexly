@@ -16,12 +16,16 @@ mixin AIServicePromptMixin {
   List<String> get categories;
   String get recentTransactionsContext;
   String? get categoryHierarchy => null; // Optional hierarchy text
+  String? get walletCurrency => null; // Optional wallet currency for conversion notification
+  String? get walletName => null; // Optional wallet name for personalized responses
 
   /// Build complete system prompt using centralized config
   String get systemPrompt => AIPrompts.buildSystemPrompt(
         categories: categories,
         recentTransactionsContext: recentTransactionsContext,
         categoryHierarchy: categoryHierarchy,
+        walletCurrency: walletCurrency,
+        walletName: walletName,
       );
 
   // Legacy getters for backwards compatibility (all delegate to AIPrompts)
@@ -46,6 +50,12 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   @override
   final String? categoryHierarchy;
 
+  @override
+  final String? walletCurrency;
+
+  @override
+  final String? walletName;
+
   String _recentTransactionsContext = '';
 
   @override
@@ -57,8 +67,10 @@ class OpenAIService with AIServicePromptMixin implements AIService {
     this.model = 'gpt-4o-mini',
     this.categories = const [],
     this.categoryHierarchy,
+    this.walletCurrency,
+    this.walletName,
   }) {
-    Log.d('OpenAIService initialized with model: $model, categories: ${categories.length}', label: 'AI Service');
+    Log.d('OpenAIService initialized with model: $model, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency)', label: 'AI Service');
   }
 
   @override
@@ -187,6 +199,12 @@ class GeminiService with AIServicePromptMixin implements AIService {
   @override
   final String? categoryHierarchy;
 
+  @override
+  final String? walletCurrency;
+
+  @override
+  final String? walletName;
+
   String _recentTransactionsContext = '';
 
   @override
@@ -197,8 +215,10 @@ class GeminiService with AIServicePromptMixin implements AIService {
     this.model = 'gemini-2.5-flash',
     this.categories = const [],
     this.categoryHierarchy,
+    this.walletCurrency,
+    this.walletName,
   }) {
-    Log.d('GeminiService initialized with model: $model, categories: ${categories.length}', label: 'AI Service');
+    Log.d('GeminiService initialized with model: $model, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency)', label: 'AI Service');
   }
 
   @override

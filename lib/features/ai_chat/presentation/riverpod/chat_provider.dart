@@ -24,7 +24,6 @@ import 'package:bexly/features/ai_chat/presentation/riverpod/chat_dao_provider.d
 import 'package:bexly/core/database/app_database.dart' as db;
 import 'package:drift/drift.dart' as drift;
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
-import 'package:bexly/features/settings/presentation/riverpod/language_provider.dart';
 // import 'package:bexly/core/services/sync/data_sync_service.dart';
 
 // Simple category info for AI
@@ -152,9 +151,10 @@ final aiServiceProvider = Provider<AIService>((ref) {
     Log.d('Category Hierarchy:\n$categoryHierarchy', label: 'Chat Provider');
   }
 
-  // Get wallet currency for context (use read to avoid rebuild)
+  // Get wallet info for context (use read to avoid rebuild)
   final wallet = ref.read(activeWalletProvider).valueOrNull;
   final walletCurrency = wallet?.currency ?? 'VND';
+  final walletName = wallet?.name ?? 'Active Wallet';
 
   // Check which AI provider to use
   final provider = LLMDefaultConfig.provider;
@@ -165,11 +165,13 @@ final aiServiceProvider = Provider<AIService>((ref) {
         ? 'USER_MUST_PROVIDE_API_KEY'
         : LLMDefaultConfig.geminiApiKey;
 
-    if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length > 10) {
+    if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length >= 11) {
       final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
-      Log.d('Using Gemini Service with API key: $maskedKey, model: ${LLMDefaultConfig.geminiModel}, currency: $walletCurrency', label: 'Chat Provider');
-    } else {
+      Log.d('Using Gemini Service with API key: $maskedKey, model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
+    } else if (apiKey == 'USER_MUST_PROVIDE_API_KEY') {
       Log.e('Invalid or missing Gemini API key!', label: 'Chat Provider');
+    } else {
+      Log.d('Using Gemini Service with API key: [SHORT_KEY], model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
     }
 
     return GeminiService(
@@ -177,6 +179,8 @@ final aiServiceProvider = Provider<AIService>((ref) {
       model: LLMDefaultConfig.geminiModel,
       categories: categories,
       categoryHierarchy: categoryHierarchy,
+      walletCurrency: walletCurrency,
+      walletName: walletName,
     );
   } else {
     // Default to OpenAI service
@@ -184,11 +188,13 @@ final aiServiceProvider = Provider<AIService>((ref) {
         ? 'USER_MUST_PROVIDE_API_KEY'
         : LLMDefaultConfig.apiKey;
 
-    if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length > 10) {
+    if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length >= 11) {
       final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
-      Log.d('Using OpenAI Service with API key: $maskedKey, model: ${LLMDefaultConfig.model}, currency: $walletCurrency', label: 'Chat Provider');
-    } else {
+      Log.d('Using OpenAI Service with API key: $maskedKey, model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
+    } else if (apiKey == 'USER_MUST_PROVIDE_API_KEY') {
       Log.e('Invalid or missing OpenAI API key!', label: 'Chat Provider');
+    } else {
+      Log.d('Using OpenAI Service with API key: [SHORT_KEY], model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
     }
 
     return OpenAIService(
@@ -196,28 +202,41 @@ final aiServiceProvider = Provider<AIService>((ref) {
       model: LLMDefaultConfig.model,
       categories: categories,
       categoryHierarchy: categoryHierarchy,
+      walletCurrency: walletCurrency,
+      walletName: walletName,
     );
   }
 });
 
-// Chat State Provider - Using autoDispose to manage lifecycle
-final chatProvider = StateNotifierProvider.autoDispose<ChatNotifier, ChatState>((ref) {
-  final aiService = ref.watch(aiServiceProvider);
-
-  // Keep provider alive to preserve chat messages
-  ref.keepAlive();
-
-  return ChatNotifier(aiService, ref);
+// Chat State Provider - Using regular provider to prevent dispose
+// IMPORTANT: Don't watch aiServiceProvider here to avoid rebuild/dispose!
+final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
+  return ChatNotifier(ref);
 });
 
 class ChatNotifier extends StateNotifier<ChatState> {
-  final AIService _aiService;
   final Ref _ref;
   final Uuid _uuid = const Uuid();
   StreamSubscription? _typingSubscription;
 
-  ChatNotifier(this._aiService, this._ref) : super(const ChatState()) {
+  // Get AI service when needed to avoid provider rebuilds
+  AIService get _aiService => _ref.read(aiServiceProvider);
+
+  ChatNotifier(this._ref) : super(const ChatState()) {
     _initializeChat();
+  }
+
+  /// Helper method to add error message to chat
+  void _addErrorMessage(String errorContent) {
+    final errorMsg = ChatMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      content: errorContent,
+      isFromUser: false,
+      timestamp: DateTime.now(),
+    );
+    state = state.copyWith(
+      messages: [...state.messages, errorMsg],
+    );
   }
 
   void _initializeChat() async {
@@ -300,8 +319,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       Log.d('AI Response: $response', label: 'Chat Provider');
 
-      // Cancel typing effect
-      _cancelTypingEffect();
+      // NOTE: Do NOT cancel typing effect here - we'll replace the typing message instead
+      // This creates a smooth transition from "..." to actual message
 
       // Extract JSON action if present
       String displayMessage = response;
@@ -315,7 +334,14 @@ class ChatNotifier extends StateNotifier<ChatState> {
         displayMessage = response.substring(0, actionIndex).trim();
 
         // Extract JSON after ACTION_JSON:
-        final jsonStr = response.substring(actionIndex + 12).trim();
+        // Add safety check to prevent RangeError
+        final jsonStartIndex = actionIndex + 12; // Length of "ACTION_JSON:"
+        if (jsonStartIndex >= response.length) {
+          Log.e('Invalid ACTION_JSON format: no JSON content after marker', label: 'Chat Provider');
+          throw Exception('Invalid AI response format: ACTION_JSON marker found but no JSON content');
+        }
+
+        final jsonStr = response.substring(jsonStartIndex).trim();
         Log.d('Extracted JSON string: $jsonStr', label: 'Chat Provider');
 
         try {
@@ -329,41 +355,42 @@ class ChatNotifier extends StateNotifier<ChatState> {
             case 'create_income':
               {
                 // Get currency from AI action
-                double amount = (action['amount'] as num).toDouble();
-                final aiCurrency = action['currency'] ?? 'VND';
+                final double amount = (action['amount'] as num).toDouble();
+                final String aiCurrency = action['currency'] ?? 'VND';
 
                 Log.d('AI action: amount=$amount, currency=$aiCurrency', label: 'AI_CURRENCY');
 
-                // Find wallet matching AI currency, or use active wallet
+                // Prefer wallet with matching currency, fall back to active wallet
+                // Currency conversion will happen in _createTransactionFromAction if needed
                 final walletsAsync = _ref.read(allWalletsStreamProvider);
                 final allWallets = walletsAsync.valueOrNull ?? [];
                 WalletModel? wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
 
                 if (wallet == null) {
-                  // No wallet with matching currency, use active wallet
+                  // No wallet with matching currency, use active wallet (will auto-convert)
                   wallet = _ref.read(activeWalletProvider).valueOrNull;
-                  Log.d('No wallet found for $aiCurrency, using active wallet: ${wallet?.currency}', label: 'AI_CURRENCY');
+                  Log.d('No wallet found for $aiCurrency, using active wallet: ${wallet?.currency} (will convert)', label: 'AI_CURRENCY');
                 } else {
-                  Log.d('Found wallet "${wallet.name}" for currency $aiCurrency', label: 'AI_CURRENCY');
+                  Log.d('Found wallet "${wallet.name}" for currency $aiCurrency (no conversion needed)', label: 'AI_CURRENCY');
                 }
 
-                final walletCurrency = wallet?.currency ?? 'VND';
+                if (wallet == null) {
+                  Log.e('No wallet available', label: 'Chat Provider');
+                  displayMessage += '\n\n❌ No wallet available.';
+                  break;
+                }
 
                 final description = action['description'];
                 final category = action['category'];
-                Log.d('Creating transaction: action=${action['action']}, amount=$amount $walletCurrency, desc=$description, cat=$category', label: 'Chat Provider');
+                Log.d('Creating transaction: action=${action['action']}, amount=$amount $aiCurrency, desc=$description, cat=$category', label: 'Chat Provider');
 
-                await _createTransactionFromAction(action, wallet: wallet);
+                // Get the actual amount saved (after currency conversion if needed)
+                final actualAmount = await _createTransactionFromAction(action, wallet: wallet);
 
-                final isIncome = actionType == 'create_income';
-                final amountText = _formatAmount(amount, currency: walletCurrency);
-                final dateText = _formatDatePhrase(DateTime.now());
-                final walletName = wallet?.name ?? 'My Wallet';
+                // Note: No need to add confirmation message here because AI already provides
+                // a natural language confirmation in its response (e.g., "Đã ghi nhận chi tiêu...")
+                // The AI response is in the user's language and includes all necessary details
 
-                final confirmText = isIncome
-                    ? 'Recorded income of ' + amountText + ' to "' + walletName + '" for ' + (action['description']).toString() + ' (Category: ' + (action['category']).toString() + ') on ' + dateText + '.'
-                    : 'Recorded expense of ' + amountText + ' from "' + walletName + '" for ' + (action['description']).toString() + ' (Category: ' + (action['category']).toString() + ') on ' + dateText + '.';
-                displayMessage += '\n\n✅ ' + confirmText;
                 break;
               }
             case 'create_budget':
@@ -490,9 +517,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
               {
                 Log.d('Processing create_recurring action: $action', label: 'Chat Provider');
 
-                final createResult = await _createRecurringFromAction(action);
-                // Replace displayMessage instead of appending (to avoid mixing languages)
-                displayMessage = createResult;
+                await _createRecurringFromAction(action);
+                // Note: No need to add confirmation message here because AI already provides
+                // a natural language confirmation in its response with wallet name
                 break;
               }
             default:
@@ -516,11 +543,30 @@ class ChatNotifier extends StateNotifier<ChatState> {
         timestamp: DateTime.now(),
       );
 
-      state = state.copyWith(
-        messages: [...state.messages, aiMessage],
-        isLoading: false,
-        isTyping: false,
-      );
+      print('[CHAT_DEBUG] Created AI message: ${aiMessage.content.length > 50 ? aiMessage.content.substring(0, 50) + '...' : aiMessage.content}');
+
+      // Update state - wrap ALL state access in try-catch to handle dispose
+      try {
+        print('[CHAT_DEBUG] Current messages count: ${state.messages.length}');
+        print('[CHAT_DEBUG] Replacing typing message with AI response...');
+
+        // Replace typing message with actual AI message for smooth transition
+        final messagesWithoutTyping = state.messages
+            .where((msg) => !msg.isTyping)
+            .toList();
+
+        state = state.copyWith(
+          messages: [...messagesWithoutTyping, aiMessage],
+          isLoading: false,
+          isTyping: false,
+        );
+
+        print('[CHAT_DEBUG] State updated! New messages count: ${state.messages.length}');
+      } catch (e) {
+        // Ignore dispose errors - message is saved to database below
+        print('[CHAT_DEBUG] ⚠️ Failed to update state (likely disposed): $e');
+        print('[CHAT_DEBUG] Message will be saved to DB and appear on next screen visit');
+      }
 
       // Save AI message to database
       await _saveMessageToDatabase(aiMessage);
@@ -546,12 +592,6 @@ class ChatNotifier extends StateNotifier<ChatState> {
         userFriendlyMessage = 'Network error: $errorString';
       }
 
-      state = state.copyWith(
-        isLoading: false,
-        isTyping: false,
-        error: errorString,
-      );
-
       // Add error message to chat
       final errorMessage = ChatMessage(
         id: _uuid.v4(),
@@ -561,9 +601,18 @@ class ChatNotifier extends StateNotifier<ChatState> {
         error: errorString,
       );
 
-      state = state.copyWith(
-        messages: [...state.messages, errorMessage],
-      );
+      // Check if still mounted before updating state
+      if (mounted) {
+        state = state.copyWith(
+          isLoading: false,
+          isTyping: false,
+          error: errorString,
+        );
+
+        state = state.copyWith(
+          messages: [...state.messages, errorMessage],
+        );
+      }
 
       // Save error message to database
       await _saveMessageToDatabase(errorMessage);
@@ -588,6 +637,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   void _cancelTypingEffect() {
+    // Check if provider is still mounted before updating state
+    if (!mounted) return;
     if (!state.isTyping) return;
 
     // Remove typing message
@@ -621,7 +672,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
     _initializeChat();
   }
 
-  Future<void> _createTransactionFromAction(Map<String, dynamic> action, {WalletModel? wallet}) async {
+  /// Returns the actual amount saved (after currency conversion if needed)
+  Future<double?> _createTransactionFromAction(Map<String, dynamic> action, {WalletModel? wallet}) async {
     try {
       // Print to console for debugging
       print('========================================');
@@ -647,11 +699,29 @@ class ChatNotifier extends StateNotifier<ChatState> {
         }
       }
 
-      if (wallet == null || wallet.id == null) {
-        Log.e('ERROR: No wallet available or wallet ID is null!', label: 'TRANSACTION_DEBUG');
-        return;
+      print('[TRANSACTION_DEBUG] Wallet after checks: $wallet');
+
+      if (wallet == null) {
+        print('[TRANSACTION_DEBUG] ❌ ERROR: No wallet available!');
+        Log.e('ERROR: No wallet available!', label: 'TRANSACTION_DEBUG');
+        _addErrorMessage('❌ Cannot create transaction: No wallet available. Please create a wallet first.');
+        return null;
       }
 
+      print('[TRANSACTION_DEBUG] Wallet is not null, checking IDs...');
+      print('[TRANSACTION_DEBUG] wallet.id = ${wallet.id}');
+      print('[TRANSACTION_DEBUG] wallet.cloudId = ${wallet.cloudId}');
+
+      // Wallet from cloud might not have local ID yet, only cloudId
+      if (wallet.id == null && wallet.cloudId == null) {
+        print('[TRANSACTION_DEBUG] ❌ ERROR: Wallet has neither local ID nor cloud ID!');
+        Log.e('ERROR: Wallet has neither local ID nor cloud ID!', label: 'TRANSACTION_DEBUG');
+        _addErrorMessage('❌ Cannot create transaction: Wallet configuration error. Please try again.');
+        return null;
+      }
+
+      print('[TRANSACTION_DEBUG] ✅ Wallet validation passed!');
+      print('[TRANSACTION_DEBUG] Using wallet: ${wallet.name} (id: ${wallet.id}, balance: ${wallet.balance} ${wallet.currency})');
       Log.d('Using wallet: ${wallet.name} (id: ${wallet.id}, balance: ${wallet.balance} ${wallet.currency})', label: 'TRANSACTION_DEBUG');
 
       // Get categories and find matching one
@@ -664,69 +734,98 @@ class ChatNotifier extends StateNotifier<ChatState> {
         data: (cats) => cats,
         orElse: () => [],
       );
+      print('[TRANSACTION_DEBUG] Available hierarchical categories count: ${hierarchicalCategories.length}');
       Log.d('Available hierarchical categories count: ${hierarchicalCategories.length}', label: 'TRANSACTION_DEBUG');
 
-      if (hierarchicalCategories.isEmpty) {
-        Log.e('ERROR: No categories available!', label: 'TRANSACTION_DEBUG');
-        return;
-      }
+      print('[TRANSACTION_DEBUG] ✅ Categories loaded: ${hierarchicalCategories.length}');
 
-      // Flatten hierarchy to include subcategories
+      // If no categories, we'll handle it later with null category
+
+      // Flatten hierarchy to include BOTH parent categories AND subcategories
       final List<CategoryModel> allCategories = [];
       for (final cat in hierarchicalCategories) {
+        print('[TRANSACTION_DEBUG] Processing category: ${cat.title}, has subcategories: ${cat.subCategories?.length ?? 0}');
+        // ALWAYS add parent category first
+        allCategories.add(cat);
+        // Then add subcategories if any
         if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
-          // Has subcategories - add ONLY subcategories (NOT parent)
           allCategories.addAll(cat.subCategories!);
-        } else {
-          // Standalone category - add it
-          allCategories.add(cat);
         }
       }
+
+      print('[TRANSACTION_DEBUG] Flattened ${allCategories.length} categories');
+      Log.d('Flattened ${allCategories.length} categories', label: 'TRANSACTION_DEBUG');
 
       final categoryName = action['category'] as String;
       Log.d('Looking for category: "$categoryName"', label: 'TRANSACTION_DEBUG');
       Log.d('Available flattened categories: ${allCategories.map((c) => c.title).join(", ")}', label: 'TRANSACTION_DEBUG');
 
-      // Try exact match first, then fuzzy match, then default
-      CategoryModel? category;
-
-      // Exact match (case insensitive)
-      category = allCategories.firstWhereOrNull(
+      // Simple exact match (case insensitive) - Trust LLM output, just validate
+      final category = allCategories.firstWhereOrNull(
         (c) => c.title.toLowerCase() == categoryName.toLowerCase(),
       );
 
-      // If no exact match, try contains match
-      if (category == null) {
-        category = allCategories.firstWhereOrNull(
-          (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
-                 categoryName.toLowerCase().contains(c.title.toLowerCase()),
-        );
+      if (category != null) {
+        Log.d('✅ Category matched: "${category.title}" (id: ${category.id})', label: 'TRANSACTION_DEBUG');
+      } else {
+        // LLM sent invalid category - fail loudly to improve prompt
+        final availableCategories = allCategories.map((c) => c.title).join(', ');
+        Log.e('❌ Invalid category "$categoryName" from LLM. Available: $availableCategories', label: 'TRANSACTION_DEBUG');
+        print('[TRANSACTION_ERROR] ❌ Invalid category "$categoryName" from LLM');
+        print('[TRANSACTION_ERROR] Available categories: $availableCategories');
+        _addErrorMessage('❌ Category "$categoryName" not found. Please try again with a valid category.');
+        return null;
       }
-
-      // If still no match, use "Others" or first category
-      if (category == null) {
-        category = allCategories.firstWhereOrNull((c) => c.title == 'Others') ??
-                  allCategories.firstOrNull ??
-                  allCategories.first;
-        Log.d('Category "$categoryName" not found, using: ${category?.title}', label: 'TRANSACTION_DEBUG');
-      }
-
-      Log.d('Selected category: ${category?.title} (id: ${category?.id})', label: 'TRANSACTION_DEBUG');
 
       // Create transaction model
       final transactionType = action['action'] == 'create_income'
           ? TransactionType.income
           : TransactionType.expense;
-      final amount = (action['amount'] as num).toDouble();
+      double amount = (action['amount'] as num).toDouble();
+      final String? actionCurrency = action['currency'] as String?;
+      final String walletCurrency = wallet.currency;
       final title = action['description'] as String;
       final date = DateTime.now();
 
+      // Debug currency detection
+      Log.d('Action currency: $actionCurrency, Wallet currency: $walletCurrency', label: 'TRANSACTION_DEBUG');
+      print('[TRANSACTION_DEBUG] 🔍 Action currency: $actionCurrency, Wallet currency: $walletCurrency');
+
+      // Currency conversion if needed
+      if (actionCurrency != null && actionCurrency != walletCurrency) {
+        Log.d('Currency mismatch detected! Action: $actionCurrency, Wallet: $walletCurrency', label: 'TRANSACTION_DEBUG');
+        print('[TRANSACTION_DEBUG] 💱 Currency conversion needed: $amount $actionCurrency → $walletCurrency');
+
+        try {
+          final exchangeRateService = _ref.read(exchangeRateServiceProvider);
+          // Use convertAmount() instead of getExchangeRate() - it has fallback logic
+          final convertedAmount = await exchangeRateService.convertAmount(
+            amount: amount,
+            fromCurrency: actionCurrency,
+            toCurrency: walletCurrency,
+          );
+
+          Log.d('Converted: $amount $actionCurrency → $convertedAmount $walletCurrency', label: 'TRANSACTION_DEBUG');
+          print('[TRANSACTION_DEBUG] ✅ Converted: $amount $actionCurrency → $convertedAmount $walletCurrency');
+
+          amount = convertedAmount;
+        } catch (e) {
+          Log.e('Currency conversion failed completely (no fallback available): $e', label: 'TRANSACTION_DEBUG');
+          print('[TRANSACTION_DEBUG] ❌ Currency conversion failed: $e');
+          _addErrorMessage('⚠️ Warning: Currency conversion from $actionCurrency to $walletCurrency failed. Using original amount.');
+          // Continue with original amount as last resort
+        }
+      } else {
+        Log.d('No currency conversion needed (both $walletCurrency)', label: 'TRANSACTION_DEBUG');
+        print('[TRANSACTION_DEBUG] No currency conversion needed');
+      }
+
       Log.d('Creating transaction model:', label: 'TRANSACTION_DEBUG');
       Log.d('  - Type: $transactionType', label: 'TRANSACTION_DEBUG');
-      Log.d('  - Amount: $amount', label: 'TRANSACTION_DEBUG');
+      Log.d('  - Amount: $amount $walletCurrency', label: 'TRANSACTION_DEBUG');
       Log.d('  - Title: "$title"', label: 'TRANSACTION_DEBUG');
       Log.d('  - Date: $date', label: 'TRANSACTION_DEBUG');
-      Log.d('  - Category ID: ${category?.id}', label: 'TRANSACTION_DEBUG');
+      Log.d('  - Category ID: ${category.id}', label: 'TRANSACTION_DEBUG');
       Log.d('  - Wallet ID: ${wallet.id}', label: 'TRANSACTION_DEBUG');
 
       final transaction = TransactionModel(
@@ -735,7 +834,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         amount: amount,
         date: date,
         title: title,
-        category: category!,
+        category: category,
         wallet: wallet,
         notes: 'Created by AI Assistant',
       );
@@ -746,17 +845,21 @@ class ChatNotifier extends StateNotifier<ChatState> {
       Log.d('Database instance obtained: $db', label: 'TRANSACTION_DEBUG');
 
       // Validate transaction before insert
-      if (category?.id == null) {
+      if (category.id == null) {
         Log.e('ERROR: Category ID is null!', label: 'TRANSACTION_DEBUG');
-        return;
+        _addErrorMessage('❌ Cannot create transaction: Category validation error. Please try again.');
+        return null;
       }
-      if (wallet.id == null) {
-        Log.e('ERROR: Wallet ID is null!', label: 'TRANSACTION_DEBUG');
-        return;
+      // Wallet must have either local ID or cloud ID (this should never happen after earlier checks)
+      if (wallet.id == null && wallet.cloudId == null) {
+        Log.e('ERROR: Wallet has neither local ID nor cloud ID!', label: 'TRANSACTION_DEBUG');
+        _addErrorMessage('❌ Cannot create transaction: Wallet validation error. Please try again.');
+        return null;
       }
 
-      Log.d('Calling db.transactionDao.addTransaction()...', label: 'TRANSACTION_DEBUG');
-      final insertedId = await db.transactionDao.addTransaction(transaction);
+      Log.d('Calling transactionDao.addTransaction()...', label: 'TRANSACTION_DEBUG');
+      final transactionDao = _ref.read(transactionDaoProvider);
+      final insertedId = await transactionDao.addTransaction(transaction);
 
       print('[TRANSACTION_DEBUG] TRANSACTION INSERTED! ID: $insertedId');
       Log.d('TRANSACTION INSERTED! ID: $insertedId', label: 'TRANSACTION_DEBUG');
@@ -765,7 +868,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
       if (insertedId <= 0) {
         print('[TRANSACTION_ERROR] Invalid insert ID: $insertedId');
         Log.e('ERROR: Invalid insert ID: $insertedId', label: 'TRANSACTION_DEBUG');
-        return;
+        _addErrorMessage('❌ Failed to save transaction to database. Please try again.');
+        return null;
       }
 
       // Adjust wallet balance
@@ -784,6 +888,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       Log.d('Transaction list provider invalidated, UI should update', label: 'TRANSACTION_DEBUG');
 
+      // Note: Success message is NOT added here because AI already provides
+      // natural language confirmation in its response (e.g., "Đã ghi nhận chi tiêu...")
+      // Adding another success message would create duplicate messages in the chat UI
+
       // TODO: Re-enable cloud sync after fixing data_sync_service.dart
       // try {
       //   Log.d('Triggering immediate cloud sync...', label: 'TRANSACTION_DEBUG');
@@ -795,6 +903,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       Log.d('_createTransactionFromAction COMPLETE', label: 'TRANSACTION_DEBUG');
       Log.d('========================================', label: 'TRANSACTION_DEBUG');
+
+      // Return the actual amount that was saved (after currency conversion)
+      return amount;
     } catch (e, stackTrace) {
       print('========================================');
       print('[TRANSACTION_ERROR] CRITICAL ERROR in _createTransactionFromAction');
@@ -808,6 +919,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
       Log.e('Error message: $e', label: 'TRANSACTION_ERROR');
       Log.e('Stack trace:\n$stackTrace', label: 'TRANSACTION_ERROR');
       Log.e('========================================', label: 'TRANSACTION_ERROR');
+
+      return null;
     }
   }
 
@@ -1348,7 +1461,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
       );
 
       // Update in database
-      await db.transactionDao.updateTransaction(updatedTransaction);
+      final transactionDao = _ref.read(transactionDaoProvider);
+      await transactionDao.updateTransaction(updatedTransaction);
 
       // Adjust wallet balance (reverse old, apply new)
       final wallet = _ref.read(activeWalletProvider).valueOrNull;
@@ -1420,7 +1534,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
   }
 
-  Future<String> _createRecurringFromAction(Map<String, dynamic> action) async {
+  Future<void> _createRecurringFromAction(Map<String, dynamic> action) async {
     try {
       final name = (action['name'] as String?) ?? 'New Recurring';
       final amount = (action['amount'] as num?)?.toDouble() ?? 0.0;
@@ -1444,8 +1558,14 @@ class ChatNotifier extends StateNotifier<ChatState> {
         wallet = _ref.read(activeWalletProvider).valueOrNull;
       }
 
+      // If still no wallet, try to get first available wallet
+      if (wallet == null && allWallets.isNotEmpty) {
+        wallet = allWallets.first;
+        Log.d('No active wallet, using first available wallet: ${wallet.name}', label: 'CREATE_RECURRING');
+      }
+
       if (wallet == null) {
-        return '❌ No wallet found. Please create a wallet first.';
+        throw Exception('No wallet found. Please create a wallet first.');
       }
 
       // Find category with fallback logic
@@ -1455,50 +1575,36 @@ class ChatNotifier extends StateNotifier<ChatState> {
       final hierarchicalCategories = categoriesAsync.valueOrNull ?? [];
 
       if (hierarchicalCategories.isEmpty) {
-        return '❌ No categories available.';
+        throw Exception('No categories available.');
       }
 
-      // Flatten hierarchy to include subcategories
+      // Flatten hierarchy to include BOTH parent categories AND subcategories
+      // IMPORTANT: Add subcategories FIRST for higher matching priority
       final List<CategoryModel> allCategories = [];
       for (final cat in hierarchicalCategories) {
+        // Add subcategories FIRST (higher priority for matching)
         if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
-          // Has subcategories - add ONLY subcategories (NOT parent)
           allCategories.addAll(cat.subCategories!);
-        } else {
-          // Standalone category - add it
-          allCategories.add(cat);
         }
+        // Then add parent as fallback
+        allCategories.add(cat);
       }
 
       Log.d('Flattened categories for matching: ${allCategories.map((c) => c.title).join(", ")}', label: 'CREATE_RECURRING');
       Log.d('Looking for category: "$categoryName"', label: 'CREATE_RECURRING');
 
-      CategoryModel? category;
-
-      // Exact match (case insensitive)
-      category = allCategories.firstWhereOrNull(
+      // Simple exact match (case insensitive) - Trust LLM output, just validate
+      final category = allCategories.firstWhereOrNull(
         (c) => c.title.toLowerCase() == categoryName.toLowerCase(),
       );
 
       if (category != null) {
-        Log.d('Found EXACT match: "${category.title}"', label: 'CREATE_RECURRING');
-      }
-
-      // If no exact match, try contains match
-      if (category == null) {
-        category = allCategories.firstWhereOrNull(
-          (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
-                 categoryName.toLowerCase().contains(c.title.toLowerCase()),
-        );
-        if (category != null) {
-          Log.d('Found CONTAINS match: "${category.title}" for "$categoryName"', label: 'CREATE_RECURRING');
-        }
-      }
-
-      // If still no match, use "Others" or first category
-      if (category == null) {
-        category = allCategories.firstWhereOrNull((c) => c.title == 'Others') ?? allCategories.first;
-        Log.d('Category "$categoryName" not found, using fallback: ${category.title}', label: 'CREATE_RECURRING');
+        Log.d('✅ Category matched: "${category.title}"', label: 'CREATE_RECURRING');
+      } else {
+        // LLM sent invalid category - fail loudly to improve prompt
+        final availableCategories = allCategories.map((c) => c.title).join(', ');
+        Log.e('❌ Invalid category "$categoryName" from LLM. Available: $availableCategories', label: 'CREATE_RECURRING');
+        throw Exception('Category "$categoryName" not found. Please choose from available categories.');
       }
 
       // Parse frequency
@@ -1534,7 +1640,6 @@ class ChatNotifier extends StateNotifier<ChatState> {
       // Convert amount if currencies don't match
       // IMPORTANT: Recurring should always be stored in wallet currency!
       double recurringAmount = amount;
-      String conversionInfo = '';
 
       if (aiCurrency != wallet.currency) {
         try {
@@ -1544,11 +1649,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
             fromCurrency: aiCurrency,
             toCurrency: wallet.currency,
           );
-          conversionInfo = ' (converted from $amount $aiCurrency)';
           Log.d('Converted $amount $aiCurrency to $recurringAmount ${wallet.currency}', label: 'CREATE_RECURRING');
         } catch (e) {
           Log.e('Failed to convert currency: $e', label: 'CREATE_RECURRING');
-          return '❌ Failed to convert currency from $aiCurrency to ${wallet.currency}. Please check your internet connection or try again.';
+          throw Exception('Failed to convert currency from $aiCurrency to ${wallet.currency}. Please check your internet connection or try again.');
         }
       }
 
@@ -1571,76 +1675,88 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       // Save to database
       final db = _ref.read(databaseProvider);
-      await db.recurringDao.addRecurring(recurring);
+      final recurringId = await db.recurringDao.addRecurring(recurring);
 
       // If autoCharge is true, create the first transaction immediately
-      if (autoCharge) {
+      // CRITICAL: Only charge if nextDueDate is today or in the past!
+      // Do NOT charge future recurring payments
+      final today = DateTime.now();
+      final isDueToday = nextDueDate.year == today.year &&
+                         nextDueDate.month == today.month &&
+                         nextDueDate.day == today.day;
+      final isPastDue = nextDueDate.isBefore(today);
+      final shouldChargeNow = autoCharge && (isDueToday || isPastDue);
+
+      if (shouldChargeNow) {
         // Use the converted amount (same as recurring)
+        // IMPORTANT: Use nextDueDate as transaction date (not current date)
+        // This ensures transaction appears on correct date even if created later
         final transaction = TransactionModel(
           transactionType: TransactionType.expense,
           amount: recurringAmount,
-          date: DateTime.now(),
+          date: nextDueDate, // Use due date, not DateTime.now()!
           title: name,
           category: category,
           wallet: wallet,
           notes: notes ?? 'Auto-charged from recurring payment',
         );
-        await db.transactionDao.addTransaction(transaction);
-        Log.d('Created initial transaction for recurring payment', label: 'CREATE_RECURRING');
-      }
+        final transactionDao = _ref.read(transactionDaoProvider);
+        await transactionDao.addTransaction(transaction);
+        Log.d('Created initial transaction for recurring payment on date: ${nextDueDate.toIso8601String()}', label: 'CREATE_RECURRING');
 
-      // Format response with conversion info
-      final amountText = _formatAmount(recurringAmount, currency: wallet.currency);
-
-      // Get app language setting (default)
-      final appLanguage = _ref.read(languageProvider).code;
-
-      // Detect if user is using a different language from app setting
-      final userMessages = state.messages.where((m) => m.isFromUser).toList();
-      final lastUserMessage = userMessages.isNotEmpty ? userMessages.last.content.toLowerCase() : '';
-      final hasVietnameseChars = lastUserMessage.contains(RegExp(r'[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]'));
-
-      // Use Vietnamese if: app is set to Vietnamese OR user is typing Vietnamese
-      final useVietnamese = appLanguage == 'vi' || (appLanguage == 'en' && hasVietnameseChars);
-
-      String frequencyText;
-      String message;
-
-      if (useVietnamese) {
-        // Vietnamese response
+        // CRITICAL: Update nextDueDate to NEXT billing cycle after immediate charge
+        // This prevents the recurring from showing as "Overdue" immediately
+        DateTime updatedNextDueDate = nextDueDate;
         switch (frequency) {
           case RecurringFrequency.daily:
-            frequencyText = 'hàng ngày';
+            updatedNextDueDate = nextDueDate.add(const Duration(days: 1));
             break;
           case RecurringFrequency.weekly:
-            frequencyText = 'hàng tuần';
+            updatedNextDueDate = nextDueDate.add(const Duration(days: 7));
             break;
           case RecurringFrequency.monthly:
-            frequencyText = 'hàng tháng';
+            updatedNextDueDate = DateTime(
+              nextDueDate.year,
+              nextDueDate.month + 1,
+              nextDueDate.day,
+            );
             break;
           case RecurringFrequency.quarterly:
-            frequencyText = 'hàng quý';
+            updatedNextDueDate = DateTime(
+              nextDueDate.year,
+              nextDueDate.month + 3,
+              nextDueDate.day,
+            );
             break;
           case RecurringFrequency.yearly:
-            frequencyText = 'hàng năm';
+            updatedNextDueDate = DateTime(
+              nextDueDate.year + 1,
+              nextDueDate.month,
+              nextDueDate.day,
+            );
             break;
           case RecurringFrequency.custom:
-            frequencyText = 'tùy chỉnh';
+            // Keep same nextDueDate for custom frequency (needs custom logic)
             break;
         }
-        message = '✅ Đã ghi nhận chi tiêu định kỳ "$name" - $amountText $frequencyText từ ví "${wallet.name}" (${category.title})$conversionInfo${autoCharge ? '. Sẽ tự động trừ tiền $frequencyText từ hôm nay.' : '.'}';
-      } else {
-        // English response
-        frequencyText = frequency.displayName;
-        final conversionInfoEn = conversionInfo.isNotEmpty ? ' (converted from $amount $aiCurrency)' : '';
-        message = '✅ Created recurring payment "$name" - $amountText $frequencyText from "${wallet.name}" (${category.title})$conversionInfoEn${autoCharge ? '. Will auto-charge $frequencyText starting today.' : '.'}';
+
+        // Update the recurring with new nextDueDate and increment totalPayments
+        final updatedRecurring = recurring.copyWith(
+          id: recurringId,
+          nextDueDate: updatedNextDueDate,
+          lastChargedDate: DateTime.now(),
+          totalPayments: 1,
+        );
+        await db.recurringDao.updateRecurring(updatedRecurring);
+        Log.d('Updated nextDueDate to ${updatedNextDueDate.toIso8601String()} after immediate charge', label: 'CREATE_RECURRING');
       }
 
-      return message;
+      // Recurring created successfully - AI will provide the confirmation message
+      Log.d('Recurring created successfully: $name', label: 'CREATE_RECURRING');
     } catch (e, stackTrace) {
       Log.e('Failed to create recurring: $e', label: 'CREATE_RECURRING');
       Log.e('Stack trace: $stackTrace', label: 'CREATE_RECURRING');
-      return '❌ Failed to create recurring: $e';
+      rethrow;
     }
   }
 
@@ -1667,7 +1783,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
       final type = transaction.transactionType;
 
       // Delete from database
-      await db.transactionDao.deleteTransaction(transactionId);
+      final transactionDao = _ref.read(transactionDaoProvider);
+      await transactionDao.deleteTransaction(transactionId);
 
       // Adjust wallet balance (reverse the transaction)
       final wallet = _ref.read(activeWalletProvider).valueOrNull;

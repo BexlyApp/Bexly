@@ -70,9 +70,28 @@ class AIChatScreen extends HookConsumerWidget {
                 // Reverse index to show newest at bottom
                 final reversedIndex = chatState.messages.length - 1 - index;
                 final message = chatState.messages[reversedIndex];
-                return _MessageBubble(
-                  message: message,
-                  isLast: index == 0, // First item in reversed list is last message
+
+                // Add fade-in animation for smooth message appearance
+                return AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  switchInCurve: Curves.easeInOut,
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.1),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _MessageBubble(
+                    key: ValueKey(message.id), // Key is important for AnimatedSwitcher
+                    message: message,
+                    isLast: index == 0, // First item in reversed list is last message
+                  ),
                 );
               },
             ),
@@ -101,9 +120,48 @@ class _MessageBubble extends StatelessWidget {
   final bool isLast;
 
   const _MessageBubble({
+    super.key,
     required this.message,
     required this.isLast,
   });
+
+  /// Parse markdown bold (**text**) and return TextSpan with formatting
+  List<TextSpan> _parseMarkdownBold(String text, TextStyle baseStyle, Color highlightColor) {
+    final spans = <TextSpan>[];
+    final regex = RegExp(r'\*\*(.+?)\*\*');
+    int lastIndex = 0;
+
+    for (final match in regex.allMatches(text)) {
+      // Add normal text before bold
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: baseStyle,
+        ));
+      }
+
+      // Add bold text with highlight color
+      spans.add(TextSpan(
+        text: match.group(1),
+        style: baseStyle.copyWith(
+          fontWeight: FontWeight.bold,
+          color: highlightColor,
+        ),
+      ));
+
+      lastIndex = match.end;
+    }
+
+    // Add remaining normal text
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: baseStyle,
+      ));
+    }
+
+    return spans;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -180,12 +238,20 @@ class _MessageBubble extends StatelessWidget {
                             ),
                           ],
                         )
-                      : SelectableText(
-                          message.content,
-                          style: AppTextStyles.body2.copyWith(
-                            color: isUser
-                                ? AppColors.light
-                                : AppColors.neutral900,
+                      : SelectableText.rich(
+                          TextSpan(
+                            children: _parseMarkdownBold(
+                              message.content,
+                              AppTextStyles.body2.copyWith(
+                                color: isUser
+                                    ? AppColors.light
+                                    : AppColors.neutral900,
+                              ),
+                              // Highlight color for bold text
+                              isUser
+                                  ? AppColors.light
+                                  : AppColors.primary600, // Use primary color for AI highlights
+                            ),
                           ),
                         ),
                 ),
