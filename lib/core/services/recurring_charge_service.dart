@@ -60,11 +60,12 @@ class RecurringChargeService {
     try {
       final db = _ref.read(databaseProvider);
 
-      // Create transaction
+      // Create transaction with the actual due date (not current date)
+      // This ensures transaction shows on correct date even if charged late
       final transaction = TransactionModel(
         transactionType: TransactionType.expense,
         amount: recurring.amount,
-        date: DateTime.now(),
+        date: recurring.nextDueDate, // Use due date, not current date!
         title: recurring.name,
         category: recurring.category,
         wallet: recurring.wallet,

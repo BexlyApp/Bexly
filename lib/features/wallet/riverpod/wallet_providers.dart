@@ -27,6 +27,8 @@ class ActiveWalletNotifier extends StateNotifier<AsyncValue<WalletModel?>> {
   }
 
   // Initialize active wallet - auto-select if only one wallet exists
+  // NOTE: This method does NOT create default wallets!
+  // Default wallet creation is handled by sync service after initial sync completes
   Future<void> initializeActiveWallet() async {
     try {
       // Get all wallets
@@ -34,9 +36,10 @@ class ActiveWalletNotifier extends StateNotifier<AsyncValue<WalletModel?>> {
       final wallets = await db.walletDao.watchAllWallets().first;
 
       if (wallets.isEmpty) {
-        // No wallets yet, set to null
+        // No wallets yet - this is OK during initial sync
+        // Sync service will create default wallet if needed after sync completes
+        Log.i('📭 No wallets found - waiting for sync to complete...', label: 'ActiveWalletNotifier');
         state = const AsyncValue.data(null);
-        Log.d('No wallets available, active wallet set to null', label: 'ActiveWalletNotifier');
       } else if (wallets.length == 1) {
         // Only one wallet - auto-select it
         state = AsyncValue.data(wallets.first);

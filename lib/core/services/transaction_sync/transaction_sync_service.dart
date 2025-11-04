@@ -1,12 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 
 class TransactionSyncService {
-  final FirebaseFirestore _firestore;
+  final firestore.FirebaseFirestore _firestore;
 
-  TransactionSyncService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  TransactionSyncService({firestore.FirebaseFirestore? firestoreInstance})
+      : _firestore = firestoreInstance ?? firestore.FirebaseFirestore.instanceFor(app: FirebaseInitService.bexlyApp, databaseId: "bexly");
 
   Future<void> upsertTransaction({
     required String userId,
@@ -27,17 +28,17 @@ class TransactionSyncService {
       'walletId': transaction.wallet.id,
       'receiptUrl': receiptUrl,
       'receiptStoragePath': receiptStoragePath,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     }..removeWhere((key, value) => value == null);
 
     if (isCreate) {
-      data['createdAt'] = FieldValue.serverTimestamp();
+      data['createdAt'] = firestore.FieldValue.serverTimestamp();
     }
 
     final docRef = _firestore.collection('transactions').doc('$transactionId');
 
     Log.i({'id': transactionId, 'data': data}, label: 'firestore upsert');
-    await docRef.set(data, SetOptions(merge: true));
+    await docRef.set(data, firestore.SetOptions(merge: true));
   }
 }
 

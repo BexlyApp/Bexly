@@ -1,24 +1,23 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
 import 'database_interface.dart';
 
 class FirestoreDatabase implements DatabaseInterface {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final firestore.FirebaseFirestore _firestore = firestore.FirebaseFirestore.instanceFor(app: FirebaseInitService.bexlyApp, databaseId: "bexly");
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String? get _userId => _auth.currentUser?.uid;
 
-  CollectionReference get _userCollection {
+  firestore.CollectionReference get _userCollection {
     if (_userId == null) throw Exception('User not logged in');
     return _firestore.collection('users').doc(_userId).collection('data');
   }
 
   @override
   Future<void> initialize() async {
-    // Enable offline persistence for Firestore
-    await _firestore.enablePersistence(const PersistenceSettings(
-      synchronizeTabs: true,
-    ));
+    // Note: enablePersistence is only for web, not needed on mobile
+    // Firestore on mobile has offline persistence enabled by default
   }
 
   // Wallet operations
@@ -59,8 +58,8 @@ class FirestoreDatabase implements DatabaseInterface {
         .collection('items')
         .add({
       ...wallet,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+      'createdAt': firestore.FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
 
     return doc.id;
@@ -74,7 +73,7 @@ class FirestoreDatabase implements DatabaseInterface {
         .doc(id)
         .update({
       ...wallet,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
   }
 
@@ -139,8 +138,8 @@ class FirestoreDatabase implements DatabaseInterface {
         .collection('items')
         .add({
       ...transaction,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+      'createdAt': firestore.FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
 
     return doc.id;
@@ -154,7 +153,7 @@ class FirestoreDatabase implements DatabaseInterface {
         .doc(id)
         .update({
       ...transaction,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
   }
 
@@ -205,8 +204,8 @@ class FirestoreDatabase implements DatabaseInterface {
         .collection('items')
         .add({
       ...category,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+      'createdAt': firestore.FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
 
     return doc.id;
@@ -220,7 +219,7 @@ class FirestoreDatabase implements DatabaseInterface {
         .doc(id)
         .update({
       ...category,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
   }
 
@@ -272,8 +271,8 @@ class FirestoreDatabase implements DatabaseInterface {
         .collection('items')
         .add({
       ...budget,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+      'createdAt': firestore.FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
 
     return doc.id;
@@ -287,7 +286,7 @@ class FirestoreDatabase implements DatabaseInterface {
         .doc(id)
         .update({
       ...budget,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
   }
 

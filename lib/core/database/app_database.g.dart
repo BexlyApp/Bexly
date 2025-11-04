@@ -561,6 +561,21 @@ class $CategoriesTable extends Categories
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _isSystemDefaultMeta = const VerificationMeta(
+    'isSystemDefault',
+  );
+  @override
+  late final GeneratedColumn<bool> isSystemDefault = GeneratedColumn<bool>(
+    'is_system_default',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_system_default" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -595,6 +610,7 @@ class $CategoriesTable extends Categories
     iconType,
     parentId,
     description,
+    isSystemDefault,
     createdAt,
     updatedAt,
   ];
@@ -663,6 +679,15 @@ class $CategoriesTable extends Categories
         ),
       );
     }
+    if (data.containsKey('is_system_default')) {
+      context.handle(
+        _isSystemDefaultMeta,
+        isSystemDefault.isAcceptableOrUnknown(
+          data['is_system_default']!,
+          _isSystemDefaultMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -716,6 +741,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      isSystemDefault: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_system_default'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -745,6 +774,10 @@ class Category extends DataClass implements Insertable<Category> {
   final String? iconType;
   final int? parentId;
   final String? description;
+
+  /// System default categories cannot be deleted by cloud sync
+  /// These are the initial categories created on first app launch
+  final bool isSystemDefault;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Category({
@@ -756,6 +789,7 @@ class Category extends DataClass implements Insertable<Category> {
     this.iconType,
     this.parentId,
     this.description,
+    required this.isSystemDefault,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -782,6 +816,7 @@ class Category extends DataClass implements Insertable<Category> {
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
+    map['is_system_default'] = Variable<bool>(isSystemDefault);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -807,6 +842,7 @@ class Category extends DataClass implements Insertable<Category> {
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      isSystemDefault: Value(isSystemDefault),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -826,6 +862,7 @@ class Category extends DataClass implements Insertable<Category> {
       iconType: serializer.fromJson<String?>(json['iconType']),
       parentId: serializer.fromJson<int?>(json['parentId']),
       description: serializer.fromJson<String?>(json['description']),
+      isSystemDefault: serializer.fromJson<bool>(json['isSystemDefault']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -842,6 +879,7 @@ class Category extends DataClass implements Insertable<Category> {
       'iconType': serializer.toJson<String?>(iconType),
       'parentId': serializer.toJson<int?>(parentId),
       'description': serializer.toJson<String?>(description),
+      'isSystemDefault': serializer.toJson<bool>(isSystemDefault),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -856,6 +894,7 @@ class Category extends DataClass implements Insertable<Category> {
     Value<String?> iconType = const Value.absent(),
     Value<int?> parentId = const Value.absent(),
     Value<String?> description = const Value.absent(),
+    bool? isSystemDefault,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Category(
@@ -869,6 +908,7 @@ class Category extends DataClass implements Insertable<Category> {
     iconType: iconType.present ? iconType.value : this.iconType,
     parentId: parentId.present ? parentId.value : this.parentId,
     description: description.present ? description.value : this.description,
+    isSystemDefault: isSystemDefault ?? this.isSystemDefault,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -886,6 +926,9 @@ class Category extends DataClass implements Insertable<Category> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      isSystemDefault: data.isSystemDefault.present
+          ? data.isSystemDefault.value
+          : this.isSystemDefault,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -902,6 +945,7 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('iconType: $iconType, ')
           ..write('parentId: $parentId, ')
           ..write('description: $description, ')
+          ..write('isSystemDefault: $isSystemDefault, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -918,6 +962,7 @@ class Category extends DataClass implements Insertable<Category> {
     iconType,
     parentId,
     description,
+    isSystemDefault,
     createdAt,
     updatedAt,
   );
@@ -933,6 +978,7 @@ class Category extends DataClass implements Insertable<Category> {
           other.iconType == this.iconType &&
           other.parentId == this.parentId &&
           other.description == this.description &&
+          other.isSystemDefault == this.isSystemDefault &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -946,6 +992,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String?> iconType;
   final Value<int?> parentId;
   final Value<String?> description;
+  final Value<bool> isSystemDefault;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const CategoriesCompanion({
@@ -957,6 +1004,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.iconType = const Value.absent(),
     this.parentId = const Value.absent(),
     this.description = const Value.absent(),
+    this.isSystemDefault = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -969,6 +1017,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.iconType = const Value.absent(),
     this.parentId = const Value.absent(),
     this.description = const Value.absent(),
+    this.isSystemDefault = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : title = Value(title);
@@ -981,6 +1030,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? iconType,
     Expression<int>? parentId,
     Expression<String>? description,
+    Expression<bool>? isSystemDefault,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -993,6 +1043,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (iconType != null) 'icon_type': iconType,
       if (parentId != null) 'parent_id': parentId,
       if (description != null) 'description': description,
+      if (isSystemDefault != null) 'is_system_default': isSystemDefault,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1007,6 +1058,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<String?>? iconType,
     Value<int?>? parentId,
     Value<String?>? description,
+    Value<bool>? isSystemDefault,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1019,6 +1071,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       iconType: iconType ?? this.iconType,
       parentId: parentId ?? this.parentId,
       description: description ?? this.description,
+      isSystemDefault: isSystemDefault ?? this.isSystemDefault,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1051,6 +1104,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
+    if (isSystemDefault.present) {
+      map['is_system_default'] = Variable<bool>(isSystemDefault.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1071,6 +1127,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('iconType: $iconType, ')
           ..write('parentId: $parentId, ')
           ..write('description: $description, ')
+          ..write('isSystemDefault: $isSystemDefault, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -6608,6 +6665,7 @@ typedef $$CategoriesTableCreateCompanionBuilder =
       Value<String?> iconType,
       Value<int?> parentId,
       Value<String?> description,
+      Value<bool> isSystemDefault,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -6621,6 +6679,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<String?> iconType,
       Value<int?> parentId,
       Value<String?> description,
+      Value<bool> isSystemDefault,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -6748,6 +6807,11 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSystemDefault => $composableBuilder(
+    column: $table.isSystemDefault,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6904,6 +6968,11 @@ class $$CategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isSystemDefault => $composableBuilder(
+    column: $table.isSystemDefault,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6969,6 +7038,11 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isSystemDefault => $composableBuilder(
+    column: $table.isSystemDefault,
     builder: (column) => column,
   );
 
@@ -7118,6 +7192,7 @@ class $$CategoriesTableTableManager
                 Value<String?> iconType = const Value.absent(),
                 Value<int?> parentId = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<bool> isSystemDefault = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => CategoriesCompanion(
@@ -7129,6 +7204,7 @@ class $$CategoriesTableTableManager
                 iconType: iconType,
                 parentId: parentId,
                 description: description,
+                isSystemDefault: isSystemDefault,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -7142,6 +7218,7 @@ class $$CategoriesTableTableManager
                 Value<String?> iconType = const Value.absent(),
                 Value<int?> parentId = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<bool> isSystemDefault = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => CategoriesCompanion.insert(
@@ -7153,6 +7230,7 @@ class $$CategoriesTableTableManager
                 iconType: iconType,
                 parentId: parentId,
                 description: description,
+                isSystemDefault: isSystemDefault,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

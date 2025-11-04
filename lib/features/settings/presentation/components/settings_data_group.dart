@@ -5,8 +5,9 @@ class SettingsDataGroup extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authStateProvider);
-    final isAuthenticated = authState != null;
+    // Check Firebase Auth state to determine if user is authenticated
+    final firebaseAuthState = ref.watch(firebase_auth.authStateProvider);
+    final isAuthenticated = firebaseAuthState.valueOrNull != null;
 
     return SettingsGroupHolder(
       title: context.l10n.dataManagement,
@@ -23,6 +24,7 @@ class SettingsDataGroup extends ConsumerWidget {
           icon: HugeIcons.strokeRoundedDelete01,
           onTap: () => context.push(Routes.accountDeletion),
         ),
+        // Show Sign Out button if authenticated, or Sign In button if guest mode
         if (isAuthenticated)
           MenuTileButton(
             label: context.l10n.signOut,
@@ -45,6 +47,9 @@ class SettingsDataGroup extends ConsumerWidget {
                     try {
                       // Reset sync status on logout
                       await SyncTriggerService.resetSyncStatus();
+
+                      // Clear local user data from database
+                      await ref.read(authStateProvider.notifier).logout();
 
                       // Sign out from Firebase (DOS-Me)
                       final dosmeApp = FirebaseInitService.dosmeApp;
@@ -73,6 +78,16 @@ class SettingsDataGroup extends ConsumerWidget {
                   },
                 ),
               );
+            },
+          )
+        else
+          // Guest mode - show Sign In button
+          MenuTileButton(
+            label: 'Sign In',
+            icon: HugeIcons.strokeRoundedLogin01,
+            onTap: () {
+              // Navigate to login screen to link account
+              context.go('/login');
             },
           ),
       ],

@@ -1,20 +1,22 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
+import 'package:bexly/core/services/data_population_service/category_population_service.dart';
 
 /// Simple one-way sync service that uploads local data to Firestore
 /// when user is authenticated
 class SimpleSyncService {
   final AppDatabase _localDb;
-  final FirebaseFirestore _firestore;
+  final firestore.FirebaseFirestore _firestore;
   final String? _userId;
 
   SimpleSyncService({
     required AppDatabase localDb,
-    required FirebaseFirestore firestore,
+    required firestore.FirebaseFirestore firestore,
     String? userId,
   })  : _localDb = localDb,
         _firestore = firestore,
@@ -23,7 +25,7 @@ class SimpleSyncService {
   bool get isAuthenticated => _userId != null;
 
   /// Get reference to user's data collection
-  CollectionReference get _userCollection {
+  firestore.CollectionReference get _userCollection {
     if (_userId == null) throw Exception('User not authenticated');
     return _firestore.collection('users').doc(_userId).collection('data');
   }
@@ -43,15 +45,15 @@ class SimpleSyncService {
         'currency': wallet.currency,
         'iconName': wallet.iconName,
         'colorHex': wallet.colorHex,
-        'createdAt': Timestamp.fromDate(wallet.createdAt),
-        'updatedAt': Timestamp.fromDate(wallet.updatedAt),
+        'createdAt': firestore.Timestamp.fromDate(wallet.createdAt),
+        'updatedAt': firestore.Timestamp.fromDate(wallet.updatedAt),
       };
 
       await _userCollection
           .doc('wallets')
           .collection('items')
           .doc(wallet.id.toString())
-          .set(data, SetOptions(merge: true));
+          .set(data, firestore.SetOptions(merge: true));
 
       Log.i('Synced wallet ${wallet.id}', label: 'sync');
     } catch (e) {
@@ -71,22 +73,22 @@ class SimpleSyncService {
         'id': transaction.id,
         'transactionType': transaction.transactionType,
         'amount': transaction.amount,
-        'date': Timestamp.fromDate(transaction.date),
+        'date': firestore.Timestamp.fromDate(transaction.date),
         'title': transaction.title,
         'categoryId': transaction.categoryId,
         'walletId': transaction.walletId,
         'notes': transaction.notes,
         'imagePath': transaction.imagePath,
         'isRecurring': transaction.isRecurring,
-        'createdAt': Timestamp.fromDate(transaction.createdAt),
-        'updatedAt': Timestamp.fromDate(transaction.updatedAt),
+        'createdAt': firestore.Timestamp.fromDate(transaction.createdAt),
+        'updatedAt': firestore.Timestamp.fromDate(transaction.updatedAt),
       };
 
       await _userCollection
           .doc('transactions')
           .collection('items')
           .doc(transaction.id.toString())
-          .set(data, SetOptions(merge: true));
+          .set(data, firestore.SetOptions(merge: true));
 
       Log.i('Synced transaction ${transaction.id}', label: 'sync');
     } catch (e) {
@@ -142,6 +144,22 @@ class SimpleSyncService {
       await syncAllWallets();
       await syncAllTransactions();
       Log.i('Full sync completed', label: 'sync');
+
+      // Ensure categories exist after any full sync path
+      try {
+        final categories = await _localDb.categoryDao.getAllCategories();
+        if (categories.isEmpty) {
+          Log.i('📦 No categories found after fullSync, creating defaults...', label: 'sync');
+          print('📦 [Sync] No categories after fullSync, creating defaults...');
+          await CategoryPopulationService.populate(_localDb);
+          final newCategories = await _localDb.categoryDao.getAllCategories();
+          Log.i('✅ Created ${newCategories.length} default categories after fullSync', label: 'sync');
+          print('✅ [Sync] Created ${newCategories.length} default categories after fullSync');
+        }
+      } catch (e) {
+        Log.w('⚠️ Category ensure after fullSync failed: $e', label: 'sync');
+        print('⚠️ [Sync] Category ensure after fullSync failed: $e');
+      }
     } catch (e) {
       Log.e('Full sync failed: $e', label: 'sync');
       rethrow;
@@ -184,12 +202,13 @@ class SimpleSyncService {
 /// Provider for SimpleSyncService
 final simpleSyncServiceProvider = Provider<SimpleSyncService>((ref) {
   final localDb = ref.watch(databaseProvider);
-  final firestore = FirebaseFirestore.instance;
+  // IMPORTANT: Use Bexly Firebase app for Firestore, NOT dos-me (which is auth-only)
+  final firestoreInstance = firestore.FirebaseFirestore.instanceFor(app: FirebaseInitService.bexlyApp, databaseId: "bexly");
   final userId = ref.watch(userIdProvider);
 
   return SimpleSyncService(
     localDb: localDb,
-    firestore: firestore,
+    firestore: firestoreInstance,
     userId: userId,
   );
 });

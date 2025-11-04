@@ -5,7 +5,6 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
-import 'package:bexly/core/services/auth/dos_me_auth_service.dart';
 
 class SignUpScreen extends HookConsumerWidget {
   const SignUpScreen({super.key});
@@ -22,7 +21,7 @@ class SignUpScreen extends HookConsumerWidget {
     final formKey = useMemoized(() => GlobalKey<FormState>());
     final acceptTerms = useState(false);
 
-    final authService = ref.read(dosmeAuthServiceProvider);
+    final bexlyAuth = ref.watch(bexlyAuthProvider);
 
     Future<void> handleSignUp() async {
       if (!formKey.currentState!.validate()) return;
@@ -41,19 +40,16 @@ class SignUpScreen extends HookConsumerWidget {
 
       isLoading.value = true;
       try {
-        final credential = await authService.createUserWithEmailAndPassword(
+        final credential = await bexlyAuth.createUserWithEmailAndPassword(
           email: emailController.text.trim(),
           password: passwordController.text,
-          tenantType: TenantType.public,
         );
 
-        if (credential != null && nameController.text.isNotEmpty) {
-          await authService.updateProfile(
-            displayName: nameController.text.trim(),
-          );
+        if (credential.user != null && nameController.text.isNotEmpty) {
+          await credential.user!.updateDisplayName(nameController.text.trim());
         }
 
-        await authService.sendEmailVerification();
+        await credential.user?.sendEmailVerification();
 
         if (context.mounted) {
           toastification.show(

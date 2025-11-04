@@ -23,6 +23,10 @@ class Categories extends Table {
   )();
   TextColumn get description => text().nullable()();
 
+  /// System default categories cannot be deleted by cloud sync
+  /// These are the initial categories created on first app launch
+  BoolColumn get isSystemDefault => boolean().withDefault(const Constant(false))();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -39,6 +43,7 @@ extension CategoryExtension on Category {
       iconType: json['iconType'] as String?,
       parentId: json['parentId'] as int?,
       description: json['description'] as String?,
+      isSystemDefault: json['isSystemDefault'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -66,6 +71,7 @@ extension CategoryTableExtensions on Category {
       // subCategories are not directly available on the Drift Category object.
       // This needs to be populated by querying children if needed.
       subCategories: null,
+      isSystemDefault: isSystemDefault,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -86,6 +92,7 @@ extension CategoryModelExtensions on CategoryModel {
       iconType: Value(iconTypeValue),
       parentId: Value(parentId),
       description: Value(description),
+      isSystemDefault: Value(isSystemDefault),
       createdAt: createdAt != null
           ? Value(createdAt!)
           : (isInsert ? Value(DateTime.now()) : const Value.absent()),

@@ -21,10 +21,12 @@ class PersonalDetailsScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.read(authStateProvider);
     final nameField = useTextEditingController();
+    final emailField = useTextEditingController();
     final profilePicture = useState<File?>(null);
 
     useEffect(() {
       nameField.text = auth.name;
+      emailField.text = auth.email;
       if (auth.profilePicture != null) {
         profilePicture.value = File(auth.profilePicture!);
       }
@@ -106,6 +108,13 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                     label: 'Name',
                     hint: 'John Doe',
                     maxLength: 100,
+                    customCounterText: '',
+                  ),
+                  CustomTextField(
+                    controller: emailField,
+                    label: 'Email',
+                    hint: 'john@example.com',
+                    enabled: false,
                     customCounterText: '',
                   ),
                 ],

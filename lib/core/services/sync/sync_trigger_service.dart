@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/services/sync/conflict_resolution_service.dart';
+import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
 import 'package:bexly/core/components/dialogs/conflict_resolution_dialog.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/database_provider.dart';
@@ -243,6 +244,25 @@ class SyncTriggerService {
 
       Log.i('✅ Initial sync completed and marked', label: 'sync');
       print('✅ Initial sync completed and marked');
+
+      // CRITICAL: Start realtime listener AFTER initial sync completes
+      // This prevents duplicate wallet creation during initial sync
+      try {
+        final realtimeSyncService = ref.read(realtimeSyncServiceProvider);
+        if (!realtimeSyncService.isSyncing) {
+          Log.i('🔧 Starting realtime listener after initial sync...', label: 'sync');
+          print('🔧 Starting realtime listener after initial sync...');
+          await realtimeSyncService.startSync();
+          Log.i('✅ Realtime listener started successfully', label: 'sync');
+          print('✅ Realtime listener started successfully');
+        } else {
+          Log.i('⏭️ Realtime listener already running', label: 'sync');
+          print('⏭️ Realtime listener already running');
+        }
+      } catch (e) {
+        Log.e('❌ Failed to start realtime listener: $e', label: 'sync');
+        print('❌ Failed to start realtime listener: $e');
+      }
     } catch (e) {
       Log.e('❌ Initial sync failed: $e', label: 'sync');
       print('❌ Initial sync failed: $e');

@@ -19,6 +19,7 @@ _CategoryModel _$CategoryModelFromJson(Map<String, dynamic> json) =>
       subCategories: (json['subCategories'] as List<dynamic>?)
           ?.map((e) => CategoryModel.fromJson(e as Map<String, dynamic>))
           .toList(),
+      isSystemDefault: json['isSystemDefault'] as bool? ?? false,
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
@@ -38,6 +39,7 @@ Map<String, dynamic> _$CategoryModelToJson(_CategoryModel instance) =>
       'parentId': instance.parentId,
       'description': instance.description,
       'subCategories': instance.subCategories,
+      'isSystemDefault': instance.isSystemDefault,
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
     };
