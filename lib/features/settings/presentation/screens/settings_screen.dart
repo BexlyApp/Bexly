@@ -26,6 +26,7 @@ import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/services/package_info/package_info_provider.dart';
 import 'package:bexly/core/services/url_launcher/url_launcher.dart';
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
+import 'package:bexly/core/riverpod/auth_providers.dart' as firebase_auth;
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';

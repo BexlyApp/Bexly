@@ -1,14 +1,19 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:bexly/core/services/auth/dos_me_auth_service.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
 
-final dosmeAuthServiceProvider = Provider<DOSMeAuthService>((ref) {
-  return DOSMeAuthService();
+// Provider for Bexly Firebase Auth instance
+final bexlyAuthProvider = Provider<FirebaseAuth>((ref) {
+  final bexlyApp = FirebaseInitService.bexlyApp;
+  if (bexlyApp == null) {
+    throw Exception('Bexly Firebase not initialized');
+  }
+  return FirebaseAuth.instanceFor(app: bexlyApp);
 });
 
 final authStateProvider = StreamProvider<User?>((ref) {
-  final authService = ref.watch(dosmeAuthServiceProvider);
-  return authService.authStateChanges;
+  final auth = ref.watch(bexlyAuthProvider);
+  return auth.authStateChanges();
 });
 
 final currentUserProvider = Provider<User?>((ref) {
@@ -46,8 +51,12 @@ final userPhotoUrlProvider = Provider<String?>((ref) {
 });
 
 final customClaimsProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
-  final authService = ref.watch(dosmeAuthServiceProvider);
-  return await authService.getCustomClaims();
+  final auth = ref.watch(bexlyAuthProvider);
+  final user = auth.currentUser;
+  if (user == null) return null;
+
+  final idTokenResult = await user.getIdTokenResult();
+  return idTokenResult.claims;
 });
 
 final joyUidProvider = Provider<String?>((ref) {

@@ -26,18 +26,20 @@ class WalletFormBottomSheet extends HookConsumerWidget {
   final WalletModel? wallet;
   final bool showDeleteButton;
   final Function(WalletModel)? onSave;
+  final bool allowFullEdit; // Allow editing currency and balance even in edit mode
   const WalletFormBottomSheet({
     super.key,
     this.wallet,
     this.showDeleteButton = true,
     this.onSave,
+    this.allowFullEdit = false, // Default to false for backward compatibility
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch currency provider to get updated value when user picks new currency
     final currency = ref.watch(currencyProvider);
-    final isEditing = wallet != null;
+    final isEditing = wallet != null && !allowFullEdit; // If allowFullEdit, treat as create mode
 
     final nameController = useTextEditingController();
     final balanceController = useTextEditingController();
@@ -46,9 +48,9 @@ class WalletFormBottomSheet extends HookConsumerWidget {
     // final iconController = useTextEditingController(text: wallet?.iconName ?? '');
     // final colorController = useTextEditingController(text: wallet?.colorHex ?? '');
 
-    // Initialize form fields if in edit mode (already handled by controller initial text)
+    // Initialize form fields if wallet exists (populate data for both edit and create modes)
     useEffect(() {
-      if (isEditing && wallet != null) {
+      if (wallet != null) {
         nameController.text = wallet!.name;
         balanceController.text = wallet!.balance == 0
             ? ''
@@ -56,7 +58,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
         currencyController.text = wallet!.currency;
       }
       return null;
-    }, [wallet, isEditing]);
+    }, [wallet]);
 
     return CustomBottomSheet(
       title: '${isEditing ? 'Edit' : 'Add'} Wallet',

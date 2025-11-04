@@ -25,7 +25,7 @@ class TransactionSummaryCard extends ConsumerWidget {
     // Use base currency for display
     final baseCurrency = ref.read(baseCurrencyProvider);
     final currencies = ref.read(currenciesStaticProvider);
-    final currency = currencies.fromIsoCode(baseCurrency)?.symbol ?? baseCurrency;
+    final currency = currencies.fromIsoCode(baseCurrency)?.symbol ?? '\$';
 
     return Container(
       width: double.infinity,

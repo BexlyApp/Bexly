@@ -204,24 +204,39 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     final id = await into(transactions).insert(companion);
 
     // 2. Upload to cloud (if sync available)
+    print('🔄 [UPLOAD_DEBUG] Checking if can upload to cloud: _ref != null = ${_ref != null}');
     if (_ref != null) {
       try {
+        print('🔄 [UPLOAD_DEBUG] Reading realtimeSyncServiceProvider...');
         final syncService = _ref.read(realtimeSyncServiceProvider);
+        print('🔄 [UPLOAD_DEBUG] Getting saved transaction with id=$id...');
         final savedTransaction = await (select(transactions)..where((t) => t.id.equals(id))).getSingleOrNull();
         if (savedTransaction != null) {
+          print('🔄 [UPLOAD_DEBUG] Fetching category and wallet...');
           // Fetch category and wallet for complete model
           final category = await (select(categories)..where((c) => c.id.equals(savedTransaction.categoryId))).getSingleOrNull();
           final wallet = await (select(db.wallets)..where((w) => w.id.equals(savedTransaction.walletId))).getSingleOrNull();
+          print('🔄 [UPLOAD_DEBUG] Category: ${category?.title}, Wallet: ${wallet?.name}');
           if (category != null && wallet != null) {
             final model = await _mapToTransactionModel(savedTransaction, category, wallet);
+            print('🚀 [UPLOAD_DEBUG] UPLOADING transaction to cloud: ${model.title} - ${model.amount}');
             await syncService.uploadTransaction(model);
+            print('✅ [UPLOAD_DEBUG] Transaction uploaded successfully!');
+          } else {
+            print('❌ [UPLOAD_DEBUG] Cannot upload: category=$category, wallet=$wallet');
           }
+        } else {
+          print('❌ [UPLOAD_DEBUG] Cannot upload: savedTransaction is null');
         }
       } catch (e, stack) {
+        print('❌ [UPLOAD_DEBUG] Failed to upload transaction to cloud: $e');
+        print('❌ [UPLOAD_DEBUG] Stack: $stack');
         Log.e('Failed to upload transaction to cloud: $e', label: 'sync');
         Log.e('Stack: $stack', label: 'sync');
         // Don't rethrow - local save succeeded
       }
+    } else {
+      print('❌ [UPLOAD_DEBUG] Cannot upload: _ref is null');
     }
 
     return id;

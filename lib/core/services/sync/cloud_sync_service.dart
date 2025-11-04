@@ -6,6 +6,8 @@ import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/utils/uuid_generator.dart';
+import 'package:bexly/core/services/data_population_service/category_population_service.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
 
 /// Cloud sync service using UUID v7 for globally unique IDs
 ///
@@ -191,6 +193,22 @@ class CloudSyncService {
       await syncAllTransactions();
 
       Log.i('✅ Full sync completed successfully', label: 'sync');
+
+      // Ensure categories exist after any full sync path
+      try {
+        final categories = await _localDb.categoryDao.getAllCategories();
+        if (categories.isEmpty) {
+          Log.i('📦 No categories found after fullSync, creating defaults...', label: 'sync');
+          print('📦 [Sync] No categories after fullSync, creating defaults...');
+          await CategoryPopulationService.populate(_localDb);
+          final newCategories = await _localDb.categoryDao.getAllCategories();
+          Log.i('✅ Created ${newCategories.length} default categories after fullSync', label: 'sync');
+          print('✅ [Sync] Created ${newCategories.length} default categories after fullSync');
+        }
+      } catch (e) {
+        Log.w('⚠️ Category ensure after fullSync failed: $e', label: 'sync');
+        print('⚠️ [Sync] Category ensure after fullSync failed: $e');
+      }
     } catch (e) {
       Log.e('❌ Full sync failed: $e', label: 'sync');
       rethrow;
@@ -233,7 +251,8 @@ class CloudSyncService {
 /// Provider for CloudSyncService
 final cloudSyncServiceProvider = Provider<CloudSyncService>((ref) {
   final localDb = ref.watch(databaseProvider);
-  final firestore = FirebaseFirestore.instance;
+  // IMPORTANT: Use Bexly Firebase app for Firestore, NOT dos-me (which is auth-only)
+  final firestore = FirebaseFirestore.instanceFor(app: FirebaseInitService.bexlyApp, databaseId: "bexly");
   final userId = ref.watch(userIdProvider);
 
   return CloudSyncService(

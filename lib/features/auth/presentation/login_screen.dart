@@ -18,6 +18,7 @@ import 'package:bexly/core/services/package_info/package_info_provider.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
+import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart' as local_auth;
 
 class LoginScreen extends HookConsumerWidget {
   const LoginScreen({super.key});
@@ -71,8 +72,17 @@ class LoginScreen extends HookConsumerWidget {
       ref.read(isGuestModeProvider.notifier).state = true;
 
       if (context.mounted) {
-        // Navigate to onboarding screen for initial wallet setup
-        context.go('/onboarding');
+        // Check if user has wallet
+        final db = ref.read(databaseProvider);
+        final wallets = await db.walletDao.getAllWallets();
+
+        if (wallets.isEmpty) {
+          // No wallet - go to onboarding to setup first wallet
+          context.go('/onboarding');
+        } else {
+          // Has wallet - go straight to main
+          context.go('/');
+        }
       }
     }
 
@@ -116,6 +126,23 @@ class LoginScreen extends HookConsumerWidget {
 
         Log.i('Firebase authentication successful', label: 'auth');
         print('🔐 Firebase authentication successful');
+
+        // Sync user profile from Firebase Auth to local database
+        final firebaseUser = bexlyAuth.currentUser;
+        if (firebaseUser != null) {
+          final authProvider = ref.read(local_auth.authStateProvider.notifier);
+          final currentUser = authProvider.getUser();
+
+          // Update user info from Firebase Auth
+          authProvider.setUser(currentUser.copyWith(
+            name: firebaseUser.displayName ?? currentUser.name,
+            email: firebaseUser.email ?? currentUser.email,
+            profilePicture: firebaseUser.photoURL ?? currentUser.profilePicture,
+          ));
+
+          Log.i('✅ Synced profile from Firebase Auth: ${firebaseUser.displayName}', label: 'auth');
+          print('✅ Synced profile from Firebase Auth');
+        }
 
         // Trigger initial sync with timeout protection
         if (context.mounted) {
@@ -222,6 +249,21 @@ class LoginScreen extends HookConsumerWidget {
 
             debugPrint('Firebase authentication with Facebook successful');
 
+            // Sync user profile from Firebase Auth
+            final firebaseUser = bexlyAuth.currentUser;
+            if (firebaseUser != null) {
+              final authProvider = ref.read(local_auth.authStateProvider.notifier);
+              final currentUser = authProvider.getUser();
+
+              authProvider.setUser(currentUser.copyWith(
+                name: firebaseUser.displayName ?? currentUser.name,
+                email: firebaseUser.email ?? currentUser.email,
+                profilePicture: firebaseUser.photoURL ?? currentUser.profilePicture,
+              ));
+
+              Log.i('✅ Synced profile from Firebase Auth (Facebook)', label: 'auth');
+            }
+
             // Trigger initial sync if first time login
             if (context.mounted) {
               final syncService = ref.read(cloudSyncServiceProvider);
@@ -310,6 +352,27 @@ class LoginScreen extends HookConsumerWidget {
         }
 
         debugPrint('Firebase authentication with Apple successful');
+
+        // Sync user profile from Firebase Auth
+        final firebaseUser = bexlyAuth.currentUser;
+        if (firebaseUser != null) {
+          final authProvider = ref.read(local_auth.authStateProvider.notifier);
+          final currentUser = authProvider.getUser();
+
+          // For Apple, combine givenName and familyName if displayName is null
+          String? displayName = firebaseUser.displayName;
+          if (displayName == null && credential.givenName != null) {
+            displayName = '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
+          }
+
+          authProvider.setUser(currentUser.copyWith(
+            name: displayName ?? currentUser.name,
+            email: firebaseUser.email ?? credential.email ?? currentUser.email,
+            profilePicture: firebaseUser.photoURL ?? currentUser.profilePicture,
+          ));
+
+          Log.i('✅ Synced profile from Firebase Auth (Apple)', label: 'auth');
+        }
 
         // Trigger initial sync if first time login
         if (context.mounted) {

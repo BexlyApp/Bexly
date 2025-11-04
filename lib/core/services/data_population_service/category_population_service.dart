@@ -26,6 +26,7 @@ class CategoryPopulationService {
                 categoryModel.description!.isEmpty
             ? const Value.absent()
             : Value(categoryModel.description!),
+        isSystemDefault: const Value(true), // Mark as system default
       );
       try {
         await categoryDao.addCategory(companion);

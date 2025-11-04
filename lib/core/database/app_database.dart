@@ -53,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 12; // Add Recurrings table for recurring payments/bills/subscriptions
+  int get schemaVersion => 13; // Add isSystemDefault column to Categories table
 
   @override
   MigrationStrategy get migration {
@@ -64,7 +64,12 @@ class AppDatabase extends _$AppDatabase {
           label: 'database',
         );
         await m.createAll();
-        await populateData();
+
+        // Only populate categories on database creation
+        // Wallets will be created by sync service after initial sync completes
+        Log.i('Populating default categories...', label: 'database');
+        await CategoryPopulationService.populate(this);
+        Log.i('✅ Default categories populated', label: 'database');
       },
       onUpgrade: (Migrator m, int from, int to) async {
         Log.i('Running migration from $from to $to', label: 'database');
@@ -107,6 +112,22 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Created recurrings table for recurring payments', label: 'database');
           } catch (e) {
             Log.e('Failed to create recurrings table: $e', label: 'database');
+          }
+        }
+
+        // For version 13, add isSystemDefault column to categories
+        if (from < 13) {
+          try {
+            await m.addColumn(categories, categories.isSystemDefault);
+            Log.i('Added isSystemDefault column to categories table', label: 'database');
+
+            // Mark all existing categories as system defaults to protect them
+            await customUpdate(
+              'UPDATE categories SET is_system_default = 1',
+            );
+            Log.i('Marked all existing categories as system defaults', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add isSystemDefault column: $e', label: 'database');
           }
           return;
         }

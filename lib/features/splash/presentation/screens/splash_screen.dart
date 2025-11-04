@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/recurring_charge_service.dart';
+import 'package:bexly/core/database/database_provider.dart';
 
 class SplashScreen extends HookConsumerWidget {
   const SplashScreen({super.key});
@@ -53,21 +54,51 @@ class SplashScreen extends HookConsumerWidget {
 
           if (currentUser != null) {
             // User is authenticated with Firebase
-            Log.d('User authenticated (${currentUser.email}), navigating to main', label: 'SplashScreen');
-            // Clear guest mode and hasSkippedAuth flag
-            ref.read(isGuestModeProvider.notifier).state = false;
-            await prefs.setBool('hasSkippedAuth', false);
+            Log.d('User authenticated (${currentUser.email}), checking wallet...', label: 'SplashScreen');
 
-            if (context.mounted) {
-              context.go('/');
+            // Check if user has any wallets
+            final db = ref.read(databaseProvider);
+            final wallets = await db.walletDao.getAllWallets();
+
+            if (wallets.isEmpty) {
+              // No wallet yet - go to onboarding to setup first wallet
+              Log.d('No wallets found, navigating to onboarding', label: 'SplashScreen');
+              ref.read(isGuestModeProvider.notifier).state = false;
+              await prefs.setBool('hasSkippedAuth', false);
+
+              if (context.mounted) {
+                context.go(Routes.onboarding);
+              }
+            } else {
+              // Has wallet - go to main
+              Log.d('User has ${wallets.length} wallet(s), navigating to main', label: 'SplashScreen');
+              ref.read(isGuestModeProvider.notifier).state = false;
+              await prefs.setBool('hasSkippedAuth', false);
+
+              if (context.mounted) {
+                context.go('/');
+              }
             }
           } else if (hasSkippedAuth) {
-            // User has used guest mode before
-            Log.d('Guest mode active, navigating to main', label: 'SplashScreen');
+            // User has used guest mode before - check if has wallet
+            Log.d('Guest mode active, checking wallet...', label: 'SplashScreen');
             ref.read(isGuestModeProvider.notifier).state = true;
 
-            if (context.mounted) {
-              context.go('/');
+            final db = ref.read(databaseProvider);
+            final wallets = await db.walletDao.getAllWallets();
+
+            if (wallets.isEmpty) {
+              // No wallet - go to onboarding
+              Log.d('Guest mode but no wallet, navigating to onboarding', label: 'SplashScreen');
+              if (context.mounted) {
+                context.go(Routes.onboarding);
+              }
+            } else {
+              // Has wallet - go to main
+              Log.d('Guest mode with ${wallets.length} wallet(s), navigating to main', label: 'SplashScreen');
+              if (context.mounted) {
+                context.go('/');
+              }
             }
           } else {
             // First time user OR logged out, show login
