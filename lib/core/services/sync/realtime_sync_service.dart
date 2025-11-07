@@ -203,19 +203,49 @@ class RealtimeSyncService {
     Map<String, dynamic> data,
   ) async {
     try {
-      final wallet = WalletModel(
-        cloudId: cloudId,
-        name: data['name'] as String? ?? 'Wallet',
-        balance: (data['balance'] as num?)?.toDouble() ?? 0.0,
-        currency: data['currency'] as String? ?? 'IDR',
-        iconName: data['iconName'] as String?,
-        colorHex: data['colorHex'] as String?,
-        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate(),
-        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate(),
+      // IMPORTANT: Check if wallet already exists with this cloudId
+      final existingWallet = await _db.walletDao.getWalletByCloudId(cloudId);
+      if (existingWallet != null) {
+        Log.i('Wallet with cloudId $cloudId already exists locally, skipping insert', label: 'sync');
+        return;
+      }
+
+      // CRITICAL FIX: Check if there's a local wallet with same name/currency but no cloudId
+      // This handles the race condition where uploadWallet generates cloudId but hasn't updated local DB yet
+      final walletName = data['name'] as String? ?? 'Wallet';
+      final walletCurrency = data['currency'] as String? ?? 'IDR';
+      final allWallets = await _db.walletDao.getAllWallets();
+      final matchingWallet = allWallets.where((w) =>
+        w.cloudId == null &&
+        w.name == walletName &&
+        w.currency == walletCurrency
+      ).firstOrNull;
+
+      if (matchingWallet != null) {
+        // Found matching wallet without cloudId - update it instead of inserting duplicate
+        Log.i('Found matching local wallet without cloudId, updating instead of inserting: ${matchingWallet.name}', label: 'sync');
+        await (_db.update(_db.wallets)..where((w) => w.id.equals(matchingWallet.id)))
+            .write(WalletsCompanion(cloudId: Value(cloudId)));
+        return;
+      }
+
+      // CRITICAL: Insert directly to database WITHOUT triggering upload
+      // Using walletDao.addWallet would trigger uploadWallet again, creating infinite loop
+      // Use insertOnConflictUpdate to prevent duplicate cloudId (UNIQUE constraint)
+      final companion = WalletsCompanion(
+        cloudId: Value(cloudId),
+        name: Value(walletName),
+        balance: Value((data['balance'] as num?)?.toDouble() ?? 0.0),
+        currency: Value(walletCurrency),
+        iconName: Value(data['iconName'] as String?),
+        colorHex: Value(data['colorHex'] as String?),
+        createdAt: Value((data['createdAt'] as firestore.Timestamp?)?.toDate() ?? DateTime.now()),
+        updatedAt: Value((data['createdAt'] as firestore.Timestamp?)?.toDate() ?? DateTime.now()),
       );
 
-      await _db.walletDao.addWallet(wallet);
-      Log.i('Inserted wallet from cloud: ${wallet.name}', label: 'sync');
+      // Use insertOnConflictUpdate: if cloudId exists, update; else insert
+      await _db.into(_db.wallets).insertOnConflictUpdate(companion);
+      Log.i('Inserted/updated wallet from cloud: $walletName (cloudId: $cloudId)', label: 'sync');
     } catch (e, stack) {
       Log.e('Failed to insert wallet from cloud: $e', label: 'sync');
       Log.e('Stack: $stack', label: 'sync');
@@ -228,20 +258,22 @@ class RealtimeSyncService {
     Map<String, dynamic> data,
   ) async {
     try {
-      final wallet = WalletModel(
-        id: localId,
-        cloudId: cloudId,
-        name: data['name'] as String? ?? 'Wallet',
-        balance: (data['balance'] as num?)?.toDouble() ?? 0.0,
-        currency: data['currency'] as String? ?? 'IDR',
-        iconName: data['iconName'] as String?,
-        colorHex: data['colorHex'] as String?,
-        createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate(),
-        updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate(),
+      // CRITICAL: Update directly to database WITHOUT triggering upload
+      // Using walletDao.updateWallet would trigger uploadWallet again, creating infinite loop
+      final companion = WalletsCompanion(
+        id: Value(localId),
+        cloudId: Value(cloudId),
+        name: Value(data['name'] as String? ?? 'Wallet'),
+        balance: Value((data['balance'] as num?)?.toDouble() ?? 0.0),
+        currency: Value(data['currency'] as String? ?? 'IDR'),
+        iconName: Value(data['iconName'] as String?),
+        colorHex: Value(data['colorHex'] as String?),
+        createdAt: Value((data['createdAt'] as firestore.Timestamp?)?.toDate() ?? DateTime.now()),
+        updatedAt: Value((data['updatedAt'] as firestore.Timestamp?)?.toDate() ?? DateTime.now()),
       );
 
-      await _db.walletDao.updateWallet(wallet);
-      Log.i('Updated wallet from cloud: ${wallet.name}', label: 'sync');
+      await (_db.update(_db.wallets)..where((w) => w.id.equals(localId))).write(companion);
+      Log.i('Updated wallet from cloud: ${data['name']} (id: $localId, cloudId: $cloudId)', label: 'sync');
     } catch (e, stack) {
       Log.e('Failed to update wallet from cloud: $e', label: 'sync');
       Log.e('Stack: $stack', label: 'sync');
@@ -913,8 +945,32 @@ class RealtimeSyncService {
     try {
       final collection = _getUserCollection('wallets');
 
-      // Generate cloudId if not exists
-      final cloudId = wallet.cloudId ?? const Uuid().v7();
+      // CRITICAL FIX: Read cloudId from database FIRST before generating new one
+      // This prevents race condition where upload happens with new cloudId before local DB is updated
+      String cloudId;
+      if (wallet.cloudId != null) {
+        cloudId = wallet.cloudId!;
+      } else if (wallet.id != null) {
+        // Wallet doesn't have cloudId in memory, but might have it in database
+        // Read from database first to avoid generating duplicate cloudId
+        final currentWallet = await (_db.select(_db.wallets)
+          ..where((w) => w.id.equals(wallet.id!)))
+          .getSingleOrNull();
+
+        if (currentWallet?.cloudId != null) {
+          // Use existing cloudId from database
+          cloudId = currentWallet!.cloudId!;
+          print('[UPLOAD_DEBUG] Using existing cloudId from database: ${wallet.name} -> $cloudId');
+        } else {
+          // Generate new cloudId
+          cloudId = const Uuid().v7();
+          print('[UPLOAD_DEBUG] Generated new cloudId: ${wallet.name} -> $cloudId');
+        }
+      } else {
+        // No wallet ID, generate new cloudId
+        cloudId = const Uuid().v7();
+        print('[UPLOAD_DEBUG] Generated new cloudId (no wallet ID): ${wallet.name} -> $cloudId');
+      }
 
       final data = {
         'name': wallet.name,
@@ -928,40 +984,19 @@ class RealtimeSyncService {
 
       await collection.doc(cloudId).set(data, firestore.SetOptions(merge: true));
 
-      // Update local wallet with cloudId if it was generated
+      // Update local wallet with cloudId if it was newly generated
       if (wallet.cloudId == null && wallet.id != null) {
-        // Re-read wallet first to check current cloudId in database
-        final currentWallet = await (_db.select(_db.wallets)
-          ..where((w) => w.id.equals(wallet.id!)))
-          .getSingleOrNull();
-
-        if (currentWallet?.cloudId == null) {
-          try {
-            // Check if cloudId already exists in database for a DIFFERENT wallet
-            final existingWallet = await (_db.select(_db.wallets)
-              ..where((w) => w.cloudId.equals(cloudId)))
-              .getSingleOrNull();
-
-            if (existingWallet != null && existingWallet.id != wallet.id) {
-              // CloudId exists for a DIFFERENT wallet - this shouldn't happen!
-              // This means there's a duplicate wallet or stale data
-              print('[UPLOAD_DEBUG] ⚠️ CloudId $cloudId already exists for DIFFERENT wallet: ${existingWallet.name} (id=${existingWallet.id}). Current: ${wallet.name} (id=${wallet.id})');
-            } else {
-              // CloudId doesn't exist or exists for SAME wallet - safe to update
-              await (_db.update(_db.wallets)..where((w) => w.id.equals(wallet.id!)))
-                  .write(WalletsCompanion(cloudId: Value(cloudId)));
-              print('[UPLOAD_DEBUG] Updated wallet cloudId in local database: ${wallet.name} -> $cloudId');
-            }
-          } catch (e) {
-            // If UNIQUE constraint error, the cloudId already exists - skip silently
-            if (e.toString().contains('UNIQUE constraint')) {
-              print('[UPLOAD_DEBUG] ⚠️ CloudId $cloudId already exists (UNIQUE constraint). Skipping update for ${wallet.name}');
-            } else {
-              rethrow;
-            }
+        try {
+          await (_db.update(_db.wallets)..where((w) => w.id.equals(wallet.id!)))
+              .write(WalletsCompanion(cloudId: Value(cloudId)));
+          Log.d('Updated wallet cloudId in local database: ${wallet.name} -> $cloudId', label: 'sync');
+        } catch (e) {
+          // If UNIQUE constraint error, the cloudId already exists - skip silently
+          if (e.toString().contains('UNIQUE constraint')) {
+            Log.w('CloudId $cloudId already exists (UNIQUE constraint). Skipping update for ${wallet.name}', label: 'sync');
+          } else {
+            rethrow;
           }
-        } else {
-          print('[UPLOAD_DEBUG] Wallet already has cloudId in database: ${wallet.name} -> ${currentWallet?.cloudId}');
         }
       }
 

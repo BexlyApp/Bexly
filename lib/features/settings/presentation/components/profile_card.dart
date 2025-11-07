@@ -5,8 +5,13 @@ class ProfileCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
-    final auth = ref.watch(authStateProvider);
+    // Watch Firebase Auth state changes to auto-rebuild when user profile updates
+    final firebaseAuthState = ref.watch(firebase_auth.authStateProvider);
+    final firebaseUser = firebaseAuthState.valueOrNull;
     final colorScheme = Theme.of(context).colorScheme;
+
+    // Fallback to local auth for profile picture (not stored in Firebase Auth)
+    final auth = ref.watch(authStateProvider);
 
     // Use base currency for text display
     final baseCurrency = ref.watch(baseCurrencyProvider);
@@ -16,13 +21,18 @@ class ProfileCard extends ConsumerWidget {
     // Use language for flag display
     final currentLanguage = ref.watch(languageProvider);
     final countryCode = _getCountryCodeFromLanguage(currentLanguage.code);
+
+    // Get display name from Firebase Auth, fallback to local
+    final displayName = firebaseUser?.displayName ?? auth.name;
+    final profilePicture = firebaseUser?.photoURL ?? auth.profilePicture;
+
     return Row(
       children: [
         CircleAvatar(
           backgroundColor: colorScheme
               .surfaceContainerHighest, // Use a surface color that adapts
           radius: 50,
-          child: auth.profilePicture == null
+          child: profilePicture == null
               ? const CircleIconButton(
                   icon: HugeIcons.strokeRoundedUser,
                   radius: 49,
@@ -33,9 +43,9 @@ class ProfileCard extends ConsumerWidget {
               : CircleAvatar(
                   backgroundColor:
                       colorScheme.surface, // Use a surface color that adapts
-                  backgroundImage: auth.profilePicture == null
-                      ? null
-                      : FileImage(File(auth.profilePicture!)),
+                  backgroundImage: profilePicture.startsWith('http')
+                      ? NetworkImage(profilePicture) as ImageProvider
+                      : FileImage(File(profilePicture)),
                   radius: 49,
                 ),
         ),
@@ -43,7 +53,7 @@ class ProfileCard extends ConsumerWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(auth.name, style: AppTextStyles.body1),
+            Text(displayName, style: AppTextStyles.body1),
             Text(
               'The Clever Squirrel', // This text color will adapt via DefaultTextStyle or explicit style
               style: AppTextStyles
