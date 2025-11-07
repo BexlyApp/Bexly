@@ -4,30 +4,34 @@ class WalletAmountEditButton extends ConsumerWidget {
   const WalletAmountEditButton({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Check if a specific wallet is selected (not Total mode)
+    final dashboardWallet = ref.watch(dashboardWalletFilterProvider);
+
+    // Hide edit button when in Total mode (dashboardWallet is null)
+    if (dashboardWallet == null) {
+      return const SizedBox.shrink();
+    }
+
     return CustomIconButton(
       context,
       onPressed: () {
-        final activeWallet = ref.read(activeWalletProvider).valueOrNull;
+        final defaultCurrencies = ref.read(currenciesStaticProvider);
 
-        if (activeWallet != null) {
-          final defaultCurrencies = ref.read(currenciesStaticProvider);
-
-          // Only set currency if currencies list is available
-          if (defaultCurrencies.isNotEmpty) {
-            final selectedCurrency = defaultCurrencies.firstWhere(
-              (currency) => currency.isoCode == activeWallet.currency,
-              orElse: () => defaultCurrencies.first,
-            );
-            ref.read(currencyProvider.notifier).state = selectedCurrency;
-          }
-
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            showDragHandle: true,
-            builder: (context) => WalletFormBottomSheet(wallet: activeWallet),
+        // Only set currency if currencies list is available
+        if (defaultCurrencies.isNotEmpty) {
+          final selectedCurrency = defaultCurrencies.firstWhere(
+            (currency) => currency.isoCode == dashboardWallet.currency,
+            orElse: () => defaultCurrencies.first,
           );
+          ref.read(currencyProvider.notifier).state = selectedCurrency;
         }
+
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          showDragHandle: true,
+          builder: (context) => WalletFormBottomSheet(wallet: dashboardWallet),
+        );
       },
       icon: HugeIcons.strokeRoundedEdit02,
       themeMode: context.themeMode,
