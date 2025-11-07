@@ -3,9 +3,9 @@
 ## Overview
 This document outlines the development roadmap for Pockaw, focusing on transforming it from a basic expense tracker to a comprehensive financial management platform with AI-powered features.
 
-## Current State (v1.0)
+## Current State (v1.94)
 - ✅ Core expense/income tracking
-- ✅ Multi-wallet support
+- ✅ Multi-wallet support with real-time cloud sync
 - ✅ Budget management
 - ✅ Category organization
 - ✅ Basic analytics
@@ -14,6 +14,8 @@ This document outlines the development roadmap for Pockaw, focusing on transform
 - ✅ AI chat assistant (Gemini integration)
 - ✅ Recurring payments UI (list and form screens)
 - ✅ Planning features (budgets and goals)
+- ✅ **Real-time sync with Firestore (v167-194)**
+- ✅ **Wallet edit without duplication bug (v194)**
 
 ---
 

@@ -1,5 +1,99 @@
 # AI Chat Transaction Debug Log
 
+## Ngày: 2025-11-07
+## Developer: Claude Code
+
+---
+
+## SESSION: WALLET DUPLICATION BUG FIX (v194)
+
+### Vấn đề
+**Critical Bug:** Khi edit wallet và bấm Save → tạo ra wallet duplicate với tên mới (ví dụ: "My Wallet 2" → "My Wallet 3")
+
+### Root Cause Analysis
+**Race condition trong `uploadWallet`:**
+
+1. User edit wallet "My Wallet 2" (id=1, cloudId=NULL trong memory)
+2. `updateWallet` gọi `uploadWallet(wallet)` với `wallet.cloudId = null`
+3. `uploadWallet` **TẠO cloudId MỚI ngay lập tức** (line 949: `final cloudId = wallet.cloudId ?? const Uuid().v7()`)
+4. Upload lên Firestore với cloudId mới
+5. **Realtime listener nhận event "modified" với cloudId mới**
+6. Listener check `getWalletByCloudId(newCloudId)` → NULL (vì local database chưa có cloudId này!)
+7. → Gọi `_insertWalletFromCloud` → **TẠO WALLET MỚI**
+8. Sau đó `uploadWallet` mới cập nhật cloudId vào database (quá muộn!)
+
+**Timeline thực tế:**
+```
+T1: uploadWallet generates new cloudId
+T2: Firestore upload completes
+T3: Listener receives event → can't find wallet → creates duplicate
+T4: uploadWallet updates local database with cloudId (TOO LATE!)
+```
+
+### Fix Implementation
+**File:** `lib/core/services/sync/realtime_sync_service.dart`
+
+**Thay đổi trong `uploadWallet` (lines 948-973):**
+
+**Trước:**
+```dart
+// Generate cloudId if not exists
+final cloudId = wallet.cloudId ?? const Uuid().v7();
+```
+
+**Sau:**
+```dart
+// CRITICAL FIX: Read cloudId from database FIRST before generating new one
+String cloudId;
+if (wallet.cloudId != null) {
+  cloudId = wallet.cloudId!;
+} else if (wallet.id != null) {
+  // Read from database first to avoid generating duplicate cloudId
+  final currentWallet = await (_db.select(_db.wallets)
+    ..where((w) => w.id.equals(wallet.id!)))
+    .getSingleOrNull();
+
+  if (currentWallet?.cloudId != null) {
+    // Use existing cloudId from database
+    cloudId = currentWallet!.cloudId!;
+  } else {
+    // Generate new cloudId only if truly doesn't exist
+    cloudId = const Uuid().v7();
+  }
+} else {
+  cloudId = const Uuid().v7();
+}
+```
+
+**Kết quả:**
+- Khi edit wallet, luôn dùng cloudId cũ từ database
+- Listener nhận event với cloudId cũ → tìm thấy wallet → chỉ UPDATE, không tạo mới
+- ✅ No more duplicates!
+
+### Related Fixes
+**File:** `lib/features/dashboard/presentation/components/wallet_amount_edit_button.dart`
+- Fixed edit button to use `dashboardWalletFilterProvider` instead of `activeWalletProvider`
+- Hide edit button when in "Total Balance" mode
+
+**File:** `lib/features/settings/presentation/components/profile_card.dart`
+- Fixed profile card refresh after updating personal details
+
+### Testing
+- [x] Edit wallet multiple times - no duplicates created
+- [x] Edit button visibility correct in Total vs single wallet mode
+- [x] Cloud sync works correctly with existing wallets
+- [x] Login pulls wallets without duplication
+
+### Version
+**v194** - Released 2025-11-07
+
+### Commits
+- `b21d7e4` - fix(sync): Fix wallet duplication bug when editing wallets (v194)
+
+---
+
+## PREVIOUS SESSION: AI CHAT TRANSACTION DEBUG
+
 ## Ngày: 2025-09-27
 ## Developer: Claude Code
 
