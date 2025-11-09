@@ -278,8 +278,33 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   void _initializeChat() async {
-    // Load messages from database
     final dao = _ref.read(chatMessageDaoProvider);
+    final syncService = _ref.read(chatMessageSyncServiceProvider);
+
+    // STEP 1: Try to download messages from cloud (if authenticated)
+    try {
+      final cloudMessages = await syncService.downloadAllMessages();
+
+      if (cloudMessages.isNotEmpty) {
+        Log.d('Downloaded ${cloudMessages.length} messages from cloud', label: 'Chat Provider');
+
+        // Save cloud messages to local database
+        for (final cloudMsg in cloudMessages) {
+          await dao.addMessage(db.ChatMessagesCompanion(
+            messageId: drift.Value(cloudMsg['messageId']),
+            content: drift.Value(cloudMsg['content']),
+            isFromUser: drift.Value(cloudMsg['isFromUser']),
+            timestamp: drift.Value(cloudMsg['timestamp']),
+            error: drift.Value(cloudMsg['error']),
+            isTyping: drift.Value(cloudMsg['isTyping']),
+          ));
+        }
+      }
+    } catch (e) {
+      Log.w('Failed to download messages from cloud: $e', label: 'Chat Provider');
+    }
+
+    // STEP 2: Load messages from local database
     final savedMessages = await dao.getAllMessages();
 
     if (savedMessages.isNotEmpty) {
