@@ -13,6 +13,14 @@ LazyDatabase openConnection() {
     if (kDebugMode) {
       // await file.delete(); // Uncomment for fresh DB on every run in debug
     }
-    return NativeDatabase(file);
+
+    // Enable foreign key constraints in SQLite
+    // CRITICAL: Without this, foreign key constraints are ignored!
+    return NativeDatabase(
+      file,
+      setup: (rawDb) {
+        rawDb.execute('PRAGMA foreign_keys = ON;');
+      },
+    );
   });
 }

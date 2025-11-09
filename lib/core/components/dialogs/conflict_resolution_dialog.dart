@@ -105,7 +105,7 @@ class ConflictResolutionDialog extends StatelessWidget {
                   const Gap(8),
                   Expanded(
                     child: Text(
-                      'The data you don\'t choose will be permanently deleted and cannot be recovered.',
+                      'Data not selected will be permanently deleted.',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.orange.shade800,
@@ -216,12 +216,6 @@ class _DataCard extends StatelessWidget {
           ),
           const Gap(12),
           _InfoRow(
-            icon: Icons.receipt_long,
-            label: 'Total items:',
-            value: '$itemCount',
-          ),
-          const Gap(8),
-          _InfoRow(
             icon: Icons.account_balance_wallet,
             label: 'Wallets:',
             value: '$walletCount',
@@ -243,7 +237,7 @@ class _DataCard extends StatelessWidget {
             _InfoRow(
               icon: Icons.access_time,
               label: 'Last updated:',
-              value: 'No transaction data',
+              value: 'None',
             ),
           const Gap(8),
           if (latestTransaction != null)

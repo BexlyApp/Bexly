@@ -35,7 +35,7 @@ class OnboardingScreen extends ConsumerWidget {
               children: [
                 const Gap(60),
                 Image.asset(
-                  'assets/icon/icon-transparent-full.png',
+                  'assets/icon/Bexly-Logo-1024.png',
                   width: 160,
                 ),
                 const Gap(16),
@@ -45,7 +45,7 @@ class OnboardingScreen extends ConsumerWidget {
                   textAlign: TextAlign.center,
                 ),
                 const Text(
-                  'Pockaw!',
+                  'Bexly!',
                   style: AppTextStyles.heading2,
                   textAlign: TextAlign.center,
                 ),

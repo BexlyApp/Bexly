@@ -111,16 +111,29 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   }
 
   /// Deletes a wallet by its ID.
+  /// Throws an exception if there are transactions associated with this wallet.
   Future<int> deleteWallet(int id) async {
     Log.d('Deleting Wallet with ID: $id', label: 'wallet');
 
-    // 1. Get wallet to retrieve cloudId
+    // 1. Check for associated transactions
+    final transactionCount = await (db.selectOnly(db.transactions)
+      ..addColumns([db.transactions.id.count()])
+      ..where(db.transactions.walletId.equals(id)))
+      .getSingle()
+      .then((row) => row.read(db.transactions.id.count()) ?? 0);
+
+    if (transactionCount > 0) {
+      Log.e('Cannot delete wallet $id: has $transactionCount associated transactions', label: 'wallet');
+      throw Exception('Cannot delete wallet: $transactionCount transaction(s) still associated. Please delete or reassign transactions first.');
+    }
+
+    // 2. Get wallet to retrieve cloudId
     final wallet = await getWalletById(id);
 
-    // 2. Delete from local database
+    // 3. Delete from local database
     final count = await (delete(wallets)..where((w) => w.id.equals(id))).go();
 
-    // 3. Delete from cloud (if sync available and has cloudId)
+    // 4. Delete from cloud (if sync available and has cloudId)
     if (count > 0 && _ref != null && wallet != null && wallet.cloudId != null) {
       try {
         final syncService = _ref.read(realtimeSyncServiceProvider);

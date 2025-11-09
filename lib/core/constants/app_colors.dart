@@ -17,7 +17,7 @@ class AppColors {
   static const Color primaryAlpha25 = Color(0x4000CCCD);
   static const Color primaryAlpha50 = Color(0x8000CCCD);
   static const Color primaryAlpha75 = Color(0xBF00CCCD);
-  static const Color primary = primary700;
+  static const Color primary = purple700; // Changed from teal to purple for Bexly branding
 
   // Secondary (Electric Violet) Color Scheme
   static const Color secondary50 = Color(0xFFFBF4FF);

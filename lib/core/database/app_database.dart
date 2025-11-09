@@ -192,14 +192,11 @@ class AppDatabase extends _$AppDatabase {
 
     // Recreate all tables
     await migrator.createAll();
-    // Log.i('All tables have been recreated during reset.');
+    Log.i('All tables have been recreated during reset.', label: 'database');
 
-    // Repopulate initial data (delegating to the same logic as onCreate)
-    // await migration.onCreate(
-    //   migrator,
-    // ); // This will call m.createAll() again, then populate.
+    // Note: Categories will be populated during onboarding when user creates first wallet
 
-    Log.i('Database reset and data population complete.', label: 'database');
+    Log.i('Database reset complete.', label: 'database');
   }
 
   Future<void> populateData() async {
