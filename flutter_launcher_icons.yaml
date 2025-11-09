@@ -2,14 +2,14 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   remove_alpha_ios: true
-  image_path: "assets/icon/icon.jpg"
+  image_path: "assets/icon/wallet-icon-1024.png"
   min_sdk_android: 24 # android min sdk min:16, default 21
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icon/icon.jpg"
+  adaptive_icon_foreground: "assets/icon/wallet-icon-1024.png"
   web:
     generate: true
-    image_path: "assets/icon/icon.jpg"
+    image_path: "assets/icon/wallet-icon-1024.png"
   windows:
     generate: true
-    image_path: "assets/icon/icon.jpg"
+    image_path: "assets/icon/wallet-icon-1024.png"
     icon_size: 48 # min:48, max:256, default: 48

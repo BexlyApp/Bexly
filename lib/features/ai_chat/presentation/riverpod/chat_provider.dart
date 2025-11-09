@@ -108,10 +108,18 @@ class CategoryInfo {
 }
 
 // AI Service Provider - Supports both OpenAI and Gemini
+// IMPORTANT: keepAlive false ensures provider rebuilds when categories load
 final aiServiceProvider = Provider<AIService>((ref) {
   // Get categories from database with hierarchy and keywords
   final categoriesAsync = ref.watch(hierarchicalCategoriesProvider);
-  final List<CategoryInfo> categoryInfos = categoriesAsync.maybeWhen(
+
+  // Force provider to stay alive only when categories are loaded
+  // This ensures provider rebuilds when categories become available
+  ref.keepAlive();
+
+  // CRITICAL: Wait for categories to load before building AI service
+  // If we build with empty categories, AI won't be able to create transactions!
+  final List<CategoryInfo> categoryInfos = categoriesAsync.when(
     data: (cats) {
       return cats.map((c) => CategoryInfo(
         title: c.title,
@@ -124,7 +132,15 @@ final aiServiceProvider = Provider<AIService>((ref) {
         )).toList() ?? [],
       )).toList();
     },
-    orElse: () => <CategoryInfo>[],
+    loading: () {
+      // During loading, return empty list but provider will rebuild when data arrives
+      Log.d('Categories still loading, AI service will rebuild when ready', label: 'Chat Provider');
+      return <CategoryInfo>[];
+    },
+    error: (err, stack) {
+      Log.e('Failed to load categories for AI: $err', label: 'Chat Provider');
+      return <CategoryInfo>[];
+    },
   );
 
   // Build category names list - ONLY include leaf categories (subcategories or standalone)
@@ -141,20 +157,40 @@ final aiServiceProvider = Provider<AIService>((ref) {
   // Build dynamic hierarchy text from database
   final categoryHierarchy = CategoryInfo.buildCategoryHierarchy(categoryInfos);
 
-  Log.d('Categories loaded for AI: ${categories.join(", ")}', label: 'Chat Provider');
-  print('========== CATEGORY DEBUG ==========');
-  print('categoryInfos count: ${categoryInfos.length}');
-  print('categoryHierarchy length: ${categoryHierarchy.length}');
-  print('categoryHierarchy:\n$categoryHierarchy');
-  print('====================================');
-  if (categoryHierarchy.isNotEmpty) {
-    Log.d('Category Hierarchy:\n$categoryHierarchy', label: 'Chat Provider');
+  // CRITICAL: If categories are empty, the provider will rebuild when data arrives
+  // This ensures AI always has access to categories
+  if (categoryInfos.isEmpty) {
+    Log.w('Categories not loaded yet, AI service will rebuild when ready', label: 'Chat Provider');
+    print('========== CATEGORY DEBUG ==========');
+    print('⚠️ Categories still loading... AI service will rebuild');
+    print('====================================');
+  } else {
+    Log.d('Categories loaded for AI: ${categories.length} categories', label: 'Chat Provider');
+    print('========== CATEGORY DEBUG ==========');
+    print('✅ categoryInfos count: ${categoryInfos.length}');
+    print('✅ categories list length: ${categories.length}');
+    print('====================================');
+    if (categoryHierarchy.isNotEmpty) {
+      Log.d('Category Hierarchy loaded successfully', label: 'Chat Provider');
+    }
   }
 
   // Get wallet info for context (use read to avoid rebuild)
   final wallet = ref.read(activeWalletProvider).valueOrNull;
   final walletCurrency = wallet?.currency ?? 'VND';
   final walletName = wallet?.name ?? 'Active Wallet';
+
+  // Get exchange rate for AI currency conversion display (synchronous from cache)
+  final exchangeRateCache = ref.read(exchangeRateCacheProvider);
+  final String rateKey = 'VND_USD';
+  final cachedRate = exchangeRateCache[rateKey];
+  final double? exchangeRateVndToUsd = cachedRate?.rate;
+
+  if (exchangeRateVndToUsd != null) {
+    Log.d('Exchange rate VND to USD (cached): $exchangeRateVndToUsd', label: 'Chat Provider');
+  } else {
+    Log.w('No cached exchange rate available for AI', label: 'Chat Provider');
+  }
 
   // Check which AI provider to use
   final provider = LLMDefaultConfig.provider;
@@ -181,6 +217,7 @@ final aiServiceProvider = Provider<AIService>((ref) {
       categoryHierarchy: categoryHierarchy,
       walletCurrency: walletCurrency,
       walletName: walletName,
+      exchangeRateVndToUsd: exchangeRateVndToUsd,
     );
   } else {
     // Default to OpenAI service
@@ -204,6 +241,7 @@ final aiServiceProvider = Provider<AIService>((ref) {
       categoryHierarchy: categoryHierarchy,
       walletCurrency: walletCurrency,
       walletName: walletName,
+      exchangeRateVndToUsd: exchangeRateVndToUsd,
     );
   }
 });
@@ -289,6 +327,17 @@ class ChatNotifier extends StateNotifier<ChatState> {
   Future<void> sendMessage(String content) async {
     if (content.trim().isEmpty || state.isLoading) return;
 
+    // CRITICAL: Invalidate and force rebuild providers to ensure latest data
+    // invalidate() only marks provider as dirty, must read() to force rebuild
+    _ref.invalidate(aiServiceProvider);
+    _ref.read(aiServiceProvider); // Force rebuild with latest categories
+
+    _ref.invalidate(activeWalletProvider);
+    _ref.read(activeWalletProvider); // Force rebuild active wallet
+
+    _ref.invalidate(allWalletsStreamProvider);
+    _ref.read(allWalletsStreamProvider); // Force rebuild all wallets
+
     final userMessage = ChatMessage(
       id: _uuid.v4(),
       content: content.trim(),
@@ -360,17 +409,30 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
                 Log.d('AI action: amount=$amount, currency=$aiCurrency', label: 'AI_CURRENCY');
 
-                // Prefer wallet with matching currency, fall back to active wallet
-                // Currency conversion will happen in _createTransactionFromAction if needed
-                final walletsAsync = _ref.read(allWalletsStreamProvider);
-                final allWallets = walletsAsync.valueOrNull ?? [];
+                // IMPORTANT: Query wallets directly from database instead of using Stream provider
+                // Stream providers may not have latest data immediately after invalidate
+                final walletDao = _ref.read(walletDaoProvider);
+                final walletEntities = await walletDao.getAllWallets();
+                final allWallets = walletEntities.map((w) => WalletModel(
+                  id: w.id,
+                  cloudId: w.cloudId,
+                  name: w.name,
+                  balance: w.balance,
+                  currency: w.currency,
+                  createdAt: w.createdAt,
+                  updatedAt: w.updatedAt,
+                )).toList();
+
+                Log.d('Fetched ${allWallets.length} wallets from database', label: 'Chat Provider');
+
+                // Prefer wallet with matching currency, fall back to first wallet
                 WalletModel? wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
 
-                if (wallet == null) {
-                  // No wallet with matching currency, use active wallet (will auto-convert)
-                  wallet = _ref.read(activeWalletProvider).valueOrNull;
-                  Log.d('No wallet found for $aiCurrency, using active wallet: ${wallet?.currency} (will convert)', label: 'AI_CURRENCY');
-                } else {
+                if (wallet == null && allWallets.isNotEmpty) {
+                  // No wallet with matching currency, use first wallet (will auto-convert)
+                  wallet = allWallets.first;
+                  Log.d('No wallet found for $aiCurrency, using first wallet: ${wallet.name} (${wallet.currency}) - will convert', label: 'AI_CURRENCY');
+                } else if (wallet != null) {
                   Log.d('Found wallet "${wallet.name}" for currency $aiCurrency (no conversion needed)', label: 'AI_CURRENCY');
                 }
 
@@ -386,6 +448,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
                 // Get the actual amount saved (after currency conversion if needed)
                 final actualAmount = await _createTransactionFromAction(action, wallet: wallet);
+
+                // IMPORTANT: Replace "Active Wallet" with actual wallet name in AI response
+                // AI service was built with potentially stale wallet info, so we fix it here
+                displayMessage = displayMessage.replaceAll('Active Wallet', wallet.name);
 
                 // Note: No need to add confirmation message here because AI already provides
                 // a natural language confirmation in its response (e.g., "Đã ghi nhận chi tiêu...")
@@ -517,7 +583,32 @@ class ChatNotifier extends StateNotifier<ChatState> {
               {
                 Log.d('Processing create_recurring action: $action', label: 'Chat Provider');
 
+                // Get wallet used by recurring (query directly from database)
+                final walletDao = _ref.read(walletDaoProvider);
+                final walletEntities = await walletDao.getAllWallets();
+                final allWallets = walletEntities.map((w) => WalletModel(
+                  id: w.id,
+                  cloudId: w.cloudId,
+                  name: w.name,
+                  balance: w.balance,
+                  currency: w.currency,
+                  createdAt: w.createdAt,
+                  updatedAt: w.updatedAt,
+                )).toList();
+
+                final aiCurrency = action['currency'] ?? 'VND';
+                WalletModel? usedWallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
+                if (usedWallet == null && allWallets.isNotEmpty) {
+                  usedWallet = allWallets.first;
+                }
+
                 await _createRecurringFromAction(action);
+
+                // IMPORTANT: Replace "Active Wallet" with actual wallet name in AI response
+                if (usedWallet != null) {
+                  displayMessage = displayMessage.replaceAll('Active Wallet', usedWallet.name);
+                }
+
                 // Note: No need to add confirmation message here because AI already provides
                 // a natural language confirmation in its response with wallet name
                 break;
@@ -664,6 +755,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
     // Clear messages from database
     final dao = _ref.read(chatMessageDaoProvider);
     await dao.clearAllMessages();
+
+    // Clear AI conversation history
+    _aiService.clearHistory();
+    Log.d('AI conversation history cleared', label: 'Chat Provider');
 
     // Reset state
     state = const ChatState();

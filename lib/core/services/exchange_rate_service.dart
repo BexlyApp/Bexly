@@ -32,8 +32,12 @@ class ExchangeRateService {
   /// Get exchange rate with 24h caching
   /// Priority: Cache → Free API → Gemini AI → Emergency fallback
   Future<double> getExchangeRate(String fromCurrency, String toCurrency) async {
+    print('[ExchangeRate] 🔍 getExchangeRate called: $fromCurrency → $toCurrency');
+    Log.i('🔍 getExchangeRate called: $fromCurrency → $toCurrency', label: 'ExchangeRate');
+
     // Same currency = 1.0
     if (fromCurrency == toCurrency) {
+      print('[ExchangeRate] Same currency, returning 1.0');
       return 1.0;
     }
 
@@ -46,40 +50,56 @@ class ExchangeRateService {
       final cachedRate = prefs.getDouble(cacheKey);
       final cachedTimestamp = prefs.getInt(timestampKey);
 
+      print('[ExchangeRate] Cache check: cachedRate=$cachedRate, cachedTimestamp=$cachedTimestamp');
+
       if (cachedRate != null && cachedTimestamp != null) {
         final cacheAge = DateTime.now().millisecondsSinceEpoch - cachedTimestamp;
+        print('[ExchangeRate] Cache age: ${Duration(milliseconds: cacheAge).inHours}h (max: ${_cacheDuration.inHours}h)');
+
         if (cacheAge < _cacheDuration.inMilliseconds) {
+          print('[ExchangeRate] ✅ Cache HIT! Using cached rate: $cachedRate');
           Log.d('Using cached rate: 1 $fromCurrency = $cachedRate $toCurrency (age: ${Duration(milliseconds: cacheAge).inHours}h)',
                 label: 'ExchangeRate');
           return cachedRate;
+        } else {
+          print('[ExchangeRate] ⏰ Cache expired, fetching new rate...');
         }
+      } else {
+        print('[ExchangeRate] ❌ No cache found, fetching from API...');
       }
 
       // 2. Try free API
+      print('[ExchangeRate] 🌐 Trying free API...');
       try {
         final rate = await _fetchFromAPI(fromCurrency, toCurrency);
         // Cache the result
         await prefs.setDouble(cacheKey, rate);
         await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+        print('[ExchangeRate] ✅ API SUCCESS! Rate: $rate');
         Log.d('Fetched from API and cached: 1 $fromCurrency = $rate $toCurrency', label: 'ExchangeRate');
         return rate;
       } catch (apiError) {
+        print('[ExchangeRate] ❌ API FAILED: $apiError');
         Log.w('Free API failed: $apiError, trying Gemini', label: 'ExchangeRate');
 
         // 3. Fallback to Gemini AI
+        print('[ExchangeRate] 🤖 Trying Gemini AI...');
         try {
           final rate = await _fetchFromGemini(fromCurrency, toCurrency);
           // Cache the result
           await prefs.setDouble(cacheKey, rate);
           await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+          print('[ExchangeRate] ✅ GEMINI SUCCESS! Rate: $rate');
           Log.d('Fetched from Gemini and cached: 1 $fromCurrency = $rate $toCurrency', label: 'ExchangeRate');
           return rate;
         } catch (geminiError) {
+          print('[ExchangeRate] ❌ GEMINI FAILED: $geminiError');
           Log.e('Gemini also failed: $geminiError', label: 'ExchangeRate');
 
           // 4. Last resort: Emergency fallback (if exists)
           final fallbackRate = _getEmergencyFallback(fromCurrency, toCurrency);
           if (fallbackRate != null) {
+            print('[ExchangeRate] ⚠️ Using EMERGENCY FALLBACK: $fallbackRate');
             Log.w('Using emergency fallback: 1 $fromCurrency = $fallbackRate $toCurrency', label: 'ExchangeRate');
             return fallbackRate;
           }

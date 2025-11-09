@@ -12,8 +12,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Bexly is a Flutter-based personal finance and budget tracking application with a focus on cross-platform sync and AI agent capabilities. The project uses a feature-based clean architecture with Riverpod for state management, Drift for local database storage, and Firebase for cloud sync and authentication.
 
-## IMPORTANT: Authentication Configuration
-**LUÔN NHỚ: AUTHENTICATION SỬ DỤNG DOS-ME FIREBASE PROJECT** - App sử dụng DOS-Me Firebase project cho toàn bộ authentication để duy trì hệ sinh thái thống nhất giữa nhiều apps. DOS-Me Firebase app được cấu hình riêng biệt với Bexly Firebase app chính (dùng cho Firestore và các services khác).
+## IMPORTANT: Firebase Configuration
+**Firebase Project ID: `bexly-app`** - App sử dụng Firebase project `bexly-app` cho toàn bộ authentication, Firestore và các services. Firestore database ID là `bexly`.
 
 ## Essential Commands
 

@@ -265,19 +265,50 @@ class ConflictResolutionService {
       for (final doc in categoriesSnapshot.docs) {
         final data = doc.data();
         final cloudId = doc.id;
+        final categoryTitle = data['title'] as String;
 
-        // Check if category with this cloudId already exists
-        final existingCategory = await (_localDb.select(_localDb.categories)
+        // CRITICAL FIX: Check if category already exists (by cloudId OR by title+isSystemDefault)
+        // This prevents duplicate categories when syncing default categories from cloud
+        final existingCategoriesByCloudId = await (_localDb.select(_localDb.categories)
           ..where((c) => c.cloudId.equals(cloudId)))
-          .getSingleOrNull();
+          .get();
+
+        final existingCategoriesByTitle = await (_localDb.select(_localDb.categories)
+          ..where((c) => c.title.equals(categoryTitle) & c.isSystemDefault.equals(true)))
+          .get();
+
+        // Handle potential duplicates - take first match
+        final existingCategoryByCloudId = existingCategoriesByCloudId.isNotEmpty ? existingCategoriesByCloudId.first : null;
+        final existingCategoryByTitle = existingCategoriesByTitle.isNotEmpty ? existingCategoriesByTitle.first : null;
+
+        final existingCategory = existingCategoryByCloudId ?? existingCategoryByTitle;
+
+        // Clean up duplicates if found
+        if (existingCategoriesByCloudId.length > 1) {
+          Log.w('Found ${existingCategoriesByCloudId.length} categories with same cloudId=$cloudId. Keeping first, deleting rest...', label: 'sync');
+          for (int i = 1; i < existingCategoriesByCloudId.length; i++) {
+            await (_localDb.delete(_localDb.categories)
+              ..where((c) => c.id.equals(existingCategoriesByCloudId[i].id)))
+              .go();
+          }
+        }
+        if (existingCategoriesByTitle.length > 1 && existingCategoryByCloudId == null) {
+          Log.w('Found ${existingCategoriesByTitle.length} categories with title=$categoryTitle and isSystemDefault=true. Keeping first, deleting rest...', label: 'sync');
+          for (int i = 1; i < existingCategoriesByTitle.length; i++) {
+            await (_localDb.delete(_localDb.categories)
+              ..where((c) => c.id.equals(existingCategoriesByTitle[i].id)))
+              .go();
+          }
+        }
 
         if (existingCategory != null) {
-          // Update existing category
+          // Update existing category (add cloudId if missing)
           // CRITICAL: Preserve isSystemDefault flag - never allow cloud to override it
           await (_localDb.update(_localDb.categories)
-            ..where((c) => c.cloudId.equals(cloudId)))
+            ..where((c) => c.id.equals(existingCategory.id)))
             .write(CategoriesCompanion(
-              title: Value(data['title'] as String),
+              cloudId: Value(cloudId), // Add cloudId to local category
+              title: Value(categoryTitle),
               icon: Value(data['icon'] as String),
               iconBackground: Value(data['iconBackground'] as String),
               iconType: Value(data['iconType']?.toString()),
@@ -286,12 +317,13 @@ class ConflictResolutionService {
               // Note: isSystemDefault is NOT updated - preserve local value
               updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
             ));
+          print('[DOWNLOAD] Updated existing category: $categoryTitle (id=${existingCategory.id}, cloudId=$cloudId)');
         } else {
-          // Insert new category
+          // Insert new category (custom category created on another device)
           await _localDb.into(_localDb.categories).insert(
             CategoriesCompanion(
               cloudId: Value(cloudId),
-              title: Value(data['title'] as String),
+              title: Value(categoryTitle),
               icon: Value(data['icon'] as String),
               iconBackground: Value(data['iconBackground'] as String),
               iconType: Value(data['iconType']?.toString()),
@@ -302,6 +334,7 @@ class ConflictResolutionService {
               updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
             ),
           );
+          print('[DOWNLOAD] Inserted new category: $categoryTitle (cloudId=$cloudId)');
         }
       }
       print('✅ [DOWNLOAD] Categories inserted to local DB');
@@ -320,11 +353,23 @@ class ConflictResolutionService {
         final cloudId = doc.id;
 
         // Check if wallet with this cloudId already exists
-        final existingWallet = await (_localDb.select(_localDb.wallets)
+        // Use .get() instead of .getSingleOrNull() to handle potential duplicates
+        final existingWallets = await (_localDb.select(_localDb.wallets)
           ..where((w) => w.cloudId.equals(cloudId)))
-          .getSingleOrNull();
+          .get();
 
-        if (existingWallet != null) {
+        if (existingWallets.isNotEmpty) {
+          // Delete duplicates if any (keep only the first one)
+          if (existingWallets.length > 1) {
+            Log.w('Found ${existingWallets.length} wallets with same cloudId=$cloudId. Cleaning up duplicates...', label: 'sync');
+            for (int i = 1; i < existingWallets.length; i++) {
+              await (_localDb.delete(_localDb.wallets)
+                ..where((w) => w.id.equals(existingWallets[i].id)))
+                .go();
+              Log.i('Deleted duplicate wallet id=${existingWallets[i].id}', label: 'sync');
+            }
+          }
+
           // Update existing wallet
           await (_localDb.update(_localDb.wallets)
             ..where((w) => w.cloudId.equals(cloudId)))
@@ -363,16 +408,33 @@ class ConflictResolutionService {
           .timeout(const Duration(seconds: 10));
       print('✓ [DOWNLOAD] Downloaded ${transactionsSnapshot.docs.length} transactions from cloud');
 
+      // Get default/first wallet for fallback when walletId is null
+      final allWallets = await _localDb.walletDao.getAllWallets();
+      final defaultWallet = allWallets.isNotEmpty ? allWallets.first : null;
+
       for (final doc in transactionsSnapshot.docs) {
         final data = doc.data();
 
-        // Skip transactions with null categoryId or walletId (data integrity issue)
-        final categoryId = data['categoryId'] as int?;
-        final walletId = data['walletId'] as int?;
+        // Handle missing categoryId or walletId with fallback
+        var categoryId = data['categoryId'] as int?;
+        var walletId = data['walletId'] as int?;
 
-        if (categoryId == null || walletId == null) {
-          print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} with null categoryId=$categoryId or walletId=$walletId');
+        // Skip if categoryId is null (can't guess category)
+        if (categoryId == null) {
+          print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} - missing categoryId (cannot infer category)');
           continue;
+        }
+
+        // Fallback to default wallet if walletId is null
+        if (walletId == null) {
+          if (defaultWallet != null) {
+            walletId = defaultWallet.id;
+            print('⚠️ [DOWNLOAD] Transaction ${doc.id} missing walletId - using default wallet "${defaultWallet.name}" (${defaultWallet.currency})');
+            print('   WARNING: If this transaction was from a different currency wallet, the amount may be incorrect');
+          } else {
+            print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} - missing walletId and no default wallet available');
+            continue;
+          }
         }
 
         await (_localDb.into(_localDb.transactions)).insert(

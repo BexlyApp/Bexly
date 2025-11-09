@@ -9,6 +9,7 @@ abstract class AIService {
   Future<String> sendMessage(String message);
   Stream<String> sendMessageStream(String message);
   void updateRecentTransactions(String recentTransactionsContext);
+  void clearHistory(); // Clear conversation history
 }
 
 /// Mixin for shared prompt generation logic across AI services
@@ -18,6 +19,7 @@ mixin AIServicePromptMixin {
   String? get categoryHierarchy => null; // Optional hierarchy text
   String? get walletCurrency => null; // Optional wallet currency for conversion notification
   String? get walletName => null; // Optional wallet name for personalized responses
+  double? get exchangeRateVndToUsd => null; // Optional exchange rate VND to USD
 
   /// Build complete system prompt using centralized config
   String get systemPrompt => AIPrompts.buildSystemPrompt(
@@ -26,6 +28,7 @@ mixin AIServicePromptMixin {
         categoryHierarchy: categoryHierarchy,
         walletCurrency: walletCurrency,
         walletName: walletName,
+        exchangeRateVndToUsd: exchangeRateVndToUsd,
       );
 
   // Legacy getters for backwards compatibility (all delegate to AIPrompts)
@@ -56,10 +59,16 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   @override
   final String? walletName;
 
+  @override
+  final double? exchangeRateVndToUsd;
+
   String _recentTransactionsContext = '';
 
   @override
   String get recentTransactionsContext => _recentTransactionsContext;
+
+  // Conversation history for context
+  final List<Map<String, String>> _conversationHistory = [];
 
   OpenAIService({
     required this.apiKey,
@@ -69,6 +78,7 @@ class OpenAIService with AIServicePromptMixin implements AIService {
     this.categoryHierarchy,
     this.walletCurrency,
     this.walletName,
+    this.exchangeRateVndToUsd,
   }) {
     Log.d('OpenAIService initialized with model: $model, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency)', label: 'AI Service');
   }
@@ -77,6 +87,12 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   void updateRecentTransactions(String recentTransactionsContext) {
     _recentTransactionsContext = recentTransactionsContext;
     Log.d('Updated recent transactions context (${recentTransactionsContext.length} chars)', label: 'AI Service');
+  }
+
+  @override
+  void clearHistory() {
+    _conversationHistory.clear();
+    Log.d('Conversation history cleared', label: 'AI Service');
   }
 
   // All prompts are now managed by AIServicePromptMixin which delegates to AIPrompts config
@@ -101,6 +117,19 @@ class OpenAIService with AIServicePromptMixin implements AIService {
           : 'Invalid key';
       Log.d('Using API key: $maskedKey', label: 'OpenAI Service');
 
+      // Build messages array with history
+      final messages = [
+        {
+          'role': 'system',
+          'content': systemPrompt,
+        },
+        ..._conversationHistory, // Include previous messages
+        {
+          'role': 'user',
+          'content': message,
+        }
+      ];
+
       final response = await http
           .post(
             Uri.parse('$baseUrl/chat/completions'),
@@ -110,16 +139,7 @@ class OpenAIService with AIServicePromptMixin implements AIService {
             },
             body: jsonEncode({
           'model': model,
-          'messages': [
-            {
-              'role': 'system',
-              'content': systemPrompt,
-            },
-            {
-              'role': 'user',
-              'content': message,
-            }
-          ],
+          'messages': messages,
           // Lower temperature for more focused responses
           'temperature': 0.3,
           // Encourage JSON structure even if not strict JSON mode
@@ -143,6 +163,19 @@ class OpenAIService with AIServicePromptMixin implements AIService {
           final data = jsonDecode(response.body);
           final content = data['choices'][0]['message']['content'];
           Log.d('OpenAI Response content: $content', label: 'OpenAI Service');
+
+          // Save conversation to history
+          _conversationHistory.add({
+            'role': 'user',
+            'content': message,
+          });
+          _conversationHistory.add({
+            'role': 'assistant',
+            'content': content,
+          });
+
+          Log.d('Conversation history updated (${_conversationHistory.length} messages)', label: 'AI Service');
+
           return content.trim();
         } catch (e) {
           Log.e('Failed to parse OpenAI response as JSON: $e', label: 'OpenAI Service');
@@ -205,10 +238,16 @@ class GeminiService with AIServicePromptMixin implements AIService {
   @override
   final String? walletName;
 
+  @override
+  final double? exchangeRateVndToUsd;
+
   String _recentTransactionsContext = '';
 
   @override
   String get recentTransactionsContext => _recentTransactionsContext;
+
+  // Conversation history for context (using Gemini's Content format)
+  final List<Content> _conversationHistory = [];
 
   GeminiService({
     required this.apiKey,
@@ -217,6 +256,7 @@ class GeminiService with AIServicePromptMixin implements AIService {
     this.categoryHierarchy,
     this.walletCurrency,
     this.walletName,
+    this.exchangeRateVndToUsd,
   }) {
     Log.d('GeminiService initialized with model: $model, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency)', label: 'AI Service');
   }
@@ -225,6 +265,12 @@ class GeminiService with AIServicePromptMixin implements AIService {
   void updateRecentTransactions(String recentTransactionsContext) {
     _recentTransactionsContext = recentTransactionsContext;
     Log.d('Updated recent transactions context (${recentTransactionsContext.length} chars)', label: 'AI Service');
+  }
+
+  @override
+  void clearHistory() {
+    _conversationHistory.clear();
+    Log.d('Conversation history cleared', label: 'AI Service');
   }
 
   // All prompts are now managed by AIServicePromptMixin which delegates to AIPrompts config
@@ -253,8 +299,10 @@ class GeminiService with AIServicePromptMixin implements AIService {
         ),
       );
 
-      // Create chat (no history needed, system instruction is separate)
-      final chat = modelWithSystemPrompt.startChat();
+      // Create chat with conversation history
+      final chat = modelWithSystemPrompt.startChat(history: _conversationHistory);
+
+      Log.d('Starting chat with ${_conversationHistory.length} previous messages', label: 'Gemini Service');
 
       // Send user message
       final response = await chat.sendMessage(
@@ -274,6 +322,12 @@ class GeminiService with AIServicePromptMixin implements AIService {
       print('========== GEMINI RAW RESPONSE ==========');
       print(content);
       print('=========================================');
+
+      // Save conversation to history
+      _conversationHistory.add(Content.text(message)); // User message
+      _conversationHistory.add(Content.model([TextPart(content)])); // AI response
+
+      Log.d('Conversation history updated (${_conversationHistory.length} messages)', label: 'AI Service');
 
       return content.trim();
     } catch (e) {

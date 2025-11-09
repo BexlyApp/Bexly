@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Wallet Icon Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            text-align: center;
+        }
+        #canvas {
+            border: 2px solid #ccc;
+            margin: 20px 0;
+            background: white;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #731FE0;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #611BBC;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Wallet Icon Generator</h1>
+        <canvas id="canvas" width="1024" height="1024"></canvas>
+        <br>
+        <button onclick="downloadIcon()">Download Icon (1024x1024)</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Material Design Wallet Icon SVG path (24x24 viewBox)
+        const walletPath = "M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z";
+
+        function drawIcon() {
+            // Fill white background
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, 1024, 1024);
+
+            // Calculate scaling and positioning - FULL SIZE (no padding)
+            const scale = 42.67; // Scale from 24px to 1024px (100% of canvas)
+            const offsetX = 0;
+            const offsetY = 0;
+
+            // Draw the wallet icon in purple
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+
+            // Create path from SVG
+            const path = new Path2D(walletPath);
+            ctx.fillStyle = '#731FE0'; // purple700
+            ctx.fill(path);
+
+            ctx.restore();
+        }
+
+        function downloadIcon() {
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'wallet-icon-1024.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 'image/png');
+        }
+
+        // Draw the icon when page loads
+        drawIcon();
+    </script>
+</body>
+</html>
