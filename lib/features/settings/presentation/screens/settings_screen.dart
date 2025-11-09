@@ -38,6 +38,15 @@ import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/core/services/sync/sync_trigger_service.dart';
+import 'package:bexly/features/settings/presentation/components/bind_account_bottom_sheet.dart';
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
+import 'package:bexly/core/services/data_population_service/category_population_service.dart';
+import 'package:toastification/toastification.dart';
+import 'package:bexly/features/category/data/repositories/category_repo.dart';
+import 'package:bexly/core/database/tables/category_table.dart';
+import 'package:drift/drift.dart' hide Column;
 
 part '../components/app_version_info.dart';
 part '../components/profile_card.dart';

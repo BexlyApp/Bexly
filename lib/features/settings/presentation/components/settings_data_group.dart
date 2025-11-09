@@ -3,6 +3,100 @@ part of '../screens/settings_screen.dart';
 class SettingsDataGroup extends ConsumerWidget {
   const SettingsDataGroup({super.key});
 
+  void _showRepopulateCategoriesSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => AlertBottomSheet(
+        context: context,
+        title: 'Re-populate Categories',
+        confirmText: 'Re-populate',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'WARNING: This will DELETE all categories and restore defaults.',
+              style: AppTextStyles.body2.copyWith(
+                color: AppColors.red,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const Gap(AppSpacing.spacing12),
+            Text(
+              'Your existing transactions may show "Unknown Category" and need manual re-assignment.',
+              style: AppTextStyles.body2,
+              textAlign: TextAlign.center,
+            ),
+            const Gap(AppSpacing.spacing12),
+            Text(
+              'RECOMMENDED: Use "Delete My Data" instead, then create a new wallet.',
+              style: AppTextStyles.body2.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        onConfirm: () async {
+          context.pop(); // close bottom sheet
+          await _performRepopulateCategories(ref, context);
+        },
+      ),
+    );
+  }
+
+  Future<void> _performRepopulateCategories(
+    WidgetRef ref,
+    BuildContext context,
+  ) async {
+    try {
+      final db = ref.read(databaseProvider);
+
+      // Show loading indicator
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Center(child: LoadingIndicator()),
+        );
+      }
+
+      // Use UPSERT to update/insert categories
+      // This preserves foreign key relationships with transactions
+      await CategoryPopulationService.repopulate(db);
+
+      // Dismiss loading dialog
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+
+      // Show success message
+      if (context.mounted) {
+        toastification.show(
+          context: context,
+          title: Text('Categories re-populated successfully'),
+          description: Text('Default categories have been restored'),
+          autoCloseDuration: const Duration(seconds: 3),
+        );
+      }
+    } catch (e, stack) {
+      Log.e('Error re-populating categories: $e', label: 'category');
+      Log.e('Stack: $stack', label: 'category');
+
+      // Dismiss loading dialog
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+
+      // Show error message
+      if (context.mounted) {
+        toastification.show(
+          context: context,
+          title: Text('Error re-populating categories'),
+          description: Text(e.toString()),
+          autoCloseDuration: const Duration(seconds: 5),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Check Firebase Auth state to determine if user is authenticated
@@ -18,6 +112,11 @@ class SettingsDataGroup extends ConsumerWidget {
           onTap: () {
             context.push(Routes.backupAndRestore);
           },
+        ),
+        MenuTileButton(
+          label: 'Re-populate Categories',
+          icon: HugeIcons.strokeRoundedDatabaseRestore,
+          onTap: () => _showRepopulateCategoriesSheet(context, ref),
         ),
         MenuTileButton(
           label: context.l10n.deleteMyData,
@@ -81,13 +180,18 @@ class SettingsDataGroup extends ConsumerWidget {
             },
           )
         else
-          // Guest mode - show Sign In button
+          // Guest mode - show Bind Account button
           MenuTileButton(
-            label: 'Sign In',
-            icon: HugeIcons.strokeRoundedLogin01,
+            label: 'Bind Account',
+            icon: HugeIcons.strokeRoundedUserAdd01,
             onTap: () {
-              // Navigate to login screen to link account
-              context.go('/login');
+              // Show bind account bottom sheet with auth options
+              showModalBottomSheet(
+                context: context,
+                showDragHandle: true,
+                isScrollControlled: true,
+                builder: (context) => const BindAccountBottomSheet(),
+              );
             },
           ),
       ],
