@@ -1,11 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'database_interface.dart';
 
 class FirestoreDatabase implements DatabaseInterface {
   final firestore.FirebaseFirestore _firestore = firestore.FirebaseFirestore.instanceFor(app: FirebaseInitService.bexlyApp, databaseId: "bexly");
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instanceFor(app: FirebaseInitService.bexlyApp);
 
   String? get _userId => _auth.currentUser?.uid;
 
@@ -297,5 +298,71 @@ class FirestoreDatabase implements DatabaseInterface {
         .collection('items')
         .doc(id)
         .delete();
+  }
+
+  /// Delete all user data from Firestore
+  /// This is used when user deletes their account
+  Future<void> deleteAllUserData() async {
+    if (_userId == null) {
+      throw Exception('User not logged in');
+    }
+
+    final batch = _firestore.batch();
+    int deleteCount = 0;
+
+    // Delete all wallets
+    final wallets = await _userCollection
+        .doc('wallets')
+        .collection('items')
+        .get();
+    for (final doc in wallets.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Delete all transactions
+    final transactions = await _userCollection
+        .doc('transactions')
+        .collection('items')
+        .get();
+    for (final doc in transactions.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Delete all categories
+    final categories = await _userCollection
+        .doc('categories')
+        .collection('items')
+        .get();
+    for (final doc in categories.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Delete all budgets
+    final budgets = await _userCollection
+        .doc('budgets')
+        .collection('items')
+        .get();
+    for (final doc in budgets.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Delete all recurring payments
+    final recurring = await _userCollection
+        .doc('recurring')
+        .collection('items')
+        .get();
+    for (final doc in recurring.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Commit the batch delete
+    await batch.commit();
+
+    Log.i('Deleted $deleteCount documents from Firestore', label: 'firestore');
   }
 }
