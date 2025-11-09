@@ -24,7 +24,7 @@ import 'package:bexly/features/ai_chat/presentation/riverpod/chat_dao_provider.d
 import 'package:bexly/core/database/app_database.dart' as db;
 import 'package:drift/drift.dart' as drift;
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
-// import 'package:bexly/core/services/sync/data_sync_service.dart';
+import 'package:bexly/core/services/sync/chat_message_sync_service.dart';
 
 // Simple category info for AI
 class CategoryInfo {
@@ -322,16 +322,33 @@ class ChatNotifier extends StateNotifier<ChatState> {
       error: drift.Value(message.error),
       isTyping: drift.Value(message.isTyping),
     ));
+
+    // Sync to cloud (if authenticated)
+    // Don't sync typing messages
+    if (!message.isTyping) {
+      final syncService = _ref.read(chatMessageSyncServiceProvider);
+      final dbMessage = db.ChatMessage(
+        id: 0, // Not used for Firestore sync
+        messageId: message.id,
+        content: message.content,
+        isFromUser: message.isFromUser,
+        timestamp: message.timestamp,
+        error: message.error,
+        isTyping: message.isTyping,
+        createdAt: message.timestamp,
+      );
+      await syncService.syncMessage(dbMessage);
+    }
   }
 
   Future<void> sendMessage(String content) async {
     if (content.trim().isEmpty || state.isLoading) return;
 
-    // CRITICAL: Invalidate and force rebuild providers to ensure latest data
-    // invalidate() only marks provider as dirty, must read() to force rebuild
-    _ref.invalidate(aiServiceProvider);
-    _ref.read(aiServiceProvider); // Force rebuild with latest categories
+    // NOTE: DO NOT invalidate aiServiceProvider here!
+    // Invalidating destroys the service instance and loses conversation history
+    // Categories are watched by the provider and will auto-update when changed
 
+    // Refresh wallet providers to ensure latest data
     _ref.invalidate(activeWalletProvider);
     _ref.read(activeWalletProvider); // Force rebuild active wallet
 
@@ -755,6 +772,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
     // Clear messages from database
     final dao = _ref.read(chatMessageDaoProvider);
     await dao.clearAllMessages();
+
+    // Clear messages from cloud (if authenticated)
+    final syncService = _ref.read(chatMessageSyncServiceProvider);
+    await syncService.clearAllMessages();
 
     // Clear AI conversation history
     _aiService.clearHistory();

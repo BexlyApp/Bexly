@@ -300,6 +300,82 @@ class FirestoreDatabase implements DatabaseInterface {
         .delete();
   }
 
+  // Chat message operations
+  Future<List<Map<String, dynamic>>> getAllChatMessages() async {
+    final snapshot = await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .orderBy('timestamp', descending: true)
+        .get();
+
+    return snapshot.docs.map((doc) => {
+      'id': doc.id,
+      ...doc.data(),
+    }).toList();
+  }
+
+  Future<Map<String, dynamic>?> getChatMessage(String id) async {
+    final doc = await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .doc(id)
+        .get();
+
+    if (!doc.exists) return null;
+
+    return {
+      'id': doc.id,
+      ...doc.data()!,
+    };
+  }
+
+  Future<String> createChatMessage(Map<String, dynamic> message) async {
+    final doc = await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .add({
+      ...message,
+      'createdAt': firestore.FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
+    });
+
+    return doc.id;
+  }
+
+  Future<void> updateChatMessage(String id, Map<String, dynamic> message) async {
+    await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .doc(id)
+        .update({
+      ...message,
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> deleteChatMessage(String id) async {
+    await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .doc(id)
+        .delete();
+  }
+
+  Future<void> clearAllChatMessages() async {
+    final batch = _firestore.batch();
+
+    final messages = await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .get();
+
+    for (final doc in messages.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+  }
+
   /// Delete all user data from Firestore
   /// This is used when user deletes their account
   Future<void> deleteAllUserData() async {
@@ -356,6 +432,16 @@ class FirestoreDatabase implements DatabaseInterface {
         .collection('items')
         .get();
     for (final doc in recurring.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Delete all chat messages
+    final chatMessages = await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .get();
+    for (final doc in chatMessages.docs) {
       batch.delete(doc.reference);
       deleteCount++;
     }
