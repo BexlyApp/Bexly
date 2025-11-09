@@ -108,13 +108,14 @@ class CategoryInfo {
 }
 
 // AI Service Provider - Supports both OpenAI and Gemini
-// IMPORTANT: keepAlive false ensures provider rebuilds when categories load
+// CRITICAL: Use read() instead of watch() to prevent rebuild when categories change
+// Rebuilding destroys AI service instance and loses conversation history!
 final aiServiceProvider = Provider<AIService>((ref) {
   // Get categories from database with hierarchy and keywords
-  final categoriesAsync = ref.watch(hierarchicalCategoriesProvider);
+  // IMPORTANT: Use read() not watch() to prevent rebuild when categories change
+  final categoriesAsync = ref.read(hierarchicalCategoriesProvider);
 
-  // Force provider to stay alive only when categories are loaded
-  // This ensures provider rebuilds when categories become available
+  // Keep provider alive permanently to preserve conversation history
   ref.keepAlive();
 
   // CRITICAL: Wait for categories to load before building AI service
