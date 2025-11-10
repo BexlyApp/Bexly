@@ -114,6 +114,31 @@ feature_name/
 
 ## Development Guidelines
 
+### Security Best Practices (CRITICAL)
+
+**NEVER commit sensitive files to git:**
+- ❌ `google-services.json` or any `.backup` variants
+- ❌ `.env` files containing API keys
+- ❌ Any file with credentials, tokens, or secrets
+- ❌ Firebase config files with API keys exposed
+
+**Before EVERY commit:**
+1. Run `git status` and carefully review ALL files
+2. Check for `.backup`, `.json`, `.env` files
+3. NEVER use `git add .` blindly - add files explicitly
+4. Use `.gitignore` to prevent accidental commits
+
+**If API key is exposed:**
+1. Remove file immediately: `git rm <file>`
+2. Commit removal
+3. **REVOKE API key in Google Cloud Console**
+4. **Generate new API key**
+5. Update config with new key
+6. Rewrite git history: `git filter-repo --path <file> --invert-paths`
+
+**Incident Log:**
+- 2025-11-09: Exposed Google API key `AIzaSyBwUcP2tCRIQiDMZduOod7lPQJy9jDcJLM` in commit `4e15da4` via file `android/app/google-services.json.dos-me.backup`. Key must be revoked.
+
 ### When Adding New Features
 1. Create a new directory under `lib/features/`
 2. Follow the existing feature structure pattern
