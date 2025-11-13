@@ -406,8 +406,37 @@ class RealtimeSyncService {
         return;
       }
 
-      // Create updated category entity
-      // CRITICAL: Preserve isSystemDefault flag - never allow cloud to override it
+      // CRITICAL: Protect system default categories from being modified by cloud sync
+      // Built-in categories (Music, Food, etc.) should NEVER be modified via sync
+      if (existingCategory.isSystemDefault) {
+        Log.w(
+          'Ignoring cloud update for system default category: ${existingCategory.title}. '
+          'Only cloudId can be updated.',
+          label: 'sync',
+        );
+
+        // Only update cloudId if it's missing locally
+        if (existingCategory.cloudId == null || existingCategory.cloudId!.isEmpty) {
+          final updatedCategory = Category(
+            id: existingCategory.id,
+            cloudId: cloudId,
+            title: existingCategory.title,
+            icon: existingCategory.icon,
+            iconBackground: existingCategory.iconBackground,
+            iconType: existingCategory.iconType,
+            parentId: existingCategory.parentId,
+            description: existingCategory.description,
+            isSystemDefault: existingCategory.isSystemDefault,
+            createdAt: existingCategory.createdAt,
+            updatedAt: DateTime.now(),
+          );
+          await _db.categoryDao.updateCategory(updatedCategory);
+          Log.i('Updated cloudId for system default category: ${existingCategory.title}', label: 'sync');
+        }
+        return;
+      }
+
+      // Create updated category entity for non-system categories
       final updatedCategory = Category(
         id: localId,
         cloudId: cloudId,
@@ -417,7 +446,7 @@ class RealtimeSyncService {
         iconType: data['iconType'] as String?,
         parentId: data['parentId'] as int?,
         description: data['description'] as String?,
-        isSystemDefault: existingCategory.isSystemDefault, // Preserve local flag
+        isSystemDefault: false, // Non-system category
         createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate() ?? existingCategory.createdAt,
         updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
       );
@@ -1168,6 +1197,22 @@ class RealtimeSyncService {
       };
 
       await collection.doc(cloudId).set(data, firestore.SetOptions(merge: true));
+
+      // CRITICAL FIX: Update local transaction with cloudId to prevent duplicates
+      // If transaction was created without cloudId, update it now
+      if (transaction.cloudId == null && transaction.id != null) {
+        print('🔄 [CLOUDID_UPDATE] Transaction ${transaction.id} has no cloudId, updating now...');
+        await (_db.update(_db.transactions)
+          ..where((t) => t.id.equals(transaction.id!)))
+          .write(TransactionsCompanion(
+            cloudId: Value(cloudId),
+            updatedAt: Value(DateTime.now()),
+          ));
+        print('✅ [CLOUDID_UPDATE] Updated local transaction ${transaction.id} with cloudId: $cloudId');
+        Log.d('Updated local transaction ${transaction.id} with cloudId: $cloudId', label: 'sync');
+      } else {
+        print('ℹ️ [CLOUDID_UPDATE] Transaction ${transaction.id} already has cloudId: ${transaction.cloudId}');
+      }
 
       Log.i('Uploaded transaction to cloud: ${transaction.title}', label: 'sync');
     } catch (e, stack) {
