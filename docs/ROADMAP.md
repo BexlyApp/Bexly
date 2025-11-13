@@ -3,7 +3,7 @@
 ## Overview
 This document outlines the development roadmap for Pockaw, focusing on transforming it from a basic expense tracker to a comprehensive financial management platform with AI-powered features.
 
-## Current State (v1.94)
+## Current State (v1.0.0+257)
 - ✅ Core expense/income tracking
 - ✅ Multi-wallet support with real-time cloud sync
 - ✅ Budget management
@@ -16,6 +16,9 @@ This document outlines the development roadmap for Pockaw, focusing on transform
 - ✅ Planning features (budgets and goals)
 - ✅ **Real-time sync with Firestore (v167-194)**
 - ✅ **Wallet edit without duplication bug (v194)**
+- ✅ **Multi-language AI chat support (v257)**
+- ✅ **Built-in category protection from cloud corruption (v257)**
+- ✅ **Chat message deduplication (v250-v257)**
 
 ---
 
@@ -391,6 +394,13 @@ Features:
 - Internationalization (i18n)
 - Security audits
 - API versioning
+
+### UI/UX Fixes
+- **Fix Health category icon mapping (v235)**
+  - Issue: Dental and Fitness both use `category-health-5` icon
+  - Current icons: health-1 (parent), health-2 (Doctor Visits), health-3 (Pharmacy), health-4 (Insurance), health-5 (Fitness & Dental - DUPLICATE!)
+  - Solution: Create `category-health-6.webp` for Dental (tooth icon) OR reassign existing icons
+  - Priority: LOW | Timeline: 1 hour
 
 ### Migration Plans
 - Consider moving to GraphQL
