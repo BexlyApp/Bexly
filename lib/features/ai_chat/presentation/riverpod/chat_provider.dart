@@ -25,6 +25,7 @@ import 'package:bexly/core/database/app_database.dart' as db;
 import 'package:drift/drift.dart' as drift;
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/services/sync/chat_message_sync_service.dart';
+import 'package:bexly/core/utils/category_translation_map.dart';
 
 // Simple category info for AI
 class CategoryInfo {
@@ -289,9 +290,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
       if (cloudMessages.isNotEmpty) {
         Log.d('Downloaded ${cloudMessages.length} messages from cloud', label: 'Chat Provider');
 
-        // Save cloud messages to local database
+        // Save cloud messages to local database (with dedup check)
+        int insertedCount = 0;
         for (final cloudMsg in cloudMessages) {
-          await dao.addMessage(db.ChatMessagesCompanion(
+          final result = await dao.addMessageIfNotExists(db.ChatMessagesCompanion(
             messageId: drift.Value(cloudMsg['messageId']),
             content: drift.Value(cloudMsg['content']),
             isFromUser: drift.Value(cloudMsg['isFromUser']),
@@ -299,7 +301,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
             error: drift.Value(cloudMsg['error']),
             isTyping: drift.Value(cloudMsg['isTyping']),
           ));
+          if (result > 0) insertedCount++;
         }
+        Log.d('Inserted $insertedCount new messages (skipped ${cloudMessages.length - insertedCount} duplicates)', label: 'Chat Provider');
       }
     } catch (e) {
       Log.w('Failed to download messages from cloud: $e', label: 'Chat Provider');
@@ -309,15 +313,25 @@ class ChatNotifier extends StateNotifier<ChatState> {
     final savedMessages = await dao.getAllMessages();
 
     if (savedMessages.isNotEmpty) {
-      // Convert database messages to ChatMessage model
-      final messages = savedMessages.map((dbMsg) => ChatMessage(
-        id: dbMsg.messageId,
-        content: dbMsg.content,
-        isFromUser: dbMsg.isFromUser,
-        timestamp: dbMsg.timestamp,
-        error: dbMsg.error,
-        isTyping: dbMsg.isTyping,
-      )).toList();
+      // Convert database messages to ChatMessage model and DEDUP by messageId
+      final Map<String, ChatMessage> uniqueMessages = {};
+      for (final dbMsg in savedMessages) {
+        final message = ChatMessage(
+          id: dbMsg.messageId,
+          content: dbMsg.content,
+          isFromUser: dbMsg.isFromUser,
+          timestamp: dbMsg.timestamp,
+          error: dbMsg.error,
+          isTyping: dbMsg.isTyping,
+        );
+        // Keep only the first occurrence (or latest if you prefer)
+        if (!uniqueMessages.containsKey(dbMsg.messageId)) {
+          uniqueMessages[dbMsg.messageId] = message;
+        }
+      }
+
+      final messages = uniqueMessages.values.toList();
+      Log.d('Loaded ${messages.length} unique messages (filtered ${savedMessages.length - messages.length} duplicates)', label: 'Chat Provider');
 
       state = state.copyWith(messages: messages);
     } else {
@@ -368,6 +382,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   Future<void> sendMessage(String content) async {
+    print('🚀 [DEBUG] sendMessage() CALLED with content: ${content.substring(0, content.length > 30 ? 30 : content.length)}...');
     if (content.trim().isEmpty || state.isLoading) return;
 
     // NOTE: DO NOT invalidate aiServiceProvider here!
@@ -409,6 +424,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
       // Get AI response
       final response = await _aiService.sendMessage(content);
 
+      print('📱 [DEBUG] AI Response received, length: ${response.length}');
+      print('📱 [DEBUG] Response content: ${response.substring(0, response.length > 100 ? 100 : response.length)}...');
       Log.d('AI Response: $response', label: 'Chat Provider');
 
       // NOTE: Do NOT cancel typing effect here - we'll replace the typing message instead
@@ -419,9 +436,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
       // Look for ACTION_JSON: prefix
       final actionIndex = response.indexOf('ACTION_JSON:');
-      Log.d('ACTION_JSON index: $actionIndex', label: 'Chat Provider');
+      print('📱 [DEBUG] ACTION_JSON index: $actionIndex');
+      Log.d('🔍 ACTION_JSON index: $actionIndex', label: 'Chat Provider');
 
       if (actionIndex != -1) {
+        print('📱 [DEBUG] Found ACTION_JSON in response, parsing...');
+        Log.d('🔍 Found ACTION_JSON in response, parsing...', label: 'Chat Provider');
+
         // Extract the display message (everything before ACTION_JSON)
         displayMessage = response.substring(0, actionIndex).trim();
 
@@ -434,14 +455,19 @@ class ChatNotifier extends StateNotifier<ChatState> {
         }
 
         final jsonStr = response.substring(jsonStartIndex).trim();
-        Log.d('Extracted JSON string: $jsonStr', label: 'Chat Provider');
+        print('📱 [DEBUG] Extracted JSON string: $jsonStr');
+        Log.d('🔍 Extracted JSON string: $jsonStr', label: 'Chat Provider');
 
         try {
+          print('📱 [DEBUG] Attempting to parse JSON...');
           final action = jsonDecode(jsonStr);
-          Log.d('Parsed action: $action', label: 'Chat Provider');
+          print('📱 [DEBUG] Parsed action successfully: $action');
+          Log.d('🔍 Parsed action: $action', label: 'Chat Provider');
 
           // Parse the action
           final String actionType = (action['action'] ?? '').toString();
+          Log.d('🔍 Action type: $actionType', label: 'Chat Provider');
+
           switch (actionType) {
             case 'create_expense':
             case 'create_income':
@@ -624,7 +650,19 @@ class ChatNotifier extends StateNotifier<ChatState> {
               }
             case 'create_recurring':
               {
-                Log.d('Processing create_recurring action: $action', label: 'Chat Provider');
+                Log.d('🔵 Processing create_recurring action: $action', label: 'Chat Provider');
+                Log.d('🔵 AI Response: $response', label: 'Chat Provider');
+
+                // CRITICAL: Check if categories are loaded before processing
+                final categoriesAsync = _ref.read(hierarchicalCategoriesProvider);
+                final hierarchicalCategories = categoriesAsync.valueOrNull ?? [];
+
+                if (hierarchicalCategories.isEmpty) {
+                  Log.w('⚠️ Categories not loaded yet, skipping recurring creation. Action: $action', label: 'Chat Provider');
+                  print('⚠️ [CREATE_RECURRING] Categories not ready, action skipped');
+                  displayMessage += '\n\n⚠️ Lỗi: Danh mục chưa tải xong. Vui lòng thử lại sau vài giây.';
+                  break;
+                }
 
                 // Get wallet used by recurring (query directly from database)
                 final walletDao = _ref.read(walletDaoProvider);
@@ -640,16 +678,48 @@ class ChatNotifier extends StateNotifier<ChatState> {
                 )).toList();
 
                 final aiCurrency = action['currency'] ?? 'VND';
+                final originalAmount = (action['amount'] as num?)?.toDouble() ?? 0.0;
+
                 WalletModel? usedWallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
                 if (usedWallet == null && allWallets.isNotEmpty) {
                   usedWallet = allWallets.first;
                 }
 
-                await _createRecurringFromAction(action);
+                Log.d('🔵 Calling _createRecurringFromAction...', label: 'Chat Provider');
+                final convertedAmount = await _createRecurringFromAction(action);
+                Log.d('✅ _createRecurringFromAction completed', label: 'Chat Provider');
 
                 // IMPORTANT: Replace "Active Wallet" with actual wallet name in AI response
                 if (usedWallet != null) {
                   displayMessage = displayMessage.replaceAll('Active Wallet', usedWallet.name);
+
+                  // Add conversion info if currency was converted
+                  if (aiCurrency != usedWallet.currency) {
+                    // Format amounts with proper separators
+                    final convertedFormatted = _formatAmount(convertedAmount, currency: usedWallet.currency);
+                    final originalFormatted = _formatAmount(originalAmount, currency: aiCurrency);
+
+                    // Build conversion text in user's language (detect from AI response)
+                    String conversionText;
+                    if (displayMessage.contains('已记录') || displayMessage.contains('记录')) {
+                      // Chinese
+                      conversionText = ' (自动从 $originalFormatted 转换)';
+                    } else if (displayMessage.contains('Đã ghi nhận') || displayMessage.contains('đã ghi nhận')) {
+                      // Vietnamese
+                      conversionText = ' (tự động quy đổi từ $originalFormatted)';
+                    } else {
+                      // English (default)
+                      conversionText = ' (auto-converted from $originalFormatted)';
+                    }
+
+                    // Insert conversion info after the converted amount in displayMessage
+                    displayMessage = displayMessage.replaceFirst(
+                      convertedFormatted,
+                      '$convertedFormatted$conversionText'
+                    );
+
+                    Log.d('Added conversion info to display message: $originalFormatted → $convertedFormatted', label: 'Chat Provider');
+                  }
                 }
 
                 // Note: No need to add confirmation message here because AI already provides
@@ -661,7 +731,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
                 Log.d('Unknown action: $actionType', label: 'Chat Provider');
               }
           }
-        } catch (e) {
+        } catch (e, stackTrace) {
+          print('📱 [DEBUG] Exception caught while parsing: $e');
+          print('📱 [DEBUG] Stack trace: $stackTrace');
           Log.e('Failed to parse AI action: $e', label: 'Chat Provider');
           // If JSON parsing fails, just show original response without JSON
         }
@@ -1677,8 +1749,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
   }
 
-  Future<void> _createRecurringFromAction(Map<String, dynamic> action) async {
+  /// Returns the converted amount in wallet currency
+  Future<double> _createRecurringFromAction(Map<String, dynamic> action) async {
     try {
+      Log.d('🔵 _createRecurringFromAction() START', label: 'CREATE_RECURRING');
+
       final name = (action['name'] as String?) ?? 'New Recurring';
       final amount = (action['amount'] as num?)?.toDouble() ?? 0.0;
       final aiCurrency = (action['currency'] as String?) ?? 'VND';
@@ -1734,20 +1809,52 @@ class ChatNotifier extends StateNotifier<ChatState> {
       }
 
       Log.d('Flattened categories for matching: ${allCategories.map((c) => c.title).join(", ")}', label: 'CREATE_RECURRING');
-      Log.d('Looking for category: "$categoryName"', label: 'CREATE_RECURRING');
+      Log.d('Looking for category: "$categoryName" (AI returned in English)', label: 'CREATE_RECURRING');
 
-      // Simple exact match (case insensitive) - Trust LLM output, just validate
-      final category = allCategories.firstWhereOrNull(
+      // Step 1: Try exact match (case insensitive) first
+      CategoryModel? category = allCategories.firstWhereOrNull(
         (c) => c.title.toLowerCase() == categoryName.toLowerCase(),
       );
 
-      if (category != null) {
-        Log.d('✅ Category matched: "${category.title}"', label: 'CREATE_RECURRING');
+      // Step 2: If no exact match, try translation mapping
+      // AI returns English names, but DB may have localized names
+      if (category == null) {
+        Log.d('No exact match, trying translation mapping...', label: 'CREATE_RECURRING');
+        final availableTitles = allCategories.map((c) => c.title).toList();
+        final matchedTitle = CategoryTranslationMap.findMatchingCategory(
+          categoryName,
+          availableTitles,
+        );
+
+        if (matchedTitle != null) {
+          category = allCategories.firstWhereOrNull((c) => c.title == matchedTitle);
+          Log.d('✅ Category matched via translation: "$categoryName" → "${category?.title}"', label: 'CREATE_RECURRING');
+        }
       } else {
-        // LLM sent invalid category - fail loudly to improve prompt
+        Log.d('✅ Category matched exactly: "${category.title}"', label: 'CREATE_RECURRING');
+      }
+
+      // Step 3: If still no match, try fallback to "General" or "Other"
+      if (category == null) {
+        Log.d('No translation match, trying fallback to General/Other...', label: 'CREATE_RECURRING');
+        category = allCategories.firstWhereOrNull((c) =>
+          c.title.toLowerCase().contains('general') ||
+          c.title.toLowerCase().contains('other') ||
+          c.title.toLowerCase().contains('khác') ||
+          c.title.toLowerCase().contains('其他') ||
+          c.title.toLowerCase().contains('chung')
+        );
+
+        if (category != null) {
+          Log.d('✅ Using fallback category: "${category.title}"', label: 'CREATE_RECURRING');
+        }
+      }
+
+      // Step 4: If everything fails, throw error
+      if (category == null) {
         final availableCategories = allCategories.map((c) => c.title).join(', ');
         Log.e('❌ Invalid category "$categoryName" from LLM. Available: $availableCategories', label: 'CREATE_RECURRING');
-        throw Exception('Category "$categoryName" not found. Please choose from available categories.');
+        throw Exception('Category "$categoryName" not found. Please choose from available categories or create it first.');
       }
 
       // Parse frequency
@@ -1799,6 +1906,53 @@ class ChatNotifier extends StateNotifier<ChatState> {
         }
       }
 
+      // Check if we should charge immediately
+      final today = DateTime.now();
+      final isDueToday = nextDueDate.year == today.year &&
+                         nextDueDate.month == today.month &&
+                         nextDueDate.day == today.day;
+      final isPastDue = nextDueDate.isBefore(today);
+      final shouldChargeNow = autoCharge && (isDueToday || isPastDue);
+
+      // CRITICAL FIX: If shouldChargeNow, advance nextDueDate BEFORE saving recurring
+      // This prevents RecurringChargeService from auto-charging the same payment again
+      DateTime recurringNextDueDate = nextDueDate;
+      if (shouldChargeNow) {
+        switch (frequency) {
+          case RecurringFrequency.daily:
+            recurringNextDueDate = nextDueDate.add(const Duration(days: 1));
+            break;
+          case RecurringFrequency.weekly:
+            recurringNextDueDate = nextDueDate.add(const Duration(days: 7));
+            break;
+          case RecurringFrequency.monthly:
+            recurringNextDueDate = DateTime(
+              nextDueDate.year,
+              nextDueDate.month + 1,
+              nextDueDate.day,
+            );
+            break;
+          case RecurringFrequency.quarterly:
+            recurringNextDueDate = DateTime(
+              nextDueDate.year,
+              nextDueDate.month + 3,
+              nextDueDate.day,
+            );
+            break;
+          case RecurringFrequency.yearly:
+            recurringNextDueDate = DateTime(
+              nextDueDate.year + 1,
+              nextDueDate.month,
+              nextDueDate.day,
+            );
+            break;
+          case RecurringFrequency.custom:
+            // Keep same nextDueDate for custom frequency
+            break;
+        }
+        Log.d('shouldChargeNow = true, advancing nextDueDate: $nextDueDate → $recurringNextDueDate', label: 'CREATE_RECURRING');
+      }
+
       // Create recurring model with converted amount and wallet currency
       final recurring = RecurringModel(
         name: name,
@@ -1808,29 +1962,50 @@ class ChatNotifier extends StateNotifier<ChatState> {
         currency: wallet.currency,  // Use wallet currency, not AI currency!
         frequency: frequency,
         startDate: startDate,
-        nextDueDate: nextDueDate,
+        nextDueDate: recurringNextDueDate,  // Use advanced date if shouldChargeNow
         status: RecurringStatus.active,
         enableReminder: enableReminder,
         reminderDaysBefore: 1,
         autoCharge: autoCharge,
         notes: notes,
+        lastChargedDate: shouldChargeNow ? DateTime.now() : null,  // Mark as charged if shouldChargeNow
+        totalPayments: shouldChargeNow ? 1 : 0,  // Set totalPayments if shouldChargeNow
       );
 
       // Save to database
       final db = _ref.read(databaseProvider);
       final recurringId = await db.recurringDao.addRecurring(recurring);
 
-      // If autoCharge is true, create the first transaction immediately
-      // CRITICAL: Only charge if nextDueDate is today or in the past!
-      // Do NOT charge future recurring payments
-      final today = DateTime.now();
-      final isDueToday = nextDueDate.year == today.year &&
-                         nextDueDate.month == today.month &&
-                         nextDueDate.day == today.day;
-      final isPastDue = nextDueDate.isBefore(today);
-      final shouldChargeNow = autoCharge && (isDueToday || isPastDue);
-
       if (shouldChargeNow) {
+        Log.d('shouldChargeNow = true, will create initial transaction', label: 'CREATE_RECURRING');
+        Log.d('Transaction details: amount=$recurringAmount, currency=${wallet.currency}, date=${nextDueDate.toIso8601String()}', label: 'CREATE_RECURRING');
+
+        // Build descriptive title based on frequency
+        String transactionTitle = name;
+        switch (frequency) {
+          case RecurringFrequency.daily:
+            transactionTitle = 'Daily: $name';
+            break;
+          case RecurringFrequency.weekly:
+            transactionTitle = 'Weekly: $name';
+            break;
+          case RecurringFrequency.monthly:
+            transactionTitle = 'Subscription: $name';
+            break;
+          case RecurringFrequency.yearly:
+            transactionTitle = 'Yearly: $name';
+            break;
+          default:
+            transactionTitle = name;
+        }
+
+        // Build notes with conversion info if currency mismatch
+        String transactionNotes = notes ?? 'Auto-charged from recurring payment';
+        if (aiCurrency != wallet.currency) {
+          // Add conversion info to notes
+          transactionNotes = '$transactionNotes\nConverted: $amount $aiCurrency → ${recurringAmount.toStringAsFixed(2)} ${wallet.currency}';
+        }
+
         // Use the converted amount (same as recurring)
         // IMPORTANT: Use nextDueDate as transaction date (not current date)
         // This ensures transaction appears on correct date even if created later
@@ -1838,66 +2013,23 @@ class ChatNotifier extends StateNotifier<ChatState> {
           transactionType: TransactionType.expense,
           amount: recurringAmount,
           date: nextDueDate, // Use due date, not DateTime.now()!
-          title: name,
+          title: transactionTitle,
           category: category,
           wallet: wallet,
-          notes: notes ?? 'Auto-charged from recurring payment',
+          notes: transactionNotes,
         );
         final transactionDao = _ref.read(transactionDaoProvider);
-        await transactionDao.addTransaction(transaction);
-        Log.d('Created initial transaction for recurring payment on date: ${nextDueDate.toIso8601String()}', label: 'CREATE_RECURRING');
-
-        // CRITICAL: Update nextDueDate to NEXT billing cycle after immediate charge
-        // This prevents the recurring from showing as "Overdue" immediately
-        DateTime updatedNextDueDate = nextDueDate;
-        switch (frequency) {
-          case RecurringFrequency.daily:
-            updatedNextDueDate = nextDueDate.add(const Duration(days: 1));
-            break;
-          case RecurringFrequency.weekly:
-            updatedNextDueDate = nextDueDate.add(const Duration(days: 7));
-            break;
-          case RecurringFrequency.monthly:
-            updatedNextDueDate = DateTime(
-              nextDueDate.year,
-              nextDueDate.month + 1,
-              nextDueDate.day,
-            );
-            break;
-          case RecurringFrequency.quarterly:
-            updatedNextDueDate = DateTime(
-              nextDueDate.year,
-              nextDueDate.month + 3,
-              nextDueDate.day,
-            );
-            break;
-          case RecurringFrequency.yearly:
-            updatedNextDueDate = DateTime(
-              nextDueDate.year + 1,
-              nextDueDate.month,
-              nextDueDate.day,
-            );
-            break;
-          case RecurringFrequency.custom:
-            // Keep same nextDueDate for custom frequency (needs custom logic)
-            break;
-        }
-
-        // Update the recurring with new nextDueDate and increment totalPayments
-        final updatedRecurring = recurring.copyWith(
-          id: recurringId,
-          nextDueDate: updatedNextDueDate,
-          lastChargedDate: DateTime.now(),
-          totalPayments: 1,
-        );
-        await db.recurringDao.updateRecurring(updatedRecurring);
-        Log.d('Updated nextDueDate to ${updatedNextDueDate.toIso8601String()} after immediate charge', label: 'CREATE_RECURRING');
+        final transactionId = await transactionDao.addTransaction(transaction);
+        Log.d('Created initial transaction (ID: $transactionId) for recurring payment on date: ${nextDueDate.toIso8601String()}', label: 'CREATE_RECURRING');
       }
 
       // Recurring created successfully - AI will provide the confirmation message
-      Log.d('Recurring created successfully: $name', label: 'CREATE_RECURRING');
+      Log.d('✅ _createRecurringFromAction() END - Recurring created successfully: $name', label: 'CREATE_RECURRING');
+
+      // Return the converted amount in wallet currency
+      return recurringAmount;
     } catch (e, stackTrace) {
-      Log.e('Failed to create recurring: $e', label: 'CREATE_RECURRING');
+      Log.e('❌ _createRecurringFromAction() FAILED: $e', label: 'CREATE_RECURRING');
       Log.e('Stack trace: $stackTrace', label: 'CREATE_RECURRING');
       rethrow;
     }
