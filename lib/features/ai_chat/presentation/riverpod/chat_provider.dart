@@ -182,30 +182,26 @@ final aiServiceProvider = Provider<AIService>((ref) {
   final walletCurrency = wallet?.currency ?? 'VND';
   final walletName = wallet?.name ?? 'Active Wallet';
 
-  // Get all wallets for AI context
+  // Get all wallets for AI context with currency info
   final allWalletsAsync = ref.read(allWalletsStreamProvider);
   final allWallets = allWalletsAsync.valueOrNull ?? [];
-  final walletNames = allWallets.map((w) => w.name).toList();
+  // Format: "Wallet Name (CURRENCY)" so AI knows each wallet's currency
+  final walletNames = allWallets.map((w) => '${w.name} (${w.currency})').toList();
 
   Log.d('Available wallets for AI: ${walletNames.join(", ")}', label: 'Chat Provider');
 
   // Get exchange rate for AI currency conversion display
-  // Try to fetch from cache first, if not available trigger a fetch in background
+  // Try cache first - if empty, AI will work without conversion message
   final exchangeRateCache = ref.read(exchangeRateCacheProvider);
   final String rateKey = 'VND_USD';
   final cachedRate = exchangeRateCache[rateKey];
-  double? exchangeRateVndToUsd = cachedRate?.rate;
+  final double? exchangeRateVndToUsd = cachedRate?.rate;
 
   if (exchangeRateVndToUsd != null) {
-    Log.d('Exchange rate VND to USD (cached): $exchangeRateVndToUsd', label: 'Chat Provider');
+    Log.d('✅ Exchange rate VND to USD for AI (from cache): $exchangeRateVndToUsd', label: 'Chat Provider');
   } else {
-    Log.w('No cached exchange rate available for AI, fetching in background...', label: 'Chat Provider');
-    // Trigger fetch in background (don't await to avoid blocking AI service init)
-    ref.read(exchangeRateCacheProvider.notifier).getRate('VND', 'USD').then((rate) {
-      Log.d('Exchange rate VND to USD fetched: $rate', label: 'Chat Provider');
-    }).catchError((e) {
-      Log.e('Failed to fetch exchange rate: $e', label: 'Chat Provider');
-    });
+    Log.w('⚠️ No cached exchange rate - AI will work without conversion display', label: 'Chat Provider');
+    // Note: Cache will be populated on first transaction view, then AI will have rate on next init
   }
 
   // Check which AI provider to use

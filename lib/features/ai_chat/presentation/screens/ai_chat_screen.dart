@@ -7,6 +7,8 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/presentation/riverpod/chat_provider.dart';
 
@@ -18,6 +20,25 @@ class AIChatScreen extends HookConsumerWidget {
     final chatState = ref.watch(chatProvider);
     final chatNotifier = ref.read(chatProvider.notifier);
     final textController = useTextEditingController();
+
+    // Proactively fetch exchange rate when chat screen opens
+    // This ensures AI has exchange rate data for currency conversion messages
+    useEffect(() {
+      Future.microtask(() async {
+        try {
+          final rate = await ref.read(exchangeRateCacheProvider.notifier).getRate('VND', 'USD');
+          Log.d('📊 [ChatScreen] Exchange rate VND->USD pre-fetched: $rate', label: 'Chat Screen');
+
+          // CRITICAL: Invalidate AI service to rebuild with exchange rate
+          // This ensures next AI message will have conversion info
+          ref.invalidate(aiServiceProvider);
+          Log.d('🔄 [ChatScreen] AI service invalidated - will rebuild with exchange rate', label: 'Chat Screen');
+        } catch (e) {
+          Log.e('Failed to pre-fetch exchange rate: $e', label: 'Chat Screen');
+        }
+      });
+      return null;
+    }, []);
 
     return CustomScaffold(
       context: context,

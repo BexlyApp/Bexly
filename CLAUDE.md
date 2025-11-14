@@ -8,6 +8,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Chỉ dùng tiếng Việt khi chat/giải thích với user
 - Documentation và code comments phải bằng tiếng Anh
 
+## CRITICAL: Command Usage Rules
+- **ALWAYS use `flutter` command directly** (NOT `/d/Dev/flutter/bin/flutter` or `D:/Dev/flutter/bin/flutter.bat`)
+- **ALWAYS use `dart` command directly** (NOT full paths)
+- Flutter and Dart are already in PATH - use them directly
+- Examples:
+  - ✅ CORRECT: `flutter build apk --release`
+  - ❌ WRONG: `D:/Dev/flutter/bin/flutter.bat build apk --release`
+  - ✅ CORRECT: `dart run build_runner build`
+  - ❌ WRONG: `/d/Dev/flutter/bin/dart run build_runner build`
+
 ## Project Overview
 
 Bexly is a Flutter-based personal finance and budget tracking application with a focus on cross-platform sync and AI agent capabilities. The project uses a feature-based clean architecture with Riverpod for state management, Drift for local database storage, and Firebase for cloud sync and authentication.
