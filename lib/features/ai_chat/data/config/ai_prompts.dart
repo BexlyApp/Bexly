@@ -63,17 +63,39 @@ Currency symbols and explicit currency:
 - "฿" / "THB" → Thai Baht
 - "VND" / "đồng" → Vietnamese Dong
 
-Shorthand notation (context-dependent):
-- Vietnamese input + "k/tr" → VND (e.g., "300k" = 300,000 VND)
-- Chinese input + "k/万/千" → RMB (e.g., "300元" = 300 RMB)
-- English input + "k" → wallet default currency
-- No explicit currency → wallet default currency
+Shorthand notation (CONTEXT-AWARE):
+- "k" = thousand (1,000) - multiply by 1,000
+- "tr" (Vietnamese "triệu") = million in VND ONLY
+  - "2.5tr" / "2tr5" = 2,500,000 VND
+  - "tr" only applies to VND, never USD
+
+Determine currency for "k" notation (SMART INFERENCE):
+1. Vietnamese input + "k" → ALWAYS VND
+   - "ăn sáng 150k" → 150,000 VND (high confidence)
+2. English input + "k" + REASONABLE amount for item → use default wallet currency
+   - "lunch 50k" in English + USD wallet → 50,000 USD (reasonable for business lunch? NO - CONFIRM!)
+   - "laptop 2k" in English + USD wallet → 2,000 USD (reasonable)
+3. English input + "k" + UNREASONABLE amount → ASK FOR CONFIRMATION
+   - "lunch 150k" in English → SUSPICIOUS (could be 150k USD or 150k VND?)
+   - Response: "Do you mean 150,000 USD or 150k VND? That seems high for lunch in USD."
+4. Explicit currency ALWAYS wins
+   - "150k VND" → 150,000 VND
+   - "150k USD" → 150,000 USD
 
 Vietnamese-specific:
-- "2.5tr" / "2tr5" = 2,500,000 VND
 - Numbers may use dots/spaces: 1.000.000 = 1,000,000
+- "đô" = USD (đô la)
 
-Key: Detect input language FIRST, then determine currency
+Currency priority:
+1. Explicit currency symbol/word (\$, dollar, VND, đô) → use that currency
+2. Vietnamese input + "k/tr" → VND (high confidence)
+3. Wallet specified in input → use that wallet's currency (but confirm if unreasonable)
+4. No currency + English input → use active wallet's currency (but CONFIRM if amount seems wrong)
+
+Chinese/Japanese specific:
+- Chinese input + "万/千" → RMB (e.g., "300元" = 300 RMB)
+- Japanese input + "円" → JPY
+
 Always include "currency" field in JSON.''';
 
   /// Build date parsing rules dynamically
@@ -120,14 +142,19 @@ WALLET MATCHING:
    - Chinese: "用[wallet]", "在[wallet]", "从[wallet]"
    - Japanese: "[wallet]で", "[wallet]から"
 2. Match wallet name from AVAILABLE WALLETS list (case-insensitive, partial match OK)
-3. If user specifies wallet, include "wallet" field in JSON with EXACT wallet name from list
+   - Format: "Wallet Name (CURRENCY)" - e.g., "Credit Card (USD)", "My Wallet (VND)"
+   - Match by wallet NAME only, ignore currency in parentheses
+3. If user specifies wallet, include "wallet" field in JSON with EXACT wallet name (without currency)
 4. If no wallet specified, omit "wallet" field (will use active/default wallet)
-5. Examples:
-   - "lunch 50k on Credit Card" → "wallet":"Credit Card"
-   - "ăn sáng 50k vào USDT" → "wallet":"USDT"
-   - "Netflix 300k" (no wallet specified) → no "wallet" field
-6. IMPORTANT: Return exact wallet name as it appears in AVAILABLE WALLETS list
-7. If user mentions wallet not in list, omit "wallet" field and mention in response''';
+5. Use wallet currency for "k" notation when wallet is specified:
+   - "lunch 50k on Credit Card (USD)" → 50,000 USD (if reasonable, else CONFIRM)
+   - "lunch 50k vào My Wallet (VND)" → 50,000 VND
+6. Examples:
+   - "lunch 50k on Credit Card" → "wallet":"Credit Card", currency determined by Credit Card's currency (USD)
+   - "ăn sáng 50k vào USDT" → "wallet":"USDT", currency VND (Vietnamese input)
+   - "Netflix 300k" (no wallet specified) → no "wallet" field, use active wallet currency
+7. IMPORTANT: Return exact wallet name as it appears in AVAILABLE WALLETS list (but WITHOUT the currency suffix)
+8. If user mentions wallet not in list, omit "wallet" field and mention in response''';
 
   // =========================================================================
   // SECTION 4: BUSINESS LOGIC (Consolidated)
@@ -158,6 +185,20 @@ Else → create_expense/create_income (one-time transaction)
 TRANSACTION TYPE:
 Expense: mua|buy|trả|pay|chi|cost|nợ|debt payment
 Income: thu|income|nhận|receive|bán|sell|vay|borrow|thu nợ
+
+SANITY CHECK (CRITICAL - Prevent errors):
+Before creating transaction, verify if amount makes sense:
+- Lunch/coffee/snacks: Usually under 50 USD or under 500,000 VND
+- Groceries: Usually under 200 USD or under 5,000,000 VND
+- Electronics/big purchases: Can be 1000+ USD or 20M+ VND
+- If amount seems unreasonably HIGH for the item type → ASK FOR CONFIRMATION
+  - Example: "lunch 150k" is reasonable (150,000 VND = about 5.70 USD)
+  - Example: "lunch 150" without currency in English → SUSPICIOUS (might be 150 USD = 3.9M VND for lunch!)
+  - Response: "Bạn muốn ghi nhận lunch là 150 USD (3,948,225 VND) phải không? Vui lòng xác nhận hoặc sửa lại số tiền."
+- ALWAYS confirm when:
+  - Amount over 100 USD for food/drinks
+  - Amount over 500 USD for groceries
+  - User input is ambiguous (e.g., "150" without "k" or currency symbol)
 
 CURRENCY CONVERSION:
 When user's currency differs from wallet currency:
