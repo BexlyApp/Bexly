@@ -189,16 +189,23 @@ final aiServiceProvider = Provider<AIService>((ref) {
 
   Log.d('Available wallets for AI: ${walletNames.join(", ")}', label: 'Chat Provider');
 
-  // Get exchange rate for AI currency conversion display (synchronous from cache)
+  // Get exchange rate for AI currency conversion display
+  // Try to fetch from cache first, if not available trigger a fetch in background
   final exchangeRateCache = ref.read(exchangeRateCacheProvider);
   final String rateKey = 'VND_USD';
   final cachedRate = exchangeRateCache[rateKey];
-  final double? exchangeRateVndToUsd = cachedRate?.rate;
+  double? exchangeRateVndToUsd = cachedRate?.rate;
 
   if (exchangeRateVndToUsd != null) {
     Log.d('Exchange rate VND to USD (cached): $exchangeRateVndToUsd', label: 'Chat Provider');
   } else {
-    Log.w('No cached exchange rate available for AI', label: 'Chat Provider');
+    Log.w('No cached exchange rate available for AI, fetching in background...', label: 'Chat Provider');
+    // Trigger fetch in background (don't await to avoid blocking AI service init)
+    ref.read(exchangeRateCacheProvider.notifier).getRate('VND', 'USD').then((rate) {
+      Log.d('Exchange rate VND to USD fetched: $rate', label: 'Chat Provider');
+    }).catchError((e) {
+      Log.e('Failed to fetch exchange rate: $e', label: 'Chat Provider');
+    });
   }
 
   // Check which AI provider to use
