@@ -182,6 +182,13 @@ final aiServiceProvider = Provider<AIService>((ref) {
   final walletCurrency = wallet?.currency ?? 'VND';
   final walletName = wallet?.name ?? 'Active Wallet';
 
+  // Get all wallets for AI context
+  final allWalletsAsync = ref.read(allWalletsStreamProvider);
+  final allWallets = allWalletsAsync.valueOrNull ?? [];
+  final walletNames = allWallets.map((w) => w.name).toList();
+
+  Log.d('Available wallets for AI: ${walletNames.join(", ")}', label: 'Chat Provider');
+
   // Get exchange rate for AI currency conversion display (synchronous from cache)
   final exchangeRateCache = ref.read(exchangeRateCacheProvider);
   final String rateKey = 'VND_USD';
@@ -220,6 +227,7 @@ final aiServiceProvider = Provider<AIService>((ref) {
       walletCurrency: walletCurrency,
       walletName: walletName,
       exchangeRateVndToUsd: exchangeRateVndToUsd,
+      wallets: walletNames,
     );
   } else {
     // Default to OpenAI service
@@ -244,6 +252,7 @@ final aiServiceProvider = Provider<AIService>((ref) {
       walletCurrency: walletCurrency,
       walletName: walletName,
       exchangeRateVndToUsd: exchangeRateVndToUsd,
+      wallets: walletNames,
     );
   }
 });
@@ -475,8 +484,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
                 // Get currency from AI action
                 final double amount = (action['amount'] as num).toDouble();
                 final String aiCurrency = action['currency'] ?? 'VND';
+                final String? aiWalletName = action['wallet']; // Get wallet name from AI
 
-                Log.d('AI action: amount=$amount, currency=$aiCurrency', label: 'AI_CURRENCY');
+                Log.d('AI action: amount=$amount, currency=$aiCurrency, wallet=${aiWalletName ?? "not specified"}', label: 'AI_CURRENCY');
 
                 // IMPORTANT: Query wallets directly from database instead of using Stream provider
                 // Stream providers may not have latest data immediately after invalidate
@@ -494,15 +504,33 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
                 Log.d('Fetched ${allWallets.length} wallets from database', label: 'Chat Provider');
 
-                // Prefer wallet with matching currency, fall back to first wallet
-                WalletModel? wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
+                WalletModel? wallet;
 
+                // Priority 1: If AI specified a wallet name, use it
+                if (aiWalletName != null && aiWalletName.isNotEmpty) {
+                  wallet = allWallets.firstWhereOrNull((w) =>
+                    w.name.toLowerCase() == aiWalletName.toLowerCase());
+
+                  if (wallet != null) {
+                    Log.d('Using AI-specified wallet: "${wallet.name}" (${wallet.currency})', label: 'AI_CURRENCY');
+                  } else {
+                    Log.w('AI specified wallet "$aiWalletName" not found, falling back to currency matching', label: 'AI_CURRENCY');
+                  }
+                }
+
+                // Priority 2: Match wallet by currency
+                if (wallet == null) {
+                  wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
+
+                  if (wallet != null) {
+                    Log.d('Found wallet "${wallet.name}" for currency $aiCurrency (no conversion needed)', label: 'AI_CURRENCY');
+                  }
+                }
+
+                // Priority 3: Use first available wallet
                 if (wallet == null && allWallets.isNotEmpty) {
-                  // No wallet with matching currency, use first wallet (will auto-convert)
                   wallet = allWallets.first;
                   Log.d('No wallet found for $aiCurrency, using first wallet: ${wallet.name} (${wallet.currency}) - will convert', label: 'AI_CURRENCY');
-                } else if (wallet != null) {
-                  Log.d('Found wallet "${wallet.name}" for currency $aiCurrency (no conversion needed)', label: 'AI_CURRENCY');
                 }
 
                 if (wallet == null) {
@@ -679,8 +707,28 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
                 final aiCurrency = action['currency'] ?? 'VND';
                 final originalAmount = (action['amount'] as num?)?.toDouble() ?? 0.0;
+                final String? aiWalletName = action['wallet']; // Get wallet name from AI
 
-                WalletModel? usedWallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
+                WalletModel? usedWallet;
+
+                // Priority 1: If AI specified a wallet name, use it
+                if (aiWalletName != null && aiWalletName.isNotEmpty) {
+                  usedWallet = allWallets.firstWhereOrNull((w) =>
+                    w.name.toLowerCase() == aiWalletName.toLowerCase());
+
+                  if (usedWallet != null) {
+                    Log.d('Using AI-specified wallet for recurring: "${usedWallet.name}" (${usedWallet.currency})', label: 'CREATE_RECURRING');
+                  } else {
+                    Log.w('AI specified wallet "$aiWalletName" not found for recurring, falling back to currency matching', label: 'CREATE_RECURRING');
+                  }
+                }
+
+                // Priority 2: Match wallet by currency
+                if (usedWallet == null) {
+                  usedWallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
+                }
+
+                // Priority 3: Use first available wallet
                 if (usedWallet == null && allWallets.isNotEmpty) {
                   usedWallet = allWallets.first;
                 }

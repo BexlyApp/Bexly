@@ -20,6 +20,7 @@ mixin AIServicePromptMixin {
   String? get walletCurrency => null; // Optional wallet currency for conversion notification
   String? get walletName => null; // Optional wallet name for personalized responses
   double? get exchangeRateVndToUsd => null; // Optional exchange rate VND to USD
+  List<String>? get wallets => null; // Optional list of available wallets
 
   /// Build complete system prompt using centralized config
   String get systemPrompt => AIPrompts.buildSystemPrompt(
@@ -29,11 +30,12 @@ mixin AIServicePromptMixin {
         walletCurrency: walletCurrency,
         walletName: walletName,
         exchangeRateVndToUsd: exchangeRateVndToUsd,
+        wallets: wallets,
       );
 
   // Legacy getters for backwards compatibility (all delegate to AIPrompts)
   String get systemInstruction => AIPrompts.systemInstruction;
-  String get contextSection => AIPrompts.buildContextSection(categories, categoryHierarchy: categoryHierarchy);
+  String get contextSection => AIPrompts.buildContextSection(categories, categoryHierarchy: categoryHierarchy, wallets: wallets);
   String get amountParsingRules => AIPrompts.amountParsingRules;
   String get actionSchemas => AIPrompts.actionSchemas;
   String get businessRules => AIPrompts.businessRules;
@@ -62,6 +64,9 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   @override
   final double? exchangeRateVndToUsd;
 
+  @override
+  final List<String>? wallets;
+
   String _recentTransactionsContext = '';
 
   @override
@@ -79,8 +84,9 @@ class OpenAIService with AIServicePromptMixin implements AIService {
     this.walletCurrency,
     this.walletName,
     this.exchangeRateVndToUsd,
+    this.wallets,
   }) {
-    Log.d('OpenAIService initialized with model: $model, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency)', label: 'AI Service');
+    Log.d('OpenAIService initialized with model: $model, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}', label: 'AI Service');
   }
 
   @override
@@ -241,6 +247,9 @@ class GeminiService with AIServicePromptMixin implements AIService {
   @override
   final double? exchangeRateVndToUsd;
 
+  @override
+  final List<String>? wallets;
+
   String _recentTransactionsContext = '';
 
   @override
@@ -257,8 +266,9 @@ class GeminiService with AIServicePromptMixin implements AIService {
     this.walletCurrency,
     this.walletName,
     this.exchangeRateVndToUsd,
+    this.wallets,
   }) {
-    Log.d('GeminiService initialized with model: $model, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency)', label: 'AI Service');
+    Log.d('GeminiService initialized with model: $model, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}', label: 'AI Service');
   }
 
   @override
@@ -278,7 +288,20 @@ class GeminiService with AIServicePromptMixin implements AIService {
   @override
   Future<String> sendMessage(String message) async {
     try {
-      Log.d('Sending message to Gemini: $message', label: 'Gemini Service');
+      Log.d('🔵 === GEMINI API CALL START ===', label: 'Gemini Service');
+      Log.d('🔵 User input: "$message"', label: 'Gemini Service');
+      Log.d('🔵 Input length: ${message.length} characters', label: 'Gemini Service');
+      Log.d('🔵 Input encoding (first 50 chars): ${message.length > 50 ? message.substring(0, 50).codeUnits : message.codeUnits}', label: 'Gemini Service');
+
+      // Log if Chinese characters detected
+      final hasChinese = message.contains(RegExp(r'[\u4e00-\u9fa5]'));
+      final hasJapanese = message.contains(RegExp(r'[\u3040-\u309f\u30a0-\u30ff]'));
+      if (hasChinese) {
+        Log.d('🔍 Chinese characters detected in input', label: 'Gemini Service');
+      }
+      if (hasJapanese) {
+        Log.d('🔍 Japanese characters detected in input', label: 'Gemini Service');
+      }
 
       // Validate API key
       if (apiKey.isEmpty || apiKey == 'USER_MUST_PROVIDE_API_KEY') {
@@ -330,9 +353,12 @@ class GeminiService with AIServicePromptMixin implements AIService {
       Log.d('Conversation history updated (${_conversationHistory.length} messages)', label: 'AI Service');
 
       return content.trim();
-    } catch (e) {
-      Log.e('Error calling Gemini API: $e', label: 'Gemini Service');
-      
+    } catch (e, stackTrace) {
+      Log.e('❌ Error calling Gemini API: $e', label: 'Gemini Service');
+      Log.e('❌ Stack trace: $stackTrace', label: 'Gemini Service');
+      Log.e('❌ Error type: ${e.runtimeType}', label: 'Gemini Service');
+      Log.e('❌ Error toString: ${e.toString()}', label: 'Gemini Service');
+
       // Parse error for user-friendly message
       String userFriendlyMessage = 'Sorry, an error occurred with Gemini AI.';
       

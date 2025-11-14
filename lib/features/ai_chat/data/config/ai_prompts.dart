@@ -32,17 +32,17 @@ OUTPUT FORMAT:
 Return response text, then ACTION_JSON: <json>
 
 SCHEMAS:
-1. create_expense: {"action":"create_expense","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>"}
-2. create_income: {"action":"create_income","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>"}
+1. create_expense: {"action":"create_expense","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>","wallet":"<str>"?}
+2. create_income: {"action":"create_income","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>","wallet":"<str>"?}
 3. create_budget: {"action":"create_budget","amount":<num>,"currency":"USD|VND","category":"<str>","period":"monthly|weekly|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?}
 4. create_goal: {"action":"create_goal","title":"<str>","targetAmount":<num>,"currency":"USD|VND","currentAmount":<num>?,"deadline":"YYYY-MM-DD"?}
-5. get_balance: {"action":"get_balance"}
-6. get_summary: {"action":"get_summary","range":"today|week|month|quarter|year|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?}
-7. list_transactions: {"action":"list_transactions","range":"today|week|month|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?,"limit":<num>?}
+5. get_balance: {"action":"get_balance","wallet":"<str>"?}
+6. get_summary: {"action":"get_summary","range":"today|week|month|quarter|year|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?,"wallet":"<str>"?}
+7. list_transactions: {"action":"list_transactions","range":"today|week|month|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?,"limit":<num>?,"wallet":"<str>"?}
 8. update_transaction: {"action":"update_transaction","transactionId":<num>,"amount":<num>?,"currency":"USD|VND"?,"description":"<str>"?,"category":"<str>"?,"date":"YYYY-MM-DD"?}
 9. delete_transaction: {"action":"delete_transaction","transactionId":<num>}
 10. create_wallet: {"action":"create_wallet","name":"<str>","currency":"USD|VND","initialBalance":<num>?}
-11. create_recurring: {"action":"create_recurring","name":"<str>","amount":<num>,"currency":"USD|VND","category":"<str>","frequency":"daily|weekly|monthly|yearly","nextDueDate":"YYYY-MM-DD","enableReminder":<bool>?,"autoCharge":<bool>?}
+11. create_recurring: {"action":"create_recurring","name":"<str>","amount":<num>,"currency":"USD|VND","category":"<str>","frequency":"daily|weekly|monthly|yearly","nextDueDate":"YYYY-MM-DD","enableReminder":<bool>?,"autoCharge":<bool>?,"wallet":"<str>"?}
 
 RECURRING NOTES:
 - nextDueDate = first billing date
@@ -112,6 +112,23 @@ CATEGORY MATCHING:
 5. Parent categories are for grouping only - choose the subcategory!
 6. NEVER make up category names - use standard English category names''';
 
+  static const String walletMatchingRules = '''
+WALLET MATCHING:
+1. Detect wallet name from user input using keywords:
+   - English: "on [wallet]", "to [wallet]", "from [wallet]", "in [wallet]", "using [wallet]"
+   - Vietnamese: "vào [wallet]", "từ [wallet]", "ở [wallet]", "dùng [wallet]", "trên [wallet]"
+   - Chinese: "用[wallet]", "在[wallet]", "从[wallet]"
+   - Japanese: "[wallet]で", "[wallet]から"
+2. Match wallet name from AVAILABLE WALLETS list (case-insensitive, partial match OK)
+3. If user specifies wallet, include "wallet" field in JSON with EXACT wallet name from list
+4. If no wallet specified, omit "wallet" field (will use active/default wallet)
+5. Examples:
+   - "lunch 50k on Credit Card" → "wallet":"Credit Card"
+   - "ăn sáng 50k vào USDT" → "wallet":"USDT"
+   - "Netflix 300k" (no wallet specified) → no "wallet" field
+6. IMPORTANT: Return exact wallet name as it appears in AVAILABLE WALLETS list
+7. If user mentions wallet not in list, omit "wallet" field and mention in response''';
+
   // =========================================================================
   // SECTION 4: BUSINESS LOGIC (Consolidated)
   // =========================================================================
@@ -179,6 +196,10 @@ EXAMPLES:
 IN: "lunch 300k"
 OUT: "Recorded 300K VND lunch expense"
 JSON: {"action":"create_expense","amount":300000,"currency":"VND","description":"Lunch","category":"Food & Drinks"}
+
+IN: "lunch 50k on Credit Card"
+OUT: "Recorded 50K VND lunch expense on Credit Card"
+JSON: {"action":"create_expense","amount":50000,"currency":"VND","description":"Lunch","category":"Food & Drinks","wallet":"Credit Card"}
 
 IN: "Tôi mua card đồ họa"
 OUT: "Bạn đã mua card đồ họa, nhưng mình cần biết giá để ghi nhận. Giá bao nhiêu?"
@@ -259,16 +280,26 @@ FOOD CATEGORY RULES:
   // DYNAMIC SECTIONS (Context-dependent)
   // =========================================================================
 
-  /// Build context section with categories
-  static String buildContextSection(List<String> categories, {String? categoryHierarchy}) {
+  /// Build context section with categories and wallets
+  static String buildContextSection(
+    List<String> categories, {
+    String? categoryHierarchy,
+    List<String>? wallets,
+  }) {
     final categoriesSection = (categoryHierarchy != null && categoryHierarchy.isNotEmpty)
         ? categoryHierarchy
         : 'CATEGORIES: ${categories.isEmpty ? "(none)" : categories.join(", ")}';
 
-    return '''
-$categoriesSection
+    final walletsSection = (wallets != null && wallets.isNotEmpty)
+        ? '\n\nAVAILABLE WALLETS: ${wallets.join(", ")}'
+        : '';
 
-$categoryMatchingRules''';
+    return '''
+$categoriesSection$walletsSection
+
+$categoryMatchingRules
+
+$walletMatchingRules''';
   }
 
   /// Build recent transactions section
@@ -294,10 +325,11 @@ Use transaction IDs from this list when user references them.''';
     String? walletCurrency,
     String? walletName,
     double? exchangeRateVndToUsd,
+    List<String>? wallets,
   }) {
     // Add wallet context if provided
     final walletContext = (walletCurrency != null || walletName != null)
-        ? '\nCURRENT WALLET: ${walletName ?? 'Active Wallet'} (${walletCurrency ?? 'VND'})\nAlways mention wallet name "${walletName ?? 'Active Wallet'}" in response.\nWhen user provides amount in different currency, mention conversion in response.'
+        ? '\nCURRENT WALLET: ${walletName ?? 'Active Wallet'} (${walletCurrency ?? 'VND'})\nAlways mention wallet name in response.\nWhen user provides amount in different currency, mention conversion in response.'
         : '';
 
     // Add exchange rate context if provided
@@ -314,7 +346,7 @@ $amountParsingRules
 
 ${buildDateParsingRules()}
 
-${buildContextSection(categories, categoryHierarchy: categoryHierarchy)}
+${buildContextSection(categories, categoryHierarchy: categoryHierarchy, wallets: wallets)}
 
 ${buildRecentTransactionsSection(recentTransactionsContext)}
 

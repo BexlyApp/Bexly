@@ -437,6 +437,16 @@ class ConflictResolutionService {
           }
         }
 
+        // CRITICAL FIX: Check if transaction already exists by cloudId to prevent duplicates
+        final existingTransaction = await (_localDb.select(_localDb.transactions)
+              ..where((t) => t.cloudId.equals(doc.id)))
+            .getSingleOrNull();
+
+        if (existingTransaction != null) {
+          print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} - already exists in local DB (local ID: ${existingTransaction.id})');
+          continue;
+        }
+
         await (_localDb.into(_localDb.transactions)).insert(
           TransactionsCompanion.insert(
             transactionType: data['transactionType'] as int,
@@ -455,6 +465,11 @@ class ConflictResolutionService {
         );
       }
       print('✅ [DOWNLOAD] Transactions inserted to local DB');
+
+      // Recalculate all wallet balances from transactions
+      print('🔍 [DOWNLOAD] Recalculating wallet balances...');
+      await _localDb.walletDao.recalculateAllBalances();
+      print('✅ [DOWNLOAD] Wallet balances recalculated');
 
       print('✅ [DOWNLOAD] COMPLETE: ${categoriesSnapshot.docs.length} categories, ${walletsSnapshot.docs.length} wallets, ${transactionsSnapshot.docs.length} transactions');
     } catch (e, stackTrace) {
