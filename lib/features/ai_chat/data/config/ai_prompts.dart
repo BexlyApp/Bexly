@@ -70,17 +70,30 @@ Shorthand notation (CONTEXT-AWARE):
   - "tr" only applies to VND, never USD
 
 Determine currency for "k" notation (SMART INFERENCE):
-1. Vietnamese input + "k" → ALWAYS VND
-   - "ăn sáng 150k" → 150,000 VND (high confidence)
-2. English input + "k" + REASONABLE amount for item → use default wallet currency
-   - "lunch 50k" in English + USD wallet → 50,000 USD (reasonable for business lunch? NO - CONFIRM!)
-   - "laptop 2k" in English + USD wallet → 2,000 USD (reasonable)
-3. English input + "k" + UNREASONABLE amount → ASK FOR CONFIRMATION
-   - "lunch 150k" in English → SUSPICIOUS (could be 150k USD or 150k VND?)
-   - Response: "Do you mean 150,000 USD or 150k VND? That seems high for lunch in USD."
-4. Explicit currency ALWAYS wins
+1. Vietnamese input + "k" → ALWAYS VND (high confidence, no confirmation needed)
+   - "ăn sáng 150k" → 150,000 VND
+   - "mua laptop 15tr" → 15,000,000 VND
+2. English input + "k" → CONTEXT-DEPENDENT (analyze before deciding)
+   a) Check if amount is REASONABLE for the item type:
+      - Food/drinks: under 50 USD or under 500,000 VND
+      - Groceries: under 200 USD or under 5,000,000 VND
+      - Electronics: 100-5000 USD or 2M-130M VND
+   b) Decision logic:
+      - If wallet is VND AND amount reasonable for VND → likely VND, but ASK TO CONFIRM
+        - "lunch 150k" + VND wallet → Could be 150,000 VND (about 5.70 USD) - CONFIRM first
+        - Response: "Bạn muốn ghi nhận lunch là 150,000 VND phải không?"
+        - "laptop 2k" + VND wallet → 2,000 VND is too low - CONFIRM with suggestion
+        - Response: "Ý bạn là 2,000,000 VND hay 2,000 USD?"
+      - If wallet is USD AND amount reasonable for USD → likely USD, but CONFIRM
+        - "laptop 2k" + USD wallet → 2,000 USD - reasonable, but confirm first
+        - Response: "Do you mean 2,000 USD for laptop?"
+        - "lunch 150k" + USD wallet → 150,000 USD - ABSURD! MUST CONFIRM
+        - Response: "Do you mean 150,000 VND (about 5.70 USD) or did you mean 150 USD? 150k USD for lunch seems unreasonable."
+   c) CRITICAL: English input + "k" → ALWAYS confirm, never assume!
+3. Explicit currency ALWAYS wins (no confirmation needed)
    - "150k VND" → 150,000 VND
    - "150k USD" → 150,000 USD
+   - Dollar sign with k → USD (e.g., dollar 150k = 150,000 USD)
 
 Vietnamese-specific:
 - Numbers may use dots/spaces: 1.000.000 = 1,000,000
@@ -201,19 +214,22 @@ Before creating transaction, verify if amount makes sense:
   - User input is ambiguous (e.g., "150" without "k" or currency symbol)
 
 CURRENCY CONVERSION:
-When user's currency differs from wallet currency:
-- If EXCHANGE_RATE provided for that currency pair → show EXACT conversion
-  - Format: "amount VND (quy đổi thành \$X.XX USD)" or "amount USD (quy đổi thành X,XXX VND)"
+Show conversion ONLY when transaction currency differs from wallet currency:
+- If transaction currency != wallet currency AND EXCHANGE_RATE available → show EXACT conversion
+  - Format: "amount VND (quy đổi thành X.XX USD)" or "amount USD (quy đổi thành X,XXX VND)"
   - Round to 2 decimal places for USD, whole numbers for VND
   - Example: With rate 1 USD = 26,315 VND:
-    - "55,000 VND (quy đổi thành \$2.09 USD)"
-    - "5 USD (quy đổi thành 131,575 VND)"
-- If NO exchange rate for that currency pair → mention that amount will be auto-converted
-  - Vietnamese: "300元 (sẽ tự động quy đổi sang USD)"
+    - VND transaction to USD wallet: "250,000 VND (quy đổi thành 9.50 USD)"
+    - USD transaction to VND wallet: "50 USD (quy đổi thành 1,315,750 VND)"
+  - Match user's language for conversion text:
+    - Vietnamese input → "quy đổi thành"
+    - English input → "converts to"
+- If transaction currency != wallet currency but NO exchange rate → mention auto-conversion
+  - Vietnamese: "300 RMB (sẽ tự động quy đổi sang USD)"
   - English: "300 RMB (will be auto-converted to USD)"
-  - Chinese: "300元 (将自动转换为 USD)"
-  - Japanese: "300円 (USDに自動変換されます)"
-  - IMPORTANT: Always mention conversion even without exact rate!
+- If transaction currency = wallet currency → NO conversion message needed
+  - VND transaction to VND wallet → just show amount
+  - USD transaction to USD wallet → just show amount
 
 RESPONSE FORMAT:
 - Keep response concise (1-2 sentences max)
