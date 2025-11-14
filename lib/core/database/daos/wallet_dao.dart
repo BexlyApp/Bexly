@@ -169,4 +169,45 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     );
     await into(wallets).insertOnConflictUpdate(companion);
   }
+
+  /// Recalculate wallet balance from transactions
+  /// This should be called after syncing transactions from cloud
+  Future<void> recalculateBalance(int walletId) async {
+    Log.d('Recalculating balance for wallet $walletId', label: 'wallet');
+
+    // Get all transactions for this wallet
+    final transactions = await (db.select(db.transactions)
+      ..where((t) => t.walletId.equals(walletId)))
+      .get();
+
+    // Calculate balance: income - expense
+    // transactionType: 0 = income, 1 = expense, 2 = transfer
+    double balance = 0.0;
+    for (final tx in transactions) {
+      if (tx.transactionType == 0) { // income
+        balance += tx.amount;
+      } else if (tx.transactionType == 1) { // expense
+        balance -= tx.amount;
+      }
+      // transfer is handled separately, ignore for now
+    }
+
+    // Update wallet balance
+    await (update(wallets)..where((w) => w.id.equals(walletId)))
+        .write(WalletsCompanion(balance: Value(balance)));
+
+    Log.i('Wallet $walletId balance recalculated: $balance from ${transactions.length} transactions', label: 'wallet');
+  }
+
+  /// Recalculate all wallets' balances from transactions
+  Future<void> recalculateAllBalances() async {
+    Log.d('Recalculating balances for all wallets', label: 'wallet');
+
+    final allWallets = await getAllWallets();
+    for (final wallet in allWallets) {
+      await recalculateBalance(wallet.id);
+    }
+
+    Log.i('Recalculated balances for ${allWallets.length} wallets', label: 'wallet');
+  }
 }

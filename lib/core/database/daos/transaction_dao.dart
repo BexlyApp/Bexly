@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/transaction_table.dart';
@@ -85,7 +86,12 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
         db.wallets,
         db.wallets.id.equalsExp(transactions.walletId),
       ), // Use db.wallets
-    ]);
+    ])
+      ..orderBy([
+        // Sort by date descending (newest first), then by id descending
+        OrderingTerm.desc(transactions.date),
+        OrderingTerm.desc(transactions.id),
+      ]);
 
     return query.watch().asyncMap((rows) async {
       final result = <TransactionModel>[];
@@ -116,7 +122,13 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     final query = select(transactions).join([
       innerJoin(categories, categories.id.equalsExp(transactions.categoryId)),
       innerJoin(db.wallets, db.wallets.id.equalsExp(transactions.walletId)),
-    ])..where(transactions.walletId.equals(walletId)); // Filter by walletId
+    ])
+      ..where(transactions.walletId.equals(walletId))
+      ..orderBy([
+        // Sort by date descending (newest first), then by id descending
+        OrderingTerm.desc(transactions.date),
+        OrderingTerm.desc(transactions.id),
+      ]);
 
     return query.watch().asyncMap((rows) async {
       final result = <TransactionModel>[];
@@ -185,8 +197,13 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       label: 'transaction',
     );
 
-    // 1. Save to local database
+    // 1. Generate cloudId IMMEDIATELY to prevent race condition with realtime sync
+    final cloudId = transactionModel.cloudId ?? const Uuid().v7();
+    print('🆔 [TRANSACTION_INSERT] Generated cloudId: $cloudId for transaction: ${transactionModel.title}');
+
+    // 2. Save to local database WITH cloudId
     final companion = TransactionsCompanion(
+      cloudId: Value(cloudId), // CRITICAL: Set cloudId at insert time!
       transactionType: Value(transactionModel.transactionType.toDbValue()),
       amount: Value(transactionModel.amount),
       date: Value(transactionModel.date),
@@ -202,8 +219,29 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       updatedAt: Value(DateTime.now()),
     );
     final id = await into(transactions).insert(companion);
+    print('✅ [TRANSACTION_INSERT] Inserted transaction with ID=$id, cloudId=$cloudId');
 
-    // 2. Upload to cloud (if sync available)
+    // 2. Adjust wallet balance
+    final walletId = transactionModel.wallet.id!;
+    final amount = transactionModel.amount;
+    final type = transactionModel.transactionType;
+
+    final wallet = await db.walletDao.getWalletById(walletId);
+    if (wallet != null) {
+      double newBalance = wallet.balance;
+      if (type == TransactionType.income) {
+        newBalance += amount;
+      } else if (type == TransactionType.expense) {
+        newBalance -= amount;
+      }
+
+      await (db.update(db.wallets)..where((w) => w.id.equals(walletId)))
+          .write(WalletsCompanion(balance: Value(newBalance)));
+
+      print('💰 [wallet adjustment] Wallet $walletId balance: ${wallet.balance} -> $newBalance');
+    }
+
+    // 3. Upload to cloud (if sync available)
     print('🔄 [UPLOAD_DEBUG] Checking if can upload to cloud: _ref != null = ${_ref != null}');
     if (_ref != null) {
       try {
@@ -339,7 +377,13 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     final query = select(transactions).join([
       innerJoin(categories, categories.id.equalsExp(transactions.categoryId)),
       innerJoin(db.wallets, db.wallets.id.equalsExp(transactions.walletId)),
-    ])..where(transactions.walletId.equals(walletId));
+    ])
+      ..where(transactions.walletId.equals(walletId))
+      ..orderBy([
+        // Sort by date descending (newest first), then by id descending
+        OrderingTerm.desc(transactions.date),
+        OrderingTerm.desc(transactions.id),
+      ]);
 
     if (filter != null) {
       if (filter.transactionType != null) {
