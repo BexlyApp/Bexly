@@ -56,6 +56,7 @@ class TransactionForm extends HookConsumerWidget {
     return CustomScaffold(
       context: context,
       title: !isEditing ? 'Add Transaction' : 'Edit Transaction',
+      showBalance: false,
       actions: [
         if (isEditing)
           CustomIconButton(
