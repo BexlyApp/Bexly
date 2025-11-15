@@ -310,6 +310,9 @@ class GeminiService with AIServicePromptMixin implements AIService {
 
       // Log system prompt for debugging
       Log.d('System Prompt:\n$systemPrompt', label: 'Gemini Service');
+      print('====== SYSTEM PROMPT DEBUG ======');
+      print(systemPrompt);
+      print('=================================');
 
       // Create model with system instruction (cached, not counted in tokens!)
       final modelWithSystemPrompt = GenerativeModel(
