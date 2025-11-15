@@ -1,24 +1,24 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'database_interface.dart';
 
 class FirestoreDatabase implements DatabaseInterface {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final firestore.FirebaseFirestore _firestore = firestore.FirebaseFirestore.instanceFor(app: FirebaseInitService.bexlyApp, databaseId: "bexly");
+  final FirebaseAuth _auth = FirebaseAuth.instanceFor(app: FirebaseInitService.bexlyApp);
 
   String? get _userId => _auth.currentUser?.uid;
 
-  CollectionReference get _userCollection {
+  firestore.CollectionReference get _userCollection {
     if (_userId == null) throw Exception('User not logged in');
     return _firestore.collection('users').doc(_userId).collection('data');
   }
 
   @override
   Future<void> initialize() async {
-    // Enable offline persistence for Firestore
-    await _firestore.enablePersistence(const PersistenceSettings(
-      synchronizeTabs: true,
-    ));
+    // Note: enablePersistence is only for web, not needed on mobile
+    // Firestore on mobile has offline persistence enabled by default
   }
 
   // Wallet operations
@@ -59,8 +59,8 @@ class FirestoreDatabase implements DatabaseInterface {
         .collection('items')
         .add({
       ...wallet,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+      'createdAt': firestore.FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
 
     return doc.id;
@@ -74,7 +74,7 @@ class FirestoreDatabase implements DatabaseInterface {
         .doc(id)
         .update({
       ...wallet,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
   }
 
@@ -139,8 +139,8 @@ class FirestoreDatabase implements DatabaseInterface {
         .collection('items')
         .add({
       ...transaction,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+      'createdAt': firestore.FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
 
     return doc.id;
@@ -154,7 +154,7 @@ class FirestoreDatabase implements DatabaseInterface {
         .doc(id)
         .update({
       ...transaction,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
   }
 
@@ -205,8 +205,8 @@ class FirestoreDatabase implements DatabaseInterface {
         .collection('items')
         .add({
       ...category,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+      'createdAt': firestore.FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
 
     return doc.id;
@@ -220,7 +220,7 @@ class FirestoreDatabase implements DatabaseInterface {
         .doc(id)
         .update({
       ...category,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
   }
 
@@ -272,8 +272,8 @@ class FirestoreDatabase implements DatabaseInterface {
         .collection('items')
         .add({
       ...budget,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+      'createdAt': firestore.FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
 
     return doc.id;
@@ -287,7 +287,7 @@ class FirestoreDatabase implements DatabaseInterface {
         .doc(id)
         .update({
       ...budget,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
     });
   }
 
@@ -298,5 +298,157 @@ class FirestoreDatabase implements DatabaseInterface {
         .collection('items')
         .doc(id)
         .delete();
+  }
+
+  // Chat message operations
+  Future<List<Map<String, dynamic>>> getAllChatMessages() async {
+    final snapshot = await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .orderBy('timestamp', descending: true)
+        .get();
+
+    return snapshot.docs.map((doc) => {
+      'id': doc.id,
+      ...doc.data(),
+    }).toList();
+  }
+
+  Future<Map<String, dynamic>?> getChatMessage(String id) async {
+    final doc = await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .doc(id)
+        .get();
+
+    if (!doc.exists) return null;
+
+    return {
+      'id': doc.id,
+      ...doc.data()!,
+    };
+  }
+
+  Future<String> createChatMessage(Map<String, dynamic> message) async {
+    final doc = await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .add({
+      ...message,
+      'createdAt': firestore.FieldValue.serverTimestamp(),
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
+    });
+
+    return doc.id;
+  }
+
+  Future<void> updateChatMessage(String id, Map<String, dynamic> message) async {
+    await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .doc(id)
+        .update({
+      ...message,
+      'updatedAt': firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> deleteChatMessage(String id) async {
+    await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .doc(id)
+        .delete();
+  }
+
+  Future<void> clearAllChatMessages() async {
+    final batch = _firestore.batch();
+
+    final messages = await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .get();
+
+    for (final doc in messages.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+  }
+
+  /// Delete all user data from Firestore
+  /// This is used when user deletes their account
+  Future<void> deleteAllUserData() async {
+    if (_userId == null) {
+      throw Exception('User not logged in');
+    }
+
+    final batch = _firestore.batch();
+    int deleteCount = 0;
+
+    // Delete all wallets
+    final wallets = await _userCollection
+        .doc('wallets')
+        .collection('items')
+        .get();
+    for (final doc in wallets.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Delete all transactions
+    final transactions = await _userCollection
+        .doc('transactions')
+        .collection('items')
+        .get();
+    for (final doc in transactions.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Delete all categories
+    final categories = await _userCollection
+        .doc('categories')
+        .collection('items')
+        .get();
+    for (final doc in categories.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Delete all budgets
+    final budgets = await _userCollection
+        .doc('budgets')
+        .collection('items')
+        .get();
+    for (final doc in budgets.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Delete all recurring payments
+    final recurring = await _userCollection
+        .doc('recurring')
+        .collection('items')
+        .get();
+    for (final doc in recurring.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Delete all chat messages
+    final chatMessages = await _userCollection
+        .doc('chat_messages')
+        .collection('items')
+        .get();
+    for (final doc in chatMessages.docs) {
+      batch.delete(doc.reference);
+      deleteCount++;
+    }
+
+    // Commit the batch delete
+    await batch.commit();
+
+    Log.i('Deleted $deleteCount documents from Firestore', label: 'firestore');
   }
 }

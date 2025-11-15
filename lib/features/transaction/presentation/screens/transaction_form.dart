@@ -18,6 +18,7 @@ import 'package:bexly/features/transaction/presentation/components/form/transact
 import 'package:bexly/features/transaction/presentation/components/form/transaction_amount_field.dart';
 import 'package:bexly/features/transaction/presentation/components/form/transaction_category_selector.dart';
 import 'package:bexly/features/transaction/presentation/components/form/transaction_notes_field.dart';
+import 'package:bexly/features/transaction/presentation/components/form/transaction_wallet_selector.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_form_state.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
@@ -133,6 +134,14 @@ class TransactionForm extends HookConsumerWidget {
             formState.categoryController.text = formState.getCategoryText(
               parentCategory: parentCategory,
             );
+          },
+        ),
+        const Gap(AppSpacing.spacing16),
+        TransactionWalletSelector(
+          controller: formState.walletController,
+          onWalletSelected: (wallet) {
+            formState.selectedWallet.value = wallet;
+            formState.walletController.text = formState.getWalletText();
           },
         ),
         const Gap(AppSpacing.spacing16),

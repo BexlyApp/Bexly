@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 
 // Define tables
@@ -22,6 +22,13 @@ class Categories extends Table {
     onUpdate: KeyAction.cascade,
   )();
   TextColumn get description => text().nullable()();
+
+  /// System default categories cannot be deleted by cloud sync
+  /// These are the initial categories created on first app launch
+  BoolColumn get isSystemDefault => boolean().withDefault(const Constant(false))();
+
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 extension CategoryExtension on Category {
@@ -29,12 +36,16 @@ extension CategoryExtension on Category {
   Category fromJson(Map<String, dynamic> json) {
     return Category(
       id: json['id'] as int,
+      cloudId: json['cloudId'] as String?,
       title: json['title'] as String,
       icon: json['icon'] as String?,
       iconBackground: json['iconBackground'] as String?,
       iconType: json['iconType'] as String?,
       parentId: json['parentId'] as int?,
       description: json['description'] as String?,
+      isSystemDefault: json['isSystemDefault'] as bool? ?? false,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
   }
 }
@@ -50,6 +61,7 @@ extension CategoryTableExtensions on Category {
   CategoryModel toModel() {
     return CategoryModel(
       id: id,
+      cloudId: cloudId,
       title: title,
       icon: icon ?? '',
       iconBackground: iconBackground ?? '',
@@ -59,6 +71,32 @@ extension CategoryTableExtensions on Category {
       // subCategories are not directly available on the Drift Category object.
       // This needs to be populated by querying children if needed.
       subCategories: null,
+      isSystemDefault: isSystemDefault,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
+}
+
+/// Extension methods for CategoryModel to convert to Drift companion
+extension CategoryModelExtensions on CategoryModel {
+  CategoriesCompanion toCompanion({bool isInsert = false}) {
+    return CategoriesCompanion(
+      id: isInsert
+          ? const Value.absent()
+          : (id == null ? const Value.absent() : Value(id!)),
+      cloudId: cloudId == null ? const Value.absent() : Value(cloudId),
+      title: Value(title),
+      icon: Value(icon),
+      iconBackground: Value(iconBackground),
+      iconType: Value(iconTypeValue),
+      parentId: Value(parentId),
+      description: Value(description),
+      isSystemDefault: Value(isSystemDefault),
+      createdAt: createdAt != null
+          ? Value(createdAt!)
+          : (isInsert ? Value(DateTime.now()) : const Value.absent()),
+      updatedAt: updatedAt != null ? Value(updatedAt!) : Value(DateTime.now()),
     );
   }
 }

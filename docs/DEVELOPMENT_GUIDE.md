@@ -271,6 +271,66 @@ flutterfire configure --project=bexly-app
 # - ios/Runner.xcodeproj/project.pbxproj
 ```
 
+### Cloud Sync Issues (October 2025)
+
+#### Problem: App hangs 30s after Google/Facebook Sign In
+**Symptoms:**
+- Login successful but app shows loading spinner for 30 seconds
+- Eventually enters app but poor UX
+
+**Root Cause:**
+- `fullSync()` called during initial sync was blocking without timeout
+- Firestore `.set()` operations had no timeout protection
+- Conflict detection ran unnecessary sync even when data already synced
+
+**Solution (Build v0.0.7+90):**
+1. Added auto-resolve logic in `conflict_resolution_service.dart`:
+   - Skip conflict dialog when both sides have same wallet count + 0 transactions
+   - Only show dialog for real conflicts requiring user decision
+
+2. Skip `fullSync()` in `sync_trigger_service.dart`:
+   - When conflict auto-resolved, no need to sync again
+   - Real-time sync handles ongoing changes
+
+3. Added timeout protection:
+   - All Firestore queries now have 10s timeout
+   - Wrapped sync call in login_screen.dart with 30s timeout + try-catch
+
+**Prevention:**
+- Always add `.timeout()` to Firestore operations
+- Design sync logic to be non-blocking
+- Use auto-resolve for trivial conflicts
+
+#### Problem: Google Sign In error code 10 (DEVELOPER_ERROR)
+**Symptoms:**
+- `PlatformException: code=sign_in_failed, message=com.google.android.gms.common.api.j: 10:`
+
+**Root Cause:**
+- SHA-1 fingerprint mismatch between app keystore and Firebase OAuth Client
+- Different keystores (debug vs release) have different SHA-1s
+
+**Solution:**
+1. Extract SHA-1 from keystore:
+```bash
+# Debug keystore
+keytool -list -v -keystore C:\Users\JOY\.android\debug.keystore -alias androiddebugkey -storepass android -keypass android
+
+# Release keystore
+keytool -list -v -keystore C:\Users\JOY\DOS-key.jks -alias dos -storepass DOSLabs -keypass DOSLabs
+```
+
+2. Add SHA-1 to Firebase Console:
+   - Project Settings → Your apps → Android app
+   - Add fingerprint
+   - Download new `google-services.json`
+   - Replace `android/app/google-services.json`
+
+**Note:** Firebase automatically creates OAuth 2.0 Client IDs in Google Cloud Console when you add SHA-1 fingerprints.
+
+**Current SHA-1 Fingerprints:**
+- Debug: `44:91:55:73:94:15:0E:B0:64:19:18:B3:49:27:C3:C4:59:63:42:68`
+- Release (DOS-key.jks): `B8:B5:58:78:A4:1E:59:70:69:C6:0E:97:0F:B6:33:E2:A6:4A:6A:39`
+
 ---
 
 ## 📋 Pre-deployment Checklist

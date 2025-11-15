@@ -17,6 +17,7 @@ import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/services/receipt_storage/receipt_storage_service_provider.dart';
@@ -28,9 +29,11 @@ class TransactionFormState {
   final TextEditingController amountController;
   final TextEditingController notesController;
   final TextEditingController categoryController;
+  final TextEditingController walletController;
   final TextEditingController dateFieldController;
   final ValueNotifier<TransactionType> selectedTransactionType;
   final ValueNotifier<CategoryModel?> selectedCategory;
+  final ValueNotifier<WalletModel?> selectedWallet;
   final String defaultCurrency;
   final bool isEditing;
   final TransactionModel? initialTransaction;
@@ -40,8 +43,10 @@ class TransactionFormState {
     required this.amountController,
     required this.notesController,
     required this.categoryController,
+    required this.walletController,
     required this.selectedTransactionType,
     required this.selectedCategory,
+    required this.selectedWallet,
     required this.dateFieldController,
     required this.defaultCurrency,
     required this.isEditing,
@@ -61,10 +66,17 @@ class TransactionFormState {
     }
   }
 
+  String getWalletText() {
+    final wallet = selectedWallet.value;
+    if (wallet == null) return '';
+    return '${wallet.name} (${wallet.currency})';
+  }
+
   Future<void> saveTransaction(WidgetRef ref, BuildContext context) async {
     if (titleController.text.isEmpty ||
         amountController.text.isEmpty ||
-        selectedCategory.value == null) {
+        selectedCategory.value == null ||
+        selectedWallet.value == null) {
       Toast.show(
         'Please fill all required fields.',
         type: ToastificationType.error,
@@ -74,11 +86,11 @@ class TransactionFormState {
 
     final db = ref.read(databaseProvider);
     final imagePickerState = ref.read(imageProvider);
-    final activeWallet = ref.read(activeWalletProvider).valueOrNull;
+    final wallet = selectedWallet.value!;
 
-    if (activeWallet == null || activeWallet.id == null) {
+    if (wallet.id == null) {
       Toast.show(
-        'No active wallet selected.',
+        'Invalid wallet selected.',
         type: ToastificationType.warning,
       );
       return;
@@ -112,7 +124,7 @@ class TransactionFormState {
       date: dateToSave,
       title: titleController.text,
       category: selectedCategory.value!,
-      wallet: activeWallet,
+      wallet: wallet,
       notes: notesController.text.isNotEmpty ? notesController.text : null,
       imagePath: imagePath,
       isRecurring: false,
@@ -251,11 +263,14 @@ class TransactionFormState {
     newTransaction, // The new transaction (null for deletions)
   ) async {
     final db = ref.read(databaseProvider);
-    final activeWallet = ref.read(activeWalletProvider).valueOrNull;
 
-    if (activeWallet == null || activeWallet.id == null) {
+    // Determine which wallet to adjust
+    // Priority: newTransaction.wallet > oldTransaction.wallet
+    WalletModel? targetWallet = newTransaction?.wallet ?? oldTransaction?.wallet;
+
+    if (targetWallet == null || targetWallet.id == null) {
       Log.i(
-        'No active wallet or wallet ID found to adjust balance.',
+        'No wallet found to adjust balance.',
         label: 'wallet adjustment',
       );
       return;
@@ -283,13 +298,19 @@ class TransactionFormState {
       // Transfers are ignored
     }
 
-    double newWalletBalance = activeWallet.balance + balanceChange;
+    double newWalletBalance = targetWallet.balance + balanceChange;
 
-    final updatedWallet = activeWallet.copyWith(balance: newWalletBalance);
+    final updatedWallet = targetWallet.copyWith(balance: newWalletBalance);
     await db.walletDao.updateWallet(updatedWallet);
-    ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
+
+    // Update activeWallet provider if the adjusted wallet is the active one
+    final activeWallet = ref.read(activeWalletProvider).valueOrNull;
+    if (activeWallet?.id == targetWallet.id) {
+      ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
+    }
+
     Log.d(
-      'Wallet balance updated for ${activeWallet.name}. Old balance: ${activeWallet.balance}, Change: $balanceChange, New balance: $newWalletBalance',
+      'Wallet balance updated for ${targetWallet.name}. Old balance: ${targetWallet.balance}, Change: $balanceChange, New balance: $newWalletBalance',
       label: 'wallet adjustment',
     );
   }
@@ -322,6 +343,7 @@ TransactionFormState useTransactionFormState({
     text: isEditing ? transaction?.notes ?? '' : '',
   );
   final categoryController = useTextEditingController();
+  final walletController = useTextEditingController();
   final dateFieldController = useTextEditingController();
 
   final selectedTransactionType = useState<TransactionType>(
@@ -333,14 +355,22 @@ TransactionFormState useTransactionFormState({
     isEditing ? transaction?.category : null,
   );
 
+  // For new transactions, default to active wallet
+  final activeWallet = ref.watch(activeWalletProvider).valueOrNull;
+  final selectedWallet = useState<WalletModel?>(
+    isEditing ? transaction?.wallet : activeWallet,
+  );
+
   final formState = useMemoized(
     () => TransactionFormState(
       titleController: titleController,
       amountController: amountController,
       notesController: notesController,
       categoryController: categoryController,
+      walletController: walletController,
       selectedTransactionType: selectedTransactionType,
       selectedCategory: selectedCategory,
+      selectedWallet: selectedWallet,
       dateFieldController: dateFieldController,
       defaultCurrency: defaultCurrency,
       isEditing: isEditing,
@@ -373,7 +403,10 @@ TransactionFormState useTransactionFormState({
           if (selectedCategory.value != transaction.category) {
             selectedCategory.value = transaction.category;
           }
-          // categoryController.text is handled by another useEffect based on selectedCategory
+          if (selectedWallet.value != transaction.wallet) {
+            selectedWallet.value = transaction.wallet;
+          }
+          // categoryController.text and walletController.text are handled by other useEffects
 
           dateFieldController.text = transaction.date.toRelativeDayFormatted(
             showTime: true,
@@ -396,10 +429,11 @@ TransactionFormState useTransactionFormState({
           notesController.clear();
           selectedTransactionType.value = TransactionType.expense;
           selectedCategory.value = null;
+          selectedWallet.value = activeWallet;
           // Clear image for new transaction form
           Future.microtask(() => ref.read(imageProvider.notifier).clearImage());
         }
-        // categoryController text is updated by the separate effect below
+        // categoryController and walletController text are updated by separate effects below
       }
 
       initializeForm();
@@ -435,6 +469,15 @@ TransactionFormState useTransactionFormState({
     },
     [selectedCategory.value, formState],
   ); // formState is stable due to useMemoized
+
+  // Update walletController text when selectedWallet changes
+  useEffect(
+    () {
+      walletController.text = formState.getWalletText();
+      return null;
+    },
+    [selectedWallet.value, formState],
+  );
 
   // The main dispose for controllers created by useTextEditingController
   // and ValueNotifiers from useState is handled automatically by flutter_hooks.

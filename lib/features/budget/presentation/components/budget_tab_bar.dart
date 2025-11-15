@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:bexly/core/components/tabs/custom_tab.dart';
-import 'package:bexly/core/components/tabs/custom_tab_bar.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
 import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
 
@@ -27,13 +27,24 @@ class BudgetTabBar extends HookConsumerWidget {
       return () => tabController.removeListener(listener);
     }, [tabController, budgetPeriods, selectedPeriodNotifier]);
 
-    return CustomTabBar(
-      tabController: tabController,
-      tabs: budgetPeriods
-          .map(
-            (period) => CustomTab(label: period.toMonthTabLabel(period)),
-          ) // Use extension
-          .toList(),
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: TabBar(
+        controller: tabController,
+        indicatorColor: AppColors.primary600,
+        indicatorWeight: 3,
+        labelColor: AppColors.primary600,
+        unselectedLabelColor: AppColors.neutral400,
+        labelStyle: AppTextStyles.body2.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        isScrollable: true,
+        tabs: budgetPeriods
+            .map(
+              (period) => Tab(text: period.toMonthTabLabel(period)),
+            )
+            .toList(),
+      ),
     );
   }
 }

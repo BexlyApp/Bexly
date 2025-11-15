@@ -1,5 +1,99 @@
 # AI Chat Transaction Debug Log
 
+## Ngày: 2025-11-07
+## Developer: Claude Code
+
+---
+
+## SESSION: WALLET DUPLICATION BUG FIX (v194)
+
+### Vấn đề
+**Critical Bug:** Khi edit wallet và bấm Save → tạo ra wallet duplicate với tên mới (ví dụ: "My Wallet 2" → "My Wallet 3")
+
+### Root Cause Analysis
+**Race condition trong `uploadWallet`:**
+
+1. User edit wallet "My Wallet 2" (id=1, cloudId=NULL trong memory)
+2. `updateWallet` gọi `uploadWallet(wallet)` với `wallet.cloudId = null`
+3. `uploadWallet` **TẠO cloudId MỚI ngay lập tức** (line 949: `final cloudId = wallet.cloudId ?? const Uuid().v7()`)
+4. Upload lên Firestore với cloudId mới
+5. **Realtime listener nhận event "modified" với cloudId mới**
+6. Listener check `getWalletByCloudId(newCloudId)` → NULL (vì local database chưa có cloudId này!)
+7. → Gọi `_insertWalletFromCloud` → **TẠO WALLET MỚI**
+8. Sau đó `uploadWallet` mới cập nhật cloudId vào database (quá muộn!)
+
+**Timeline thực tế:**
+```
+T1: uploadWallet generates new cloudId
+T2: Firestore upload completes
+T3: Listener receives event → can't find wallet → creates duplicate
+T4: uploadWallet updates local database with cloudId (TOO LATE!)
+```
+
+### Fix Implementation
+**File:** `lib/core/services/sync/realtime_sync_service.dart`
+
+**Thay đổi trong `uploadWallet` (lines 948-973):**
+
+**Trước:**
+```dart
+// Generate cloudId if not exists
+final cloudId = wallet.cloudId ?? const Uuid().v7();
+```
+
+**Sau:**
+```dart
+// CRITICAL FIX: Read cloudId from database FIRST before generating new one
+String cloudId;
+if (wallet.cloudId != null) {
+  cloudId = wallet.cloudId!;
+} else if (wallet.id != null) {
+  // Read from database first to avoid generating duplicate cloudId
+  final currentWallet = await (_db.select(_db.wallets)
+    ..where((w) => w.id.equals(wallet.id!)))
+    .getSingleOrNull();
+
+  if (currentWallet?.cloudId != null) {
+    // Use existing cloudId from database
+    cloudId = currentWallet!.cloudId!;
+  } else {
+    // Generate new cloudId only if truly doesn't exist
+    cloudId = const Uuid().v7();
+  }
+} else {
+  cloudId = const Uuid().v7();
+}
+```
+
+**Kết quả:**
+- Khi edit wallet, luôn dùng cloudId cũ từ database
+- Listener nhận event với cloudId cũ → tìm thấy wallet → chỉ UPDATE, không tạo mới
+- ✅ No more duplicates!
+
+### Related Fixes
+**File:** `lib/features/dashboard/presentation/components/wallet_amount_edit_button.dart`
+- Fixed edit button to use `dashboardWalletFilterProvider` instead of `activeWalletProvider`
+- Hide edit button when in "Total Balance" mode
+
+**File:** `lib/features/settings/presentation/components/profile_card.dart`
+- Fixed profile card refresh after updating personal details
+
+### Testing
+- [x] Edit wallet multiple times - no duplicates created
+- [x] Edit button visibility correct in Total vs single wallet mode
+- [x] Cloud sync works correctly with existing wallets
+- [x] Login pulls wallets without duplication
+
+### Version
+**v194** - Released 2025-11-07
+
+### Commits
+- `b21d7e4` - fix(sync): Fix wallet duplication bug when editing wallets (v194)
+
+---
+
+## PREVIOUS SESSION: AI CHAT TRANSACTION DEBUG
+
 ## Ngày: 2025-09-27
 ## Developer: Claude Code
 
@@ -162,3 +256,96 @@ User input → AI Service → Parse ACTION_JSON → _createTransactionFromAction
 ### 9.2. Transaction Bug Status
 - Vẫn cần test với debug logs để tìm nguyên nhân transaction không lưu
 - Cần kiểm tra flow: AI response → Parse → Database insert → UI refresh
+
+---
+
+## 10. UPDATE: 2025-11-03 - Category Matching Architecture
+
+### 10.1. Problem: LLM Choosing Wrong Category Level
+**Issue:** Netflix being assigned to "Entertainment" (parent) instead of "Streaming" (subcategory)
+
+**Root Cause Analysis:**
+1. Prompt example shows: `"category":"Entertainment"` (line 144 in ai_prompts.dart)
+2. LLM learns from examples → copies parent category instead of subcategory
+3. Code validation was trying to "fix" LLM's choice with fuzzy matching
+
+### 10.2. Research: Best Practices (2025)
+
+**Industry Standards for LLM Classification:**
+
+1. **Constrained Generation (Preferred but complex):**
+   - Guarantees output compliance at generation time
+   - No need for validation/retry loops
+   - Requires library support (Outlines, vLLM)
+   - More efficient (no wasted tokens)
+
+2. **Post-Processing with Validation (Traditional):**
+   - Flexible, works with any LLM
+   - Requires retry loops when validation fails
+   - Can handle complex validation logic
+
+3. **Hybrid "Trust but Verify" (Production Standard):**
+   - ✅ Use prompt engineering to guide LLM (80% solution)
+   - ✅ Add lightweight validation as safety net (20%)
+   - ✅ Log validation failures for prompt improvement
+   - ✅ Don't use "smart" code to fix LLM output - just validate
+
+**References:**
+- Constrained generation eliminates need for post-validation (Zilliz, 2025)
+- Structured outputs with JSON schema provide 100% compliance (vLLM 0.8.5+)
+- Few-shot examples are critical for classification accuracy (Prompt Engineering Guide)
+
+### 10.3. Implemented Solution: Hybrid Approach
+
+**Phase 1: Fix Prompt (Root Cause)** 🎯
+```dart
+// OLD (line 144):
+JSON: {"action":"create_recurring","name":"Netflix",...,"category":"Entertainment",...}
+
+// NEW:
+JSON: {"action":"create_recurring","name":"Netflix",...,"category":"Streaming",...}
+```
+
+**Added explicit guidance:**
+- Counter-example: ❌ Netflix → "Entertainment", ✅ Netflix → "Streaming"
+- Reinforced: "ALWAYS prefer subcategory (→ marked) over parent (📁 marked)"
+
+**Phase 2: Simplify Validation (Safety Net)**
+- Keep exact match validation (case-insensitive)
+- **Removed fuzzy matching** (contains logic) - caused confusion
+- If LLM sends invalid category → throw error with clear message
+- **Trust LLM's choice** - validate it exists, don't "fix" it
+
+**Phase 3: Monitoring**
+- Log when validation fails (indicates prompt needs improvement)
+- Track category selection accuracy over time
+- Iterative prompt improvement based on real usage
+
+### 10.4. Code Changes (v164)
+
+**File: `lib/features/ai_chat/data/config/ai_prompts.dart`**
+- Line 144: Changed Netflix example from "Entertainment" → "Streaming"
+- Added counter-example section for category selection
+- Enhanced category matching rules with subcategory priority
+
+**File: `lib/features/ai_chat/presentation/riverpod/chat_provider.dart`**
+- Simplified category matching: exact match only (case-insensitive)
+- Removed fuzzy matching (contains logic)
+- Added clear error messages when category not found
+- Trust LLM output, just validate existence
+
+**Philosophy:**
+- **Prompt engineering > Code fixes**
+- **Simple validation > Complex matching**
+- **Fail loudly > Silent fixes**
+- **Learn from failures > Hide them**
+
+### 10.5. Testing Checklist (v164)
+
+- [ ] Netflix subscription → should assign to "Streaming"
+- [ ] Spotify subscription → should assign to "Music"
+- [ ] Food transactions → should assign to specific subcategory (e.g., "Breakfast")
+- [ ] Invalid category from LLM → should throw clear error
+- [ ] Monitor logs for validation failures
+
+**Expected Outcome:** LLM learns correct category selection from improved examples, validation catches edge cases without "fixing" LLM's intent.

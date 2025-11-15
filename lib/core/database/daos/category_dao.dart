@@ -1,13 +1,18 @@
 import 'package:drift/drift.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
 
 part 'category_dao.g.dart';
 
 @DriftAccessor(tables: [Categories])
 class CategoryDao extends DatabaseAccessor<AppDatabase>
     with _$CategoryDaoMixin {
-  CategoryDao(super.db);
+  final Ref? _ref;
+
+  CategoryDao(super.db, [this._ref]);
 
   // --- Read Operations ---
 
@@ -30,6 +35,12 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     return (select(
       categories,
     )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+  }
+
+  /// Get category by cloud ID (for sync operations)
+  Future<Category?> getCategoryByCloudId(String cloudId) {
+    return (select(categories)..where((c) => c.cloudId.equals(cloudId)))
+        .getSingleOrNull();
   }
 
   Future<List<Category>> getCategoriesByIds(List<int> ids) async {
@@ -66,8 +77,25 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// Inserts a new category into the database.
   /// The `id` within [categoryCompanion] should typically be a pre-generated UUID.
   /// Returns the inserted [Category] object.
-  Future<Category> addCategory(CategoriesCompanion categoryCompanion) {
-    return into(categories).insertReturning(categoryCompanion);
+  Future<Category> addCategory(CategoriesCompanion categoryCompanion) async {
+    Log.d('Adding new category', label: 'category');
+
+    // 1. Save to local database
+    final category = await into(categories).insertReturning(categoryCompanion);
+
+    // 2. Upload to cloud (if sync available)
+    if (_ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.uploadCategory(category.toModel());
+      } catch (e, stack) {
+        Log.e('Failed to upload category to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local save succeeded
+      }
+    }
+
+    return category;
   }
 
   // --- Update Operations ---
@@ -75,8 +103,25 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// Updates an existing category in the database.
   /// This uses `replace` which means all fields of the [category] object will be updated.
   /// Returns `true` if the update was successful, `false` otherwise.
-  Future<bool> updateCategory(Category category) {
-    return update(categories).replace(category);
+  Future<bool> updateCategory(Category category) async {
+    Log.d('Updating category: ${category.id}', label: 'category');
+
+    // 1. Update local database
+    final success = await update(categories).replace(category);
+
+    // 2. Upload to cloud (if sync available)
+    if (success && _ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.uploadCategory(category.toModel());
+      } catch (e, stack) {
+        Log.e('Failed to upload category update to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local update succeeded
+      }
+    }
+
+    return success;
   }
 
   /// Upserts a category: inserts if new, updates if exists based on primary key.
@@ -88,7 +133,27 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
 
   /// Deletes a category by its ID.
   /// Returns the number of rows affected (usually 1 if successful).
-  Future<int> deleteCategoryById(int id) {
-    return (delete(categories)..where((tbl) => tbl.id.equals(id))).go();
+  Future<int> deleteCategoryById(int id) async {
+    Log.d('Deleting category with ID: $id', label: 'category');
+
+    // 1. Get category to retrieve cloudId
+    final category = await getCategoryById(id);
+
+    // 2. Delete from local database
+    final count = await (delete(categories)..where((tbl) => tbl.id.equals(id))).go();
+
+    // 3. Delete from cloud (if sync available and has cloudId)
+    if (count > 0 && _ref != null && category != null && category.cloudId != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.deleteCategoryFromCloud(category.cloudId!);
+      } catch (e, stack) {
+        Log.e('Failed to delete category from cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local delete succeeded
+      }
+    }
+
+    return count;
   }
 }

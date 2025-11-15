@@ -12,8 +12,10 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/database/firestore_database.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/services/keyboard_service/virtual_keyboard_service.dart';
+import 'package:bexly/core/services/data_population_service/category_population_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
@@ -60,13 +62,30 @@ class AccountDeletionScreen extends HookConsumerWidget {
 
     try {
       final db = ref.read(databaseProvider);
+
+      // STEP 1: Delete cloud data from Firestore (if user is logged in)
+      try {
+        final firestoreDb = FirestoreDatabase();
+        await firestoreDb.deleteAllUserData();
+        Log.i('Cloud data deleted from Firestore.');
+      } catch (e) {
+        // User might not be logged in, or network error
+        Log.w('Failed to delete cloud data (user might be offline or not logged in): $e', label: 'delete account');
+      }
+
+      // STEP 2: Logout user
       await ref.read(authStateProvider.notifier).logout();
       Log.i('User logged out.');
 
+      // STEP 3: Clear local database
       await db.clearAllDataAndReset();
       Log.i('Database has been reset successfully.');
 
-      // reset all providers
+      // STEP 4: Populate default categories
+      await CategoryPopulationService.populate(db);
+      Log.i('Default categories populated.');
+
+      // STEP 5: Reset all providers
       ref.read(activeWalletProvider.notifier).reset();
 
       // Dismiss loading dialog

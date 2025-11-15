@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/category/data/repositories/category_repo.dart';
 
@@ -26,6 +26,7 @@ class CategoryPopulationService {
                 categoryModel.description!.isEmpty
             ? const Value.absent()
             : Value(categoryModel.description!),
+        isSystemDefault: const Value(true), // Mark as system default
       );
       try {
         await categoryDao.addCategory(companion);
@@ -42,5 +43,62 @@ class CategoryPopulationService {
       'Default categories initialization complete: (${allDefaultCategories.length}',
       label: 'category',
     );
+  }
+
+  /// Re-populates default categories by removing all and re-inserting
+  /// This fixes corrupted categories while preserving transactions
+  static Future<void> repopulate(AppDatabase db) async {
+    Log.i('Re-populating default categories...', label: 'category');
+    final allDefaultCategories = categories.getAllCategories();
+    final categoryDao = db.categoryDao;
+
+    // STEP 1: Disable foreign key constraints temporarily
+    Log.i('Disabling foreign key constraints...', label: 'category');
+    await db.customStatement('PRAGMA foreign_keys = OFF;');
+
+    try {
+      // STEP 2: Delete ALL categories
+      Log.i('Deleting all existing categories...', label: 'category');
+      await db.customStatement('DELETE FROM categories;');
+
+      // STEP 3: Insert default categories with correct IDs
+      Log.i('Inserting ${allDefaultCategories.length} default categories...', label: 'category');
+      for (final categoryModel in allDefaultCategories) {
+        final companion = CategoriesCompanion(
+          id: Value(categoryModel.id!),
+          title: Value(categoryModel.title),
+          icon: Value(categoryModel.icon),
+          iconBackground: Value(categoryModel.iconBackground),
+          iconType: Value(categoryModel.iconTypeValue),
+          parentId: categoryModel.parentId == null
+              ? const Value.absent()
+              : Value(categoryModel.parentId),
+          description:
+              categoryModel.description == null ||
+                  categoryModel.description!.isEmpty
+              ? const Value.absent()
+              : Value(categoryModel.description!),
+          isSystemDefault: const Value(true),
+        );
+
+        try {
+          await categoryDao.upsertCategory(companion);
+        } catch (e) {
+          Log.e(
+            'Failed to insert category ${categoryModel.title}: $e',
+            label: 'category',
+          );
+        }
+      }
+
+      Log.i(
+        'Successfully re-populated ${allDefaultCategories.length} categories',
+        label: 'category',
+      );
+    } finally {
+      // STEP 4: Re-enable foreign key constraints
+      Log.i('Re-enabling foreign key constraints...', label: 'category');
+      await db.customStatement('PRAGMA foreign_keys = ON;');
+    }
   }
 }

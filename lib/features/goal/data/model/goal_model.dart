@@ -10,6 +10,9 @@ abstract class GoalModel with _$GoalModel {
     /// The unique identifier for the goal. Null if the goal is new and not yet saved.
     int? id,
 
+    /// Cloud ID (UUID v7) for syncing with Firestore
+    String? cloudId,
+
     /// The name or title of the financial goal (e.g., "New Laptop", "Vacation Fund").
     required String title,
 
@@ -31,6 +34,9 @@ abstract class GoalModel with _$GoalModel {
 
     /// The date when the goal was created.
     DateTime? createdAt,
+
+    /// Timestamp when goal was last updated
+    DateTime? updatedAt,
 
     /// Optional ID of an associated account or fund source for this goal.
     int? associatedAccountId,
