@@ -16,6 +16,7 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
