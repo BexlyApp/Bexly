@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 
 @DataClassName('Wallet')
 class Wallets extends Table {
@@ -16,6 +17,19 @@ class Wallets extends Table {
   TextColumn get iconName => text().nullable()();
   TextColumn get colorHex => text().nullable()();
 
+  /// Wallet type (cash, bank_account, credit_card, etc.)
+  TextColumn get walletType =>
+      text().withDefault(const Constant('cash'))();
+
+  /// Credit limit (for credit cards only)
+  RealColumn get creditLimit => real().nullable()();
+
+  /// Billing day of month (1-31, for credit cards only)
+  IntColumn get billingDay => integer().nullable()();
+
+  /// Annual interest rate in percentage (for credit cards/loans)
+  RealColumn get interestRate => real().nullable()();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -25,11 +39,16 @@ extension WalletExtension on Wallet {
   Wallet fromJson(Map<String, dynamic> json) {
     return Wallet(
       id: json['id'] as int,
+      cloudId: json['cloudId'] as String?,
       name: json['name'] as String,
       balance: json['balance'] as double,
       currency: json['currency'] as String,
       iconName: json['iconName'] as String?,
       colorHex: json['colorHex'] as String?,
+      walletType: json['walletType'] as String? ?? 'cash',
+      creditLimit: json['creditLimit'] as double?,
+      billingDay: json['billingDay'] as int?,
+      interestRate: json['interestRate'] as double?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -46,6 +65,10 @@ extension WalletTableExtensions on Wallet {
       currency: currency,
       iconName: iconName,
       colorHex: colorHex,
+      walletType: WalletType.fromString(walletType),
+      creditLimit: creditLimit,
+      billingDay: billingDay,
+      interestRate: interestRate,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -66,6 +89,10 @@ extension WalletModelExtensions on WalletModel {
       currency: Value(currency),
       iconName: Value(iconName),
       colorHex: Value(colorHex),
+      walletType: Value(walletType.toDbString()),
+      creditLimit: creditLimit == null ? const Value.absent() : Value(creditLimit),
+      billingDay: billingDay == null ? const Value.absent() : Value(billingDay),
+      interestRate: interestRate == null ? const Value.absent() : Value(interestRate),
       // createdAt: use provided value or current time on insert
       createdAt: createdAt != null
           ? Value(createdAt!)

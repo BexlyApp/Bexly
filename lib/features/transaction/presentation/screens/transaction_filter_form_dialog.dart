@@ -15,6 +15,7 @@ import 'package:bexly/features/transaction/data/model/transaction_filter_model.d
 import 'package:bexly/features/transaction/presentation/components/filter_form/transaction_filter_category_selector.dart';
 import 'package:bexly/features/transaction/presentation/components/filter_form/transaction_filter_type_selector.dart';
 import 'package:bexly/features/transaction/presentation/components/filter_form/transaction_filter_date_picker.dart';
+import 'package:bexly/features/transaction/presentation/components/filter_form/transaction_filter_wallet_selector.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_filter_form_state.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
 
@@ -51,6 +52,13 @@ class TransactionFilterFormDialog extends HookConsumerWidget {
               onCategorySelected: (category) {
                 formState.selectedCategory.value = category;
                 formState.categoryController.text = formState.getCategoryText();
+              },
+            ),
+            TransactionFilterWalletSelector(
+              controller: formState.walletController,
+              onWalletSelected: (wallet) {
+                formState.selectedWallet.value = wallet;
+                formState.walletController.text = wallet?.name ?? '';
               },
             ),
             TransactionFilterDatePicker(

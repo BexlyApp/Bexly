@@ -213,9 +213,9 @@ Before creating transaction, verify if amount makes sense:
   - Amount over 500 USD for groceries
   - User input is ambiguous (e.g., "150" without "k" or currency symbol)
 
-CURRENCY CONVERSION:
+CURRENCY CONVERSION (CRITICAL - Always check wallet currency):
 Show conversion ONLY when transaction currency differs from wallet currency:
-- If transaction currency != wallet currency AND EXCHANGE_RATE available → show EXACT conversion
+- If transaction currency != wallet currency AND EXCHANGE_RATE available → MUST show EXACT conversion
   - Format: "amount VND (quy đổi thành X.XX USD)" or "amount USD (quy đổi thành X,XXX VND)"
   - Round to 2 decimal places for USD, whole numbers for VND
   - Example: With rate 1 USD = 26,315 VND:
@@ -224,9 +224,12 @@ Show conversion ONLY when transaction currency differs from wallet currency:
   - Match user's language for conversion text:
     - Vietnamese input → "quy đổi thành"
     - English input → "converts to"
-- If transaction currency != wallet currency but NO exchange rate → mention auto-conversion
-  - Vietnamese: "300 RMB (sẽ tự động quy đổi sang USD)"
-  - English: "300 RMB (will be auto-converted to USD)"
+  - CRITICAL: Check CURRENT WALLET currency from context to determine conversion direction!
+- If transaction currency != wallet currency but NO exchange rate → mention auto-conversion to WALLET currency
+  - Use WALLET currency from CURRENT WALLET context (NOT hardcoded!)
+  - Vietnamese: "300 RMB (sẽ tự động quy đổi sang [WALLET_CURRENCY])"
+  - English: "300 RMB (will be auto-converted to [WALLET_CURRENCY])"
+  - Example: If wallet is USD → "auto-converted to USD", if wallet is VND → "auto-converted to VND"
 - If transaction currency = wallet currency → NO conversion message needed
   - VND transaction to VND wallet → just show amount
   - USD transaction to USD wallet → just show amount
@@ -386,7 +389,7 @@ Use transaction IDs from this list when user references them.''';
   }) {
     // Add wallet context if provided
     final walletContext = (walletCurrency != null || walletName != null)
-        ? '\nCURRENT WALLET: ${walletName ?? 'Active Wallet'} (${walletCurrency ?? 'VND'})\nAlways mention wallet name in response.\nWhen user provides amount in different currency, mention conversion in response.'
+        ? '\nCURRENT WALLET: ${walletName ?? 'Active Wallet'} (${walletCurrency ?? 'VND'})\n\nIMPORTANT WALLET RULES:\n- Always use EXACT wallet name "${walletName ?? 'Active Wallet'}" in your response\n- Wallet currency is ${walletCurrency ?? 'VND'}\n- When transaction currency != wallet currency → MUST show conversion with exchange rate\n  Example: "250,000 VND (quy đổi thành 9.50 USD)" if wallet is USD\n- When transaction currency = wallet currency → NO conversion needed'
         : '';
 
     // Add exchange rate context if provided

@@ -4,6 +4,7 @@ import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/features/currency_picker/data/sources/currency_local_source.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart'; // For currency formatting in the extension
+import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 
 part 'wallet_model.freezed.dart';
 part 'wallet_model.g.dart';
@@ -32,6 +33,18 @@ abstract class WalletModel with _$WalletModel {
 
     /// Optional: The color associated with this wallet, stored as a hex string or int.
     String? colorHex, // Or int colorValue
+
+    /// The type of wallet (cash, bank_account, credit_card, etc.)
+    @Default(WalletType.cash) WalletType walletType,
+
+    /// Credit limit for credit cards
+    double? creditLimit,
+
+    /// Billing day of month (1-31) for credit cards
+    int? billingDay,
+
+    /// Annual interest rate in percentage for credit cards/loans
+    double? interestRate,
 
     /// Timestamp when wallet was created
     DateTime? createdAt,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/buttons/custom_icon_button.dart';
@@ -8,6 +9,8 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/transaction/presentation/components/transaction_grouped_card.dart';
 import 'package:bexly/features/transaction/presentation/components/transaction_summary_card.dart';
 import 'package:bexly/features/transaction/presentation/components/transaction_tab_bar.dart';
@@ -25,7 +28,7 @@ class TransactionScreen extends ConsumerWidget {
     return CustomScaffold(
       context: context,
       showBackButton: false,
-      showBalance: true,
+      showBalance: false,
       title: context.l10n.myTransactions,
       actions: [
         CustomIconButton(
@@ -41,6 +44,16 @@ class TransactionScreen extends ConsumerWidget {
           themeMode: context.themeMode,
         ),
       ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          context.push(Routes.transactionForm);
+        },
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: Icon(
+          HugeIcons.strokeRoundedPlusSign,
+          color: Theme.of(context).colorScheme.onPrimary,
+        ),
+      ),
       body: allTransactionsAsyncValue.when(
         data: (allTransactions) {
           if (allTransactions.isEmpty) {
@@ -93,7 +106,38 @@ class TransactionScreen extends ConsumerWidget {
                             t.date.month == tabMonthDate.month;
                       }).toList();
 
-                      if (transactionsForMonth.isEmpty) {
+                      // CRITICAL FIX: Deduplicate transactions by unique key
+                      // This prevents duplicate display when same transaction exists multiple times
+                      // (can happen due to sync issues or database conflicts)
+                      print('🔍 [DEDUP] Total transactions for month: ${transactionsForMonth.length}');
+
+                      final seenKeys = <String>{};
+                      final uniqueTransactions = <TransactionModel>[];
+                      for (final transaction in transactionsForMonth) {
+                        // CRITICAL FIX: Use cloudId as primary key to detect sync duplicates
+                        // cloudId is unique across local and cloud, while local id may differ
+                        final key = transaction.cloudId != null
+                            ? 'cloud_${transaction.cloudId}'
+                            : (transaction.id != null
+                                ? 'id_${transaction.id}'
+                                : '${transaction.title}_${transaction.amount}_${transaction.date.millisecondsSinceEpoch}_${transaction.wallet.id}');
+
+                        print('🔍 [DEDUP] Checking transaction: ${transaction.title} (ID: ${transaction.id}, CloudID: ${transaction.cloudId}) - Key: $key - Seen: ${seenKeys.contains(key)}');
+
+                        if (!seenKeys.contains(key)) {
+                          seenKeys.add(key);
+                          uniqueTransactions.add(transaction);
+                          print('✅ [DEDUP] Added transaction: ${transaction.title}');
+                        } else {
+                          print('❌ [DEDUP] DUPLICATE SKIPPED: ${transaction.title}');
+                        }
+                      }
+
+                      print('🔍 [DEDUP] After dedup: ${uniqueTransactions.length} transactions');
+
+                      final transactionsToDisplay = uniqueTransactions;
+
+                      if (transactionsToDisplay.isEmpty) {
                         // This should ideally not happen if tabs are generated from existing transaction months,
                         // but good for robustness.
                         return Center(
@@ -107,11 +151,11 @@ class TransactionScreen extends ConsumerWidget {
                         padding: const EdgeInsets.only(bottom: 120),
                         children: [
                           TransactionSummaryCard(
-                            transactions: transactionsForMonth,
+                            transactions: transactionsToDisplay,
                           ),
                           const Gap(AppSpacing.spacing20),
                           TransactionGroupedCard(
-                            transactions: transactionsForMonth,
+                            transactions: transactionsToDisplay,
                           ),
                         ],
                       );

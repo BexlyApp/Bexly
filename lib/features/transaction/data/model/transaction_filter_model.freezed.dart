@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TransactionFilter {
 
- String? get keyword; double? get minAmount; double? get maxAmount; String? get notes; CategoryModel? get category; TransactionType? get transactionType; DateTime? get dateStart; DateTime? get dateEnd;
+ String? get keyword; double? get minAmount; double? get maxAmount; String? get notes; CategoryModel? get category; TransactionType? get transactionType; DateTime? get dateStart; DateTime? get dateEnd; WalletModel? get wallet;
 /// Create a copy of TransactionFilter
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $TransactionFilterCopyWith<TransactionFilter> get copyWith => _$TransactionFilte
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransactionFilter&&(identical(other.keyword, keyword) || other.keyword == keyword)&&(identical(other.minAmount, minAmount) || other.minAmount == minAmount)&&(identical(other.maxAmount, maxAmount) || other.maxAmount == maxAmount)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.category, category) || other.category == category)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.dateStart, dateStart) || other.dateStart == dateStart)&&(identical(other.dateEnd, dateEnd) || other.dateEnd == dateEnd));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransactionFilter&&(identical(other.keyword, keyword) || other.keyword == keyword)&&(identical(other.minAmount, minAmount) || other.minAmount == minAmount)&&(identical(other.maxAmount, maxAmount) || other.maxAmount == maxAmount)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.category, category) || other.category == category)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.dateStart, dateStart) || other.dateStart == dateStart)&&(identical(other.dateEnd, dateEnd) || other.dateEnd == dateEnd)&&(identical(other.wallet, wallet) || other.wallet == wallet));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,keyword,minAmount,maxAmount,notes,category,transactionType,dateStart,dateEnd);
+int get hashCode => Object.hash(runtimeType,keyword,minAmount,maxAmount,notes,category,transactionType,dateStart,dateEnd,wallet);
 
 @override
 String toString() {
-  return 'TransactionFilter(keyword: $keyword, minAmount: $minAmount, maxAmount: $maxAmount, notes: $notes, category: $category, transactionType: $transactionType, dateStart: $dateStart, dateEnd: $dateEnd)';
+  return 'TransactionFilter(keyword: $keyword, minAmount: $minAmount, maxAmount: $maxAmount, notes: $notes, category: $category, transactionType: $transactionType, dateStart: $dateStart, dateEnd: $dateEnd, wallet: $wallet)';
 }
 
 
@@ -48,11 +48,11 @@ abstract mixin class $TransactionFilterCopyWith<$Res>  {
   factory $TransactionFilterCopyWith(TransactionFilter value, $Res Function(TransactionFilter) _then) = _$TransactionFilterCopyWithImpl;
 @useResult
 $Res call({
- String? keyword, double? minAmount, double? maxAmount, String? notes, CategoryModel? category, TransactionType? transactionType, DateTime? dateStart, DateTime? dateEnd
+ String? keyword, double? minAmount, double? maxAmount, String? notes, CategoryModel? category, TransactionType? transactionType, DateTime? dateStart, DateTime? dateEnd, WalletModel? wallet
 });
 
 
-$CategoryModelCopyWith<$Res>? get category;
+$CategoryModelCopyWith<$Res>? get category;$WalletModelCopyWith<$Res>? get wallet;
 
 }
 /// @nodoc
@@ -65,7 +65,7 @@ class _$TransactionFilterCopyWithImpl<$Res>
 
 /// Create a copy of TransactionFilter
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? keyword = freezed,Object? minAmount = freezed,Object? maxAmount = freezed,Object? notes = freezed,Object? category = freezed,Object? transactionType = freezed,Object? dateStart = freezed,Object? dateEnd = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? keyword = freezed,Object? minAmount = freezed,Object? maxAmount = freezed,Object? notes = freezed,Object? category = freezed,Object? transactionType = freezed,Object? dateStart = freezed,Object? dateEnd = freezed,Object? wallet = freezed,}) {
   return _then(_self.copyWith(
 keyword: freezed == keyword ? _self.keyword : keyword // ignore: cast_nullable_to_non_nullable
 as String?,minAmount: freezed == minAmount ? _self.minAmount : minAmount // ignore: cast_nullable_to_non_nullable
@@ -75,7 +75,8 @@ as String?,category: freezed == category ? _self.category : category // ignore: 
 as CategoryModel?,transactionType: freezed == transactionType ? _self.transactionType : transactionType // ignore: cast_nullable_to_non_nullable
 as TransactionType?,dateStart: freezed == dateStart ? _self.dateStart : dateStart // ignore: cast_nullable_to_non_nullable
 as DateTime?,dateEnd: freezed == dateEnd ? _self.dateEnd : dateEnd // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,wallet: freezed == wallet ? _self.wallet : wallet // ignore: cast_nullable_to_non_nullable
+as WalletModel?,
   ));
 }
 /// Create a copy of TransactionFilter
@@ -89,6 +90,18 @@ $CategoryModelCopyWith<$Res>? get category {
 
   return $CategoryModelCopyWith<$Res>(_self.category!, (value) {
     return _then(_self.copyWith(category: value));
+  });
+}/// Create a copy of TransactionFilter
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$WalletModelCopyWith<$Res>? get wallet {
+    if (_self.wallet == null) {
+    return null;
+  }
+
+  return $WalletModelCopyWith<$Res>(_self.wallet!, (value) {
+    return _then(_self.copyWith(wallet: value));
   });
 }
 }
@@ -172,10 +185,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? keyword,  double? minAmount,  double? maxAmount,  String? notes,  CategoryModel? category,  TransactionType? transactionType,  DateTime? dateStart,  DateTime? dateEnd)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? keyword,  double? minAmount,  double? maxAmount,  String? notes,  CategoryModel? category,  TransactionType? transactionType,  DateTime? dateStart,  DateTime? dateEnd,  WalletModel? wallet)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TransactionFilter() when $default != null:
-return $default(_that.keyword,_that.minAmount,_that.maxAmount,_that.notes,_that.category,_that.transactionType,_that.dateStart,_that.dateEnd);case _:
+return $default(_that.keyword,_that.minAmount,_that.maxAmount,_that.notes,_that.category,_that.transactionType,_that.dateStart,_that.dateEnd,_that.wallet);case _:
   return orElse();
 
 }
@@ -193,10 +206,10 @@ return $default(_that.keyword,_that.minAmount,_that.maxAmount,_that.notes,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? keyword,  double? minAmount,  double? maxAmount,  String? notes,  CategoryModel? category,  TransactionType? transactionType,  DateTime? dateStart,  DateTime? dateEnd)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? keyword,  double? minAmount,  double? maxAmount,  String? notes,  CategoryModel? category,  TransactionType? transactionType,  DateTime? dateStart,  DateTime? dateEnd,  WalletModel? wallet)  $default,) {final _that = this;
 switch (_that) {
 case _TransactionFilter():
-return $default(_that.keyword,_that.minAmount,_that.maxAmount,_that.notes,_that.category,_that.transactionType,_that.dateStart,_that.dateEnd);case _:
+return $default(_that.keyword,_that.minAmount,_that.maxAmount,_that.notes,_that.category,_that.transactionType,_that.dateStart,_that.dateEnd,_that.wallet);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -213,10 +226,10 @@ return $default(_that.keyword,_that.minAmount,_that.maxAmount,_that.notes,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? keyword,  double? minAmount,  double? maxAmount,  String? notes,  CategoryModel? category,  TransactionType? transactionType,  DateTime? dateStart,  DateTime? dateEnd)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? keyword,  double? minAmount,  double? maxAmount,  String? notes,  CategoryModel? category,  TransactionType? transactionType,  DateTime? dateStart,  DateTime? dateEnd,  WalletModel? wallet)?  $default,) {final _that = this;
 switch (_that) {
 case _TransactionFilter() when $default != null:
-return $default(_that.keyword,_that.minAmount,_that.maxAmount,_that.notes,_that.category,_that.transactionType,_that.dateStart,_that.dateEnd);case _:
+return $default(_that.keyword,_that.minAmount,_that.maxAmount,_that.notes,_that.category,_that.transactionType,_that.dateStart,_that.dateEnd,_that.wallet);case _:
   return null;
 
 }
@@ -228,7 +241,7 @@ return $default(_that.keyword,_that.minAmount,_that.maxAmount,_that.notes,_that.
 @JsonSerializable()
 
 class _TransactionFilter implements TransactionFilter {
-  const _TransactionFilter({this.keyword, this.minAmount, this.maxAmount, this.notes, this.category, this.transactionType, this.dateStart, this.dateEnd});
+  const _TransactionFilter({this.keyword, this.minAmount, this.maxAmount, this.notes, this.category, this.transactionType, this.dateStart, this.dateEnd, this.wallet});
   factory _TransactionFilter.fromJson(Map<String, dynamic> json) => _$TransactionFilterFromJson(json);
 
 @override final  String? keyword;
@@ -239,6 +252,7 @@ class _TransactionFilter implements TransactionFilter {
 @override final  TransactionType? transactionType;
 @override final  DateTime? dateStart;
 @override final  DateTime? dateEnd;
+@override final  WalletModel? wallet;
 
 /// Create a copy of TransactionFilter
 /// with the given fields replaced by the non-null parameter values.
@@ -253,16 +267,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TransactionFilter&&(identical(other.keyword, keyword) || other.keyword == keyword)&&(identical(other.minAmount, minAmount) || other.minAmount == minAmount)&&(identical(other.maxAmount, maxAmount) || other.maxAmount == maxAmount)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.category, category) || other.category == category)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.dateStart, dateStart) || other.dateStart == dateStart)&&(identical(other.dateEnd, dateEnd) || other.dateEnd == dateEnd));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TransactionFilter&&(identical(other.keyword, keyword) || other.keyword == keyword)&&(identical(other.minAmount, minAmount) || other.minAmount == minAmount)&&(identical(other.maxAmount, maxAmount) || other.maxAmount == maxAmount)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.category, category) || other.category == category)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.dateStart, dateStart) || other.dateStart == dateStart)&&(identical(other.dateEnd, dateEnd) || other.dateEnd == dateEnd)&&(identical(other.wallet, wallet) || other.wallet == wallet));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,keyword,minAmount,maxAmount,notes,category,transactionType,dateStart,dateEnd);
+int get hashCode => Object.hash(runtimeType,keyword,minAmount,maxAmount,notes,category,transactionType,dateStart,dateEnd,wallet);
 
 @override
 String toString() {
-  return 'TransactionFilter(keyword: $keyword, minAmount: $minAmount, maxAmount: $maxAmount, notes: $notes, category: $category, transactionType: $transactionType, dateStart: $dateStart, dateEnd: $dateEnd)';
+  return 'TransactionFilter(keyword: $keyword, minAmount: $minAmount, maxAmount: $maxAmount, notes: $notes, category: $category, transactionType: $transactionType, dateStart: $dateStart, dateEnd: $dateEnd, wallet: $wallet)';
 }
 
 
@@ -273,11 +287,11 @@ abstract mixin class _$TransactionFilterCopyWith<$Res> implements $TransactionFi
   factory _$TransactionFilterCopyWith(_TransactionFilter value, $Res Function(_TransactionFilter) _then) = __$TransactionFilterCopyWithImpl;
 @override @useResult
 $Res call({
- String? keyword, double? minAmount, double? maxAmount, String? notes, CategoryModel? category, TransactionType? transactionType, DateTime? dateStart, DateTime? dateEnd
+ String? keyword, double? minAmount, double? maxAmount, String? notes, CategoryModel? category, TransactionType? transactionType, DateTime? dateStart, DateTime? dateEnd, WalletModel? wallet
 });
 
 
-@override $CategoryModelCopyWith<$Res>? get category;
+@override $CategoryModelCopyWith<$Res>? get category;@override $WalletModelCopyWith<$Res>? get wallet;
 
 }
 /// @nodoc
@@ -290,7 +304,7 @@ class __$TransactionFilterCopyWithImpl<$Res>
 
 /// Create a copy of TransactionFilter
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? keyword = freezed,Object? minAmount = freezed,Object? maxAmount = freezed,Object? notes = freezed,Object? category = freezed,Object? transactionType = freezed,Object? dateStart = freezed,Object? dateEnd = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? keyword = freezed,Object? minAmount = freezed,Object? maxAmount = freezed,Object? notes = freezed,Object? category = freezed,Object? transactionType = freezed,Object? dateStart = freezed,Object? dateEnd = freezed,Object? wallet = freezed,}) {
   return _then(_TransactionFilter(
 keyword: freezed == keyword ? _self.keyword : keyword // ignore: cast_nullable_to_non_nullable
 as String?,minAmount: freezed == minAmount ? _self.minAmount : minAmount // ignore: cast_nullable_to_non_nullable
@@ -300,7 +314,8 @@ as String?,category: freezed == category ? _self.category : category // ignore: 
 as CategoryModel?,transactionType: freezed == transactionType ? _self.transactionType : transactionType // ignore: cast_nullable_to_non_nullable
 as TransactionType?,dateStart: freezed == dateStart ? _self.dateStart : dateStart // ignore: cast_nullable_to_non_nullable
 as DateTime?,dateEnd: freezed == dateEnd ? _self.dateEnd : dateEnd // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,wallet: freezed == wallet ? _self.wallet : wallet // ignore: cast_nullable_to_non_nullable
+as WalletModel?,
   ));
 }
 
@@ -315,6 +330,18 @@ $CategoryModelCopyWith<$Res>? get category {
 
   return $CategoryModelCopyWith<$Res>(_self.category!, (value) {
     return _then(_self.copyWith(category: value));
+  });
+}/// Create a copy of TransactionFilter
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$WalletModelCopyWith<$Res>? get wallet {
+    if (_self.wallet == null) {
+    return null;
+  }
+
+  return $WalletModelCopyWith<$Res>(_self.wallet!, (value) {
+    return _then(_self.copyWith(wallet: value));
   });
 }
 }

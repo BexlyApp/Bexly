@@ -63,9 +63,76 @@ final transactionFilterProvider = StateProvider<TransactionFilter?>(
   (ref) => null,
 );
 
-/// Provider for dashboard - returns ALL transactions across all wallets
-/// This is used by dashboard components that need to show/filter all transactions
+/// Provider for dashboard/transaction screen - returns ALL transactions across all wallets
+/// with optional filtering
 final allTransactionsProvider = StreamProvider.autoDispose<List<TransactionModel>>((ref) {
   final db = ref.watch(databaseProvider);
-  return db.transactionDao.watchAllTransactionsWithDetails();
+  final filter = ref.watch(transactionFilterProvider);
+
+  final allTransactionsStream = db.transactionDao.watchAllTransactionsWithDetails();
+
+  // If no filter, return all transactions
+  if (filter == null) {
+    return allTransactionsStream;
+  }
+
+  // Apply filter manually since DAO doesn't have filtered method for all wallets
+  return allTransactionsStream.map((transactions) {
+    return transactions.where((transaction) {
+      // Filter by transaction type
+      if (filter.transactionType != null &&
+          transaction.transactionType != filter.transactionType) {
+        return false;
+      }
+
+      // Filter by category (including subcategories)
+      if (filter.category != null) {
+        final parentId = filter.category!.id!;
+        final subIds = filter.category!.subCategories?.map((e) => e.id!).toList() ?? [];
+        final allCategoryIds = [parentId, ...subIds];
+        if (!allCategoryIds.contains(transaction.category.id)) {
+          return false;
+        }
+      }
+
+      // Filter by min amount
+      if (filter.minAmount != null && transaction.amount < filter.minAmount!) {
+        return false;
+      }
+
+      // Filter by max amount
+      if (filter.maxAmount != null && transaction.amount > filter.maxAmount!) {
+        return false;
+      }
+
+      // Filter by keyword (search in title/notes)
+      if (filter.keyword != null && filter.keyword!.isNotEmpty) {
+        final keyword = filter.keyword!.toLowerCase();
+        final matchesTitle = transaction.title.toLowerCase().contains(keyword);
+        final matchesNotes = transaction.notes?.toLowerCase().contains(keyword) ?? false;
+        if (!matchesTitle && !matchesNotes) {
+          return false;
+        }
+      }
+
+      // Filter by date range
+      if (filter.dateStart != null) {
+        if (transaction.date.isBefore(filter.dateStart!)) {
+          return false;
+        }
+      }
+      if (filter.dateEnd != null) {
+        if (transaction.date.isAfter(filter.dateEnd!)) {
+          return false;
+        }
+      }
+
+      // Filter by wallet
+      if (filter.wallet != null && transaction.wallet.id != filter.wallet!.id) {
+        return false;
+      }
+
+      return true;
+    }).toList();
+  });
 });

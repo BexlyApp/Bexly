@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
@@ -31,6 +32,27 @@ class PlanningScreen extends HookConsumerWidget {
       showBackButton: false,
       showBalance: false,
       title: 'Planning',
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Navigate to budget or goal form based on current tab
+          if (currentTab.value == 0) {
+            // Budget tab - could navigate to budget form
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Create Budget - Coming Soon')),
+            );
+          } else {
+            // Goals tab - could navigate to goal form
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Create Goal - Coming Soon')),
+            );
+          }
+        },
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: Icon(
+          HugeIcons.strokeRoundedPlusSign,
+          color: Theme.of(context).colorScheme.onPrimary,
+        ),
+      ),
       body: Column(
         children: [
           Container(

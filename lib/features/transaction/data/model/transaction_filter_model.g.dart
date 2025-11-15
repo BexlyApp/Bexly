@@ -25,6 +25,9 @@ _TransactionFilter _$TransactionFilterFromJson(Map<String, dynamic> json) =>
       dateEnd: json['dateEnd'] == null
           ? null
           : DateTime.parse(json['dateEnd'] as String),
+      wallet: json['wallet'] == null
+          ? null
+          : WalletModel.fromJson(json['wallet'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$TransactionFilterToJson(_TransactionFilter instance) =>
@@ -37,6 +40,7 @@ Map<String, dynamic> _$TransactionFilterToJson(_TransactionFilter instance) =>
       'transactionType': _$TransactionTypeEnumMap[instance.transactionType],
       'dateStart': instance.dateStart?.toIso8601String(),
       'dateEnd': instance.dateEnd?.toIso8601String(),
+      'wallet': instance.wallet,
     };
 
 const _$TransactionTypeEnumMap = {

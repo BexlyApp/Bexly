@@ -23,7 +23,11 @@ mixin _$WalletModel {
  String get currency;/// Optional: The identifier or name of the icon associated with this wallet.
  String? get iconName;/// Optional: The color associated with this wallet, stored as a hex string or int.
  String? get colorHex;// Or int colorValue
-/// Timestamp when wallet was created
+/// The type of wallet (cash, bank_account, credit_card, etc.)
+ WalletType get walletType;/// Credit limit for credit cards
+ double? get creditLimit;/// Billing day of month (1-31) for credit cards
+ int? get billingDay;/// Annual interest rate in percentage for credit cards/loans
+ double? get interestRate;/// Timestamp when wallet was created
  DateTime? get createdAt;/// Timestamp when wallet was last updated
  DateTime? get updatedAt;
 /// Create a copy of WalletModel
@@ -38,16 +42,16 @@ $WalletModelCopyWith<WalletModel> get copyWith => _$WalletModelCopyWithImpl<Wall
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is WalletModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is WalletModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.walletType, walletType) || other.walletType == walletType)&&(identical(other.creditLimit, creditLimit) || other.creditLimit == creditLimit)&&(identical(other.billingDay, billingDay) || other.billingDay == billingDay)&&(identical(other.interestRate, interestRate) || other.interestRate == interestRate)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,name,balance,currency,iconName,colorHex,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,name,balance,currency,iconName,colorHex,walletType,creditLimit,billingDay,interestRate,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'WalletModel(id: $id, cloudId: $cloudId, name: $name, balance: $balance, currency: $currency, iconName: $iconName, colorHex: $colorHex, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'WalletModel(id: $id, cloudId: $cloudId, name: $name, balance: $balance, currency: $currency, iconName: $iconName, colorHex: $colorHex, walletType: $walletType, creditLimit: $creditLimit, billingDay: $billingDay, interestRate: $interestRate, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -58,7 +62,7 @@ abstract mixin class $WalletModelCopyWith<$Res>  {
   factory $WalletModelCopyWith(WalletModel value, $Res Function(WalletModel) _then) = _$WalletModelCopyWithImpl;
 @useResult
 $Res call({
- int? id, String? cloudId, String name, double balance, String currency, String? iconName, String? colorHex, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, String name, double balance, String currency, String? iconName, String? colorHex, WalletType walletType, double? creditLimit, int? billingDay, double? interestRate, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -75,7 +79,7 @@ class _$WalletModelCopyWithImpl<$Res>
 
 /// Create a copy of WalletModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? balance = null,Object? currency = null,Object? iconName = freezed,Object? colorHex = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? balance = null,Object? currency = null,Object? iconName = freezed,Object? colorHex = freezed,Object? walletType = null,Object? creditLimit = freezed,Object? billingDay = freezed,Object? interestRate = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -84,7 +88,11 @@ as String,balance: null == balance ? _self.balance : balance // ignore: cast_nul
 as double,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,iconName: freezed == iconName ? _self.iconName : iconName // ignore: cast_nullable_to_non_nullable
 as String?,colorHex: freezed == colorHex ? _self.colorHex : colorHex // ignore: cast_nullable_to_non_nullable
-as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as String?,walletType: null == walletType ? _self.walletType : walletType // ignore: cast_nullable_to_non_nullable
+as WalletType,creditLimit: freezed == creditLimit ? _self.creditLimit : creditLimit // ignore: cast_nullable_to_non_nullable
+as double?,billingDay: freezed == billingDay ? _self.billingDay : billingDay // ignore: cast_nullable_to_non_nullable
+as int?,interestRate: freezed == interestRate ? _self.interestRate : interestRate // ignore: cast_nullable_to_non_nullable
+as double?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
@@ -171,10 +179,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  double balance,  String currency,  String? iconName,  String? colorHex,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  double balance,  String currency,  String? iconName,  String? colorHex,  WalletType walletType,  double? creditLimit,  int? billingDay,  double? interestRate,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _WalletModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_that.iconName,_that.colorHex,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_that.iconName,_that.colorHex,_that.walletType,_that.creditLimit,_that.billingDay,_that.interestRate,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -192,10 +200,10 @@ return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  double balance,  String currency,  String? iconName,  String? colorHex,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  double balance,  String currency,  String? iconName,  String? colorHex,  WalletType walletType,  double? creditLimit,  int? billingDay,  double? interestRate,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _WalletModel():
-return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_that.iconName,_that.colorHex,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_that.iconName,_that.colorHex,_that.walletType,_that.creditLimit,_that.billingDay,_that.interestRate,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -212,10 +220,10 @@ return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String name,  double balance,  String currency,  String? iconName,  String? colorHex,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String name,  double balance,  String currency,  String? iconName,  String? colorHex,  WalletType walletType,  double? creditLimit,  int? billingDay,  double? interestRate,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _WalletModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_that.iconName,_that.colorHex,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_that.iconName,_that.colorHex,_that.walletType,_that.creditLimit,_that.billingDay,_that.interestRate,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -227,7 +235,7 @@ return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_
 @JsonSerializable()
 
 class _WalletModel implements WalletModel {
-  const _WalletModel({this.id, this.cloudId, this.name = 'My Wallet', this.balance = 0.0, this.currency = 'IDR', this.iconName, this.colorHex, this.createdAt, this.updatedAt});
+  const _WalletModel({this.id, this.cloudId, this.name = 'My Wallet', this.balance = 0.0, this.currency = 'IDR', this.iconName, this.colorHex, this.walletType = WalletType.cash, this.creditLimit, this.billingDay, this.interestRate, this.createdAt, this.updatedAt});
   factory _WalletModel.fromJson(Map<String, dynamic> json) => _$WalletModelFromJson(json);
 
 /// The unique identifier for the wallet.
@@ -245,6 +253,14 @@ class _WalletModel implements WalletModel {
 /// Optional: The color associated with this wallet, stored as a hex string or int.
 @override final  String? colorHex;
 // Or int colorValue
+/// The type of wallet (cash, bank_account, credit_card, etc.)
+@override@JsonKey() final  WalletType walletType;
+/// Credit limit for credit cards
+@override final  double? creditLimit;
+/// Billing day of month (1-31) for credit cards
+@override final  int? billingDay;
+/// Annual interest rate in percentage for credit cards/loans
+@override final  double? interestRate;
 /// Timestamp when wallet was created
 @override final  DateTime? createdAt;
 /// Timestamp when wallet was last updated
@@ -263,16 +279,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _WalletModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _WalletModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.walletType, walletType) || other.walletType == walletType)&&(identical(other.creditLimit, creditLimit) || other.creditLimit == creditLimit)&&(identical(other.billingDay, billingDay) || other.billingDay == billingDay)&&(identical(other.interestRate, interestRate) || other.interestRate == interestRate)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,name,balance,currency,iconName,colorHex,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,name,balance,currency,iconName,colorHex,walletType,creditLimit,billingDay,interestRate,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'WalletModel(id: $id, cloudId: $cloudId, name: $name, balance: $balance, currency: $currency, iconName: $iconName, colorHex: $colorHex, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'WalletModel(id: $id, cloudId: $cloudId, name: $name, balance: $balance, currency: $currency, iconName: $iconName, colorHex: $colorHex, walletType: $walletType, creditLimit: $creditLimit, billingDay: $billingDay, interestRate: $interestRate, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -283,7 +299,7 @@ abstract mixin class _$WalletModelCopyWith<$Res> implements $WalletModelCopyWith
   factory _$WalletModelCopyWith(_WalletModel value, $Res Function(_WalletModel) _then) = __$WalletModelCopyWithImpl;
 @override @useResult
 $Res call({
- int? id, String? cloudId, String name, double balance, String currency, String? iconName, String? colorHex, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, String name, double balance, String currency, String? iconName, String? colorHex, WalletType walletType, double? creditLimit, int? billingDay, double? interestRate, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -300,7 +316,7 @@ class __$WalletModelCopyWithImpl<$Res>
 
 /// Create a copy of WalletModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? balance = null,Object? currency = null,Object? iconName = freezed,Object? colorHex = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? balance = null,Object? currency = null,Object? iconName = freezed,Object? colorHex = freezed,Object? walletType = null,Object? creditLimit = freezed,Object? billingDay = freezed,Object? interestRate = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_WalletModel(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -309,7 +325,11 @@ as String,balance: null == balance ? _self.balance : balance // ignore: cast_nul
 as double,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,iconName: freezed == iconName ? _self.iconName : iconName // ignore: cast_nullable_to_non_nullable
 as String?,colorHex: freezed == colorHex ? _self.colorHex : colorHex // ignore: cast_nullable_to_non_nullable
-as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as String?,walletType: null == walletType ? _self.walletType : walletType // ignore: cast_nullable_to_non_nullable
+as WalletType,creditLimit: freezed == creditLimit ? _self.creditLimit : creditLimit // ignore: cast_nullable_to_non_nullable
+as double?,billingDay: freezed == billingDay ? _self.billingDay : billingDay // ignore: cast_nullable_to_non_nullable
+as int?,interestRate: freezed == interestRate ? _self.interestRate : interestRate // ignore: cast_nullable_to_non_nullable
+as double?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
