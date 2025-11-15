@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/constants/app_colors.dart';
@@ -32,7 +33,11 @@ class RecurringScreen extends HookConsumerWidget {
             builder: (context) => const RecurringFormScreen(),
           );
         },
-        child: const Icon(Icons.add),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: Icon(
+          HugeIcons.strokeRoundedPlusSign,
+          color: Theme.of(context).colorScheme.onPrimary,
+        ),
       ),
       body: Column(
         children: [

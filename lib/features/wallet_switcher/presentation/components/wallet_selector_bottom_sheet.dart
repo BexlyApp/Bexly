@@ -80,6 +80,7 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
               return ListTile(
                 title: Text(wallet.name, style: AppTextStyles.body1),
                 dense: true,
+                leading: Icon(_getWalletTypeIcon(wallet.walletType.iconName)),
                 subtitle: Text(
                   '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}',
                   style: AppTextStyles.body3,
@@ -117,5 +118,27 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
         error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );
+  }
+
+  IconData _getWalletTypeIcon(String iconName) {
+    switch (iconName) {
+      case 'cash':
+        return Icons.payments;
+      case 'bank':
+        return Icons.account_balance;
+      case 'credit_card':
+        return Icons.credit_card;
+      case 'phone_iphone':
+        return Icons.phone_iphone;
+      case 'trending_up':
+        return Icons.trending_up;
+      case 'savings':
+        return Icons.savings;
+      case 'security':
+        return Icons.security;
+      case 'account_balance_wallet':
+      default:
+        return Icons.account_balance_wallet;
+    }
   }
 }

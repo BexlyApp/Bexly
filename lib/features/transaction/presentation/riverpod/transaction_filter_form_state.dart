@@ -22,9 +22,11 @@ class TransactionFilterFormState {
   final TextEditingController maxAmountController;
   final TextEditingController notesController;
   final TextEditingController categoryController;
+  final TextEditingController walletController;
   final TextEditingController dateFieldController;
   final ValueNotifier<TransactionType> selectedTransactionType;
   final ValueNotifier<CategoryModel?> selectedCategory;
+  final ValueNotifier<WalletModel?> selectedWallet;
 
   TransactionFilterFormState({
     required this.keywordController,
@@ -32,9 +34,11 @@ class TransactionFilterFormState {
     required this.maxAmountController,
     required this.notesController,
     required this.categoryController,
+    required this.walletController,
     required this.dateFieldController,
     required this.selectedTransactionType,
     required this.selectedCategory,
+    required this.selectedWallet,
   });
 
   String getCategoryText() {
@@ -85,6 +89,7 @@ class TransactionFilterFormState {
       transactionType: selectedTransactionType.value,
       dateStart: dateStart?.toMidnightStart,
       dateEnd: dateEnd?.toMidnightEnd,
+      wallet: selectedWallet.value,
     );
 
     ref.read(transactionFilterProvider.notifier).state = filter;
@@ -98,9 +103,11 @@ class TransactionFilterFormState {
     maxAmountController.clear();
     notesController.clear();
     categoryController.clear();
+    walletController.clear();
     dateFieldController.clear();
     selectedTransactionType.value = TransactionType.expense;
     selectedCategory.value = null;
+    selectedWallet.value = null;
     // Reset date picker provider as well
     ref.read(filterDatePickerProvider.notifier).state = [
       DateTime.now().subtract(const Duration(days: 5)),
@@ -113,8 +120,10 @@ class TransactionFilterFormState {
     minAmountController.dispose();
     notesController.dispose();
     categoryController.dispose();
+    walletController.dispose();
     selectedTransactionType.dispose();
     selectedCategory.dispose();
+    selectedWallet.dispose();
   }
 }
 
@@ -142,12 +151,16 @@ TransactionFilterFormState useTransactionFilterFormState({
   final categoryController = useTextEditingController(
     text: initialFilter?.category?.title ?? '',
   );
+  final walletController = useTextEditingController(
+    text: initialFilter?.wallet?.name ?? '',
+  );
   final dateFieldController = useTextEditingController();
 
   final selectedTransactionType = useState<TransactionType>(
     initialFilter?.transactionType ?? TransactionType.expense,
   );
   final selectedCategory = useState<CategoryModel?>(initialFilter?.category);
+  final selectedWallet = useState<WalletModel?>(initialFilter?.wallet);
 
   // Set date picker provider if filter has dates
   useState(() {
@@ -166,8 +179,10 @@ TransactionFilterFormState useTransactionFilterFormState({
     maxAmountController: maxAmountController,
     notesController: notesController,
     categoryController: categoryController,
+    walletController: walletController,
     dateFieldController: dateFieldController,
     selectedTransactionType: selectedTransactionType,
     selectedCategory: selectedCategory,
+    selectedWallet: selectedWallet,
   );
 }

@@ -53,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 13; // Add isSystemDefault column to Categories table
+  int get schemaVersion => 14; // Add wallet type and credit card fields
 
   @override
   MigrationStrategy get migration {
@@ -128,6 +128,25 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Marked all existing categories as system defaults', label: 'database');
           } catch (e) {
             Log.e('Failed to add isSystemDefault column: $e', label: 'database');
+          }
+        }
+
+        // For version 14, add wallet type and credit card fields
+        if (from < 14) {
+          try {
+            await m.addColumn(wallets, wallets.walletType);
+            await m.addColumn(wallets, wallets.creditLimit);
+            await m.addColumn(wallets, wallets.billingDay);
+            await m.addColumn(wallets, wallets.interestRate);
+            Log.i('Added wallet type and credit card fields to wallets table', label: 'database');
+
+            // Set default wallet type to 'cash' for existing wallets
+            await customUpdate(
+              "UPDATE wallets SET wallet_type = 'cash' WHERE wallet_type IS NULL",
+            );
+            Log.i('Set default wallet type for existing wallets', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add wallet type fields: $e', label: 'database');
           }
           return;
         }

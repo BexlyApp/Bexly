@@ -19,6 +19,8 @@ import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/currency_picker/presentation/components/currency_picker_field.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/wallet/data/model/wallet_type.dart';
+import 'package:bexly/features/wallet/presentation/components/wallet_type_selector_field.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:toastification/toastification.dart';
 
@@ -44,9 +46,14 @@ class WalletFormBottomSheet extends HookConsumerWidget {
     final nameController = useTextEditingController();
     final balanceController = useTextEditingController();
     final currencyController = useTextEditingController();
-    // Add controllers for iconName and colorHex if you plan to edit them
-    // final iconController = useTextEditingController(text: wallet?.iconName ?? '');
-    // final colorController = useTextEditingController(text: wallet?.colorHex ?? '');
+
+    // Wallet type state
+    final walletType = useState<WalletType>(wallet?.walletType ?? WalletType.cash);
+
+    // Credit card fields
+    final creditLimitController = useTextEditingController();
+    final billingDayController = useTextEditingController();
+    final interestRateController = useTextEditingController();
 
     // Initialize form fields if wallet exists (populate data for both edit and create modes)
     useEffect(() {
@@ -56,6 +63,18 @@ class WalletFormBottomSheet extends HookConsumerWidget {
             ? ''
             : '${wallet?.currencyByIsoCode(ref).symbol} ${wallet?.balance.toPriceFormat()}';
         currencyController.text = wallet!.currency;
+        walletType.value = wallet!.walletType;
+
+        // Initialize credit card fields
+        if (wallet!.creditLimit != null) {
+          creditLimitController.text = wallet!.creditLimit.toString();
+        }
+        if (wallet!.billingDay != null) {
+          billingDayController.text = wallet!.billingDay.toString();
+        }
+        if (wallet!.interestRate != null) {
+          interestRateController.text = wallet!.interestRate.toString();
+        }
       }
       return null;
     }, [wallet]);
@@ -77,6 +96,15 @@ class WalletFormBottomSheet extends HookConsumerWidget {
               maxLength: 15,
               customCounterText: '',
             ),
+
+            // Wallet Type Selector
+            WalletTypeSelectorField(
+              key: ValueKey(walletType.value),
+              selectedType: walletType.value,
+              onTypeChanged: (type) => walletType.value = type,
+              label: 'Wallet Type',
+            ),
+
             CurrencyPickerField(
               defaultCurrency: currency,
               enabled: !isEditing, // Disable currency change when editing
@@ -92,10 +120,58 @@ class WalletFormBottomSheet extends HookConsumerWidget {
               enabled: !isEditing, // Disable balance change when editing
               // autofocus: !isEditing, // Optional: autofocus if adding new
             ),
+
+            // Credit Card Specific Fields
+            if (walletType.value == WalletType.creditCard) ...[
+              CustomNumericField(
+                controller: creditLimitController,
+                label: 'Credit Limit',
+                hint: '5,000.00',
+                icon: HugeIcons.strokeRoundedCreditCard,
+                isRequired: false,
+                appendCurrencySymbolToHint: true,
+                useSelectedCurrency: true,
+              ),
+              CustomTextField(
+                controller: billingDayController,
+                label: 'Billing Day (1-31)',
+                hint: 'e.g., 15',
+                isRequired: false,
+                prefixIcon: HugeIcons.strokeRoundedCalendar03,
+                textInputAction: TextInputAction.next,
+                keyboardType: TextInputType.number,
+              ),
+              CustomTextField(
+                controller: interestRateController,
+                label: 'Annual Interest Rate (%)',
+                hint: 'e.g., 18.5',
+                isRequired: false,
+                prefixIcon: HugeIcons.strokeRoundedPercent,
+                textInputAction: TextInputAction.done,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+            ],
             PrimaryButton(
               label: 'Save Wallet',
               state: ButtonState.active,
               onPressed: () async {
+                // Parse credit card fields
+                double? creditLimit;
+                int? billingDay;
+                double? interestRate;
+
+                if (walletType.value == WalletType.creditCard) {
+                  if (creditLimitController.text.isNotEmpty) {
+                    creditLimit = creditLimitController.text.takeNumericAsDouble();
+                  }
+                  if (billingDayController.text.isNotEmpty) {
+                    billingDay = int.tryParse(billingDayController.text.trim());
+                  }
+                  if (interestRateController.text.isNotEmpty) {
+                    interestRate = double.tryParse(interestRateController.text.trim());
+                  }
+                }
+
                 final newWallet = WalletModel(
                   id: wallet?.id, // Keep ID for updates, null for inserts
                   name: nameController.text.trim(),
@@ -103,6 +179,10 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                   currency: currency.isoCode,
                   iconName: wallet?.iconName, // Preserve or add UI to change
                   colorHex: wallet?.colorHex, // Preserve or add UI to change
+                  walletType: walletType.value,
+                  creditLimit: creditLimit,
+                  billingDay: billingDay,
+                  interestRate: interestRate,
                 );
 
                 // return;

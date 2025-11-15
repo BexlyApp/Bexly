@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 
 part 'transaction_filter_model.freezed.dart';
 part 'transaction_filter_model.g.dart';
@@ -16,6 +17,7 @@ abstract class TransactionFilter with _$TransactionFilter {
     TransactionType? transactionType,
     DateTime? dateStart,
     DateTime? dateEnd,
+    WalletModel? wallet,
   }) = _TransactionFilter;
 
   factory TransactionFilter.fromJson(Map<String, dynamic> json) =>

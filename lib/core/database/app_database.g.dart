@@ -2451,6 +2451,51 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _walletTypeMeta = const VerificationMeta(
+    'walletType',
+  );
+  @override
+  late final GeneratedColumn<String> walletType = GeneratedColumn<String>(
+    'wallet_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('cash'),
+  );
+  static const VerificationMeta _creditLimitMeta = const VerificationMeta(
+    'creditLimit',
+  );
+  @override
+  late final GeneratedColumn<double> creditLimit = GeneratedColumn<double>(
+    'credit_limit',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _billingDayMeta = const VerificationMeta(
+    'billingDay',
+  );
+  @override
+  late final GeneratedColumn<int> billingDay = GeneratedColumn<int>(
+    'billing_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _interestRateMeta = const VerificationMeta(
+    'interestRate',
+  );
+  @override
+  late final GeneratedColumn<double> interestRate = GeneratedColumn<double>(
+    'interest_rate',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2484,6 +2529,10 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
     currency,
     iconName,
     colorHex,
+    walletType,
+    creditLimit,
+    billingDay,
+    interestRate,
     createdAt,
     updatedAt,
   ];
@@ -2538,6 +2587,36 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
         colorHex.isAcceptableOrUnknown(data['color_hex']!, _colorHexMeta),
       );
     }
+    if (data.containsKey('wallet_type')) {
+      context.handle(
+        _walletTypeMeta,
+        walletType.isAcceptableOrUnknown(data['wallet_type']!, _walletTypeMeta),
+      );
+    }
+    if (data.containsKey('credit_limit')) {
+      context.handle(
+        _creditLimitMeta,
+        creditLimit.isAcceptableOrUnknown(
+          data['credit_limit']!,
+          _creditLimitMeta,
+        ),
+      );
+    }
+    if (data.containsKey('billing_day')) {
+      context.handle(
+        _billingDayMeta,
+        billingDay.isAcceptableOrUnknown(data['billing_day']!, _billingDayMeta),
+      );
+    }
+    if (data.containsKey('interest_rate')) {
+      context.handle(
+        _interestRateMeta,
+        interestRate.isAcceptableOrUnknown(
+          data['interest_rate']!,
+          _interestRateMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2587,6 +2666,22 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
         DriftSqlType.string,
         data['${effectivePrefix}color_hex'],
       ),
+      walletType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wallet_type'],
+      )!,
+      creditLimit: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}credit_limit'],
+      ),
+      billingDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}billing_day'],
+      ),
+      interestRate: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}interest_rate'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2615,6 +2710,18 @@ class Wallet extends DataClass implements Insertable<Wallet> {
   final String currency;
   final String? iconName;
   final String? colorHex;
+
+  /// Wallet type (cash, bank_account, credit_card, etc.)
+  final String walletType;
+
+  /// Credit limit (for credit cards only)
+  final double? creditLimit;
+
+  /// Billing day of month (1-31, for credit cards only)
+  final int? billingDay;
+
+  /// Annual interest rate in percentage (for credit cards/loans)
+  final double? interestRate;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Wallet({
@@ -2625,6 +2732,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     required this.currency,
     this.iconName,
     this.colorHex,
+    required this.walletType,
+    this.creditLimit,
+    this.billingDay,
+    this.interestRate,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -2643,6 +2754,16 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     }
     if (!nullToAbsent || colorHex != null) {
       map['color_hex'] = Variable<String>(colorHex);
+    }
+    map['wallet_type'] = Variable<String>(walletType);
+    if (!nullToAbsent || creditLimit != null) {
+      map['credit_limit'] = Variable<double>(creditLimit);
+    }
+    if (!nullToAbsent || billingDay != null) {
+      map['billing_day'] = Variable<int>(billingDay);
+    }
+    if (!nullToAbsent || interestRate != null) {
+      map['interest_rate'] = Variable<double>(interestRate);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2664,6 +2785,16 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       colorHex: colorHex == null && nullToAbsent
           ? const Value.absent()
           : Value(colorHex),
+      walletType: Value(walletType),
+      creditLimit: creditLimit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(creditLimit),
+      billingDay: billingDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billingDay),
+      interestRate: interestRate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(interestRate),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2682,6 +2813,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       currency: serializer.fromJson<String>(json['currency']),
       iconName: serializer.fromJson<String?>(json['iconName']),
       colorHex: serializer.fromJson<String?>(json['colorHex']),
+      walletType: serializer.fromJson<String>(json['walletType']),
+      creditLimit: serializer.fromJson<double?>(json['creditLimit']),
+      billingDay: serializer.fromJson<int?>(json['billingDay']),
+      interestRate: serializer.fromJson<double?>(json['interestRate']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2697,6 +2832,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       'currency': serializer.toJson<String>(currency),
       'iconName': serializer.toJson<String?>(iconName),
       'colorHex': serializer.toJson<String?>(colorHex),
+      'walletType': serializer.toJson<String>(walletType),
+      'creditLimit': serializer.toJson<double?>(creditLimit),
+      'billingDay': serializer.toJson<int?>(billingDay),
+      'interestRate': serializer.toJson<double?>(interestRate),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2710,6 +2849,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     String? currency,
     Value<String?> iconName = const Value.absent(),
     Value<String?> colorHex = const Value.absent(),
+    String? walletType,
+    Value<double?> creditLimit = const Value.absent(),
+    Value<int?> billingDay = const Value.absent(),
+    Value<double?> interestRate = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Wallet(
@@ -2720,6 +2863,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     currency: currency ?? this.currency,
     iconName: iconName.present ? iconName.value : this.iconName,
     colorHex: colorHex.present ? colorHex.value : this.colorHex,
+    walletType: walletType ?? this.walletType,
+    creditLimit: creditLimit.present ? creditLimit.value : this.creditLimit,
+    billingDay: billingDay.present ? billingDay.value : this.billingDay,
+    interestRate: interestRate.present ? interestRate.value : this.interestRate,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2732,6 +2879,18 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       currency: data.currency.present ? data.currency.value : this.currency,
       iconName: data.iconName.present ? data.iconName.value : this.iconName,
       colorHex: data.colorHex.present ? data.colorHex.value : this.colorHex,
+      walletType: data.walletType.present
+          ? data.walletType.value
+          : this.walletType,
+      creditLimit: data.creditLimit.present
+          ? data.creditLimit.value
+          : this.creditLimit,
+      billingDay: data.billingDay.present
+          ? data.billingDay.value
+          : this.billingDay,
+      interestRate: data.interestRate.present
+          ? data.interestRate.value
+          : this.interestRate,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2747,6 +2906,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           ..write('currency: $currency, ')
           ..write('iconName: $iconName, ')
           ..write('colorHex: $colorHex, ')
+          ..write('walletType: $walletType, ')
+          ..write('creditLimit: $creditLimit, ')
+          ..write('billingDay: $billingDay, ')
+          ..write('interestRate: $interestRate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2762,6 +2925,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     currency,
     iconName,
     colorHex,
+    walletType,
+    creditLimit,
+    billingDay,
+    interestRate,
     createdAt,
     updatedAt,
   );
@@ -2776,6 +2943,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           other.currency == this.currency &&
           other.iconName == this.iconName &&
           other.colorHex == this.colorHex &&
+          other.walletType == this.walletType &&
+          other.creditLimit == this.creditLimit &&
+          other.billingDay == this.billingDay &&
+          other.interestRate == this.interestRate &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2788,6 +2959,10 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
   final Value<String> currency;
   final Value<String?> iconName;
   final Value<String?> colorHex;
+  final Value<String> walletType;
+  final Value<double?> creditLimit;
+  final Value<int?> billingDay;
+  final Value<double?> interestRate;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const WalletsCompanion({
@@ -2798,6 +2973,10 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.currency = const Value.absent(),
     this.iconName = const Value.absent(),
     this.colorHex = const Value.absent(),
+    this.walletType = const Value.absent(),
+    this.creditLimit = const Value.absent(),
+    this.billingDay = const Value.absent(),
+    this.interestRate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2809,6 +2988,10 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.currency = const Value.absent(),
     this.iconName = const Value.absent(),
     this.colorHex = const Value.absent(),
+    this.walletType = const Value.absent(),
+    this.creditLimit = const Value.absent(),
+    this.billingDay = const Value.absent(),
+    this.interestRate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2820,6 +3003,10 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     Expression<String>? currency,
     Expression<String>? iconName,
     Expression<String>? colorHex,
+    Expression<String>? walletType,
+    Expression<double>? creditLimit,
+    Expression<int>? billingDay,
+    Expression<double>? interestRate,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -2831,6 +3018,10 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       if (currency != null) 'currency': currency,
       if (iconName != null) 'icon_name': iconName,
       if (colorHex != null) 'color_hex': colorHex,
+      if (walletType != null) 'wallet_type': walletType,
+      if (creditLimit != null) 'credit_limit': creditLimit,
+      if (billingDay != null) 'billing_day': billingDay,
+      if (interestRate != null) 'interest_rate': interestRate,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -2844,6 +3035,10 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     Value<String>? currency,
     Value<String?>? iconName,
     Value<String?>? colorHex,
+    Value<String>? walletType,
+    Value<double?>? creditLimit,
+    Value<int?>? billingDay,
+    Value<double?>? interestRate,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -2855,6 +3050,10 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       currency: currency ?? this.currency,
       iconName: iconName ?? this.iconName,
       colorHex: colorHex ?? this.colorHex,
+      walletType: walletType ?? this.walletType,
+      creditLimit: creditLimit ?? this.creditLimit,
+      billingDay: billingDay ?? this.billingDay,
+      interestRate: interestRate ?? this.interestRate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2884,6 +3083,18 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     if (colorHex.present) {
       map['color_hex'] = Variable<String>(colorHex.value);
     }
+    if (walletType.present) {
+      map['wallet_type'] = Variable<String>(walletType.value);
+    }
+    if (creditLimit.present) {
+      map['credit_limit'] = Variable<double>(creditLimit.value);
+    }
+    if (billingDay.present) {
+      map['billing_day'] = Variable<int>(billingDay.value);
+    }
+    if (interestRate.present) {
+      map['interest_rate'] = Variable<double>(interestRate.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2903,6 +3114,10 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
           ..write('currency: $currency, ')
           ..write('iconName: $iconName, ')
           ..write('colorHex: $colorHex, ')
+          ..write('walletType: $walletType, ')
+          ..write('creditLimit: $creditLimit, ')
+          ..write('billingDay: $billingDay, ')
+          ..write('interestRate: $interestRate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -8196,6 +8411,10 @@ typedef $$WalletsTableCreateCompanionBuilder =
       Value<String> currency,
       Value<String?> iconName,
       Value<String?> colorHex,
+      Value<String> walletType,
+      Value<double?> creditLimit,
+      Value<int?> billingDay,
+      Value<double?> interestRate,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -8208,6 +8427,10 @@ typedef $$WalletsTableUpdateCompanionBuilder =
       Value<String> currency,
       Value<String?> iconName,
       Value<String?> colorHex,
+      Value<String> walletType,
+      Value<double?> creditLimit,
+      Value<int?> billingDay,
+      Value<double?> interestRate,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -8313,6 +8536,26 @@ class $$WalletsTableFilterComposer
 
   ColumnFilters<String> get colorHex => $composableBuilder(
     column: $table.colorHex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get walletType => $composableBuilder(
+    column: $table.walletType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get creditLimit => $composableBuilder(
+    column: $table.creditLimit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get billingDay => $composableBuilder(
+    column: $table.billingDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get interestRate => $composableBuilder(
+    column: $table.interestRate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8446,6 +8689,26 @@ class $$WalletsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get walletType => $composableBuilder(
+    column: $table.walletType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get creditLimit => $composableBuilder(
+    column: $table.creditLimit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get billingDay => $composableBuilder(
+    column: $table.billingDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get interestRate => $composableBuilder(
+    column: $table.interestRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -8486,6 +8749,26 @@ class $$WalletsTableAnnotationComposer
 
   GeneratedColumn<String> get colorHex =>
       $composableBuilder(column: $table.colorHex, builder: (column) => column);
+
+  GeneratedColumn<String> get walletType => $composableBuilder(
+    column: $table.walletType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get creditLimit => $composableBuilder(
+    column: $table.creditLimit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get billingDay => $composableBuilder(
+    column: $table.billingDay,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get interestRate => $composableBuilder(
+    column: $table.interestRate,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -8608,6 +8891,10 @@ class $$WalletsTableTableManager
                 Value<String> currency = const Value.absent(),
                 Value<String?> iconName = const Value.absent(),
                 Value<String?> colorHex = const Value.absent(),
+                Value<String> walletType = const Value.absent(),
+                Value<double?> creditLimit = const Value.absent(),
+                Value<int?> billingDay = const Value.absent(),
+                Value<double?> interestRate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => WalletsCompanion(
@@ -8618,6 +8905,10 @@ class $$WalletsTableTableManager
                 currency: currency,
                 iconName: iconName,
                 colorHex: colorHex,
+                walletType: walletType,
+                creditLimit: creditLimit,
+                billingDay: billingDay,
+                interestRate: interestRate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -8630,6 +8921,10 @@ class $$WalletsTableTableManager
                 Value<String> currency = const Value.absent(),
                 Value<String?> iconName = const Value.absent(),
                 Value<String?> colorHex = const Value.absent(),
+                Value<String> walletType = const Value.absent(),
+                Value<double?> creditLimit = const Value.absent(),
+                Value<int?> billingDay = const Value.absent(),
+                Value<double?> interestRate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => WalletsCompanion.insert(
@@ -8640,6 +8935,10 @@ class $$WalletsTableTableManager
                 currency: currency,
                 iconName: iconName,
                 colorHex: colorHex,
+                walletType: walletType,
+                creditLimit: creditLimit,
+                billingDay: billingDay,
+                interestRate: interestRate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
