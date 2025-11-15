@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 
 /// A picker widget for selecting wallet type
@@ -114,7 +115,7 @@ class _WalletTypeCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              _getIconData(type.iconName),
+              _getWalletIcon(type),
               size: 28,
               color: isSelected
                   ? theme.colorScheme.primary
@@ -140,25 +141,24 @@ class _WalletTypeCard extends StatelessWidget {
     );
   }
 
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'cash':
-        return Icons.payments;
-      case 'bank':
-        return Icons.account_balance;
-      case 'credit_card':
-        return Icons.credit_card;
-      case 'phone_iphone':
-        return Icons.phone_iphone;
-      case 'trending_up':
-        return Icons.trending_up;
-      case 'savings':
-        return Icons.savings;
-      case 'security':
-        return Icons.security;
-      case 'account_balance_wallet':
-      default:
-        return Icons.account_balance_wallet;
+  IconData _getWalletIcon(WalletType type) {
+    switch (type) {
+      case WalletType.cash:
+        return HugeIcons.strokeRoundedMoney02;
+      case WalletType.bankAccount:
+        return HugeIcons.strokeRoundedBank;
+      case WalletType.creditCard:
+        return HugeIcons.strokeRoundedCreditCard;
+      case WalletType.eWallet:
+        return HugeIcons.strokeRoundedMoney04;
+      case WalletType.investment:
+        return HugeIcons.strokeRoundedChart;
+      case WalletType.savings:
+        return HugeIcons.strokeRoundedPiggyBank;
+      case WalletType.insurance:
+        return HugeIcons.strokeRoundedSecurityCheck;
+      case WalletType.other:
+        return HugeIcons.strokeRoundedWallet03;
     }
   }
 }

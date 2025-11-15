@@ -140,6 +140,7 @@ class TransactionForm extends HookConsumerWidget {
         const Gap(AppSpacing.spacing16),
         TransactionWalletSelector(
           controller: formState.walletController,
+          selectedWallet: formState.selectedWallet.value,
           onWalletSelected: (wallet) {
             formState.selectedWallet.value = wallet;
             formState.walletController.text = formState.getWalletText();

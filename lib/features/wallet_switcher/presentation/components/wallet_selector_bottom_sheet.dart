@@ -8,6 +8,7 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_filter_provider.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 class WalletSelectorBottomSheet extends ConsumerWidget {
@@ -80,7 +81,7 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
               return ListTile(
                 title: Text(wallet.name, style: AppTextStyles.body1),
                 dense: true,
-                leading: Icon(_getWalletTypeIcon(wallet.walletType.iconName)),
+                leading: Icon(_getWalletTypeIcon(wallet.walletType)),
                 subtitle: Text(
                   '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}',
                   style: AppTextStyles.body3,
@@ -120,25 +121,25 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
     );
   }
 
-  IconData _getWalletTypeIcon(String iconName) {
-    switch (iconName) {
-      case 'cash':
-        return Icons.payments;
-      case 'bank':
-        return Icons.account_balance;
-      case 'credit_card':
-        return Icons.credit_card;
-      case 'phone_iphone':
-        return Icons.phone_iphone;
-      case 'trending_up':
-        return Icons.trending_up;
-      case 'savings':
-        return Icons.savings;
-      case 'security':
-        return Icons.security;
-      case 'account_balance_wallet':
+  IconData _getWalletTypeIcon(WalletType walletType) {
+    switch (walletType) {
+      case WalletType.cash:
+        return HugeIcons.strokeRoundedMoney02;
+      case WalletType.bankAccount:
+        return HugeIcons.strokeRoundedBank;
+      case WalletType.creditCard:
+        return HugeIcons.strokeRoundedCreditCard;
+      case WalletType.eWallet:
+        return HugeIcons.strokeRoundedMoney04;
+      case WalletType.investment:
+        return HugeIcons.strokeRoundedChart;
+      case WalletType.savings:
+        return HugeIcons.strokeRoundedPiggyBank;
+      case WalletType.insurance:
+        return HugeIcons.strokeRoundedSecurityCheck;
+      case WalletType.other:
       default:
-        return Icons.account_balance_wallet;
+        return HugeIcons.strokeRoundedWallet03;
     }
   }
 }

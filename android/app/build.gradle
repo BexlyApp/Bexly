@@ -77,6 +77,10 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.release
             }
+            // Disable native debug symbol stripping for bundle builds
+            ndk {
+                debugSymbolLevel = 'SYMBOL_TABLE'
+            }
         }
     }
 }

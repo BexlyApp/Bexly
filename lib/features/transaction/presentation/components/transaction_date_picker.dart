@@ -20,8 +20,16 @@ class TransactionDatePicker extends ConsumerWidget {
   @override
   Widget build(BuildContext context, ref) {
     final selectedDateNotifier = ref.read(datePickerProvider.notifier);
-    dateFieldController.text = (initialdate ?? DateTime.now())
-        .toRelativeDayFormatted(showTime: true, use24Hours: false);
+
+    // Only set initial text if controller is empty (first time)
+    if (dateFieldController.text.isEmpty) {
+      final dateToUse = initialdate ?? DateTime.now();
+      dateFieldController.text = dateToUse.toRelativeDayFormatted(
+        showTime: true,
+        use24Hours: false,
+      );
+      selectedDateNotifier.state = dateToUse;
+    }
 
     return CustomSelectField(
       context: context,
