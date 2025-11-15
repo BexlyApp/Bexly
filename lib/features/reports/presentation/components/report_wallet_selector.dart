@@ -83,23 +83,24 @@ class _ReportWalletSelector extends ConsumerWidget {
     );
   }
 
-  IconData _getWalletTypeIcon(dynamic walletType) {
+  IconData _getWalletTypeIcon(WalletType walletType) {
     // Use HugeIcons for wallet types
-    switch (walletType.name) {
-      case 'cash':
+    switch (walletType) {
+      case WalletType.cash:
         return HugeIcons.strokeRoundedMoney02;
-      case 'bankAccount':
+      case WalletType.bankAccount:
         return HugeIcons.strokeRoundedBank;
-      case 'creditCard':
+      case WalletType.creditCard:
         return HugeIcons.strokeRoundedCreditCard;
-      case 'eWallet':
+      case WalletType.eWallet:
         return HugeIcons.strokeRoundedMoney04;
-      case 'investment':
+      case WalletType.investment:
         return HugeIcons.strokeRoundedChart;
-      case 'savings':
+      case WalletType.savings:
         return HugeIcons.strokeRoundedPiggyBank;
-      case 'insurance':
+      case WalletType.insurance:
         return HugeIcons.strokeRoundedSecurityCheck;
+      case WalletType.other:
       default:
         return HugeIcons.strokeRoundedWallet03;
     }
