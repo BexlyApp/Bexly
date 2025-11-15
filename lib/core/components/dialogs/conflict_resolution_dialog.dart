@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:bexly/core/services/sync/conflict_resolution_service.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
 
 /// Dialog to resolve sync conflicts between local and cloud data
 class ConflictResolutionDialog extends StatelessWidget {
@@ -16,58 +18,71 @@ class ConflictResolutionDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM dd, yyyy HH:mm');
 
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(
-            Icons.warning_amber_rounded,
-            color: Colors.orange,
-            size: 28,
-          ),
-          const Gap(12),
-          Expanded(
-            child: Text(
-              'Sync Conflict Detected',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.spacing20,
+        AppSpacing.spacing12,
+        AppSpacing.spacing20,
+        AppSpacing.spacing32,
       ),
-      content: SingleChildScrollView(
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Title with warning icon
+            Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 32,
+                ),
+                const Gap(12),
+                Expanded(
+                  child: Text(
+                    'Sync Conflict Detected',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Gap(AppSpacing.spacing16),
+
+            // Description
             Text(
               'You have data on both this device and in the cloud. Please choose which data to keep:',
-              style: TextStyle(fontSize: 14),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-            const Gap(24),
+            const Gap(AppSpacing.spacing24),
 
             // Local Data Card
             _DataCard(
               title: '📱 This Device (Local)',
               itemCount: conflictInfo.localItemCount,
+              walletCount: conflictInfo.localWalletCount,
+              transactionCount: conflictInfo.localTransactionCount,
               lastUpdate: conflictInfo.localLastUpdate,
               latestTransaction: conflictInfo.latestLocalTransaction,
               dateFormat: dateFormat,
               color: Colors.blue,
             ),
-            const Gap(16),
+            const Gap(AppSpacing.spacing16),
 
             // Cloud Data Card
             _DataCard(
               title: '☁️ Cloud Data',
               itemCount: conflictInfo.cloudItemCount,
+              walletCount: conflictInfo.cloudWalletCount,
+              transactionCount: conflictInfo.cloudTransactionCount,
               lastUpdate: conflictInfo.cloudLastUpdate,
               latestTransaction: conflictInfo.latestCloudTransaction,
               dateFormat: dateFormat,
               color: Colors.green,
             ),
-            const Gap(16),
+            const Gap(AppSpacing.spacing16),
 
             // Warning
             Container(
@@ -90,7 +105,7 @@ class ConflictResolutionDialog extends StatelessWidget {
                   const Gap(8),
                   Expanded(
                     child: Text(
-                      'The data you don\'t choose will be permanently deleted and cannot be recovered.',
+                      'Data not selected will be permanently deleted.',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.orange.shade800,
@@ -100,30 +115,57 @@ class ConflictResolutionDialog extends StatelessWidget {
                 ],
               ),
             ),
+            const Gap(AppSpacing.spacing24),
+
+            // Buttons - 3 buttons vertical stacking
+            Column(
+              spacing: AppSpacing.spacing12,
+              children: [
+                // Use Cloud Data button (primary action)
+                SizedBox(
+                  width: double.infinity,
+                  child: PrimaryButton(
+                    label: 'Use Cloud Data',
+                    onPressed: () => Navigator.pop(context, ConflictResolution.useCloud),
+                  ),
+                ),
+
+                // Use Local Data button (secondary action)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonal(
+                    onPressed: () => Navigator.pop(context, ConflictResolution.useLocal),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.blue.shade100,
+                      foregroundColor: Colors.blue.shade900,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text('Use Local Data'),
+                  ),
+                ),
+
+                // Cancel button (tertiary action)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, null),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, null),
-          child: Text('Cancel'),
-        ),
-        FilledButton.tonal(
-          onPressed: () => Navigator.pop(context, ConflictResolution.useLocal),
-          style: FilledButton.styleFrom(
-            backgroundColor: Colors.blue.shade100,
-            foregroundColor: Colors.blue.shade900,
-          ),
-          child: Text('Use Local Data'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, ConflictResolution.useCloud),
-          style: FilledButton.styleFrom(
-            backgroundColor: Colors.green.shade600,
-          ),
-          child: Text('Use Cloud Data'),
-        ),
-      ],
     );
   }
 }
@@ -131,6 +173,8 @@ class ConflictResolutionDialog extends StatelessWidget {
 class _DataCard extends StatelessWidget {
   final String title;
   final int itemCount;
+  final int walletCount;
+  final int transactionCount;
   final DateTime? lastUpdate;
   final String? latestTransaction;
   final DateFormat dateFormat;
@@ -139,6 +183,8 @@ class _DataCard extends StatelessWidget {
   const _DataCard({
     required this.title,
     required this.itemCount,
+    required this.walletCount,
+    required this.transactionCount,
     required this.lastUpdate,
     required this.latestTransaction,
     required this.dateFormat,
@@ -170,9 +216,15 @@ class _DataCard extends StatelessWidget {
           ),
           const Gap(12),
           _InfoRow(
-            icon: Icons.receipt_long,
-            label: 'Total items:',
-            value: '$itemCount',
+            icon: Icons.account_balance_wallet,
+            label: 'Wallets:',
+            value: '$walletCount',
+          ),
+          const Gap(8),
+          _InfoRow(
+            icon: Icons.receipt,
+            label: 'Transactions:',
+            value: '$transactionCount',
           ),
           const Gap(8),
           if (lastUpdate != null)
@@ -180,15 +232,26 @@ class _DataCard extends StatelessWidget {
               icon: Icons.access_time,
               label: 'Last updated:',
               value: dateFormat.format(lastUpdate!),
+            )
+          else
+            _InfoRow(
+              icon: Icons.access_time,
+              label: 'Last updated:',
+              value: 'None',
             ),
-          if (latestTransaction != null) ...[
-            const Gap(8),
+          const Gap(8),
+          if (latestTransaction != null)
             _InfoRow(
               icon: Icons.receipt,
               label: 'Latest transaction:',
               value: latestTransaction!,
+            )
+          else
+            _InfoRow(
+              icon: Icons.receipt,
+              label: 'Latest transaction:',
+              value: 'None',
             ),
-          ],
         ],
       ),
     );

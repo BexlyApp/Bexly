@@ -8,12 +8,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Chỉ dùng tiếng Việt khi chat/giải thích với user
 - Documentation và code comments phải bằng tiếng Anh
 
+## CRITICAL: Command Usage Rules
+- **ALWAYS use `flutter` command directly** (NOT `/d/Dev/flutter/bin/flutter` or `D:/Dev/flutter/bin/flutter.bat`)
+- **ALWAYS use `dart` command directly** (NOT full paths)
+- Flutter and Dart are already in PATH - use them directly
+- Examples:
+  - ✅ CORRECT: `flutter build apk --release`
+  - ❌ WRONG: `D:/Dev/flutter/bin/flutter.bat build apk --release`
+  - ✅ CORRECT: `dart run build_runner build`
+  - ❌ WRONG: `/d/Dev/flutter/bin/dart run build_runner build`
+
 ## Project Overview
 
 Bexly is a Flutter-based personal finance and budget tracking application with a focus on cross-platform sync and AI agent capabilities. The project uses a feature-based clean architecture with Riverpod for state management, Drift for local database storage, and Firebase for cloud sync and authentication.
 
-## IMPORTANT: Authentication Configuration
-**LUÔN NHỚ: AUTHENTICATION SỬ DỤNG DOS-ME FIREBASE PROJECT** - App sử dụng DOS-Me Firebase project cho toàn bộ authentication để duy trì hệ sinh thái thống nhất giữa nhiều apps. DOS-Me Firebase app được cấu hình riêng biệt với Bexly Firebase app chính (dùng cho Firestore và các services khác).
+## IMPORTANT: Firebase Configuration
+**Firebase Project ID: `bexly-app`** - App sử dụng Firebase project `bexly-app` cho toàn bộ authentication, Firestore và các services. Firestore database ID là `bexly`.
 
 ## Essential Commands
 
@@ -113,6 +123,31 @@ feature_name/
 - Category picker with icon support
 
 ## Development Guidelines
+
+### Security Best Practices (CRITICAL)
+
+**NEVER commit sensitive files to git:**
+- ❌ `google-services.json` or any `.backup` variants
+- ❌ `.env` files containing API keys
+- ❌ Any file with credentials, tokens, or secrets
+- ❌ Firebase config files with API keys exposed
+
+**Before EVERY commit:**
+1. Run `git status` and carefully review ALL files
+2. Check for `.backup`, `.json`, `.env` files
+3. NEVER use `git add .` blindly - add files explicitly
+4. Use `.gitignore` to prevent accidental commits
+
+**If API key is exposed:**
+1. Remove file immediately: `git rm <file>`
+2. Commit removal
+3. **REVOKE API key in Google Cloud Console**
+4. **Generate new API key**
+5. Update config with new key
+6. Rewrite git history: `git filter-repo --path <file> --invert-paths`
+
+**Incident Log:**
+- 2025-11-09: Exposed Google API key `AIzaSyBwUcP2tCRIQiDMZduOod7lPQJy9jDcJLM` in commit `4e15da4` via file `android/app/google-services.json.dos-me.backup`. Key must be revoked.
 
 ### When Adding New Features
 1. Create a new directory under `lib/features/`

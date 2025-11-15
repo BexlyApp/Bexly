@@ -2,11 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
+import 'package:drift/drift.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/services/sync/conflict_resolution_service.dart';
+import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
 import 'package:bexly/core/components/dialogs/conflict_resolution_dialog.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/database/tables/category_table.dart';
+import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
+import 'package:bexly/core/services/data_population_service/category_population_service.dart';
+import 'package:bexly/core/services/data_population_service/wallet_population_service.dart';
+import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 /// Service to trigger initial sync when user logs in for the first time
 class SyncTriggerService {
@@ -32,73 +42,437 @@ class SyncTriggerService {
 
   /// Trigger sync if this is the first time user logs in
   /// Handles conflict detection and resolution with user dialog
+  /// Also handles guest mode → account binding scenario
   static Future<void> triggerInitialSyncIfNeeded(
     CloudSyncService syncService, {
     required BuildContext context,
     required AppDatabase localDb,
     required String userId,
+    required WidgetRef ref,
   }) async {
     try {
-      // Check if already synced before
-      final hasSynced = await hasSyncedBefore();
+      Log.i('📍 triggerInitialSyncIfNeeded START', label: 'sync');
+      print('📍 triggerInitialSyncIfNeeded START');
 
-      if (hasSynced) {
-        Log.i('User has synced before, skipping initial sync', label: 'sync');
+      // Check if user was in guest mode (needs to upload local data)
+      final prefs = await SharedPreferences.getInstance();
+      final wasGuestMode = prefs.getBool('hasSkippedAuth') ?? false;
+      Log.i('📍 wasGuestMode check result: $wasGuestMode', label: 'sync');
+      print('📍 wasGuestMode check result: $wasGuestMode');
+
+      // Check if already synced before AND has local data
+      // IMPORTANT: Don't skip sync if local database is empty (e.g., after reinstall)
+      // IMPORTANT: Don't skip sync if user was in guest mode (need to upload local data)
+      final hasSynced = await hasSyncedBefore();
+      Log.i('📍 hasSynced check result: $hasSynced', label: 'sync');
+      print('📍 hasSynced check result: $hasSynced');
+
+      // Check if local database has any data
+      // Check BOTH transactions AND wallets (wallet count > 0 means user created data)
+      final transactions = await localDb.transactionDao.getAllTransactions();
+      final wallets = await localDb.walletDao.getAllWallets();
+      final hasLocalData = transactions.isNotEmpty || wallets.isNotEmpty;
+      Log.i('📍 Local database has data: $hasLocalData (${wallets.length} wallets, ${transactions.length} transactions)', label: 'sync');
+      print('📍 Local database has data: $hasLocalData (${wallets.length} wallets, ${transactions.length} transactions)');
+
+      // Skip sync only if:
+      // - User has synced before (hasSynced = true)
+      // - Has local data (not empty database after reinstall)
+      // - Was NOT in guest mode (no need to upload guest data)
+      if (hasSynced && hasLocalData && !wasGuestMode) {
+        Log.i('User has synced before and has local data, skipping initial sync', label: 'sync');
+        print('⏭️ User has synced before and has local data, skipping initial sync');
         return;
       }
 
-      Log.i('🚀 First time login detected, checking for conflicts...', label: 'sync');
+      if (wasGuestMode && hasLocalData) {
+        Log.i('🔗 Guest mode → account binding detected, will upload local data', label: 'sync');
+        print('🔗 Guest mode → account binding detected, will upload local data');
+        // Clear guest mode flag after binding
+        await prefs.setBool('hasSkippedAuth', false);
+      }
+
+      if (hasSynced && !hasLocalData) {
+        Log.i('⚠️ User has synced before but local database is empty, forcing sync', label: 'sync');
+        print('⚠️ User has synced before but local database is empty, forcing sync');
+      }
+
+      Log.i('🚀 First time login or guest binding detected, checking for conflicts...', label: 'sync');
+      print('🚀 First time login or guest binding detected, checking for conflicts...');
 
       // Check for conflicts
+      // IMPORTANT: Use Bexly Firebase app instance, NOT dos-me!
+      final bexlyFirestore = FirebaseFirestore.instanceFor(app: FirebaseInitService.bexlyApp, databaseId: "bexly");
+
+      final walletDao = ref.read(walletDaoProvider);
       final conflictService = ConflictResolutionService(
         localDb: localDb,
-        firestore: FirebaseFirestore.instance,
+        firestore: bexlyFirestore,
         userId: userId,
+        walletDao: walletDao,
       );
 
-      final conflictInfo = await conflictService.detectConflict();
+      Log.i('📍 Calling detectConflict()...', label: 'sync');
+      print('📍 Calling detectConflict()...');
+
+      dynamic conflictInfo;
+      try {
+        conflictInfo = await conflictService.detectConflict();
+        Log.i('📍 detectConflict() returned: ${conflictInfo != null ? "CONFLICT DETECTED" : "NO CONFLICT"}', label: 'sync');
+        print('📍 detectConflict() returned: ${conflictInfo != null ? "CONFLICT DETECTED" : "NO CONFLICT"}');
+      } catch (e, stack) {
+        Log.e('❌ detectConflict() FAILED: $e', label: 'sync');
+        print('❌ detectConflict() FAILED: $e');
+        print('Stack: $stack');
+        rethrow;
+      }
 
       if (conflictInfo != null && context.mounted) {
-        // Show conflict resolution dialog
-        Log.w('Conflict detected, showing resolution dialog', label: 'sync');
+        // Check if this is a real conflict or just first-time login with empty local DB
+        // IMPORTANT: If user was in guest mode with local data, ALWAYS show dialog!
+        final isRealConflict = hasLocalData || wasGuestMode;
 
-        final resolution = await showDialog<ConflictResolution>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => ConflictResolutionDialog(
-            conflictInfo: conflictInfo,
-          ),
-        );
+        ConflictResolution? resolution;
 
-        if (resolution == null) {
-          // User cancelled, don't sync
-          Log.i('User cancelled conflict resolution', label: 'sync');
-          return;
+        if (!isRealConflict) {
+          // Local DB empty AND not guest mode, cloud has data → Auto download, no dialog needed
+          Log.i('📥 Local database empty, auto-downloading from cloud...', label: 'sync');
+          print('📥 Local database empty, auto-downloading from cloud...');
+          resolution = ConflictResolution.useCloud;
+        } else {
+          // Real conflict detected - show resolution dialog
+          Log.w('Conflict detected, showing resolution dialog', label: 'sync');
+          print('⚠️ Conflict detected, showing resolution dialog');
+
+          resolution = await showModalBottomSheet<ConflictResolution>(
+            context: context,
+            isDismissible: false,
+            enableDrag: false,
+            showDragHandle: true,
+            isScrollControlled: true,
+            builder: (context) => ConflictResolutionDialog(
+              conflictInfo: conflictInfo,
+            ),
+          );
+
+          if (resolution == null) {
+            // User cancelled, don't sync
+            Log.i('User cancelled conflict resolution', label: 'sync');
+            return;
+          }
         }
 
         if (resolution == ConflictResolution.useCloud) {
           // Use cloud data - download and replace local
           Log.i('User chose cloud data, downloading...', label: 'sync');
+          print('☁️ User chose cloud data, downloading...');
           await conflictService.useCloudData();
+
+          // IMPORTANT: After downloading cloud data, check if categories exist
+          // Categories are NOT synced to cloud - they are hardcoded in the app
+          final categoriesAfterPull = await localDb.categoryDao.getAllCategories();
+          Log.i('📍 After cloud download: ${categoriesAfterPull.length} categories', label: 'sync');
+          print('📍 After cloud download: ${categoriesAfterPull.length} categories');
+
+          if (categoriesAfterPull.isEmpty) {
+            Log.i('📦 No categories found, creating default categories...', label: 'sync');
+            print('📦 No categories found, creating default categories...');
+            await CategoryPopulationService.populate(localDb);
+            Log.i('✅ Default categories created', label: 'sync');
+            print('✅ Default categories created');
+          } else {
+            Log.i('✅ Found ${categoriesAfterPull.length} categories in database', label: 'sync');
+            print('✅ Found ${categoriesAfterPull.length} categories');
+          }
+
+          // IMPORTANT: Set active wallet after downloading from cloud
+          final walletsAfterDownload = await localDb.walletDao.getAllWallets();
+          if (walletsAfterDownload.isNotEmpty) {
+            final activeWalletNotifier = ref.read(activeWalletProvider.notifier);
+            final currentActiveWallet = ref.read(activeWalletProvider).valueOrNull;
+
+            if (currentActiveWallet == null) {
+              // No active wallet set, auto-select first wallet
+              final firstWallet = walletsAfterDownload.first;
+              activeWalletNotifier.setActiveWallet(firstWallet.toModel());
+              Log.i('✅ Auto-selected first wallet as active: ${firstWallet.name}', label: 'sync');
+              print('✅ Auto-selected first wallet as active: ${firstWallet.name}');
+            }
+          }
         } else {
           // Use local data - upload to cloud
           Log.i('User chose local data, uploading...', label: 'sync');
+          print('📤 User chose local data, uploading...');
           await conflictService.useLocalData();
           await syncService.fullSync();
         }
       } else {
-        // No conflict, perform normal sync
-        Log.i('No conflict, performing full sync...', label: 'sync');
-        await syncService.fullSync();
+        // No conflict detected (auto-resolved or one side empty)
+        // Check if we need to pull cloud data
+        Log.i('📍 No conflict - checking if local is empty...', label: 'sync');
+        print('📍 No conflict - checking if local is empty...');
+
+        final localTransactions = await localDb.transactionDao.getAllTransactions();
+        final localWallets = await localDb.walletDao.getAllWallets();
+
+        Log.i('📍 Local data: ${localWallets.length} wallets, ${localTransactions.length} transactions', label: 'sync');
+        print('📍 Local data: ${localWallets.length} wallets, ${localTransactions.length} transactions');
+
+        // IMPORTANT: Only check transactions, not wallets!
+        // App auto-creates a default wallet on first launch, but no transactions
+        // So we should pull cloud data if there are no transactions (even if wallet exists)
+        if (localTransactions.isEmpty) {
+          // Local has no transactions - might have cloud data to pull
+          Log.i('🔄 No transactions locally, pulling cloud data...', label: 'sync');
+          print('🔄 No transactions locally, pulling cloud data...');
+
+          try {
+            // Try to pull cloud data
+            await conflictService.useCloudData();
+            Log.i('✅ Successfully pulled cloud data to empty local database', label: 'sync');
+            print('✅ Successfully pulled cloud data!');
+
+            // Check if we have wallets and categories after pulling cloud data
+            final walletsAfterPull = await localDb.walletDao.getAllWallets();
+            final categoriesAfterPull = await localDb.categoryDao.getAllCategories();
+
+            Log.i('📍 After cloud pull: ${walletsAfterPull.length} wallets, ${categoriesAfterPull.length} categories', label: 'sync');
+            print('📍 After cloud pull: ${walletsAfterPull.length} wallets, ${categoriesAfterPull.length} categories');
+
+            // Populate wallets if missing (but check local DB first!)
+            if (walletsAfterPull.isEmpty) {
+              // CRITICAL: Check if we already have wallets in local DB before creating
+              final localWallets = await localDb.walletDao.getAllWallets();
+              if (localWallets.isEmpty) {
+                Log.i('📦 No wallets from cloud and no local wallets, creating default wallet...', label: 'sync');
+                print('📦 No wallets from cloud, creating default wallet...');
+                final walletDao = ref.read(walletDaoProvider);
+                await WalletPopulationService.populateWithDao(walletDao);
+                Log.i('✅ Default wallet created', label: 'sync');
+                print('✅ Default wallet created');
+              } else {
+                Log.i('✅ No wallets from cloud but found ${localWallets.length} local wallet(s), skipping creation', label: 'sync');
+                print('✅ Found ${localWallets.length} local wallet(s), no need to create');
+              }
+            } else {
+              Log.i('✅ Pulled ${walletsAfterPull.length} wallet(s) from cloud', label: 'sync');
+              print('✅ Pulled ${walletsAfterPull.length} wallet(s) from cloud');
+            }
+
+            // IMPORTANT: Always populate categories if missing!
+            // Categories NEED to be synced to cloud for transaction sync to work
+            if (categoriesAfterPull.isEmpty) {
+              Log.i('📦 No categories found, creating default categories...', label: 'sync');
+              print('📦 No categories found, creating default categories...');
+              await CategoryPopulationService.populate(localDb);
+              Log.i('✅ Default categories created', label: 'sync');
+              print('✅ Default categories created');
+
+              // CRITICAL: Upload all categories to cloud after populating
+              // This ensures transactions can reference categoryCloudId
+              Log.i('📤 Uploading all categories to cloud...', label: 'sync');
+              print('📤 Uploading all categories to cloud...');
+              await _uploadAllCategoriesToCloud(localDb, userId);
+              Log.i('✅ All categories uploaded to cloud', label: 'sync');
+              print('✅ All categories uploaded to cloud');
+            } else {
+              Log.i('✅ Found ${categoriesAfterPull.length} categories in database', label: 'sync');
+              print('✅ Found ${categoriesAfterPull.length} categories in database');
+
+              // Check if categories have cloudId - if not, upload them
+              final categoriesWithoutCloudId = categoriesAfterPull.where((c) => c.cloudId == null).toList();
+              if (categoriesWithoutCloudId.isNotEmpty) {
+                Log.i('📤 Uploading ${categoriesWithoutCloudId.length} categories without cloudId...', label: 'sync');
+                print('📤 Uploading ${categoriesWithoutCloudId.length} categories without cloudId...');
+                await _uploadAllCategoriesToCloud(localDb, userId);
+                Log.i('✅ Categories uploaded to cloud', label: 'sync');
+                print('✅ Categories uploaded to cloud');
+              }
+            }
+
+            // IMPORTANT: Set active wallet after pulling from cloud
+            final walletsAfterPull2 = await localDb.walletDao.getAllWallets();
+            if (walletsAfterPull2.isNotEmpty) {
+              final activeWalletNotifier = ref.read(activeWalletProvider.notifier);
+              final currentActiveWallet = ref.read(activeWalletProvider).valueOrNull;
+
+              if (currentActiveWallet == null) {
+                // No active wallet set, auto-select first wallet
+                final firstWallet = walletsAfterPull2.first;
+                activeWalletNotifier.setActiveWallet(firstWallet.toModel());
+                Log.i('✅ Auto-selected first wallet as active: ${firstWallet.name}', label: 'sync');
+                print('✅ Auto-selected first wallet as active: ${firstWallet.name}');
+              }
+            }
+          } catch (e) {
+            Log.w('Failed to pull cloud data (might not exist): $e', label: 'sync');
+            print('❌ Failed to pull cloud data: $e');
+
+            // CRITICAL: Only create default wallet if cloud pull failed due to "no data"
+            // Do NOT create wallet if error is "Too many elements" or other data integrity issues
+            final errorMessage = e.toString().toLowerCase();
+            final isDataIntegrityError = errorMessage.contains('too many') ||
+                                        errorMessage.contains('duplicate') ||
+                                        errorMessage.contains('bad state');
+
+            if (isDataIntegrityError) {
+              Log.w('⚠️ Cloud pull failed due to data integrity issue: $e. Skipping wallet creation to prevent duplicates.', label: 'sync');
+              print('⚠️ Data integrity error detected - skipping default wallet creation');
+            } else {
+              // If cloud pull failed due to "no data", ensure we have default data
+              final walletsAfterError = await localDb.walletDao.getAllWallets();
+              if (walletsAfterError.isEmpty) {
+                Log.i('📦 No cloud data and no local wallets, populating defaults...', label: 'sync');
+                print('📦 No wallets found, creating default wallet...');
+                final walletDao = ref.read(walletDaoProvider);
+                await WalletPopulationService.populateWithDao(walletDao);
+                Log.i('✅ Default wallet populated after cloud pull failure', label: 'sync');
+                print('✅ Default wallet created');
+
+                // CRITICAL: Upload the default wallet to cloud immediately to get cloudId
+                // This prevents duplicate wallet creation on transaction upload
+                try {
+                  final syncService = ref.read(realtimeSyncServiceProvider);
+                  final createdWallets = await localDb.walletDao.getAllWallets();
+                  if (createdWallets.isNotEmpty) {
+                    Log.i('📤 Uploading default wallet to cloud...', label: 'sync');
+                    print('📤 Uploading default wallet to cloud...');
+                    await syncService.uploadWallet(createdWallets.first.toModel());
+                    Log.i('✅ Default wallet uploaded to cloud', label: 'sync');
+                    print('✅ Default wallet uploaded to cloud');
+                  }
+                } catch (uploadError) {
+                  Log.w('Failed to upload default wallet: $uploadError', label: 'sync');
+                  print('⚠️ Failed to upload default wallet (will retry later): $uploadError');
+                }
+              }
+            }
+
+            // Populate categories if missing
+            final categoriesAfterError = await localDb.categoryDao.getAllCategories();
+            if (categoriesAfterError.isEmpty) {
+              Log.i('📦 No categories, creating default categories...', label: 'sync');
+              print('📦 Creating default categories...');
+              await CategoryPopulationService.populate(localDb);
+              Log.i('✅ Default categories created', label: 'sync');
+              print('✅ Default categories created');
+
+              // Upload categories to cloud
+              try {
+                Log.i('📤 Uploading categories to cloud...', label: 'sync');
+                print('📤 Uploading categories to cloud...');
+                await _uploadAllCategoriesToCloud(localDb, userId);
+                Log.i('✅ Categories uploaded to cloud', label: 'sync');
+                print('✅ Categories uploaded to cloud');
+              } catch (uploadError) {
+                Log.w('Failed to upload categories: $uploadError', label: 'sync');
+                print('⚠️ Failed to upload categories (will retry later): $uploadError');
+              }
+            }
+          }
+        } else {
+          // Local has transactions - data already synced
+          Log.i('✅ Local has transactions, skipping initial sync', label: 'sync');
+          print('✅ Local has ${localTransactions.length} transactions, skipping sync');
+          // Don't call fullSync() here - it will be handled by real-time sync going forward
+        }
       }
 
       // Mark as synced
       await markAsSynced();
+      print('📌 Marked as synced');
 
       Log.i('✅ Initial sync completed and marked', label: 'sync');
+      print('✅ Initial sync completed and marked');
+
+      // CRITICAL: Start realtime listener AFTER initial sync completes
+      // This prevents duplicate wallet creation during initial sync
+      try {
+        final realtimeSyncService = ref.read(realtimeSyncServiceProvider);
+        if (!realtimeSyncService.isSyncing) {
+          Log.i('🔧 Starting realtime listener after initial sync...', label: 'sync');
+          print('🔧 Starting realtime listener after initial sync...');
+          await realtimeSyncService.startSync();
+          Log.i('✅ Realtime listener started successfully', label: 'sync');
+          print('✅ Realtime listener started successfully');
+        } else {
+          Log.i('⏭️ Realtime listener already running', label: 'sync');
+          print('⏭️ Realtime listener already running');
+        }
+      } catch (e) {
+        Log.e('❌ Failed to start realtime listener: $e', label: 'sync');
+        print('❌ Failed to start realtime listener: $e');
+      }
     } catch (e) {
       Log.e('❌ Initial sync failed: $e', label: 'sync');
+      print('❌ Initial sync failed: $e');
       // Don't rethrow - sync can fail but app should continue
+    }
+  }
+
+  /// Upload all categories to cloud (helper method)
+  /// This ensures all default categories have cloudId for transaction sync
+  static Future<void> _uploadAllCategoriesToCloud(
+    AppDatabase localDb,
+    String userId,
+  ) async {
+    try {
+      final firestore = FirebaseFirestore.instanceFor(
+        app: FirebaseInitService.bexlyApp,
+        databaseId: "bexly",
+      );
+      final categoriesCollection = firestore
+          .collection('users')
+          .doc(userId)
+          .collection('data')
+          .doc('categories')
+          .collection('items');
+
+      // Get all categories from local database
+      final allCategories = await localDb.categoryDao.getAllCategories();
+
+      Log.i('📤 Uploading ${allCategories.length} categories to cloud...', label: 'sync');
+
+      int uploaded = 0;
+      for (final category in allCategories) {
+        try {
+          // Generate cloudId if not exists
+          final cloudId = category.cloudId ?? const Uuid().v7();
+
+          // Upload to Firestore
+          await categoriesCollection.doc(cloudId).set({
+            'title': category.title,
+            'icon': category.icon,
+            'iconBackground': category.iconBackground,
+            'iconType': category.iconType,
+            'parentId': category.parentId,
+            'description': category.description,
+            'isSystemDefault': category.isSystemDefault,
+            'createdAt': category.createdAt,
+            'updatedAt': DateTime.now(),
+          });
+
+          // Update local category with cloudId
+          if (category.cloudId == null) {
+            await (localDb.update(localDb.categories)
+                  ..where((c) => c.id.equals(category.id)))
+                .write(CategoriesCompanion(cloudId: Value(cloudId)));
+          }
+
+          uploaded++;
+          if (uploaded % 10 == 0) {
+            Log.i('  Progress: $uploaded/${allCategories.length} categories uploaded', label: 'sync');
+          }
+        } catch (e) {
+          Log.e('Failed to upload category ${category.title}: $e', label: 'sync');
+        }
+      }
+
+      Log.i('✅ Successfully uploaded $uploaded/${allCategories.length} categories', label: 'sync');
+    } catch (e, stack) {
+      Log.e('Failed to upload categories to cloud: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      rethrow;
     }
   }
 }

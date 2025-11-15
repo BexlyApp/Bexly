@@ -71,7 +71,7 @@ class BaseCurrencyNotifier extends StateNotifier<String> {
 /// Provider for ExchangeRateService
 final exchangeRateServiceProvider = Provider<ExchangeRateService>((ref) {
   final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
-  return ExchangeRateService(apiKey: apiKey);
+  return ExchangeRateService(geminiApiKey: apiKey);
 });
 
 /// Provider for cached exchange rates

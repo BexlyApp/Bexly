@@ -14,6 +14,9 @@ abstract class CategoryModel with _$CategoryModel {
     /// The unique identifier for the category. Null if the category is new and not yet saved.
     int? id,
 
+    /// Cloud ID (UUID v7) for syncing with Firestore
+    String? cloudId,
+
     /// The display name of the category (e.g., "Groceries", "Salary").
     required String title,
 
@@ -36,6 +39,16 @@ abstract class CategoryModel with _$CategoryModel {
 
     /// A list of sub-categories. Null or empty if this category has no sub-categories.
     List<CategoryModel>? subCategories,
+
+    /// System default categories cannot be deleted by cloud sync
+    /// These are the initial categories created on first app launch
+    @Default(false) bool isSystemDefault,
+
+    /// Timestamp when category was created
+    DateTime? createdAt,
+
+    /// Timestamp when category was last updated
+    DateTime? updatedAt,
   }) = _CategoryModel;
 
   /// Creates a `CategoryModel` instance from a JSON map.

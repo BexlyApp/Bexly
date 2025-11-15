@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/features/goal/data/model/goal_model.dart';
 
 @DataClassName('Goal')
@@ -17,6 +17,7 @@ class Goals extends Table {
   DateTimeColumn get startDate => dateTime().nullable()();
   DateTimeColumn get endDate => dateTime()();
   DateTimeColumn get createdAt => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   TextColumn get iconName => text().nullable()();
   IntColumn get associatedAccountId => integer().nullable()();
   BoolColumn get pinned => boolean().nullable()();
@@ -27,6 +28,7 @@ extension GoalExtension on Goal {
   Goal fromJson(Map<String, dynamic> json) {
     return Goal(
       id: json['id'] as int,
+      cloudId: json['cloudId'] as String?,
       title: json['title'] as String,
       description: json['description'] as String?,
       targetAmount: json['targetAmount'] as double,
@@ -38,6 +40,7 @@ extension GoalExtension on Goal {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : null,
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
       iconName: json['iconName'] as String?,
       associatedAccountId: json['associatedAccountId'] as int?,
       pinned: json['pinned'] as bool? ?? false,
@@ -47,13 +50,10 @@ extension GoalExtension on Goal {
 
 extension GoalTableExtensions on Goal {
   /// Converts this Drift [Goal] data class to a [GoalModel].
-  ///
-  /// Note: Some fields in [GoalModel] like `targetAmount`, `currentAmount`,
-  /// `iconName`, and `associatedAccountId` are not present in the [Goals] table
-  /// and will be set to default or null values. // This comment will be outdated after changes.
   GoalModel toModel() {
     return GoalModel(
       id: id,
+      cloudId: cloudId,
       title: title,
       targetAmount: targetAmount,
       currentAmount: currentAmount,
@@ -62,8 +62,32 @@ extension GoalTableExtensions on Goal {
       startDate: startDate,
       endDate: endDate,
       createdAt: createdAt,
+      updatedAt: updatedAt,
       associatedAccountId: associatedAccountId,
       pinned: pinned ?? false,
+    );
+  }
+}
+
+/// Extension to convert GoalModel to Drift companion
+extension GoalModelExtensions on GoalModel {
+  GoalsCompanion toCompanion({bool isInsert = false}) {
+    return GoalsCompanion(
+      id: isInsert
+          ? const Value.absent()
+          : (id == null ? const Value.absent() : Value(id!)),
+      cloudId: cloudId == null ? const Value.absent() : Value(cloudId),
+      title: Value(title),
+      description: Value(description),
+      targetAmount: Value(targetAmount),
+      currentAmount: Value(currentAmount),
+      startDate: Value(startDate),
+      endDate: Value(endDate),
+      createdAt: Value(createdAt),
+      updatedAt: updatedAt != null ? Value(updatedAt!) : Value(DateTime.now()),
+      iconName: Value(iconName),
+      associatedAccountId: Value(associatedAccountId),
+      pinned: Value(pinned),
     );
   }
 }

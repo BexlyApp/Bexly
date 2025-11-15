@@ -26,18 +26,20 @@ class WalletFormBottomSheet extends HookConsumerWidget {
   final WalletModel? wallet;
   final bool showDeleteButton;
   final Function(WalletModel)? onSave;
+  final bool allowFullEdit; // Allow editing currency and balance even in edit mode
   const WalletFormBottomSheet({
     super.key,
     this.wallet,
     this.showDeleteButton = true,
     this.onSave,
+    this.allowFullEdit = false, // Default to false for backward compatibility
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch currency provider to get updated value when user picks new currency
     final currency = ref.watch(currencyProvider);
-    final isEditing = wallet != null;
+    final isEditing = wallet != null && !allowFullEdit; // If allowFullEdit, treat as create mode
 
     final nameController = useTextEditingController();
     final balanceController = useTextEditingController();
@@ -46,9 +48,9 @@ class WalletFormBottomSheet extends HookConsumerWidget {
     // final iconController = useTextEditingController(text: wallet?.iconName ?? '');
     // final colorController = useTextEditingController(text: wallet?.colorHex ?? '');
 
-    // Initialize form fields if in edit mode (already handled by controller initial text)
+    // Initialize form fields if wallet exists (populate data for both edit and create modes)
     useEffect(() {
-      if (isEditing && wallet != null) {
+      if (wallet != null) {
         nameController.text = wallet!.name;
         balanceController.text = wallet!.balance == 0
             ? ''
@@ -56,7 +58,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
         currencyController.text = wallet!.currency;
       }
       return null;
-    }, [wallet, isEditing]);
+    }, [wallet]);
 
     return CustomBottomSheet(
       title: '${isEditing ? 'Edit' : 'Add'} Wallet',
@@ -105,12 +107,12 @@ class WalletFormBottomSheet extends HookConsumerWidget {
 
                 // return;
 
-                final db = ref.read(databaseProvider);
+                final walletDao = ref.read(walletDaoProvider);
                 try {
                   if (isEditing) {
                     Log.d(newWallet.toJson(), label: 'edit wallet');
                     // update the wallet
-                    bool success = await db.walletDao.updateWallet(newWallet);
+                    bool success = await walletDao.updateWallet(newWallet);
                     Log.d(success, label: 'edit wallet');
 
                     // only update active wallet if condition is met
@@ -119,7 +121,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                         .updateActiveWallet(newWallet);
                   } else {
                     Log.d(newWallet.toJson(), label: 'new wallet');
-                    int id = await db.walletDao.addWallet(newWallet);
+                    int id = await walletDao.addWallet(newWallet);
                     Log.d(id, label: 'new wallet');
 
                     // Set newly created wallet as active
@@ -157,19 +159,38 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                         style: AppTextStyles.body2,
                       ),
                       confirmText: 'Delete',
-                      onConfirm: () {
-                        // final db = ref.read(databaseProvider);
-                        // db.walletDao.deleteWallet(wallet!.id!);
-                        context.pop(); // close this dialog
-                        context.pop(); // close form dialog
-                        toastification.show(
-                          autoCloseDuration: Duration(seconds: 3),
-                          showProgressBar: true,
-                          description: Text(
-                            'Delete a wallet is coming soon...',
-                            style: AppTextStyles.body2,
-                          ),
-                        );
+                      onConfirm: () async {
+                        final walletDao = ref.read(walletDaoProvider);
+                        try {
+                          await walletDao.deleteWallet(wallet!.id!);
+
+                          if (context.mounted) {
+                            context.pop(); // close this dialog
+                            context.pop(); // close form dialog
+
+                            toastification.show(
+                              autoCloseDuration: Duration(seconds: 3),
+                              showProgressBar: true,
+                              description: Text(
+                                'Wallet "${wallet!.name}" deleted successfully',
+                                style: AppTextStyles.body2,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          Log.e('Failed to delete wallet: $e', label: 'wallet_form');
+                          if (context.mounted) {
+                            context.pop(); // close dialog on error
+                            toastification.show(
+                              autoCloseDuration: Duration(seconds: 3),
+                              showProgressBar: true,
+                              description: Text(
+                                'Error deleting wallet: $e',
+                                style: AppTextStyles.body2,
+                              ),
+                            );
+                          }
+                        }
                       },
                     ),
                   );

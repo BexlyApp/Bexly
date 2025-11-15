@@ -1,16 +1,11 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:bexly/core/database/daos/budget_dao.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/budget/data/model/budget_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
-// Provider for the BudgetDao instance
-final budgetDaoProvider = Provider<BudgetDao>((ref) {
-  final db = ref.watch(databaseProvider);
-  return db.budgetDao;
-});
+// BudgetDao provider is now imported from database_provider.dart with sync support
 
 // Provider to stream a list of all budgets
 final budgetListProvider = StreamProvider.autoDispose<List<BudgetModel>>((ref) {

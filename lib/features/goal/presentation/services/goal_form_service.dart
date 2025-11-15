@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/goal/data/model/checklist_item_model.dart';
 import 'package:bexly/features/goal/data/model/goal_model.dart';
@@ -39,13 +39,15 @@ class GoalFormService {
       await actions.update(
         Goal(
           id: goal.id ?? 0,
+          cloudId: goal.cloudId,
           title: goal.title,
           description: goal.description,
           targetAmount: goal.targetAmount,
           currentAmount: goal.currentAmount,
           startDate: goal.startDate,
           endDate: goal.endDate,
-          createdAt: DateTime.now(),
+          createdAt: goal.createdAt ?? DateTime.now(),
+          updatedAt: DateTime.now(),
           iconName: goal.iconName,
           associatedAccountId: goal.associatedAccountId,
           pinned: goal.pinned,

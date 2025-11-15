@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:bexly/core/components/tabs/custom_tab.dart';
-import 'package:bexly/core/components/tabs/custom_tab_bar.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
 
 class TransactionTabBar extends HookConsumerWidget {
@@ -11,12 +11,23 @@ class TransactionTabBar extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
-    final now = DateTime.now(); // To pass to toMonthTabLabel
+    final now = DateTime.now();
 
-    return CustomTabBar(
-      tabs: monthsForTabs
-          .map((monthDate) => CustomTab(label: monthDate.toMonthTabLabel(now)))
-          .toList(),
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: TabBar(
+        indicatorColor: AppColors.primary600,
+        indicatorWeight: 3,
+        labelColor: AppColors.primary600,
+        unselectedLabelColor: AppColors.neutral400,
+        labelStyle: AppTextStyles.body2.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        isScrollable: true,
+        tabs: monthsForTabs
+            .map((monthDate) => Tab(text: monthDate.toMonthTabLabel(now)))
+            .toList(),
+      ),
     );
   }
 }

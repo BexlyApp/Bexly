@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/users.dart';
 import 'package:bexly/features/authentication/data/models/user_model.dart';
 

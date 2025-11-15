@@ -5,24 +5,20 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
-import 'package:bexly/core/services/auth/dos_me_auth_service.dart';
 
 class SignUpScreen extends HookConsumerWidget {
   const SignUpScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final nameController = useTextEditingController();
     final emailController = useTextEditingController();
     final passwordController = useTextEditingController();
-    final confirmPasswordController = useTextEditingController();
     final isLoading = useState(false);
     final obscurePassword = useState(true);
-    final obscureConfirmPassword = useState(true);
     final formKey = useMemoized(() => GlobalKey<FormState>());
     final acceptTerms = useState(false);
 
-    final authService = ref.read(dosmeAuthServiceProvider);
+    final bexlyAuth = ref.watch(bexlyAuthProvider);
 
     Future<void> handleSignUp() async {
       if (!formKey.currentState!.validate()) return;
@@ -41,29 +37,39 @@ class SignUpScreen extends HookConsumerWidget {
 
       isLoading.value = true;
       try {
-        final credential = await authService.createUserWithEmailAndPassword(
+        final credential = await bexlyAuth.createUserWithEmailAndPassword(
           email: emailController.text.trim(),
           password: passwordController.text,
-          tenantType: TenantType.public,
         );
 
-        if (credential != null && nameController.text.isNotEmpty) {
-          await authService.updateProfile(
-            displayName: nameController.text.trim(),
-          );
+        // Send email verification
+        try {
+          await credential.user?.sendEmailVerification();
+          if (context.mounted) {
+            toastification.show(
+              context: context,
+              title: const Text('Account Created!'),
+              description: const Text('Please check your email to verify your account'),
+              type: ToastificationType.success,
+              style: ToastificationStyle.fillColored,
+              autoCloseDuration: const Duration(seconds: 5),
+            );
+          }
+        } catch (emailError) {
+          // Email verification failed, but account was created
+          if (context.mounted) {
+            toastification.show(
+              context: context,
+              title: const Text('Account Created!'),
+              description: const Text('Verification email could not be sent. You can resend it later from settings.'),
+              type: ToastificationType.warning,
+              style: ToastificationStyle.fillColored,
+              autoCloseDuration: const Duration(seconds: 5),
+            );
+          }
         }
 
-        await authService.sendEmailVerification();
-
         if (context.mounted) {
-          toastification.show(
-            context: context,
-            title: const Text('Account Created!'),
-            description: const Text('Please check your email to verify your account'),
-            type: ToastificationType.success,
-            style: ToastificationStyle.fillColored,
-            autoCloseDuration: const Duration(seconds: 4),
-          );
           context.go('/');
         }
       } catch (e) {
@@ -122,24 +128,6 @@ class SignUpScreen extends HookConsumerWidget {
                   ),
                   const Gap(32),
                   TextFormField(
-                    controller: nameController,
-                    keyboardType: TextInputType.name,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Full Name',
-                      hintText: 'Enter your full name',
-                      prefixIcon: Icon(Icons.person_outline),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your name';
-                      }
-                      return null;
-                    },
-                  ),
-                  const Gap(16),
-                  TextFormField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
@@ -163,7 +151,8 @@ class SignUpScreen extends HookConsumerWidget {
                   TextFormField(
                     controller: passwordController,
                     obscureText: obscurePassword.value,
-                    textInputAction: TextInputAction.next,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => handleSignUp(),
                     decoration: InputDecoration(
                       labelText: 'Password',
                       hintText: 'Create a password',
@@ -186,38 +175,6 @@ class SignUpScreen extends HookConsumerWidget {
                       }
                       if (value.length < 6) {
                         return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const Gap(16),
-                  TextFormField(
-                    controller: confirmPasswordController,
-                    obscureText: obscureConfirmPassword.value,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => handleSignUp(),
-                    decoration: InputDecoration(
-                      labelText: 'Confirm Password',
-                      hintText: 'Re-enter your password',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          obscureConfirmPassword.value
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                        onPressed: () {
-                          obscureConfirmPassword.value = !obscureConfirmPassword.value;
-                        },
-                      ),
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
-                      }
-                      if (value != passwordController.text) {
-                        return 'Passwords do not match';
                       }
                       return null;
                     },

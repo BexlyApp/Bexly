@@ -10,13 +10,15 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
-import 'package:bexly/core/services/auth/dos_me_auth_service.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/services/sync/sync_trigger_service.dart';
 import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/services/package_info/package_info_provider.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'dart:io' show Platform;
+import 'package:flutter/services.dart';
+import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart' as local_auth;
 
 class LoginScreen extends HookConsumerWidget {
   const LoginScreen({super.key});
@@ -29,17 +31,17 @@ class LoginScreen extends HookConsumerWidget {
     final obscurePassword = useState(true);
     final formKey = useMemoized(() => GlobalKey<FormState>());
 
-    final authService = ref.read(dosmeAuthServiceProvider);
+    final bexlyAuth = ref.watch(bexlyAuthProvider);
+    final packageInfoService = ref.watch(packageInfoServiceProvider);
 
     Future<void> handleLogin() async {
       if (!formKey.currentState!.validate()) return;
 
       isLoading.value = true;
       try {
-        await authService.signInWithEmailAndPassword(
+        await bexlyAuth.signInWithEmailAndPassword(
           email: emailController.text.trim(),
           password: passwordController.text,
-          tenantType: TenantType.public,
         );
 
         if (context.mounted) {
@@ -70,16 +72,29 @@ class LoginScreen extends HookConsumerWidget {
       ref.read(isGuestModeProvider.notifier).state = true;
 
       if (context.mounted) {
-        // Navigate to onboarding screen for initial wallet setup
-        context.go('/onboarding');
+        // Check if user has wallet
+        final db = ref.read(databaseProvider);
+        final wallets = await db.walletDao.getAllWallets();
+
+        if (wallets.isEmpty) {
+          // No wallet - go to onboarding to setup first wallet
+          context.go('/onboarding');
+        } else {
+          // Has wallet - go straight to main
+          context.go('/');
+        }
       }
     }
 
     Future<void> handleGoogleSignIn() async {
       isLoading.value = true;
       try {
-        // Create GoogleSignIn instance with configuration
+        // Auto-detect OAuth client from google-services.json
         final googleSignIn = GoogleSignIn();
+        // Sign out any cached session to force re-consent/account chooser on first attempt
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
         final googleUser = await googleSignIn.signIn();
 
         if (googleUser == null) {
@@ -91,40 +106,100 @@ class LoginScreen extends HookConsumerWidget {
         // Get authentication tokens
         final googleAuth = await googleUser.authentication;
 
-        // Create Firebase credential
+        // Create Firebase credential (require idToken; accessToken optional but helpful)
+        if (googleAuth.idToken == null) {
+          throw Exception('Missing ID token from Google. Please try again.');
+        }
         final credential = GoogleAuthProvider.credential(
           idToken: googleAuth.idToken,
+          accessToken: googleAuth.accessToken,
         );
 
-        // Sign in to Firebase using DOS-Me app
-        final dosmeApp = FirebaseInitService.dosmeApp;
-        if (dosmeApp == null) {
-          throw Exception('DOS-Me Firebase not initialized');
+        // Sign in to Firebase using Bexly app
+        final bexlyApp = FirebaseInitService.bexlyApp;
+        if (bexlyApp == null) {
+          throw Exception('Bexly Firebase not initialized');
         }
 
-        final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
-        await dosmeAuth.signInWithCredential(credential);
+        final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
+        await bexlyAuth.signInWithCredential(credential);
 
-        debugPrint('Firebase authentication successful');
+        Log.i('Firebase authentication successful', label: 'auth');
+        print('🔐 Firebase authentication successful');
 
-        // Trigger initial sync if first time login
+        // Sync user profile from Firebase Auth to local database
+        final firebaseUser = bexlyAuth.currentUser;
+        if (firebaseUser != null) {
+          final authProvider = ref.read(local_auth.authStateProvider.notifier);
+          final currentUser = authProvider.getUser();
+
+          // Update user info from Firebase Auth
+          authProvider.setUser(currentUser.copyWith(
+            name: firebaseUser.displayName ?? currentUser.name,
+            email: firebaseUser.email ?? currentUser.email,
+            profilePicture: firebaseUser.photoURL ?? currentUser.profilePicture,
+          ));
+
+          Log.i('✅ Synced profile from Firebase Auth: ${firebaseUser.displayName}', label: 'auth');
+          print('✅ Synced profile from Firebase Auth');
+        }
+
+        // Trigger initial sync with timeout protection
         if (context.mounted) {
           final syncService = ref.read(cloudSyncServiceProvider);
           final localDb = ref.read(databaseProvider);
-          final userId = dosmeAuth.currentUser?.uid;
+          final userId = bexlyAuth.currentUser?.uid;
 
           if (userId != null) {
-            await SyncTriggerService.triggerInitialSyncIfNeeded(
-              syncService,
-              context: context,
-              localDb: localDb,
-              userId: userId,
-            );
+            Log.i('Starting initial sync for user: $userId', label: 'auth');
+            print('🔄 Starting initial sync for user: $userId');
+            try {
+              await SyncTriggerService.triggerInitialSyncIfNeeded(
+                syncService,
+                context: context,
+                localDb: localDb,
+                userId: userId,
+                ref: ref,
+              ).timeout(
+                const Duration(seconds: 30),
+                onTimeout: () {
+                  Log.w('⚠️ Sync timeout after 30s, continuing anyway', label: 'auth');
+                  print('⚠️ Sync timeout after 30s, continuing anyway');
+                },
+              );
+              Log.i('✅ Initial sync completed or skipped', label: 'auth');
+              print('✅ Initial sync completed or skipped');
+            } catch (e) {
+              Log.e('❌ Sync error (non-fatal): $e', label: 'auth');
+              print('❌ Sync error (non-fatal): $e');
+              // Continue even if sync fails
+            }
           }
         }
 
+        Log.i('Navigating to main screen', label: 'auth');
+        print('🧭 Navigating to main screen');
         if (context.mounted) {
           context.go('/');
+        }
+        Log.i('Navigation completed', label: 'auth');
+        print('✅ Navigation completed');
+      } on PlatformException catch (e) {
+        debugPrint('Google Sign In PlatformException: code=${e.code}, message=${e.message}, details=${e.details}');
+        if (context.mounted) {
+          final code = e.code;
+          String message = e.message ?? 'Google Sign-In failed';
+          if (code == 'sign_in_failed' && (message.contains('10') || (e.details?.toString().contains('10') ?? false))) {
+            message = 'Configuration error (code 10). Kiểm tra SHA-1/SHA-256 và OAuth client.';
+          }
+          toastification.show(
+            context: context,
+            title: const Text('Google Login Failed'),
+            description: Text('[$code] $message'),
+            type: ToastificationType.error,
+            style: ToastificationStyle.fillColored,
+            autoCloseDuration: const Duration(seconds: 5),
+          );
         }
       } catch (e) {
         debugPrint('Google Sign In Error: $e');
@@ -132,7 +207,7 @@ class LoginScreen extends HookConsumerWidget {
           toastification.show(
             context: context,
             title: const Text('Google Login Failed'),
-            description: Text('${e.toString()}'),
+            description: Text(e.toString()),
             type: ToastificationType.error,
             style: ToastificationStyle.fillColored,
             autoCloseDuration: const Duration(seconds: 4),
@@ -163,22 +238,37 @@ class LoginScreen extends HookConsumerWidget {
               accessToken.tokenString,
             );
 
-            // Sign in to Firebase using DOS-Me app
-            final dosmeApp = FirebaseInitService.dosmeApp;
-            if (dosmeApp == null) {
-              throw Exception('DOS-Me Firebase not initialized');
+            // Sign in to Firebase using Bexly app
+            final bexlyApp = FirebaseInitService.bexlyApp;
+            if (bexlyApp == null) {
+              throw Exception('Bexly Firebase not initialized');
             }
 
-            final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
-            await dosmeAuth.signInWithCredential(credential);
+            final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
+            await bexlyAuth.signInWithCredential(credential);
 
             debugPrint('Firebase authentication with Facebook successful');
+
+            // Sync user profile from Firebase Auth
+            final firebaseUser = bexlyAuth.currentUser;
+            if (firebaseUser != null) {
+              final authProvider = ref.read(local_auth.authStateProvider.notifier);
+              final currentUser = authProvider.getUser();
+
+              authProvider.setUser(currentUser.copyWith(
+                name: firebaseUser.displayName ?? currentUser.name,
+                email: firebaseUser.email ?? currentUser.email,
+                profilePicture: firebaseUser.photoURL ?? currentUser.profilePicture,
+              ));
+
+              Log.i('✅ Synced profile from Firebase Auth (Facebook)', label: 'auth');
+            }
 
             // Trigger initial sync if first time login
             if (context.mounted) {
               final syncService = ref.read(cloudSyncServiceProvider);
               final localDb = ref.read(databaseProvider);
-              final userId = dosmeAuth.currentUser?.uid;
+              final userId = bexlyAuth.currentUser?.uid;
 
               if (userId != null) {
                 await SyncTriggerService.triggerInitialSyncIfNeeded(
@@ -186,6 +276,7 @@ class LoginScreen extends HookConsumerWidget {
                   context: context,
                   localDb: localDb,
                   userId: userId,
+                  ref: ref,
                 );
               }
             }
@@ -245,14 +336,14 @@ class LoginScreen extends HookConsumerWidget {
           accessToken: credential.authorizationCode,
         );
 
-        // Sign in to Firebase using DOS-Me app
-        final dosmeApp = FirebaseInitService.dosmeApp;
-        if (dosmeApp == null) {
-          throw Exception('DOS-Me Firebase not initialized');
+        // Sign in to Firebase using Bexly app
+        final bexlyApp = FirebaseInitService.bexlyApp;
+        if (bexlyApp == null) {
+          throw Exception('Bexly Firebase not initialized');
         }
 
-        final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
-        final userCredential = await dosmeAuth.signInWithCredential(authCredential);
+        final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
+        final userCredential = await bexlyAuth.signInWithCredential(authCredential);
 
         // If this is the first time, save the user info
         if (credential.email != null || credential.givenName != null) {
@@ -262,11 +353,32 @@ class LoginScreen extends HookConsumerWidget {
 
         debugPrint('Firebase authentication with Apple successful');
 
+        // Sync user profile from Firebase Auth
+        final firebaseUser = bexlyAuth.currentUser;
+        if (firebaseUser != null) {
+          final authProvider = ref.read(local_auth.authStateProvider.notifier);
+          final currentUser = authProvider.getUser();
+
+          // For Apple, combine givenName and familyName if displayName is null
+          String? displayName = firebaseUser.displayName;
+          if (displayName == null && credential.givenName != null) {
+            displayName = '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
+          }
+
+          authProvider.setUser(currentUser.copyWith(
+            name: displayName ?? currentUser.name,
+            email: firebaseUser.email ?? credential.email ?? currentUser.email,
+            profilePicture: firebaseUser.photoURL ?? currentUser.profilePicture,
+          ));
+
+          Log.i('✅ Synced profile from Firebase Auth (Apple)', label: 'auth');
+        }
+
         // Trigger initial sync if first time login
         if (context.mounted) {
           final syncService = ref.read(cloudSyncServiceProvider);
           final localDb = ref.read(databaseProvider);
-          final userId = dosmeAuth.currentUser?.uid;
+          final userId = bexlyAuth.currentUser?.uid;
 
           if (userId != null) {
             await SyncTriggerService.triggerInitialSyncIfNeeded(
@@ -274,13 +386,16 @@ class LoginScreen extends HookConsumerWidget {
               context: context,
               localDb: localDb,
               userId: userId,
+              ref: ref,
             );
           }
         }
 
+        debugPrint('Auth successful, navigating to main screen');
         if (context.mounted) {
           context.go('/');
         }
+        debugPrint('Navigation completed');
       } catch (e) {
         debugPrint('Apple Sign In Error: $e');
         if (context.mounted) {
@@ -511,6 +626,15 @@ class LoginScreen extends HookConsumerWidget {
                         ),
                       ),
                     ),
+                  ),
+                  const Gap(24),
+                  // Version number
+                  Text(
+                    'v${packageInfoService.version}+${packageInfoService.buildNumber}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),

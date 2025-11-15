@@ -1,11 +1,11 @@
 class AppConstants {
-  static const String appName = 'Pockaw';
+  static const String appName = 'Bexly';
   static const String fontFamilyPrimary = 'Montserrat';
   static const String defaultCurrencySymbol = '\$';
   static const String privacyPolicyUrl =
-      'https://pockaw.com/privacy-policy.html';
+      'https://bexly.app/privacy';
   static const String termsAndConditionsUrl =
-      'https://pockaw.com/terms-and-conditions.html';
+      'https://bexly.app/terms';
 
   // Responsive Breakpoints
   static const double mobileBreakpointEnd = 450;

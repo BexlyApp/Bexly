@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/presentation/riverpod/chat_provider.dart';
 
@@ -18,125 +21,116 @@ class AIChatScreen extends HookConsumerWidget {
     final chatNotifier = ref.read(chatProvider.notifier);
     final textController = useTextEditingController();
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // AI Assistant header
+    // Proactively fetch exchange rate when chat screen opens
+    // This ensures AI has exchange rate data for currency conversion messages
+    useEffect(() {
+      Future.microtask(() async {
+        try {
+          final rate = await ref.read(exchangeRateCacheProvider.notifier).getRate('VND', 'USD');
+          Log.d('📊 [ChatScreen] Exchange rate VND->USD pre-fetched: $rate', label: 'Chat Screen');
+
+          // CRITICAL: Invalidate AI service to rebuild with exchange rate
+          // This ensures next AI message will have conversion info
+          ref.invalidate(aiServiceProvider);
+          Log.d('🔄 [ChatScreen] AI service invalidated - will rebuild with exchange rate', label: 'Chat Screen');
+        } catch (e) {
+          Log.e('Failed to pre-fetch exchange rate: $e', label: 'Chat Screen');
+        }
+      });
+      return null;
+    }, []);
+
+    return CustomScaffold(
+      context: context,
+      showBackButton: false,
+      showBalance: false,
+      title: AppLocalizations.of(context)?.aiAssistantTitle ?? 'Bexly AI Assistant',
+      body: Column(
+        children: [
+          // Error banner
+          if (chatState.error != null)
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.spacing16),
+              color: AppColors.redAlpha10,
               child: Row(
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary500, AppColors.primary700],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                  Icon(
+                    Icons.error_outline,
+                    color: AppColors.red600,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.spacing8),
+                  Expanded(
+                    child: Text(
+                      AppLocalizations.of(context)?.errorOccurred ?? 'An error occurred. Please try again.',
+                      style: AppTextStyles.body4.copyWith(
+                        color: AppColors.red600,
                       ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.smart_toy_outlined,
-                      color: AppColors.light,
-                      size: 24,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.spacing12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          AppLocalizations.of(context)?.aiAssistantTitle ?? 'Bexly AI Assistant',
-                          style: AppTextStyles.heading5,
-                        ),
-                        Text(
-                          chatState.isTyping
-                            ? (AppLocalizations.of(context)?.aiAssistantTyping ?? 'Typing...')
-                            : (AppLocalizations.of(context)?.aiAssistantReady ?? 'Ready to help'),
-                          style: AppTextStyles.body4.copyWith(
-                            color: chatState.isTyping
-                                ? AppColors.green100
-                                : AppColors.neutral400,
-                          ),
-                        ),
-                      ],
+                  IconButton(
+                    onPressed: chatNotifier.clearError,
+                    icon: Icon(
+                      Icons.close,
+                      color: AppColors.red600,
+                      size: 18,
                     ),
                   ),
                 ],
               ),
             ),
-            Divider(height: 1, color: AppColors.neutral200),
-            // Error banner
-            if (chatState.error != null)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.spacing16),
-                color: AppColors.redAlpha10,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      color: AppColors.red600,
-                      size: 20,
-                    ),
-                    const SizedBox(width: AppSpacing.spacing8),
-                    Expanded(
-                      child: Text(
-                        AppLocalizations.of(context)?.errorOccurred ?? 'An error occurred. Please try again.',
-                        style: AppTextStyles.body4.copyWith(
-                          color: AppColors.red600,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: chatNotifier.clearError,
-                      icon: Icon(
-                        Icons.close,
-                        color: AppColors.red600,
-                        size: 18,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
 
-            // Messages list (reversed so newest message is at bottom)
-            Expanded(
-              child: ListView.builder(
-                reverse: true,
-                padding: const EdgeInsets.all(AppSpacing.spacing16),
-                itemCount: chatState.messages.length,
-                itemBuilder: (context, index) {
-                  // Reverse index to show newest at bottom
-                  final reversedIndex = chatState.messages.length - 1 - index;
-                  final message = chatState.messages[reversedIndex];
-                  return _MessageBubble(
+          // Messages list (reversed so newest message is at bottom)
+          Expanded(
+            child: ListView.builder(
+              reverse: true,
+              padding: const EdgeInsets.all(AppSpacing.spacing16),
+              itemCount: chatState.messages.length,
+              itemBuilder: (context, index) {
+                // Reverse index to show newest at bottom
+                final reversedIndex = chatState.messages.length - 1 - index;
+                final message = chatState.messages[reversedIndex];
+
+                // Add fade-in animation for smooth message appearance
+                return AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  switchInCurve: Curves.easeInOut,
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.1),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _MessageBubble(
+                    key: ValueKey(message.id), // Key is important for AnimatedSwitcher
                     message: message,
                     isLast: index == 0, // First item in reversed list is last message
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
+          ),
 
-            // Input field
-            Container(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              child: _ChatInput(
-                controller: textController,
-                onSend: (message) {
-                  chatNotifier.sendMessage(message);
-                  textController.clear();
-                },
-                isLoading: chatState.isLoading,
-              ),
+          // Input field
+          Container(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: _ChatInput(
+              controller: textController,
+              onSend: (message) {
+                chatNotifier.sendMessage(message);
+                textController.clear();
+              },
+              isLoading: chatState.isLoading,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -147,9 +141,48 @@ class _MessageBubble extends StatelessWidget {
   final bool isLast;
 
   const _MessageBubble({
+    super.key,
     required this.message,
     required this.isLast,
   });
+
+  /// Parse markdown bold (**text**) and return TextSpan with formatting
+  List<TextSpan> _parseMarkdownBold(String text, TextStyle baseStyle, Color highlightColor) {
+    final spans = <TextSpan>[];
+    final regex = RegExp(r'\*\*(.+?)\*\*');
+    int lastIndex = 0;
+
+    for (final match in regex.allMatches(text)) {
+      // Add normal text before bold
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: baseStyle,
+        ));
+      }
+
+      // Add bold text with highlight color
+      spans.add(TextSpan(
+        text: match.group(1),
+        style: baseStyle.copyWith(
+          fontWeight: FontWeight.bold,
+          color: highlightColor,
+        ),
+      ));
+
+      lastIndex = match.end;
+    }
+
+    // Add remaining normal text
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: baseStyle,
+      ));
+    }
+
+    return spans;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -226,12 +259,20 @@ class _MessageBubble extends StatelessWidget {
                             ),
                           ],
                         )
-                      : SelectableText(
-                          message.content,
-                          style: AppTextStyles.body2.copyWith(
-                            color: isUser
-                                ? AppColors.light
-                                : AppColors.neutral900,
+                      : SelectableText.rich(
+                          TextSpan(
+                            children: _parseMarkdownBold(
+                              message.content,
+                              AppTextStyles.body2.copyWith(
+                                color: isUser
+                                    ? AppColors.light
+                                    : AppColors.neutral900,
+                              ),
+                              // Highlight color for bold text
+                              isUser
+                                  ? AppColors.light
+                                  : AppColors.primary600, // Use primary color for AI highlights
+                            ),
                           ),
                         ),
                 ),

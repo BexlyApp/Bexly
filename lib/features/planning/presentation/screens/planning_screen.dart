@@ -29,7 +29,7 @@ class PlanningScreen extends HookConsumerWidget {
     return CustomScaffold(
       context: context,
       showBackButton: false,
-      showBalance: true,
+      showBalance: false,
       title: 'Planning',
       body: Column(
         children: [

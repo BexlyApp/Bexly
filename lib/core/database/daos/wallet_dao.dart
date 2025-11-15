@@ -1,14 +1,18 @@
 import 'package:drift/drift.dart';
-import 'package:bexly/core/database/pockaw_database.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
 
 part 'wallet_dao.g.dart';
 
 @DriftAccessor(tables: [Wallets])
 class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
-  WalletDao(super.db);
+  final Ref? _ref;
+
+  WalletDao(super.db, [this._ref]);
 
   WalletModel _mapToWalletModel(Wallet walletData) {
     return walletData.toModel();
@@ -44,6 +48,12 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     return (select(wallets)..where((w) => w.id.equals(id))).getSingleOrNull();
   }
 
+  /// Get wallet by cloud ID (for sync operations)
+  Future<Wallet?> getWalletByCloudId(String cloudId) {
+    return (select(wallets)..where((w) => w.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
   Future<List<Wallet>> getWalletsByIds(List<int> ids) {
     if (ids.isEmpty) return Future.value([]);
     return (select(wallets)..where((w) => w.id.isIn(ids))).get();
@@ -51,8 +61,27 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
 
   Future<int> addWallet(WalletModel walletModel) async {
     Log.d('Saving New Wallet: ${walletModel.toJson()}', label: 'wallet');
+
+    // 1. Save to local database
     final companion = walletModel.toCompanion(isInsert: true);
-    return await into(wallets).insert(companion);
+    final id = await into(wallets).insert(companion);
+
+    // 2. Upload to cloud (if sync available)
+    if (_ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        final savedWallet = await getWalletById(id);
+        if (savedWallet != null) {
+          await syncService.uploadWallet(savedWallet.toModel());
+        }
+      } catch (e, stack) {
+        Log.e('Failed to upload wallet to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local save succeeded
+      }
+    }
+
+    return id;
   }
 
   Future<bool> updateWallet(WalletModel walletModel) async {
@@ -61,14 +90,62 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
       Log.e('Wallet ID is null, cannot update.');
       return false;
     }
+
+    // 1. Update local database
     final companion = walletModel.toCompanion();
-    return await update(wallets).replace(companion);
+    final success = await update(wallets).replace(companion);
+
+    // 2. Upload to cloud (if sync available)
+    if (success && _ref != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.uploadWallet(walletModel);
+      } catch (e, stack) {
+        Log.e('Failed to upload wallet update to cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local update succeeded
+      }
+    }
+
+    return success;
   }
 
   /// Deletes a wallet by its ID.
-  Future<int> deleteWallet(int id) {
+  /// Throws an exception if there are transactions associated with this wallet.
+  Future<int> deleteWallet(int id) async {
     Log.d('Deleting Wallet with ID: $id', label: 'wallet');
-    return (delete(wallets)..where((w) => w.id.equals(id))).go();
+
+    // 1. Check for associated transactions
+    final transactionCount = await (db.selectOnly(db.transactions)
+      ..addColumns([db.transactions.id.count()])
+      ..where(db.transactions.walletId.equals(id)))
+      .getSingle()
+      .then((row) => row.read(db.transactions.id.count()) ?? 0);
+
+    if (transactionCount > 0) {
+      Log.e('Cannot delete wallet $id: has $transactionCount associated transactions', label: 'wallet');
+      throw Exception('Cannot delete wallet: $transactionCount transaction(s) still associated. Please delete or reassign transactions first.');
+    }
+
+    // 2. Get wallet to retrieve cloudId
+    final wallet = await getWalletById(id);
+
+    // 3. Delete from local database
+    final count = await (delete(wallets)..where((w) => w.id.equals(id))).go();
+
+    // 4. Delete from cloud (if sync available and has cloudId)
+    if (count > 0 && _ref != null && wallet != null && wallet.cloudId != null) {
+      try {
+        final syncService = _ref.read(realtimeSyncServiceProvider);
+        await syncService.deleteWalletFromCloud(wallet.cloudId!);
+      } catch (e, stack) {
+        Log.e('Failed to delete wallet from cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+        // Don't rethrow - local delete succeeded
+      }
+    }
+
+    return count;
   }
 
   Future<void> upsertWallet(WalletModel walletModel) async {
@@ -91,5 +168,46 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
       updatedAt: Value(DateTime.now()),
     );
     await into(wallets).insertOnConflictUpdate(companion);
+  }
+
+  /// Recalculate wallet balance from transactions
+  /// This should be called after syncing transactions from cloud
+  Future<void> recalculateBalance(int walletId) async {
+    Log.d('Recalculating balance for wallet $walletId', label: 'wallet');
+
+    // Get all transactions for this wallet
+    final transactions = await (db.select(db.transactions)
+      ..where((t) => t.walletId.equals(walletId)))
+      .get();
+
+    // Calculate balance: income - expense
+    // transactionType: 0 = income, 1 = expense, 2 = transfer
+    double balance = 0.0;
+    for (final tx in transactions) {
+      if (tx.transactionType == 0) { // income
+        balance += tx.amount;
+      } else if (tx.transactionType == 1) { // expense
+        balance -= tx.amount;
+      }
+      // transfer is handled separately, ignore for now
+    }
+
+    // Update wallet balance
+    await (update(wallets)..where((w) => w.id.equals(walletId)))
+        .write(WalletsCompanion(balance: Value(balance)));
+
+    Log.i('Wallet $walletId balance recalculated: $balance from ${transactions.length} transactions', label: 'wallet');
+  }
+
+  /// Recalculate all wallets' balances from transactions
+  Future<void> recalculateAllBalances() async {
+    Log.d('Recalculating balances for all wallets', label: 'wallet');
+
+    final allWallets = await getAllWallets();
+    for (final wallet in allWallets) {
+      await recalculateBalance(wallet.id);
+    }
+
+    Log.i('Recalculated balances for ${allWallets.length} wallets', label: 'wallet');
   }
 }

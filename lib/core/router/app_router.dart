@@ -14,7 +14,7 @@ import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/router/settings_router.dart';
 import 'package:bexly/core/router/transaction_router.dart';
 import 'package:bexly/core/router/wallet_router.dart';
-import 'package:bexly/features/splash/presentation/screens/bexly_splash_screen.dart';
+import 'package:bexly/features/splash/presentation/screens/splash_screen.dart';
 
 final rootNavKey = GlobalKey<NavigatorState>();
 
@@ -25,7 +25,7 @@ final router = GoRouter(
   routes: [
     GoRoute(
       path: Routes.splash,
-      builder: (context, state) => const BexlySplashScreen(),
+      builder: (context, state) => const SplashScreen(),
     ),
     GoRoute(
       path: Routes.comingSoon,

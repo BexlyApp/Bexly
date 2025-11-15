@@ -5,6 +5,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/components/dialogs/toast.dart';
 import 'package:bexly/core/components/form_fields/custom_text_field.dart';
@@ -12,25 +13,29 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/services/image_service/image_service.dart';
-import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
+import 'package:bexly/core/riverpod/auth_providers.dart' as firebase_auth;
 import 'package:toastification/toastification.dart';
 
 class PersonalDetailsScreen extends HookConsumerWidget {
   const PersonalDetailsScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.read(authStateProvider);
+    final firebaseUser = FirebaseAuth.instance.currentUser;
     final nameField = useTextEditingController();
+    final emailField = useTextEditingController();
     final profilePicture = useState<File?>(null);
 
     useEffect(() {
-      nameField.text = auth.name;
-      if (auth.profilePicture != null) {
-        profilePicture.value = File(auth.profilePicture!);
+      // Read directly from Firebase Auth (source of truth)
+      nameField.text = firebaseUser?.displayName ?? '';
+      emailField.text = firebaseUser?.email ?? '';
+      if (firebaseUser?.photoURL != null) {
+        // photoURL is typically a network URL, not local file
+        // You may need to download and cache it if needed
       }
 
       return null;
-    }, [auth]);
+    }, [firebaseUser]);
 
     return CustomScaffold(
       context: context,
@@ -108,13 +113,20 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                     maxLength: 100,
                     customCounterText: '',
                   ),
+                  CustomTextField(
+                    controller: emailField,
+                    label: 'Email',
+                    hint: 'john@example.com',
+                    enabled: false,
+                    customCounterText: '',
+                  ),
                 ],
               ),
             ),
           ),
           PrimaryButton(
             label: 'Save',
-            onPressed: () {
+            onPressed: () async {
               final newName = nameField.text.trim();
               if (newName.isEmpty) {
                 Toast.show(
@@ -124,23 +136,34 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                 return;
               }
 
-              final authNotifier = ref.read(authStateProvider.notifier);
-              final currentUser = authNotifier.getUser();
+              try {
+                // Update Firebase Auth profile directly (source of truth)
+                await firebaseUser?.updateDisplayName(newName);
 
-              // The `setUser` method will handle the database update logic.
-              authNotifier.setUser(
-                currentUser.copyWith(
-                  name: newName,
-                  profilePicture: profilePicture.value?.path,
-                ),
-              );
+                // TODO: Upload profile picture to Firebase Storage if changed
+                // if (profilePicture.value != null) {
+                //   final photoURL = await uploadProfilePicture(profilePicture.value!);
+                //   await firebaseUser?.updatePhotoURL(photoURL);
+                // }
 
-              Toast.show(
-                'Personal details updated!',
-                type: ToastificationType.success,
-              );
+                // Reload user to get updated profile
+                await firebaseUser?.reload();
 
-              if (context.mounted) context.pop();
+                // Invalidate auth provider to force refresh UI
+                ref.invalidate(firebase_auth.authStateProvider);
+
+                Toast.show(
+                  'Personal details updated!',
+                  type: ToastificationType.success,
+                );
+
+                if (context.mounted) context.pop();
+              } catch (e) {
+                Toast.show(
+                  'Failed to update profile: ${e.toString()}',
+                  type: ToastificationType.error,
+                );
+              }
             },
           ).floatingBottomContained,
         ],

@@ -24,7 +24,7 @@ class TransactionGroupedCard extends ConsumerWidget {
         .read(activeWalletProvider)
         .value
         ?.currencyByIsoCode(ref)
-        .symbol;
+        .symbol ?? '\$'; // Default to $ if no wallet selected
 
     if (transactions.isEmpty) {
       return Padding(
