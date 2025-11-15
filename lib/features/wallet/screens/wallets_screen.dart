@@ -11,8 +11,31 @@ import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/wallet/screens/wallet_form_bottom_sheet.dart';
+
+/// Get HugeIcon for wallet type (constant for tree-shaking)
+IconData _getWalletIcon(WalletType type) {
+  switch (type) {
+    case WalletType.cash:
+      return HugeIcons.strokeRoundedMoney02;
+    case WalletType.bankAccount:
+      return HugeIcons.strokeRoundedBank;
+    case WalletType.creditCard:
+      return HugeIcons.strokeRoundedCreditCard;
+    case WalletType.eWallet:
+      return HugeIcons.strokeRoundedMoney04;
+    case WalletType.investment:
+      return HugeIcons.strokeRoundedChart;
+    case WalletType.savings:
+      return HugeIcons.strokeRoundedPiggyBank;
+    case WalletType.insurance:
+      return HugeIcons.strokeRoundedSecurityCheck;
+    case WalletType.other:
+      return HugeIcons.strokeRoundedWallet03;
+  }
+}
 
 class WalletsScreen extends ConsumerWidget {
   const WalletsScreen({super.key});
@@ -53,7 +76,7 @@ class WalletsScreen extends ConsumerWidget {
                   '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}',
                   style: AppTextStyles.body3,
                 ),
-                icon: HugeIcons.strokeRoundedWallet02,
+                icon: _getWalletIcon(wallet.walletType),
                 onTap: () {
                   final bool isNotLastWallet = wallets.length > 1;
                   final defaultCurrencies = ref.read(currenciesStaticProvider);

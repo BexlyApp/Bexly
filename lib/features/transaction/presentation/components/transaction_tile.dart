@@ -99,7 +99,7 @@ class TransactionTile extends ConsumerWidget {
                         ),
                         const Gap(AppSpacing.spacing2),
                         AutoSizeText(
-                          context.l10n.getCategoryName(transaction.category.id),
+                          transaction.category.title,
                           style: AppTextStyles.body4,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

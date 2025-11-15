@@ -47,13 +47,11 @@ class SpendingProgressChart extends ConsumerWidget {
         }
 
         // Group expenses by category and sum amounts
-        final Map<int, double> categorySpending = {};
+        final Map<String, double> categorySpending = {};
         for (var expense in currentMonthExpenses) {
-          final categoryId = expense.category.id;
-          if (categoryId != null) {
-            categorySpending[categoryId] =
-                (categorySpending[categoryId] ?? 0) + expense.amount;
-          }
+          final categoryTitle = expense.category.title;
+          categorySpending[categoryTitle] =
+              (categorySpending[categoryTitle] ?? 0) + expense.amount;
         }
 
         final totalMonthSpending = currentMonthExpenses.fold(
@@ -132,8 +130,7 @@ class SpendingProgressChart extends ConsumerWidget {
                 alignment: WrapAlignment
                     .start, // Or WrapAlignment.center if you prefer
                 children: topCategories.map((entry) {
-                  final categoryId = entry.key;
-                  final categoryName = context.l10n.getCategoryName(categoryId);
+                  final categoryName = entry.key;
                   final colorIndex =
                       topCategories.indexOf(entry) % categoryColors.length;
                   final color = categoryColors[colorIndex];

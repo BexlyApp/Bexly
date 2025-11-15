@@ -186,7 +186,13 @@
       "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\")",
       "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 shell \"dumpsys package com.joy.bexly | grep versionCode\")",
       "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:E\")",
-      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 shell \"sqlite3 /data/data/com.joy.bexly/databases/bexly_database.db \"\"SELECT id, title, parentId, isSystemDefault FROM categories WHERE title = ''Utilities'';\"\"\")"
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 shell \"sqlite3 /data/data/com.joy.bexly/databases/bexly_database.db \"\"SELECT id, title, parentId, isSystemDefault FROM categories WHERE title = ''Utilities'';\"\"\")",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" shell \"dumpsys package me.dos.app | grep versionCode\")",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 shell \"dumpsys package me.dos.app | grep versionCode\")",
+      "Bash(./gradlew bundleRelease:*)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 shell \"run-as com.joy.bexly sqlite3 databases/bexly_database.db ''SELECT id, title, parentId FROM categories ORDER BY id;''\")",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 shell \"run-as com.joy.bexly sqlite3 databases/bexly_database.db ''SELECT id, name, wallet_type FROM wallets;''\")",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\" \"flutter:E\")"
     ],
     "deny": [],
     "ask": []

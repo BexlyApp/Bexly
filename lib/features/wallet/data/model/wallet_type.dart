@@ -145,4 +145,26 @@ enum WalletType {
         return 'other';
     }
   }
+
+  /// Get HugeIcon constant for UI display
+  int get hugeIcon {
+    switch (this) {
+      case WalletType.cash:
+        return 0xeb93; // HugeIcons.strokeRoundedMoney02
+      case WalletType.bankAccount:
+        return 0xe0bb; // HugeIcons.strokeRoundedBankAccount
+      case WalletType.creditCard:
+        return 0xe5f4; // HugeIcons.strokeRoundedCreditCard
+      case WalletType.eWallet:
+        return 0xeb96; // HugeIcons.strokeRoundedMoney04
+      case WalletType.investment:
+        return 0xf7f9; // HugeIcons.strokeRoundedStockMarket
+      case WalletType.savings:
+        return 0xebc1; // HugeIcons.strokeRoundedPiggyBank
+      case WalletType.insurance:
+        return 0xf306; // HugeIcons.strokeRoundedSecurityCheck
+      case WalletType.other:
+        return 0xf9d0; // HugeIcons.strokeRoundedWallet03
+    }
+  }
 }

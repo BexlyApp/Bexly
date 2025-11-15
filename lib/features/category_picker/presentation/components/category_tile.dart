@@ -59,7 +59,7 @@ class CategoryTile extends StatelessWidget {
             const Gap(AppSpacing.spacing8),
             Expanded(
               child: Text(
-                context.l10n.getCategoryName(category.id),
+                category.title,
                 style: AppTextStyles.body3,
               ),
             ),

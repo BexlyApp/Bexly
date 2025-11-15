@@ -22,7 +22,7 @@ class RecurringScreen extends HookConsumerWidget {
       context: context,
       title: 'Recurring Payments',
       showBackButton: false,
-      showBalance: true,
+      showBalance: false,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showModalBottomSheet(

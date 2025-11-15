@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/features/wallet/presentation/components/wallet_type_picker.dart';
 
@@ -36,32 +38,25 @@ class WalletTypeSelectorField extends StatelessWidget {
               }
             }
           : null,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: enabled
               ? theme.colorScheme.surfaceContainerHighest
               : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: theme.colorScheme.outline.withOpacity(0.2),
+            color: AppColors.neutral600,
           ),
         ),
         child: Row(
           children: [
             // Icon
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                _getIconData(selectedType.iconName),
-                size: 24,
-                color: theme.colorScheme.onPrimaryContainer,
-              ),
+            Icon(
+              _getWalletIcon(selectedType),
+              size: 24,
+              color: theme.colorScheme.onSurface,
             ),
             const SizedBox(width: 12),
 
@@ -111,25 +106,24 @@ class WalletTypeSelectorField extends StatelessWidget {
     );
   }
 
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'cash':
-        return Icons.payments;
-      case 'bank':
-        return Icons.account_balance;
-      case 'credit_card':
-        return Icons.credit_card;
-      case 'phone_iphone':
-        return Icons.phone_iphone;
-      case 'trending_up':
-        return Icons.trending_up;
-      case 'savings':
-        return Icons.savings;
-      case 'security':
-        return Icons.security;
-      case 'account_balance_wallet':
-      default:
-        return Icons.account_balance_wallet;
+  IconData _getWalletIcon(WalletType type) {
+    switch (type) {
+      case WalletType.cash:
+        return HugeIcons.strokeRoundedMoney02;
+      case WalletType.bankAccount:
+        return HugeIcons.strokeRoundedBank;
+      case WalletType.creditCard:
+        return HugeIcons.strokeRoundedCreditCard;
+      case WalletType.eWallet:
+        return HugeIcons.strokeRoundedMoney04;
+      case WalletType.investment:
+        return HugeIcons.strokeRoundedChart;
+      case WalletType.savings:
+        return HugeIcons.strokeRoundedPiggyBank;
+      case WalletType.insurance:
+        return HugeIcons.strokeRoundedSecurityCheck;
+      case WalletType.other:
+        return HugeIcons.strokeRoundedWallet03;
     }
   }
 }

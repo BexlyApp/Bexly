@@ -77,6 +77,7 @@ class SpendingByCategoryChart extends ConsumerWidget {
                       dataSource: expenseData,
                       xValueMapper: (_ChartData data, _) => data.category,
                       yValueMapper: (_ChartData data, _) => data.amount,
+                      pointColorMapper: (_ChartData data, _) => data.color,
                       dataLabelMapper: (datum, index) =>
                           datum.amount.toShortPriceFormat(),
                       animationDuration: 500,
@@ -116,32 +117,53 @@ class SpendingByCategoryChart extends ConsumerWidget {
     BuildContext context,
     List<TransactionModel> transactions,
   ) {
-    final Map<int, double> categoryExpenses = {};
+    final Map<String, double> categoryExpenses = {};
 
     for (var transaction in transactions) {
       if (transaction.transactionType == TransactionType.expense) {
-        final categoryId = transaction.category.id;
-        if (categoryId != null) {
-          categoryExpenses.update(
-            categoryId,
-            (value) => value + transaction.amount,
-            ifAbsent: () => transaction.amount,
-          );
-        }
+        final categoryTitle = transaction.category.title;
+        categoryExpenses.update(
+          categoryTitle,
+          (value) => value + transaction.amount,
+          ifAbsent: () => transaction.amount,
+        );
       }
     }
 
+    // Define color palette for chart segments
+    final colorPalette = [
+      AppColors.primary600,
+      AppColors.secondary600,
+      AppColors.tertiary600,
+      AppColors.red600,
+      AppColors.purple600,
+      AppColors.green200,
+      AppColors.primary400,
+      AppColors.secondary400,
+      AppColors.tertiary400,
+      AppColors.red400,
+      AppColors.purple400,
+      AppColors.primary800,
+      AppColors.secondary800,
+      AppColors.tertiary800,
+      AppColors.red800,
+      AppColors.purple800,
+    ];
+
+    var colorIndex = 0;
     return categoryExpenses.entries
         .map((entry) => _ChartData(
-              context.l10n.getCategoryName(entry.key),
+              entry.key,
               entry.value,
+              colorPalette[colorIndex++ % colorPalette.length],
             ))
         .toList();
   }
 }
 
 class _ChartData {
-  _ChartData(this.category, this.amount);
+  _ChartData(this.category, this.amount, this.color);
   final String category;
   final double amount;
+  final Color color;
 }
