@@ -15,6 +15,7 @@ import 'package:bexly/features/reports/presentation/riverpod/filtered_transactio
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
@@ -64,10 +65,12 @@ class BasicMonthlyReportScreen extends ConsumerWidget {
     int? selectedWalletId,
   ) {
     // Find selected wallet name
-    final selectedWallet = wallets.firstWhere(
-      (w) => w.id == selectedWalletId,
-      orElse: () => null,
-    );
+    final selectedWallet = selectedWalletId == null
+        ? null
+        : wallets.cast<WalletModel?>().firstWhere(
+            (w) => w?.id == selectedWalletId,
+            orElse: () => null,
+          );
     final displayText = selectedWallet?.name ?? 'All Wallets';
 
     return Padding(
