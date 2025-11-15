@@ -27,6 +27,15 @@ class SplashScreen extends HookConsumerWidget {
           Log.e('Failed to load currencies: $e', label: 'SplashScreen');
         }
 
+        // Validate and repair category integrity
+        try {
+          Log.d('Starting category integrity validation...', label: 'SplashScreen');
+          await ref.read(categoryIntegrityProvider.future);
+          Log.d('Category integrity validated', label: 'SplashScreen');
+        } catch (e) {
+          Log.e('Failed to validate category integrity: $e', label: 'SplashScreen');
+        }
+
         // Process due recurring payments
         try {
           final recurringService = ref.read(recurringChargeServiceProvider);
