@@ -103,8 +103,16 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// Updates an existing category in the database.
   /// This uses `replace` which means all fields of the [category] object will be updated.
   /// Returns `true` if the update was successful, `false` otherwise.
+  ///
+  /// PROTECTION: Cannot update system default categories (built-in categories)
   Future<bool> updateCategory(Category category) async {
     Log.d('Updating category: ${category.id}', label: 'category');
+
+    // PROTECTION: Check if this is a system default category
+    if (category.isSystemDefault) {
+      Log.w('⚠️ BLOCKED: Cannot update system default category: ${category.title} (ID: ${category.id})', label: 'category');
+      throw Exception('Cannot modify built-in categories. System categories are protected.');
+    }
 
     // 1. Update local database
     final success = await update(categories).replace(category);
@@ -125,7 +133,22 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Upserts a category: inserts if new, updates if exists based on primary key.
-  Future<int> upsertCategory(CategoriesCompanion categoryCompanion) {
+  ///
+  /// PROTECTION: Only allow upsert for non-system categories OR system categories during initial population
+  Future<int> upsertCategory(CategoriesCompanion categoryCompanion) async {
+    // PROTECTION: If updating existing category, check if it's a system default
+    if (categoryCompanion.id.present) {
+      final existingCategory = await getCategoryById(categoryCompanion.id.value);
+      if (existingCategory != null && existingCategory.isSystemDefault) {
+        // Allow upsert ONLY if the companion is ALSO marked as system default
+        // This allows repopulation but blocks user/sync overwrites
+        if (!categoryCompanion.isSystemDefault.present || !categoryCompanion.isSystemDefault.value) {
+          Log.w('⚠️ BLOCKED: Cannot upsert non-system data into system category: ${existingCategory.title} (ID: ${existingCategory.id})', label: 'category');
+          throw Exception('Cannot modify built-in categories. System categories are protected from cloud sync.');
+        }
+      }
+    }
+
     return into(categories).insertOnConflictUpdate(categoryCompanion);
   }
 
@@ -133,11 +156,19 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
 
   /// Deletes a category by its ID.
   /// Returns the number of rows affected (usually 1 if successful).
+  ///
+  /// PROTECTION: Cannot delete system default categories (built-in categories)
   Future<int> deleteCategoryById(int id) async {
     Log.d('Deleting category with ID: $id', label: 'category');
 
-    // 1. Get category to retrieve cloudId
+    // 1. Get category to retrieve cloudId AND check if system default
     final category = await getCategoryById(id);
+
+    // PROTECTION: Check if this is a system default category
+    if (category != null && category.isSystemDefault) {
+      Log.w('⚠️ BLOCKED: Cannot delete system default category: ${category.title} (ID: ${category.id})', label: 'category');
+      throw Exception('Cannot delete built-in categories. System categories are protected.');
+    }
 
     // 2. Delete from local database
     final count = await (delete(categories)..where((tbl) => tbl.id.equals(id))).go();

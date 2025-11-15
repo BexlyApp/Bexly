@@ -6,6 +6,7 @@ import 'package:bexly/core/database/daos/transaction_dao.dart';
 import 'package:bexly/core/database/daos/budget_dao.dart';
 import 'package:bexly/core/database/daos/goal_dao.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/services/category_integrity_service.dart';
 
 /// A singleton AppDatabase for the whole app
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -13,6 +14,13 @@ final databaseProvider = Provider<AppDatabase>((ref) {
   Log.d(db.schemaVersion, label: 'database schema version');
   ref.onDispose(() => db.close());
   return db;
+});
+
+/// Category integrity validation provider
+/// Validates and auto-repairs category database on first access
+final categoryIntegrityProvider = FutureProvider<bool>((ref) async {
+  final db = ref.watch(databaseProvider);
+  return await CategoryIntegrityService.validateAndRepair(db);
 });
 
 /// Wallet DAO provider with sync support

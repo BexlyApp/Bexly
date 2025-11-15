@@ -285,77 +285,121 @@ class GeminiService with AIServicePromptMixin implements AIService {
 
   // All prompts are now managed by AIServicePromptMixin which delegates to AIPrompts config
 
+  // Retry helper with exponential backoff
+  Future<T> _retryWithBackoff<T>(
+    Future<T> Function() operation, {
+    int maxRetries = 3,
+    Duration initialDelay = const Duration(milliseconds: 500),
+  }) async {
+    int attempt = 0;
+    Duration delay = initialDelay;
+
+    while (true) {
+      try {
+        attempt++;
+        if (attempt > 1) {
+          Log.d('🔄 Retry attempt $attempt/$maxRetries', label: 'Gemini Service');
+        }
+        return await operation();
+      } catch (e) {
+        // Don't retry on these errors
+        if (e.toString().contains('API key') ||
+            e.toString().contains('quota') ||
+            attempt >= maxRetries) {
+          rethrow;
+        }
+
+        // Retry on network/timeout errors
+        if (attempt < maxRetries) {
+          Log.w('⚠️ Attempt $attempt failed, retrying in ${delay.inMilliseconds}ms...', label: 'Gemini Service');
+          await Future.delayed(delay);
+          delay *= 2; // Exponential backoff
+        } else {
+          rethrow;
+        }
+      }
+    }
+  }
+
+  Future<String> _sendMessageInternal(String message) async {
+    Log.d('🔵 === GEMINI API CALL START ===', label: 'Gemini Service');
+    Log.d('🔵 User input: "$message"', label: 'Gemini Service');
+    Log.d('🔵 Input length: ${message.length} characters', label: 'Gemini Service');
+    Log.d('🔵 Input encoding (first 50 chars): ${message.length > 50 ? message.substring(0, 50).codeUnits : message.codeUnits}', label: 'Gemini Service');
+
+    // Log if Chinese characters detected
+    final hasChinese = message.contains(RegExp(r'[\u4e00-\u9fa5]'));
+    final hasJapanese = message.contains(RegExp(r'[\u3040-\u309f\u30a0-\u30ff]'));
+    if (hasChinese) {
+      Log.d('🔍 Chinese characters detected in input', label: 'Gemini Service');
+    }
+    if (hasJapanese) {
+      Log.d('🔍 Japanese characters detected in input', label: 'Gemini Service');
+    }
+
+    // Validate API key
+    if (apiKey.isEmpty || apiKey == 'USER_MUST_PROVIDE_API_KEY') {
+      throw Exception('No Gemini API key configured. Please add GEMINI_API_KEY to your .env file.');
+    }
+
+    // Log system prompt for debugging
+    Log.d('System Prompt:\n$systemPrompt', label: 'Gemini Service');
+    print('====== SYSTEM PROMPT DEBUG ======');
+    print(systemPrompt);
+    print('=================================');
+
+    // Create model with system instruction (cached, not counted in tokens!)
+    final modelWithSystemPrompt = GenerativeModel(
+      model: model,
+      apiKey: apiKey,
+      systemInstruction: Content.text(systemPrompt),
+      generationConfig: GenerationConfig(
+        temperature: 0.3, // Lower temp for more focused responses
+        maxOutputTokens: 2000, // Increase limit for reasoning + JSON
+      ),
+    );
+
+    // Create chat with conversation history
+    final chat = modelWithSystemPrompt.startChat(history: _conversationHistory);
+
+    Log.d('Starting chat with ${_conversationHistory.length} previous messages', label: 'Gemini Service');
+
+    // Send user message
+    final response = await chat.sendMessage(
+      Content.text(message),
+    ).timeout(
+      const Duration(seconds: 30),
+      onTimeout: () {
+        Log.e('Gemini API request timed out after 30 seconds', label: 'Gemini Service');
+        throw Exception('Request timed out. Please check your internet connection and try again.');
+      },
+    );
+
+    final content = response.text ?? '';
+    Log.d('Gemini Response content: $content', label: 'Gemini Service');
+
+    // FORCE print for debugging - works in release mode
+    print('========== GEMINI RAW RESPONSE ==========');
+    print(content);
+    print('=========================================');
+
+    // Save conversation to history
+    _conversationHistory.add(Content.text(message)); // User message
+    _conversationHistory.add(Content.model([TextPart(content)])); // AI response
+
+    Log.d('Conversation history updated (${_conversationHistory.length} messages)', label: 'AI Service');
+
+    return content.trim();
+  }
+
   @override
   Future<String> sendMessage(String message) async {
     try {
-      Log.d('🔵 === GEMINI API CALL START ===', label: 'Gemini Service');
-      Log.d('🔵 User input: "$message"', label: 'Gemini Service');
-      Log.d('🔵 Input length: ${message.length} characters', label: 'Gemini Service');
-      Log.d('🔵 Input encoding (first 50 chars): ${message.length > 50 ? message.substring(0, 50).codeUnits : message.codeUnits}', label: 'Gemini Service');
-
-      // Log if Chinese characters detected
-      final hasChinese = message.contains(RegExp(r'[\u4e00-\u9fa5]'));
-      final hasJapanese = message.contains(RegExp(r'[\u3040-\u309f\u30a0-\u30ff]'));
-      if (hasChinese) {
-        Log.d('🔍 Chinese characters detected in input', label: 'Gemini Service');
-      }
-      if (hasJapanese) {
-        Log.d('🔍 Japanese characters detected in input', label: 'Gemini Service');
-      }
-
-      // Validate API key
-      if (apiKey.isEmpty || apiKey == 'USER_MUST_PROVIDE_API_KEY') {
-        throw Exception('No Gemini API key configured. Please add GEMINI_API_KEY to your .env file.');
-      }
-
-      // Log system prompt for debugging
-      Log.d('System Prompt:\n$systemPrompt', label: 'Gemini Service');
-      print('====== SYSTEM PROMPT DEBUG ======');
-      print(systemPrompt);
-      print('=================================');
-
-      // Create model with system instruction (cached, not counted in tokens!)
-      final modelWithSystemPrompt = GenerativeModel(
-        model: model,
-        apiKey: apiKey,
-        systemInstruction: Content.text(systemPrompt),
-        generationConfig: GenerationConfig(
-          temperature: 0.3, // Lower temp for more focused responses
-          maxOutputTokens: 2000, // Increase limit for reasoning + JSON
-        ),
+      return await _retryWithBackoff(
+        () => _sendMessageInternal(message),
+        maxRetries: 3,
+        initialDelay: const Duration(milliseconds: 500),
       );
-
-      // Create chat with conversation history
-      final chat = modelWithSystemPrompt.startChat(history: _conversationHistory);
-
-      Log.d('Starting chat with ${_conversationHistory.length} previous messages', label: 'Gemini Service');
-
-      // Send user message
-      final response = await chat.sendMessage(
-        Content.text(message),
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          Log.e('Gemini API request timed out after 30 seconds', label: 'Gemini Service');
-          throw Exception('Request timed out. Please check your internet connection and try again.');
-        },
-      );
-
-      final content = response.text ?? '';
-      Log.d('Gemini Response content: $content', label: 'Gemini Service');
-
-      // FORCE print for debugging - works in release mode
-      print('========== GEMINI RAW RESPONSE ==========');
-      print(content);
-      print('=========================================');
-
-      // Save conversation to history
-      _conversationHistory.add(Content.text(message)); // User message
-      _conversationHistory.add(Content.model([TextPart(content)])); // AI response
-
-      Log.d('Conversation history updated (${_conversationHistory.length} messages)', label: 'AI Service');
-
-      return content.trim();
     } catch (e, stackTrace) {
       Log.e('❌ Error calling Gemini API: $e', label: 'Gemini Service');
       Log.e('❌ Stack trace: $stackTrace', label: 'Gemini Service');
@@ -364,7 +408,7 @@ class GeminiService with AIServicePromptMixin implements AIService {
 
       // Parse error for user-friendly message
       String userFriendlyMessage = 'Sorry, an error occurred with Gemini AI.';
-      
+
       if (e.toString().contains('API key')) {
         userFriendlyMessage = 'Invalid Gemini API key. Please check your configuration.';
       } else if (e.toString().contains('quota') || e.toString().contains('rate limit')) {
@@ -372,7 +416,7 @@ class GeminiService with AIServicePromptMixin implements AIService {
       } else if (e.toString().contains('timeout')) {
         userFriendlyMessage = 'Request timed out. Please check your internet connection.';
       }
-      
+
       throw Exception(userFriendlyMessage);
     }
   }
