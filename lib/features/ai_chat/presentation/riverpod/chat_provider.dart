@@ -179,12 +179,16 @@ final aiServiceProvider = Provider<AIService>((ref) {
 
   // Get wallet info for context (use read to avoid rebuild)
   final wallet = ref.read(activeWalletProvider).valueOrNull;
-  final walletCurrency = wallet?.currency ?? 'VND';
-  final walletName = wallet?.name ?? 'Active Wallet';
 
-  // Get all wallets for AI context with currency info
+  // Get all wallets for fallback when activeWallet is null (multi-wallet case)
   final allWalletsAsync = ref.read(allWalletsStreamProvider);
   final allWallets = allWalletsAsync.valueOrNull ?? [];
+
+  // If activeWallet is null (multi-wallet), use first wallet as default for AI context
+  final contextWallet = wallet ?? (allWallets.isNotEmpty ? allWallets.first : null);
+  final walletCurrency = contextWallet?.currency ?? 'VND';
+  final walletName = contextWallet?.name ?? 'Active Wallet';
+
   // Format: "Wallet Name (CURRENCY)" so AI knows each wallet's currency
   final walletNames = allWallets.map((w) => '${w.name} (${w.currency})').toList();
 
