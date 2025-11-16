@@ -44,7 +44,7 @@ class WalletTypeSelectorField extends StatelessWidget {
         decoration: BoxDecoration(
           color: enabled
               ? theme.colorScheme.surfaceContainerHighest
-              : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              : theme.colorScheme.surfaceContainerLow, // Match disabled style
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: AppColors.neutral600,

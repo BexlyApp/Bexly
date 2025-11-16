@@ -86,6 +86,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
 
   Future<bool> updateWallet(WalletModel walletModel) async {
     Log.d('Updating Wallet: ${walletModel.toJson()}', label: 'wallet');
+    Log.d('  → walletType: ${walletModel.walletType.name}', label: 'wallet');
     if (walletModel.id == null) {
       Log.e('Wallet ID is null, cannot update.');
       return false;
@@ -150,6 +151,8 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
 
   Future<void> upsertWallet(WalletModel walletModel) async {
     Log.d('Upserting Wallet: ${walletModel.toJson()}', label: 'wallet');
+    Log.d('  → walletType: ${walletModel.walletType.name}', label: 'wallet');
+
     // For upsert, if ID is null, it's an insert.
     // If ID is present, it's an update on conflict.
     // The toCompanion handles Value.absent() for ID on insert.
@@ -160,6 +163,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
       name: Value(walletModel.name.trim()),
       balance: Value(walletModel.balance),
       currency: Value(walletModel.currency),
+      walletType: Value(walletModel.walletType.name), // FIXED: Add wallet_type
       iconName: Value(walletModel.iconName),
       colorHex: Value(walletModel.colorHex),
       createdAt: walletModel.id == null
