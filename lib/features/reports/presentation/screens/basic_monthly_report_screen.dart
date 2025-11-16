@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
-import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
 import 'package:bexly/core/components/form_fields/custom_select_field.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_colors.dart';
@@ -14,14 +13,14 @@ import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/features/reports/presentation/riverpod/filtered_transactions_provider.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_filter_provider.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
-import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/features/wallet_switcher/presentation/components/wallet_selector_bottom_sheet.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 part '../components/spending_by_category_chart.dart';
-part '../components/report_wallet_selector.dart';
 
 /// State provider for selected wallet filter (null = All Wallets)
 final reportWalletFilterProvider = StateProvider<int?>((ref) => null);
@@ -88,10 +87,28 @@ class BasicMonthlyReportScreen extends ConsumerWidget {
         hint: 'Select wallet',
         prefixIcon: HugeIcons.strokeRoundedWallet01,
         isRequired: false,
-        onTap: () {
-          context.openBottomSheet(
-            child: const _ReportWalletSelector(),
+        onTap: () async {
+          // Temporarily sync report filter with dashboard filter
+          final currentWallet = selectedWalletId == null
+              ? null
+              : wallets.cast<WalletModel?>().firstWhere(
+                  (w) => w?.id == selectedWalletId,
+                  orElse: () => null,
+                );
+
+          if (currentWallet != null) {
+            ref.read(dashboardWalletFilterProvider.notifier).state = currentWallet;
+          } else {
+            ref.read(dashboardWalletFilterProvider.notifier).state = null;
+          }
+
+          await context.openBottomSheet(
+            child: const WalletSelectorBottomSheet(),
           );
+
+          // Sync back to report filter
+          final selectedDashboardWallet = ref.read(dashboardWalletFilterProvider);
+          ref.read(reportWalletFilterProvider.notifier).state = selectedDashboardWallet?.id;
         },
       ),
     );

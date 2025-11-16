@@ -192,7 +192,8 @@
       "Bash(./gradlew bundleRelease:*)",
       "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 shell \"run-as com.joy.bexly sqlite3 databases/bexly_database.db ''SELECT id, title, parentId FROM categories ORDER BY id;''\")",
       "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 shell \"run-as com.joy.bexly sqlite3 databases/bexly_database.db ''SELECT id, name, wallet_type FROM wallets;''\")",
-      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\" \"flutter:E\")"
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\" \"flutter:E\")",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"wallet:I\" \"wallet:D\")"
     ],
     "deny": [],
     "ask": []

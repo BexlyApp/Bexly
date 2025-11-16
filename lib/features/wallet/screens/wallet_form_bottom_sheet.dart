@@ -97,12 +97,13 @@ class WalletFormBottomSheet extends HookConsumerWidget {
               customCounterText: '',
             ),
 
-            // Wallet Type Selector
+            // Wallet Type Selector (locked after creation)
             WalletTypeSelectorField(
               key: ValueKey(walletType.value),
               selectedType: walletType.value,
               onTypeChanged: (type) => walletType.value = type,
               label: 'Wallet Type',
+              enabled: !isEditing, // Lock wallet type when editing
             ),
 
             CurrencyPickerField(
