@@ -189,8 +189,9 @@ final aiServiceProvider = Provider<AIService>((ref) {
   final walletCurrency = contextWallet?.currency ?? 'VND';
   final walletName = contextWallet?.name ?? 'Active Wallet';
 
-  // Format: "Wallet Name (CURRENCY)" so AI knows each wallet's currency
-  final walletNames = allWallets.map((w) => '${w.name} (${w.currency})').toList();
+  // Format: "Wallet Name (CURRENCY, Type)" so AI knows each wallet's currency and type
+  // This helps AI match Vietnamese keywords like "thẻ tín dụng" to "Credit Card" type
+  final walletNames = allWallets.map((w) => '${w.name} (${w.currency}, ${w.walletType.displayName})').toList();
 
   Log.d('Available wallets for AI: ${walletNames.join(", ")}', label: 'Chat Provider');
 
@@ -434,6 +435,32 @@ class ChatNotifier extends StateNotifier<ChatState> {
       // Update AI with recent transactions context before sending message
       await _updateRecentTransactionsContext();
 
+      // Update AI with current wallet context (CRITICAL: wallet list must be current!)
+      print('🔧 [CHAT_DEBUG] About to update AI context...');
+      final activeWallet = _ref.read(activeWalletProvider).valueOrNull;
+      print('🔧 [CHAT_DEBUG] Active wallet: ${activeWallet?.name} (${activeWallet?.currency})');
+      final allWalletsAsync = _ref.read(allWalletsStreamProvider);
+      final allWallets = allWalletsAsync.valueOrNull ?? [];
+      print('🔧 [CHAT_DEBUG] All wallets count: ${allWallets.length}');
+      final walletNames = allWallets.map((w) => '${w.name} (${w.currency}, ${w.walletType.displayName})').toList();
+      print('🔧 [CHAT_DEBUG] Wallet names: ${walletNames.join(", ")}');
+      final exchangeRateCache = _ref.read(exchangeRateCacheProvider);
+      final cachedRate = exchangeRateCache['VND_USD'];
+
+      // If no active wallet, use first wallet in list as fallback
+      final fallbackWallet = activeWallet ?? (allWallets.isNotEmpty ? allWallets.first : null);
+      print('🔧 [CHAT_DEBUG] Using wallet for context: ${fallbackWallet?.name} (${fallbackWallet?.currency})');
+      print('🔧 [CHAT_DEBUG] Calling updateContext()...');
+
+      _aiService.updateContext(
+        walletName: fallbackWallet?.name ?? 'Active Wallet',
+        walletCurrency: fallbackWallet?.currency ?? 'VND',
+        wallets: walletNames,
+        exchangeRate: cachedRate?.rate,
+      );
+
+      print('🔧 [CHAT_DEBUG] updateContext() completed!');
+
       // Start typing indicator
       _startTypingEffect();
 
@@ -515,8 +542,28 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
                 // Priority 1: If AI specified a wallet name, use it
                 if (aiWalletName != null && aiWalletName.isNotEmpty) {
+                  final aiWalletLower = aiWalletName.toLowerCase();
+
+                  // Try exact match first
                   wallet = allWallets.firstWhereOrNull((w) =>
-                    w.name.toLowerCase() == aiWalletName.toLowerCase());
+                    w.name.toLowerCase() == aiWalletLower);
+
+                  // Try partial match (e.g., "Credit Card" matches "Credit Card 1")
+                  if (wallet == null) {
+                    wallet = allWallets.firstWhereOrNull((w) =>
+                      w.name.toLowerCase().contains(aiWalletLower) ||
+                      aiWalletLower.contains(w.name.toLowerCase()));
+                  }
+
+                  // Try wallet type match (e.g., "Credit Card" matches walletType.creditCard)
+                  if (wallet == null) {
+                    wallet = allWallets.firstWhereOrNull((w) {
+                      final typeName = w.walletType.displayName.toLowerCase();
+                      return typeName == aiWalletLower ||
+                             typeName.contains(aiWalletLower) ||
+                             aiWalletLower.contains(typeName);
+                    });
+                  }
 
                   if (wallet != null) {
                     Log.d('Using AI-specified wallet: "${wallet.name}" (${wallet.currency})', label: 'AI_CURRENCY');
@@ -720,8 +767,28 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
                 // Priority 1: If AI specified a wallet name, use it
                 if (aiWalletName != null && aiWalletName.isNotEmpty) {
+                  final aiWalletLower = aiWalletName.toLowerCase();
+
+                  // Try exact match first
                   usedWallet = allWallets.firstWhereOrNull((w) =>
-                    w.name.toLowerCase() == aiWalletName.toLowerCase());
+                    w.name.toLowerCase() == aiWalletLower);
+
+                  // Try partial match (e.g., "Credit Card" matches "Credit Card 1")
+                  if (usedWallet == null) {
+                    usedWallet = allWallets.firstWhereOrNull((w) =>
+                      w.name.toLowerCase().contains(aiWalletLower) ||
+                      aiWalletLower.contains(w.name.toLowerCase()));
+                  }
+
+                  // Try wallet type match (e.g., "Credit Card" matches walletType.creditCard)
+                  if (usedWallet == null) {
+                    usedWallet = allWallets.firstWhereOrNull((w) {
+                      final typeName = w.walletType.displayName.toLowerCase();
+                      return typeName == aiWalletLower ||
+                             typeName.contains(aiWalletLower) ||
+                             aiWalletLower.contains(typeName);
+                    });
+                  }
 
                   if (usedWallet != null) {
                     Log.d('Using AI-specified wallet for recurring: "${usedWallet.name}" (${usedWallet.currency})', label: 'CREATE_RECURRING');

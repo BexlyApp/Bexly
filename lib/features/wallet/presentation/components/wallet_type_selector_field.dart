@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:bexly/core/components/form_fields/field_decoration_helper.dart';
+import 'package:bexly/core/components/form_fields/custom_text_field.dart';
 import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/features/wallet/presentation/components/wallet_type_picker.dart';
 
@@ -25,79 +25,46 @@ class WalletTypeSelectorField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final controller = TextEditingController(
+      text: '${selectedType.displayName}\n${selectedType.description}',
+    );
 
-    return InkWell(
-      onTap: enabled
-          ? () async {
-              final result = await showWalletTypePicker(
-                context: context,
-                currentType: selectedType,
-              );
-              if (result != null) {
-                onTypeChanged(result);
-              }
-            }
-          : null,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: FieldDecorationHelper.getFieldDecoration(
-          context,
+    return Stack(
+      children: [
+        CustomTextField(
+          context: context,
+          controller: controller,
+          label: label ?? 'Wallet Type',
+          readOnly: true,
           enabled: enabled,
+          prefixIcon: _getWalletIcon(selectedType),
+          minLines: 2,
+          maxLines: 2,
+          onTap: enabled
+              ? () async {
+                  final result = await showWalletTypePicker(
+                    context: context,
+                    currentType: selectedType,
+                  );
+                  if (result != null) {
+                    onTypeChanged(result);
+                  }
+                }
+              : null,
         ),
-        child: Row(
-          children: [
-            // Icon
-            Icon(
-              _getWalletIcon(selectedType),
-              size: 24,
-              color: theme.colorScheme.onSurface,
+        // Arrow icon overlay
+        if (enabled)
+          Positioned(
+            right: 16,
+            top: 0,
+            bottom: 0,
+            child: Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(width: 12),
-
-            // Type name and description
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (label != null) ...[
-                    Text(
-                      label!,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                  ],
-                  Text(
-                    selectedType.displayName,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    selectedType.description,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-
-            // Arrow icon
-            if (enabled)
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 

@@ -11,7 +11,7 @@ class Wallets extends Table {
   /// Null for offline-only data, generated when first synced
   TextColumn get cloudId => text().nullable().unique()();
 
-  TextColumn get name => text().withDefault(const Constant('My Wallet'))();
+  TextColumn get name => text().withDefault(const Constant('My Wallet')).unique()();
   RealColumn get balance => real().withDefault(const Constant(0.0))();
   TextColumn get currency => text().withDefault(const Constant('IDR'))();
   TextColumn get iconName => text().nullable()();

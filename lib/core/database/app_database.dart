@@ -53,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 14; // Add wallet type and credit card fields
+  int get schemaVersion => 15; // Add UNIQUE constraint to wallet name
 
   @override
   MigrationStrategy get migration {
@@ -148,7 +148,57 @@ class AppDatabase extends _$AppDatabase {
           } catch (e) {
             Log.e('Failed to add wallet type fields: $e', label: 'database');
           }
-          return;
+        }
+
+        // For version 15, add UNIQUE constraint to wallet name
+        if (from < 15) {
+          try {
+            Log.i('Adding UNIQUE constraint to wallet name...', label: 'database');
+
+            // Step 1: Check for duplicate wallet names and rename them
+            final duplicates = await customSelect(
+              '''
+              SELECT name, COUNT(*) as count
+              FROM wallets
+              GROUP BY name
+              HAVING count > 1
+              ''',
+            ).get();
+
+            for (final row in duplicates) {
+              final duplicateName = row.read<String>('name');
+              Log.w('Found duplicate wallet name: $duplicateName', label: 'database');
+
+              // Get all wallets with this name
+              final walletsWithName = await customSelect(
+                'SELECT id FROM wallets WHERE name = ? ORDER BY id',
+                variables: [Variable.withString(duplicateName)],
+              ).get();
+
+              // Rename duplicates (keep first one, rename others)
+              for (int i = 1; i < walletsWithName.length; i++) {
+                final walletId = walletsWithName[i].read<int>('id');
+                final newName = '$duplicateName ${i + 1}';
+                await customUpdate(
+                  'UPDATE wallets SET name = ? WHERE id = ?',
+                  variables: [Variable.withString(newName), Variable.withInt(walletId)],
+                );
+                Log.i('Renamed duplicate wallet $walletId to: $newName', label: 'database');
+              }
+            }
+
+            // Step 2: Recreate table with UNIQUE constraint
+            // SQLite doesn't support ALTER TABLE ADD CONSTRAINT, so we need to recreate
+            await customStatement('CREATE TABLE wallets_new AS SELECT * FROM wallets');
+            await customStatement('DROP TABLE wallets');
+            await m.createTable(wallets);
+            await customStatement('INSERT INTO wallets SELECT * FROM wallets_new');
+            await customStatement('DROP TABLE wallets_new');
+
+            Log.i('✅ Added UNIQUE constraint to wallet name', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add UNIQUE constraint to wallet name: $e', label: 'database');
+          }
         }
 
         // Don't reset database if already at current version
