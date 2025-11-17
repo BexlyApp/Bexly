@@ -237,6 +237,7 @@ class RealtimeSyncService {
         name: Value(walletName),
         balance: Value((data['balance'] as num?)?.toDouble() ?? 0.0),
         currency: Value(walletCurrency),
+        walletType: Value(data['walletType'] as String? ?? 'cash'), // FIXED: Add walletType
         iconName: Value(data['iconName'] as String?),
         colorHex: Value(data['colorHex'] as String?),
         createdAt: Value((data['createdAt'] as firestore.Timestamp?)?.toDate() ?? DateTime.now()),
@@ -266,6 +267,7 @@ class RealtimeSyncService {
         name: Value(data['name'] as String? ?? 'Wallet'),
         balance: Value((data['balance'] as num?)?.toDouble() ?? 0.0),
         currency: Value(data['currency'] as String? ?? 'IDR'),
+        walletType: Value(data['walletType'] as String? ?? 'cash'), // FIXED: Add walletType
         iconName: Value(data['iconName'] as String?),
         colorHex: Value(data['colorHex'] as String?),
         createdAt: Value((data['createdAt'] as firestore.Timestamp?)?.toDate() ?? DateTime.now()),
@@ -1005,6 +1007,7 @@ class RealtimeSyncService {
         'name': wallet.name,
         'balance': wallet.balance,
         'currency': wallet.currency,
+        'walletType': wallet.walletType.name, // FIXED: Add walletType to cloud upload
         'iconName': wallet.iconName,
         'colorHex': wallet.colorHex,
         'createdAt': wallet.createdAt ?? DateTime.now(),
