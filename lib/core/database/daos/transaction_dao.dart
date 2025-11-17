@@ -43,6 +43,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       notes: transactionData.notes,
       imagePath: transactionData.imagePath,
       isRecurring: transactionData.isRecurring,
+      recurringId: transactionData.recurringId, // Link to recurring payment
       createdAt: transactionData.createdAt,
       updatedAt: transactionData.updatedAt,
     );
@@ -148,6 +149,41 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Watches all transactions created from a specific recurring payment (payment history)
+  Stream<List<TransactionModel>> watchTransactionsByRecurringId(int recurringId) {
+    Log.d(
+      'Subscribing to watchTransactionsByRecurringId($recurringId)',
+      label: 'transaction',
+    );
+    final query = select(transactions).join([
+      innerJoin(categories, categories.id.equalsExp(transactions.categoryId)),
+      innerJoin(db.wallets, db.wallets.id.equalsExp(transactions.walletId)),
+    ])
+      ..where(transactions.recurringId.equals(recurringId))
+      ..orderBy([
+        // Sort by date descending (newest first) to show recent payments first
+        OrderingTerm.desc(transactions.date),
+        OrderingTerm.desc(transactions.id),
+      ]);
+
+    return query.watch().asyncMap((rows) async {
+      final result = <TransactionModel>[];
+      for (final row in rows) {
+        final transactionData = row.readTable(transactions);
+        final categoryData = row.readTable(categories);
+        final walletData = row.readTable(db.wallets);
+        result.add(
+          await _mapToTransactionModel(
+            transactionData,
+            categoryData,
+            walletData,
+          ),
+        );
+      }
+      return result;
+    });
+  }
+
   // Get transactions for a specific budget period, category, and wallet
   Future<List<TransactionModel>> getTransactionsForBudget({
     required List<int> categoryIds,
@@ -215,6 +251,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       notes: Value(transactionModel.notes?.trim()),
       imagePath: Value(transactionModel.imagePath),
       isRecurring: Value(transactionModel.isRecurring),
+      recurringId: Value(transactionModel.recurringId), // Link to recurring payment for history tracking
       createdAt: Value(DateTime.now()),
       updatedAt: Value(DateTime.now()),
     );

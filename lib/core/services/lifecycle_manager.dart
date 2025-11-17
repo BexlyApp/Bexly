@@ -27,12 +27,15 @@ class _LifecycleManagerState extends ConsumerState<LifecycleManager>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _lastChargeCheck = DateTime.now();
+    // Don't set _lastChargeCheck here - let first check happen on app start
+    // _lastChargeCheck = DateTime.now();
 
     // CRITICAL: Ensure categories exist on app startup
     // This fixes the bug where categories are lost after pm clear
+    // Also check for due recurring payments on app startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureCategoriesExist();
+      _checkRecurringPayments();
     });
   }
 

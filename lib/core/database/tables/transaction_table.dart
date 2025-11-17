@@ -47,6 +47,10 @@ class Transactions extends Table {
   /// Flag indicating if the transaction is recurring.
   BoolColumn get isRecurring => boolean().nullable()();
 
+  /// Foreign key referencing the Recurrings table (if this transaction was auto-created from recurring payment)
+  /// Null if this is a manual transaction
+  IntColumn get recurringId => integer().nullable()();
+
   /// Timestamp of when the transaction was created in the database.
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
@@ -68,6 +72,7 @@ extension TransactionExtension on Transaction {
       notes: json['notes'] as String?,
       imagePath: json['imagePath'] as String?,
       isRecurring: json['isRecurring'] as bool?,
+      recurringId: json['recurringId'] as int?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -97,6 +102,7 @@ extension TransactionTableExtensions on Transaction {
       notes: notes,
       imagePath: imagePath,
       isRecurring: isRecurring,
+      recurringId: recurringId,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -135,6 +141,7 @@ extension TransactionModelExtensions on TransactionModel {
       notes: Value(notes?.trim()),
       imagePath: Value(imagePath),
       isRecurring: Value(isRecurring),
+      recurringId: recurringId == null ? const Value.absent() : Value(recurringId),
       createdAt: createdAt != null
           ? Value(createdAt!)
           : (isInsert ? Value(DateTime.now()) : const Value.absent()),

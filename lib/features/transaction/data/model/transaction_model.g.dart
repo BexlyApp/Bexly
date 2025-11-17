@@ -24,6 +24,7 @@ _TransactionModel _$TransactionModelFromJson(Map<String, dynamic> json) =>
       notes: json['notes'] as String?,
       imagePath: json['imagePath'] as String?,
       isRecurring: json['isRecurring'] as bool?,
+      recurringId: (json['recurringId'] as num?)?.toInt(),
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
@@ -45,6 +46,7 @@ Map<String, dynamic> _$TransactionModelToJson(_TransactionModel instance) =>
       'notes': instance.notes,
       'imagePath': instance.imagePath,
       'isRecurring': instance.isRecurring,
+      'recurringId': instance.recurringId,
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
     };

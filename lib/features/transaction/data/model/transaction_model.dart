@@ -21,6 +21,7 @@ abstract class TransactionModel with _$TransactionModel {
     String? notes,
     String? imagePath,
     bool? isRecurring,
+    int? recurringId, // Link to recurring payment if auto-created
     DateTime? createdAt,
     DateTime? updatedAt,
   }) = _TransactionModel;
