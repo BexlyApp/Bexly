@@ -2403,6 +2403,7 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
     defaultValue: const Constant('My Wallet'),
   );
   static const VerificationMeta _balanceMeta = const VerificationMeta(
@@ -3260,6 +3261,17 @@ class $TransactionsTable extends Transactions
       'CHECK ("is_recurring" IN (0, 1))',
     ),
   );
+  static const VerificationMeta _recurringIdMeta = const VerificationMeta(
+    'recurringId',
+  );
+  @override
+  late final GeneratedColumn<int> recurringId = GeneratedColumn<int>(
+    'recurring_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3297,6 +3309,7 @@ class $TransactionsTable extends Transactions
     notes,
     imagePath,
     isRecurring,
+    recurringId,
     createdAt,
     updatedAt,
   ];
@@ -3393,6 +3406,15 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('recurring_id')) {
+      context.handle(
+        _recurringIdMeta,
+        recurringId.isAcceptableOrUnknown(
+          data['recurring_id']!,
+          _recurringIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3458,6 +3480,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.bool,
         data['${effectivePrefix}is_recurring'],
       ),
+      recurringId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}recurring_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -3512,6 +3538,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   /// Flag indicating if the transaction is recurring.
   final bool? isRecurring;
 
+  /// Foreign key referencing the Recurrings table (if this transaction was auto-created from recurring payment)
+  /// Null if this is a manual transaction
+  final int? recurringId;
+
   /// Timestamp of when the transaction was created in the database.
   final DateTime createdAt;
 
@@ -3529,6 +3559,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     this.notes,
     this.imagePath,
     this.isRecurring,
+    this.recurringId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -3553,6 +3584,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     }
     if (!nullToAbsent || isRecurring != null) {
       map['is_recurring'] = Variable<bool>(isRecurring);
+    }
+    if (!nullToAbsent || recurringId != null) {
+      map['recurring_id'] = Variable<int>(recurringId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -3580,6 +3614,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       isRecurring: isRecurring == null && nullToAbsent
           ? const Value.absent()
           : Value(isRecurring),
+      recurringId: recurringId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recurringId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -3602,6 +3639,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       notes: serializer.fromJson<String?>(json['notes']),
       imagePath: serializer.fromJson<String?>(json['imagePath']),
       isRecurring: serializer.fromJson<bool?>(json['isRecurring']),
+      recurringId: serializer.fromJson<int?>(json['recurringId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -3621,6 +3659,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'notes': serializer.toJson<String?>(notes),
       'imagePath': serializer.toJson<String?>(imagePath),
       'isRecurring': serializer.toJson<bool?>(isRecurring),
+      'recurringId': serializer.toJson<int?>(recurringId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -3638,6 +3677,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     Value<String?> notes = const Value.absent(),
     Value<String?> imagePath = const Value.absent(),
     Value<bool?> isRecurring = const Value.absent(),
+    Value<int?> recurringId = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Transaction(
@@ -3652,6 +3692,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     notes: notes.present ? notes.value : this.notes,
     imagePath: imagePath.present ? imagePath.value : this.imagePath,
     isRecurring: isRecurring.present ? isRecurring.value : this.isRecurring,
+    recurringId: recurringId.present ? recurringId.value : this.recurringId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -3674,6 +3715,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       isRecurring: data.isRecurring.present
           ? data.isRecurring.value
           : this.isRecurring,
+      recurringId: data.recurringId.present
+          ? data.recurringId.value
+          : this.recurringId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -3693,6 +3737,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('notes: $notes, ')
           ..write('imagePath: $imagePath, ')
           ..write('isRecurring: $isRecurring, ')
+          ..write('recurringId: $recurringId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -3712,6 +3757,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     notes,
     imagePath,
     isRecurring,
+    recurringId,
     createdAt,
     updatedAt,
   );
@@ -3730,6 +3776,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.notes == this.notes &&
           other.imagePath == this.imagePath &&
           other.isRecurring == this.isRecurring &&
+          other.recurringId == this.recurringId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -3746,6 +3793,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String?> notes;
   final Value<String?> imagePath;
   final Value<bool?> isRecurring;
+  final Value<int?> recurringId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const TransactionsCompanion({
@@ -3760,6 +3808,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.notes = const Value.absent(),
     this.imagePath = const Value.absent(),
     this.isRecurring = const Value.absent(),
+    this.recurringId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -3775,6 +3824,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.notes = const Value.absent(),
     this.imagePath = const Value.absent(),
     this.isRecurring = const Value.absent(),
+    this.recurringId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : transactionType = Value(transactionType),
@@ -3795,6 +3845,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? notes,
     Expression<String>? imagePath,
     Expression<bool>? isRecurring,
+    Expression<int>? recurringId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -3810,6 +3861,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (notes != null) 'notes': notes,
       if (imagePath != null) 'image_path': imagePath,
       if (isRecurring != null) 'is_recurring': isRecurring,
+      if (recurringId != null) 'recurring_id': recurringId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -3827,6 +3879,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<String?>? notes,
     Value<String?>? imagePath,
     Value<bool?>? isRecurring,
+    Value<int?>? recurringId,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -3842,6 +3895,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       notes: notes ?? this.notes,
       imagePath: imagePath ?? this.imagePath,
       isRecurring: isRecurring ?? this.isRecurring,
+      recurringId: recurringId ?? this.recurringId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -3883,6 +3937,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (isRecurring.present) {
       map['is_recurring'] = Variable<bool>(isRecurring.value);
     }
+    if (recurringId.present) {
+      map['recurring_id'] = Variable<int>(recurringId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -3906,6 +3963,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('notes: $notes, ')
           ..write('imagePath: $imagePath, ')
           ..write('isRecurring: $isRecurring, ')
+          ..write('recurringId: $recurringId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -9068,6 +9126,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> notes,
       Value<String?> imagePath,
       Value<bool?> isRecurring,
+      Value<int?> recurringId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -9084,6 +9143,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> notes,
       Value<String?> imagePath,
       Value<bool?> isRecurring,
+      Value<int?> recurringId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -9182,6 +9242,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<bool> get isRecurring => $composableBuilder(
     column: $table.isRecurring,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get recurringId => $composableBuilder(
+    column: $table.recurringId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9296,6 +9361,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get recurringId => $composableBuilder(
+    column: $table.recurringId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -9393,6 +9463,11 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get recurringId => $composableBuilder(
+    column: $table.recurringId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -9485,6 +9560,7 @@ class $$TransactionsTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<String?> imagePath = const Value.absent(),
                 Value<bool?> isRecurring = const Value.absent(),
+                Value<int?> recurringId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion(
@@ -9499,6 +9575,7 @@ class $$TransactionsTableTableManager
                 notes: notes,
                 imagePath: imagePath,
                 isRecurring: isRecurring,
+                recurringId: recurringId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -9515,6 +9592,7 @@ class $$TransactionsTableTableManager
                 Value<String?> notes = const Value.absent(),
                 Value<String?> imagePath = const Value.absent(),
                 Value<bool?> isRecurring = const Value.absent(),
+                Value<int?> recurringId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion.insert(
@@ -9529,6 +9607,7 @@ class $$TransactionsTableTableManager
                 notes: notes,
                 imagePath: imagePath,
                 isRecurring: isRecurring,
+                recurringId: recurringId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

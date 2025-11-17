@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TransactionModel {
 
- int? get id; String? get cloudId; TransactionType get transactionType; double get amount; DateTime get date; String get title; CategoryModel get category; WalletModel get wallet; String? get notes; String? get imagePath; bool? get isRecurring; DateTime? get createdAt; DateTime? get updatedAt;
+ int? get id; String? get cloudId; TransactionType get transactionType; double get amount; DateTime get date; String get title; CategoryModel get category; WalletModel get wallet; String? get notes; String? get imagePath; bool? get isRecurring; int? get recurringId;// Link to recurring payment if auto-created
+ DateTime? get createdAt; DateTime? get updatedAt;
 /// Create a copy of TransactionModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +29,16 @@ $TransactionModelCopyWith<TransactionModel> get copyWith => _$TransactionModelCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransactionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.date, date) || other.date == date)&&(identical(other.title, title) || other.title == title)&&(identical(other.category, category) || other.category == category)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.isRecurring, isRecurring) || other.isRecurring == isRecurring)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransactionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.date, date) || other.date == date)&&(identical(other.title, title) || other.title == title)&&(identical(other.category, category) || other.category == category)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.isRecurring, isRecurring) || other.isRecurring == isRecurring)&&(identical(other.recurringId, recurringId) || other.recurringId == recurringId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,transactionType,amount,date,title,category,wallet,notes,imagePath,isRecurring,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,transactionType,amount,date,title,category,wallet,notes,imagePath,isRecurring,recurringId,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'TransactionModel(id: $id, cloudId: $cloudId, transactionType: $transactionType, amount: $amount, date: $date, title: $title, category: $category, wallet: $wallet, notes: $notes, imagePath: $imagePath, isRecurring: $isRecurring, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'TransactionModel(id: $id, cloudId: $cloudId, transactionType: $transactionType, amount: $amount, date: $date, title: $title, category: $category, wallet: $wallet, notes: $notes, imagePath: $imagePath, isRecurring: $isRecurring, recurringId: $recurringId, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -48,7 +49,7 @@ abstract mixin class $TransactionModelCopyWith<$Res>  {
   factory $TransactionModelCopyWith(TransactionModel value, $Res Function(TransactionModel) _then) = _$TransactionModelCopyWithImpl;
 @useResult
 $Res call({
- int? id, String? cloudId, TransactionType transactionType, double amount, DateTime date, String title, CategoryModel category, WalletModel wallet, String? notes, String? imagePath, bool? isRecurring, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, TransactionType transactionType, double amount, DateTime date, String title, CategoryModel category, WalletModel wallet, String? notes, String? imagePath, bool? isRecurring, int? recurringId, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -65,7 +66,7 @@ class _$TransactionModelCopyWithImpl<$Res>
 
 /// Create a copy of TransactionModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? transactionType = null,Object? amount = null,Object? date = null,Object? title = null,Object? category = null,Object? wallet = null,Object? notes = freezed,Object? imagePath = freezed,Object? isRecurring = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? transactionType = null,Object? amount = null,Object? date = null,Object? title = null,Object? category = null,Object? wallet = null,Object? notes = freezed,Object? imagePath = freezed,Object? isRecurring = freezed,Object? recurringId = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -78,7 +79,8 @@ as CategoryModel,wallet: null == wallet ? _self.wallet : wallet // ignore: cast_
 as WalletModel,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
 as String?,imagePath: freezed == imagePath ? _self.imagePath : imagePath // ignore: cast_nullable_to_non_nullable
 as String?,isRecurring: freezed == isRecurring ? _self.isRecurring : isRecurring // ignore: cast_nullable_to_non_nullable
-as bool?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as bool?,recurringId: freezed == recurringId ? _self.recurringId : recurringId // ignore: cast_nullable_to_non_nullable
+as int?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
@@ -183,10 +185,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  TransactionType transactionType,  double amount,  DateTime date,  String title,  CategoryModel category,  WalletModel wallet,  String? notes,  String? imagePath,  bool? isRecurring,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  TransactionType transactionType,  double amount,  DateTime date,  String title,  CategoryModel category,  WalletModel wallet,  String? notes,  String? imagePath,  bool? isRecurring,  int? recurringId,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TransactionModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.transactionType,_that.amount,_that.date,_that.title,_that.category,_that.wallet,_that.notes,_that.imagePath,_that.isRecurring,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.transactionType,_that.amount,_that.date,_that.title,_that.category,_that.wallet,_that.notes,_that.imagePath,_that.isRecurring,_that.recurringId,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -204,10 +206,10 @@ return $default(_that.id,_that.cloudId,_that.transactionType,_that.amount,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  TransactionType transactionType,  double amount,  DateTime date,  String title,  CategoryModel category,  WalletModel wallet,  String? notes,  String? imagePath,  bool? isRecurring,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  TransactionType transactionType,  double amount,  DateTime date,  String title,  CategoryModel category,  WalletModel wallet,  String? notes,  String? imagePath,  bool? isRecurring,  int? recurringId,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _TransactionModel():
-return $default(_that.id,_that.cloudId,_that.transactionType,_that.amount,_that.date,_that.title,_that.category,_that.wallet,_that.notes,_that.imagePath,_that.isRecurring,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.transactionType,_that.amount,_that.date,_that.title,_that.category,_that.wallet,_that.notes,_that.imagePath,_that.isRecurring,_that.recurringId,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -224,10 +226,10 @@ return $default(_that.id,_that.cloudId,_that.transactionType,_that.amount,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  TransactionType transactionType,  double amount,  DateTime date,  String title,  CategoryModel category,  WalletModel wallet,  String? notes,  String? imagePath,  bool? isRecurring,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  TransactionType transactionType,  double amount,  DateTime date,  String title,  CategoryModel category,  WalletModel wallet,  String? notes,  String? imagePath,  bool? isRecurring,  int? recurringId,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _TransactionModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.transactionType,_that.amount,_that.date,_that.title,_that.category,_that.wallet,_that.notes,_that.imagePath,_that.isRecurring,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.transactionType,_that.amount,_that.date,_that.title,_that.category,_that.wallet,_that.notes,_that.imagePath,_that.isRecurring,_that.recurringId,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -239,7 +241,7 @@ return $default(_that.id,_that.cloudId,_that.transactionType,_that.amount,_that.
 @JsonSerializable()
 
 class _TransactionModel implements TransactionModel {
-  const _TransactionModel({this.id, this.cloudId, required this.transactionType, required this.amount, required this.date, required this.title, required this.category, required this.wallet, this.notes, this.imagePath, this.isRecurring, this.createdAt, this.updatedAt});
+  const _TransactionModel({this.id, this.cloudId, required this.transactionType, required this.amount, required this.date, required this.title, required this.category, required this.wallet, this.notes, this.imagePath, this.isRecurring, this.recurringId, this.createdAt, this.updatedAt});
   factory _TransactionModel.fromJson(Map<String, dynamic> json) => _$TransactionModelFromJson(json);
 
 @override final  int? id;
@@ -253,6 +255,8 @@ class _TransactionModel implements TransactionModel {
 @override final  String? notes;
 @override final  String? imagePath;
 @override final  bool? isRecurring;
+@override final  int? recurringId;
+// Link to recurring payment if auto-created
 @override final  DateTime? createdAt;
 @override final  DateTime? updatedAt;
 
@@ -269,16 +273,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TransactionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.date, date) || other.date == date)&&(identical(other.title, title) || other.title == title)&&(identical(other.category, category) || other.category == category)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.isRecurring, isRecurring) || other.isRecurring == isRecurring)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TransactionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.date, date) || other.date == date)&&(identical(other.title, title) || other.title == title)&&(identical(other.category, category) || other.category == category)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.isRecurring, isRecurring) || other.isRecurring == isRecurring)&&(identical(other.recurringId, recurringId) || other.recurringId == recurringId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,transactionType,amount,date,title,category,wallet,notes,imagePath,isRecurring,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,transactionType,amount,date,title,category,wallet,notes,imagePath,isRecurring,recurringId,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'TransactionModel(id: $id, cloudId: $cloudId, transactionType: $transactionType, amount: $amount, date: $date, title: $title, category: $category, wallet: $wallet, notes: $notes, imagePath: $imagePath, isRecurring: $isRecurring, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'TransactionModel(id: $id, cloudId: $cloudId, transactionType: $transactionType, amount: $amount, date: $date, title: $title, category: $category, wallet: $wallet, notes: $notes, imagePath: $imagePath, isRecurring: $isRecurring, recurringId: $recurringId, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -289,7 +293,7 @@ abstract mixin class _$TransactionModelCopyWith<$Res> implements $TransactionMod
   factory _$TransactionModelCopyWith(_TransactionModel value, $Res Function(_TransactionModel) _then) = __$TransactionModelCopyWithImpl;
 @override @useResult
 $Res call({
- int? id, String? cloudId, TransactionType transactionType, double amount, DateTime date, String title, CategoryModel category, WalletModel wallet, String? notes, String? imagePath, bool? isRecurring, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, TransactionType transactionType, double amount, DateTime date, String title, CategoryModel category, WalletModel wallet, String? notes, String? imagePath, bool? isRecurring, int? recurringId, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -306,7 +310,7 @@ class __$TransactionModelCopyWithImpl<$Res>
 
 /// Create a copy of TransactionModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? transactionType = null,Object? amount = null,Object? date = null,Object? title = null,Object? category = null,Object? wallet = null,Object? notes = freezed,Object? imagePath = freezed,Object? isRecurring = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? transactionType = null,Object? amount = null,Object? date = null,Object? title = null,Object? category = null,Object? wallet = null,Object? notes = freezed,Object? imagePath = freezed,Object? isRecurring = freezed,Object? recurringId = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_TransactionModel(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -319,7 +323,8 @@ as CategoryModel,wallet: null == wallet ? _self.wallet : wallet // ignore: cast_
 as WalletModel,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
 as String?,imagePath: freezed == imagePath ? _self.imagePath : imagePath // ignore: cast_nullable_to_non_nullable
 as String?,isRecurring: freezed == isRecurring ? _self.isRecurring : isRecurring // ignore: cast_nullable_to_non_nullable
-as bool?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as bool?,recurringId: freezed == recurringId ? _self.recurringId : recurringId // ignore: cast_nullable_to_non_nullable
+as int?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));

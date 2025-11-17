@@ -53,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 15; // Add UNIQUE constraint to wallet name
+  int get schemaVersion => 16; // Add recurringId to transactions for payment history tracking
 
   @override
   MigrationStrategy get migration {
@@ -198,6 +198,16 @@ class AppDatabase extends _$AppDatabase {
             Log.i('✅ Added UNIQUE constraint to wallet name', label: 'database');
           } catch (e) {
             Log.e('Failed to add UNIQUE constraint to wallet name: $e', label: 'database');
+          }
+        }
+
+        // For version 16, add recurringId to transactions for payment history tracking
+        if (from < 16) {
+          try {
+            await m.addColumn(transactions, transactions.recurringId);
+            Log.i('Added recurringId column to transactions table for payment history', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add recurringId column: $e', label: 'database');
           }
         }
 

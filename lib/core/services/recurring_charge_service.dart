@@ -31,17 +31,9 @@ class RecurringChargeService {
           continue;
         }
 
-        // Check if due date is today or in the past
-        final nextDueDate = recurring.nextDueDate;
-        final isDue = nextDueDate.year == today.year &&
-                      nextDueDate.month == today.month &&
-                      nextDueDate.day == today.day;
-
-        final isPastDue = nextDueDate.isBefore(today) &&
-                         (today.difference(nextDueDate).inDays > 0);
-
-        if (isDue || isPastDue) {
-          Log.d('Processing recurring: ${recurring.name} - due on ${nextDueDate.toIso8601String()}',
+        // Check if due or past due
+        if (_isDueOrPastDue(recurring.nextDueDate, today)) {
+          Log.d('Processing recurring: ${recurring.name} - due on ${recurring.nextDueDate.toIso8601String()}',
                 label: 'RecurringChargeService');
 
           await _chargeRecurring(recurring);
@@ -56,44 +48,74 @@ class RecurringChargeService {
   }
 
   /// Create transaction from recurring payment and update next due date
+  /// IMPORTANT: This method now handles ALL past due payments, not just one
   Future<void> _chargeRecurring(RecurringModel recurring) async {
     try {
       final db = _ref.read(databaseProvider);
+      final today = DateTime.now();
 
-      // Create transaction with the actual due date (not current date)
-      // This ensures transaction shows on correct date even if charged late
-      final transaction = TransactionModel(
-        transactionType: TransactionType.expense,
-        amount: recurring.amount,
-        date: recurring.nextDueDate, // Use due date, not current date!
-        title: recurring.name,
-        category: recurring.category,
-        wallet: recurring.wallet,
-        notes: 'Auto-charged from recurring payment: ${recurring.name}',
-      );
+      int transactionsCreated = 0;
+      RecurringModel current = recurring;
 
-      Log.d('Creating transaction for ${recurring.name}: ${recurring.amount} ${recurring.currency}',
-            label: 'RecurringChargeService');
+      // Loop to create ALL past due transactions
+      // This ensures we don't skip payments if user doesn't open app for weeks/months
+      while (_isDueOrPastDue(current.nextDueDate, today)) {
+        // Create transaction with the actual due date (not current date)
+        // This ensures transaction shows on correct date even if charged late
+        final transaction = TransactionModel(
+          transactionType: TransactionType.expense,
+          amount: current.amount,
+          date: current.nextDueDate, // Use due date, not current date!
+          title: current.name,
+          category: current.category,
+          wallet: current.wallet,
+          notes: 'Auto-charged from recurring payment: ${current.name}',
+          recurringId: current.id, // Link transaction to recurring payment for history tracking
+        );
 
-      final transactionId = await db.transactionDao.addTransaction(transaction);
-
-      if (transactionId > 0) {
-        Log.d('Transaction created successfully: ID $transactionId', label: 'RecurringChargeService');
-
-        // Update recurring: increment next due date and total payments
-        final updatedRecurring = _calculateNextDueDate(recurring);
-
-        await db.recurringDao.updateRecurring(updatedRecurring);
-
-        Log.d('Updated next due date to ${updatedRecurring.nextDueDate.toIso8601String()}',
+        Log.d('Creating transaction for ${current.name}: ${current.amount} ${current.currency} on ${current.nextDueDate.toIso8601String()}',
               label: 'RecurringChargeService');
-      } else {
-        Log.e('Failed to create transaction for ${recurring.name}', label: 'RecurringChargeService');
+
+        final transactionId = await db.transactionDao.addTransaction(transaction);
+
+        if (transactionId > 0) {
+          transactionsCreated++;
+          Log.d('Transaction created successfully: ID $transactionId', label: 'RecurringChargeService');
+
+          // Calculate next due date for next iteration
+          current = _calculateNextDueDate(current);
+        } else {
+          Log.e('Failed to create transaction for ${current.name}', label: 'RecurringChargeService');
+          break; // Stop if transaction creation fails
+        }
+
+        // Safety check: prevent infinite loop (max 365 transactions = 1 year of daily payments)
+        if (transactionsCreated >= 365) {
+          Log.w('Stopped after creating 365 transactions for ${recurring.name} to prevent infinite loop',
+                label: 'RecurringChargeService');
+          break;
+        }
+      }
+
+      // Update recurring with final next due date
+      if (transactionsCreated > 0) {
+        await db.recurringDao.updateRecurring(current);
+        Log.d('Created $transactionsCreated transaction(s) for ${recurring.name}. Next due date: ${current.nextDueDate.toIso8601String()}',
+              label: 'RecurringChargeService');
       }
     } catch (e, stackTrace) {
       Log.e('Error charging recurring ${recurring.name}: $e', label: 'RecurringChargeService');
       Log.e('Stack trace: $stackTrace', label: 'RecurringChargeService');
     }
+  }
+
+  /// Check if a date is due or past due (same day or before today)
+  bool _isDueOrPastDue(DateTime dueDate, DateTime today) {
+    // Compare only date parts (ignore time)
+    final dueDateOnly = DateTime(dueDate.year, dueDate.month, dueDate.day);
+    final todayOnly = DateTime(today.year, today.month, today.day);
+
+    return dueDateOnly.isBefore(todayOnly) || dueDateOnly.isAtSameMomentAs(todayOnly);
   }
 
   /// Calculate next due date based on frequency
