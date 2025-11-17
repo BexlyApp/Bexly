@@ -8,18 +8,15 @@ class FieldDecorationHelper {
   /// Get background color for a field based on enabled state
   ///
   /// Returns the theme's surfaceContainerHighest when enabled,
-  /// or a lighter blended version when disabled for consistent disabled styling
+  /// or a light gray (neutral50) when disabled to match CustomTextField
   static Color getBackgroundColor(BuildContext context, bool enabled) {
-    final theme = Theme.of(context);
-    if (enabled) {
-      return theme.colorScheme.surfaceContainerHighest;
+    if (!enabled) {
+      // Use light gray to match disabled CustomTextField appearance
+      return AppColors.neutral50;
     }
 
-    // For disabled state, blend with surface to make it lighter/more muted
-    return Color.alphaBlend(
-      theme.colorScheme.surface.withAlpha(180),
-      theme.colorScheme.surfaceContainerHighest,
-    );
+    final theme = Theme.of(context);
+    return theme.colorScheme.surfaceContainerHighest;
   }
 
   /// Get border color for a field based on enabled state
