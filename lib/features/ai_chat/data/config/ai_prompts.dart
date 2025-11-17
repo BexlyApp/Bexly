@@ -150,24 +150,39 @@ CATEGORY MATCHING:
   static const String walletMatchingRules = '''
 WALLET MATCHING:
 1. Detect wallet name from user input using keywords:
-   - English: "on [wallet]", "to [wallet]", "from [wallet]", "in [wallet]", "using [wallet]"
-   - Vietnamese: "vào [wallet]", "từ [wallet]", "ở [wallet]", "dùng [wallet]", "trên [wallet]"
+   - English: "on [wallet]", "to [wallet]", "from [wallet]", "in [wallet]", "using [wallet]", "with [wallet]"
+   - Vietnamese: "vào [wallet]", "từ [wallet]", "ở [wallet]", "dùng [wallet]", "trên [wallet]", "bằng [wallet]", "trả bằng [wallet]"
    - Chinese: "用[wallet]", "在[wallet]", "从[wallet]"
    - Japanese: "[wallet]で", "[wallet]から"
-2. Match wallet name from AVAILABLE WALLETS list (case-insensitive, partial match OK)
-   - Format: "Wallet Name (CURRENCY)" - e.g., "Credit Card (USD)", "My Wallet (VND)"
-   - Match by wallet NAME only, ignore currency in parentheses
-3. If user specifies wallet, include "wallet" field in JSON with EXACT wallet name (without currency)
-4. If no wallet specified, omit "wallet" field (will use active/default wallet)
-5. Use wallet currency for "k" notation when wallet is specified:
-   - "lunch 50k on Credit Card (USD)" → 50,000 USD (if reasonable, else CONFIRM)
-   - "lunch 50k vào My Wallet (VND)" → 50,000 VND
-6. Examples:
-   - "lunch 50k on Credit Card" → "wallet":"Credit Card", currency determined by Credit Card's currency (USD)
-   - "ăn sáng 50k vào USDT" → "wallet":"USDT", currency VND (Vietnamese input)
+
+2. WALLET TYPE KEYWORDS (user may refer to wallet by TYPE instead of name):
+   - Cash: "cash", "tiền mặt"
+   - Bank Account: "bank", "bank account", "ngân hàng", "tài khoản ngân hàng"
+   - Credit Card: "credit card", "thẻ tín dụng", "thẻ"
+   - E-Wallet: "e-wallet", "digital wallet", "ví điện tử"
+   - Investment: "investment", "đầu tư"
+   - Savings: "savings", "tiết kiệm"
+   - Insurance: "insurance", "bảo hiểm"
+
+3. Match wallet from AVAILABLE WALLETS list (case-insensitive, flexible matching):
+   - Format: "Wallet Name (CURRENCY, Type)" - e.g., "Credit Card 1 (USD, Credit Card)", "My Wallet (VND, Cash)"
+   - Match by: a) Exact wallet NAME, or b) Partial wallet name, or c) Wallet TYPE (from keywords above)
+   - Examples:
+     * "thẻ tín dụng" → matches wallet with type "Credit Card" (e.g., "Credit Card 1 (USD, Credit Card)")
+     * "Credit Card" → matches "Credit Card 1" (partial name match)
+     * "tiền mặt" → matches wallet with type "Cash" (e.g., "VND (VND, Cash)")
+
+4. If user specifies wallet, include "wallet" field in JSON with EXACT wallet name (without currency/type suffix)
+5. If no wallet specified, omit "wallet" field (will use active/default wallet)
+6. Use wallet currency for "k" notation when wallet is specified:
+   - "lunch 50k on Credit Card (USD, Credit Card)" → 50,000 USD (if reasonable, else CONFIRM)
+   - "lunch 50k vào My Wallet (VND, Cash)" → 50,000 VND
+7. Examples:
+   - "lunch 50k trả bằng thẻ tín dụng" → "wallet":"Credit Card 1" (matched by type keyword)
+   - "ăn sáng 50k vào USDT" → "wallet":"USDT" (matched by name)
    - "Netflix 300k" (no wallet specified) → no "wallet" field, use active wallet currency
-7. IMPORTANT: Return exact wallet name as it appears in AVAILABLE WALLETS list (but WITHOUT the currency suffix)
-8. If user mentions wallet not in list, omit "wallet" field and mention in response''';
+8. IMPORTANT: Return exact wallet name as it appears in AVAILABLE WALLETS list (but WITHOUT the (CURRENCY, Type) suffix)
+9. If user mentions wallet/type not in list, omit "wallet" field and mention in response''';
 
   // =========================================================================
   // SECTION 4: BUSINESS LOGIC (Consolidated)

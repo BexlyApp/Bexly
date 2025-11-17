@@ -8,14 +8,15 @@ class FieldDecorationHelper {
   /// Get background color for a field based on enabled state
   ///
   /// Returns the theme's surfaceContainerHighest when enabled,
-  /// or a light gray (neutral50) when disabled to match CustomTextField
+  /// or surfaceVariant when disabled to match CustomTextField
   static Color getBackgroundColor(BuildContext context, bool enabled) {
+    final theme = Theme.of(context);
+
     if (!enabled) {
-      // Use light gray to match disabled CustomTextField appearance
-      return AppColors.neutral50;
+      // Use surfaceVariant to match disabled TextField appearance
+      return theme.colorScheme.surfaceVariant;
     }
 
-    final theme = Theme.of(context);
     return theme.colorScheme.surfaceContainerHighest;
   }
 
@@ -48,10 +49,8 @@ class FieldDecorationHelper {
   /// Get text opacity for disabled fields
   ///
   /// Returns 1.0 for enabled (no opacity change)
-  /// Returns 0.5 for disabled (makes text more subtle)
-  ///
-  /// Note: Currently set to 1.0 for both to maintain readability
+  /// Returns 0.38 for disabled (Material Design disabled opacity)
   static double getTextOpacity(bool enabled) {
-    return 1.0; // Keep text readable even when disabled
+    return enabled ? 1.0 : 0.38;
   }
 }

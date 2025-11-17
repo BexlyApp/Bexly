@@ -9,6 +9,12 @@ abstract class AIService {
   Future<String> sendMessage(String message);
   Stream<String> sendMessageStream(String message);
   void updateRecentTransactions(String recentTransactionsContext);
+  void updateContext({
+    String? walletName,
+    String? walletCurrency,
+    List<String>? wallets,
+    double? exchangeRate,
+  }); // Update wallet context dynamically
   void clearHistory(); // Clear conversation history
 }
 
@@ -56,16 +62,16 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   final String? categoryHierarchy;
 
   @override
-  final String? walletCurrency;
+  String? walletCurrency;
 
   @override
-  final String? walletName;
+  String? walletName;
 
   @override
-  final double? exchangeRateVndToUsd;
+  double? exchangeRateVndToUsd;
 
   @override
-  final List<String>? wallets;
+  List<String>? wallets;
 
   String _recentTransactionsContext = '';
 
@@ -93,6 +99,24 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   void updateRecentTransactions(String recentTransactionsContext) {
     _recentTransactionsContext = recentTransactionsContext;
     Log.d('Updated recent transactions context (${recentTransactionsContext.length} chars)', label: 'AI Service');
+  }
+
+  @override
+  void updateContext({
+    String? walletName,
+    String? walletCurrency,
+    List<String>? wallets,
+    double? exchangeRate,
+  }) {
+    if (walletName != null) this.walletName = walletName;
+    if (walletCurrency != null) this.walletCurrency = walletCurrency;
+    if (wallets != null) this.wallets = wallets;
+    if (exchangeRate != null) exchangeRateVndToUsd = exchangeRate;
+
+    Log.d('✅ Updated AI context: wallet="$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}', label: 'AI Service');
+    if (wallets != null && wallets.isNotEmpty) {
+      Log.d('   Wallet list: ${wallets.join(", ")}', label: 'AI Service');
+    }
   }
 
   @override
@@ -239,16 +263,16 @@ class GeminiService with AIServicePromptMixin implements AIService {
   final String? categoryHierarchy;
 
   @override
-  final String? walletCurrency;
+  String? walletCurrency;
 
   @override
-  final String? walletName;
+  String? walletName;
 
   @override
-  final double? exchangeRateVndToUsd;
+  double? exchangeRateVndToUsd;
 
   @override
-  final List<String>? wallets;
+  List<String>? wallets;
 
   String _recentTransactionsContext = '';
 
@@ -275,6 +299,24 @@ class GeminiService with AIServicePromptMixin implements AIService {
   void updateRecentTransactions(String recentTransactionsContext) {
     _recentTransactionsContext = recentTransactionsContext;
     Log.d('Updated recent transactions context (${recentTransactionsContext.length} chars)', label: 'AI Service');
+  }
+
+  @override
+  void updateContext({
+    String? walletName,
+    String? walletCurrency,
+    List<String>? wallets,
+    double? exchangeRate,
+  }) {
+    if (walletName != null) this.walletName = walletName;
+    if (walletCurrency != null) this.walletCurrency = walletCurrency;
+    if (wallets != null) this.wallets = wallets;
+    if (exchangeRate != null) exchangeRateVndToUsd = exchangeRate;
+
+    Log.d('✅ Updated AI context: wallet="$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}', label: 'AI Service');
+    if (wallets != null && wallets.isNotEmpty) {
+      Log.d('   Wallet list: ${wallets.join(", ")}', label: 'AI Service');
+    }
   }
 
   @override

@@ -190,6 +190,21 @@ class WalletFormBottomSheet extends HookConsumerWidget {
 
                 final walletDao = ref.read(walletDaoProvider);
                 try {
+                  // Validate: Check for duplicate wallet name
+                  final allWallets = await walletDao.getAllWallets();
+                  final duplicateName = allWallets.any((w) =>
+                    w.name.toLowerCase() == newWallet.name.toLowerCase() &&
+                    w.id != newWallet.id  // Exclude current wallet when editing
+                  );
+
+                  if (duplicateName) {
+                    toastification.show(
+                      description: const Text('A wallet with this name already exists. Please choose a different name.'),
+                      type: ToastificationType.error,
+                    );
+                    return;
+                  }
+
                   if (isEditing) {
                     Log.d(newWallet.toJson(), label: 'edit wallet');
                     // update the wallet
