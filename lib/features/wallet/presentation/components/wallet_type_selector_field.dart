@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/components/form_fields/field_decoration_helper.dart';
 import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/features/wallet/presentation/components/wallet_type_picker.dart';
 
@@ -41,14 +41,9 @@ class WalletTypeSelectorField extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: enabled
-              ? theme.colorScheme.surfaceContainerHighest
-              : theme.colorScheme.surfaceContainerLow, // Match disabled style
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: AppColors.neutral600,
-          ),
+        decoration: FieldDecorationHelper.getFieldDecoration(
+          context,
+          enabled: enabled,
         ),
         child: Row(
           children: [
