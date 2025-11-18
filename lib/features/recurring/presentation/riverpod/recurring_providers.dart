@@ -51,6 +51,12 @@ final recurringsByStatusProvider = StreamProvider.autoDispose.family<List<Recurr
   return dao.watchRecurringsByStatus(status);
 });
 
+/// Stream provider for a single recurring by ID
+final recurringByIdProvider = StreamProvider.autoDispose.family<RecurringModel?, int>((ref, id) {
+  final dao = ref.watch(recurringDaoProvider);
+  return dao.watchRecurringById(id);
+});
+
 /// Future provider for total monthly commitment by wallet
 final totalMonthlyCommitmentProvider = FutureProvider.autoDispose.family<double, int>((ref, walletId) async {
   final dao = ref.read(recurringDaoProvider);
