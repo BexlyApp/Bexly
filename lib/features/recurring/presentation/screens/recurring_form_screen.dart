@@ -7,15 +7,20 @@ import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/components/form_fields/custom_text_field.dart';
 import 'package:bexly/core/components/form_fields/custom_select_field.dart';
 import 'package:bexly/core/components/form_fields/custom_numeric_field.dart';
+import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/recurring/presentation/riverpod/recurring_form_state.dart';
+import 'package:bexly/features/recurring/presentation/riverpod/recurring_providers.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet_switcher/presentation/components/wallet_selector_bottom_sheet.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/riverpod/auth_providers.dart';
+import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 
 class RecurringFormScreen extends HookConsumerWidget {
   final int? recurringId;
@@ -31,6 +36,11 @@ class RecurringFormScreen extends HookConsumerWidget {
     final formNotifier = ref.read(recurringFormProvider.notifier);
     final allWalletsAsync = ref.watch(allWalletsStreamProvider);
 
+    // Watch recurring data if editing
+    final recurringAsync = recurringId != null
+        ? ref.watch(recurringByIdProvider(recurringId!))
+        : null;
+
     final formKey = useMemoized(() => GlobalKey<FormState>());
     final nameController = useTextEditingController(text: formState.name);
     final amountController = useTextEditingController(
@@ -39,17 +49,27 @@ class RecurringFormScreen extends HookConsumerWidget {
     final walletController = useTextEditingController();
     final categoryController = useTextEditingController();
 
-    // Initialize form on mount
+    // Initialize form with recurring data when editing
     useEffect(() {
-      // Reset form if creating new (not editing)
-      // Must use addPostFrameCallback to avoid modifying provider during build
-      if (recurringId == null) {
+      if (recurringId != null && recurringAsync?.valueOrNull != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          formNotifier.initializeWithRecurring(recurringAsync!.value!);
+        });
+      } else if (recurringId == null) {
+        // Reset form if creating new
         WidgetsBinding.instance.addPostFrameCallback((_) {
           formNotifier.reset();
         });
       }
       return null;
-    }, const []);
+    }, [recurringId, recurringAsync?.valueOrNull]);
+
+    // Update controllers when formState changes (Fix for edit mode)
+    useEffect(() {
+      nameController.text = formState.name;
+      amountController.text = formState.amount > 0 ? formState.amount.toString() : '';
+      return null;
+    }, [formState.name, formState.amount]);
 
     // Auto-select wallet if only one wallet exists
     useEffect(() {
@@ -77,12 +97,17 @@ class RecurringFormScreen extends HookConsumerWidget {
       return null;
     }, [formState.wallet, formState.category, allWalletsAsync]);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          recurringId == null ? 'Add Recurring Payment' : 'Edit Recurring Payment',
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
-      child: Stack(
+      body: Stack(
         children: [
           Form(
             key: formKey,
@@ -98,14 +123,6 @@ class RecurringFormScreen extends HookConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: AppSpacing.spacing16,
                 children: [
-                  // Title
-                  Text(
-                    recurringId == null ? 'Add Recurring Payment' : 'Edit Recurring Payment',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
                   // Name field
                   CustomTextField(
                     controller: nameController,
@@ -133,7 +150,7 @@ class RecurringFormScreen extends HookConsumerWidget {
                             onWalletSelected: (WalletModel wallet) {
                               formNotifier.setWallet(wallet);
                               walletController.text = '${wallet.name} - ${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}';
-                              Navigator.pop(context);
+                              // No need to pop - WalletSelectorBottomSheet already handles it
                             },
                           ),
                         );
@@ -167,33 +184,38 @@ class RecurringFormScreen extends HookConsumerWidget {
                     icon: HugeIcons.strokeRoundedCoins01,
                     appendCurrencySymbolToHint: true,
                     isRequired: true,
-                  ),
-
-                  // Frequency selector
-                  _FrequencySelector(
-                    selectedFrequency: formState.frequency,
-                    onChanged: formNotifier.setFrequency,
-                  ),
-
-                  // First Billing Date (hidden Start Date for backward compatibility)
-                  _DateField(
-                    label: 'First Billing Date',
-                    date: formState.nextDueDate,
-                    onDateSelected: formNotifier.setNextDueDate,
-                  ),
-
-                  // Charge Immediately checkbox
-                  CheckboxListTile(
-                    title: const Text('Charge immediately'),
-                    subtitle: const Text('Create first transaction on the billing date'),
-                    value: formState.autoCharge,
                     onChanged: (value) {
-                      if (value != null) {
-                        formNotifier.setAutoCharge(value);
-                      }
+                      final amount = double.tryParse(value.replaceAll(',', '')) ?? 0.0;
+                      formNotifier.setAmount(amount);
                     },
-                    controlAffinity: ListTileControlAffinity.leading,
                   ),
+
+                  // Frequency and First Billing Date in 2 columns
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _FrequencySelector(
+                          selectedFrequency: formState.frequency,
+                          onChanged: formNotifier.setFrequency,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.spacing12),
+                      Expanded(
+                        child: _DateField(
+                          label: 'First Billing Date',
+                          date: formState.nextDueDate,
+                          onDateSelected: formNotifier.setNextDueDate,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Auto Create toggle - only show when creating new recurring
+                  if (recurringId == null)
+                    _AutoCreateToggle(
+                      value: formState.autoCreate,
+                      onChanged: formNotifier.setAutoCreate,
+                    ),
 
                   // Enable Reminder switch
                   SwitchListTile(
@@ -204,6 +226,13 @@ class RecurringFormScreen extends HookConsumerWidget {
                     value: formState.enableReminder,
                     onChanged: formNotifier.setEnableReminder,
                   ),
+
+                  // Action buttons (Pause/Delete) - only show when editing
+                  if (recurringId != null && formState.editingRecurring != null)
+                    _ActionButtons(
+                      recurringId: recurringId!,
+                      currentStatus: formState.status,
+                    ),
 
                   // Error message
                   if (formState.errorMessage != null)
@@ -338,3 +367,221 @@ class _DateField extends StatelessWidget {
     );
   }
 }
+
+class _AutoCreateToggle extends HookConsumerWidget {
+  final bool value;
+  final Function(bool) onChanged;
+
+  const _AutoCreateToggle({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.purpleButtonBackground,
+        border: Border.all(
+          color: context.purpleButtonBorder,
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.spacing20,
+        vertical: AppSpacing.spacing12,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Auto Create',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Create transaction on billing date automatically',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionButtons extends HookConsumerWidget {
+  final int recurringId;
+  final RecurringStatus currentStatus;
+
+  const _ActionButtons({
+    required this.recurringId,
+    required this.currentStatus,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPaused = currentStatus == RecurringStatus.paused;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.spacing8),
+      child: Row(
+        children: [
+          // Pause/Resume Button
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                try {
+                  final db = ref.read(databaseProvider);
+                  if (isPaused) {
+                    await db.recurringDao.resumeRecurring(recurringId);
+                  } else {
+                    await db.recurringDao.pauseRecurring(recurringId);
+                  }
+
+                  // Sync to cloud
+                  final user = ref.read(authStateProvider).valueOrNull;
+                  if (user?.uid != null) {
+                    try {
+                      final syncService = ref.read(cloudSyncServiceProvider);
+                      final recurringEntity = await (db.select(db.recurrings)
+                            ..where((r) => r.id.equals(recurringId)))
+                          .getSingleOrNull();
+
+                      if (recurringEntity != null) {
+                        await syncService.syncRecurring(recurringEntity);
+                      }
+                    } catch (e) {
+                      // Silently fail cloud sync
+                    }
+                  }
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isPaused
+                              ? 'Recurring payment resumed'
+                              : 'Recurring payment paused',
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: $e'),
+                        backgroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                    );
+                  }
+                }
+              },
+              icon: Icon(
+                isPaused ? Icons.play_arrow : Icons.pause,
+                size: 20,
+              ),
+              label: Text(isPaused ? 'Resume' : 'Pause'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.spacing12),
+          // Delete Button
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                // Show confirmation dialog
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete Recurring Payment'),
+                    content: const Text(
+                      'Are you sure you want to delete this recurring payment? This action cannot be undone.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirmed == true && context.mounted) {
+                  try {
+                    final db = ref.read(databaseProvider);
+
+                    // Sync delete to cloud first
+                    final user = ref.read(authStateProvider).valueOrNull;
+                    if (user?.uid != null) {
+                      try {
+                        final syncService = ref.read(cloudSyncServiceProvider);
+                        final recurringEntity = await (db.select(db.recurrings)
+                              ..where((r) => r.id.equals(recurringId)))
+                            .getSingleOrNull();
+
+                        if (recurringEntity != null) {
+                          await syncService.deleteRecurring(recurringEntity);
+                        }
+                      } catch (e) {
+                        // Silently fail cloud sync
+                      }
+                    }
+
+                    // Delete from local database
+                    await db.recurringDao.deleteRecurring(recurringId);
+                    if (context.mounted) {
+                      Navigator.of(context).pop(); // Close form
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error deleting: $e'),
+                          backgroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                      );
+                    }
+                  }
+                }
+              },
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 20,
+              ),
+              label: const Text('Delete'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
