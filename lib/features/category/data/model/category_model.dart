@@ -44,6 +44,10 @@ abstract class CategoryModel with _$CategoryModel {
     /// These are the initial categories created on first app launch
     @Default(false) bool isSystemDefault,
 
+    /// Transaction type: 'income' or 'expense'
+    /// Required field to separate Income and Expense categories
+    @Default('expense') String transactionType,
+
     /// Timestamp when category was created
     DateTime? createdAt,
 

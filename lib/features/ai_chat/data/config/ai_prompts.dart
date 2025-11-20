@@ -142,10 +142,25 @@ CATEGORY MATCHING:
    - Even if user chats in Chinese/Vietnamese/other languages
    - Even if categories in list are localized (Chinese: "音乐", Vietnamese: "Âm nhạc")
    - You must map to English equivalent (e.g., "Music", "Food", "Transportation")
-4. Standard English category names:
-   - Music, Food, Transportation, Healthcare, Bills, Entertainment, Shopping, etc.
-5. Parent categories are for grouping only - choose the subcategory!
-6. NEVER make up category names - use standard English category names''';
+4. Categories are SPLIT by transaction type:
+   - EXPENSE categories: Food, Transportation, Shopping, Bills, Entertainment, etc.
+   - INCOME categories: Salary, Bonus, Freelance, Dividends, Interest, Rental Income, Gifts Received, Refunds, etc.
+   - Use create_expense action for expense categories
+   - Use create_income action for income categories
+5. Common Income category mappings:
+   - Salary/Wages/Paycheck → "Salary"
+   - Bonus/Commission → "Bonus"
+   - Freelance/Contract work → "Freelance"
+   - Business revenue → "Business Income"
+   - Stock dividends → "Dividends"
+   - Bank interest/savings interest → "Interest"
+   - Property rental → "Rental Income"
+   - Gifts/Money received → "Gifts Received"
+   - Refunds/Reimbursements → "Refunds"
+   - Cashback/Rewards → "Cashback"
+   - Tax refund → "Tax Refund"
+6. Parent categories are for grouping only - choose the subcategory!
+7. NEVER make up category names - use standard English category names''';
 
   static const String walletMatchingRules = '''
 WALLET MATCHING:

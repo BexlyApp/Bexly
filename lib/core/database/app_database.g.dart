@@ -576,6 +576,21 @@ class $CategoriesTable extends Categories
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _transactionTypeMeta = const VerificationMeta(
+    'transactionType',
+  );
+  @override
+  late final GeneratedColumn<String> transactionType = GeneratedColumn<String>(
+    'transaction_type',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 6,
+      maxTextLength: 7,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -611,6 +626,7 @@ class $CategoriesTable extends Categories
     parentId,
     description,
     isSystemDefault,
+    transactionType,
     createdAt,
     updatedAt,
   ];
@@ -688,6 +704,17 @@ class $CategoriesTable extends Categories
         ),
       );
     }
+    if (data.containsKey('transaction_type')) {
+      context.handle(
+        _transactionTypeMeta,
+        transactionType.isAcceptableOrUnknown(
+          data['transaction_type']!,
+          _transactionTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transactionTypeMeta);
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -745,6 +772,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.bool,
         data['${effectivePrefix}is_system_default'],
       )!,
+      transactionType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transaction_type'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -778,6 +809,10 @@ class Category extends DataClass implements Insertable<Category> {
   /// System default categories cannot be deleted by cloud sync
   /// These are the initial categories created on first app launch
   final bool isSystemDefault;
+
+  /// Transaction type: 'income' or 'expense'
+  /// Required field to separate Income and Expense categories
+  final String transactionType;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Category({
@@ -790,6 +825,7 @@ class Category extends DataClass implements Insertable<Category> {
     this.parentId,
     this.description,
     required this.isSystemDefault,
+    required this.transactionType,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -817,6 +853,7 @@ class Category extends DataClass implements Insertable<Category> {
       map['description'] = Variable<String>(description);
     }
     map['is_system_default'] = Variable<bool>(isSystemDefault);
+    map['transaction_type'] = Variable<String>(transactionType);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -843,6 +880,7 @@ class Category extends DataClass implements Insertable<Category> {
           ? const Value.absent()
           : Value(description),
       isSystemDefault: Value(isSystemDefault),
+      transactionType: Value(transactionType),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -863,6 +901,7 @@ class Category extends DataClass implements Insertable<Category> {
       parentId: serializer.fromJson<int?>(json['parentId']),
       description: serializer.fromJson<String?>(json['description']),
       isSystemDefault: serializer.fromJson<bool>(json['isSystemDefault']),
+      transactionType: serializer.fromJson<String>(json['transactionType']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -880,6 +919,7 @@ class Category extends DataClass implements Insertable<Category> {
       'parentId': serializer.toJson<int?>(parentId),
       'description': serializer.toJson<String?>(description),
       'isSystemDefault': serializer.toJson<bool>(isSystemDefault),
+      'transactionType': serializer.toJson<String>(transactionType),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -895,6 +935,7 @@ class Category extends DataClass implements Insertable<Category> {
     Value<int?> parentId = const Value.absent(),
     Value<String?> description = const Value.absent(),
     bool? isSystemDefault,
+    String? transactionType,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Category(
@@ -909,6 +950,7 @@ class Category extends DataClass implements Insertable<Category> {
     parentId: parentId.present ? parentId.value : this.parentId,
     description: description.present ? description.value : this.description,
     isSystemDefault: isSystemDefault ?? this.isSystemDefault,
+    transactionType: transactionType ?? this.transactionType,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -929,6 +971,9 @@ class Category extends DataClass implements Insertable<Category> {
       isSystemDefault: data.isSystemDefault.present
           ? data.isSystemDefault.value
           : this.isSystemDefault,
+      transactionType: data.transactionType.present
+          ? data.transactionType.value
+          : this.transactionType,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -946,6 +991,7 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('parentId: $parentId, ')
           ..write('description: $description, ')
           ..write('isSystemDefault: $isSystemDefault, ')
+          ..write('transactionType: $transactionType, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -963,6 +1009,7 @@ class Category extends DataClass implements Insertable<Category> {
     parentId,
     description,
     isSystemDefault,
+    transactionType,
     createdAt,
     updatedAt,
   );
@@ -979,6 +1026,7 @@ class Category extends DataClass implements Insertable<Category> {
           other.parentId == this.parentId &&
           other.description == this.description &&
           other.isSystemDefault == this.isSystemDefault &&
+          other.transactionType == this.transactionType &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -993,6 +1041,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<int?> parentId;
   final Value<String?> description;
   final Value<bool> isSystemDefault;
+  final Value<String> transactionType;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const CategoriesCompanion({
@@ -1005,6 +1054,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.parentId = const Value.absent(),
     this.description = const Value.absent(),
     this.isSystemDefault = const Value.absent(),
+    this.transactionType = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1018,9 +1068,11 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.parentId = const Value.absent(),
     this.description = const Value.absent(),
     this.isSystemDefault = const Value.absent(),
+    required String transactionType,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
-  }) : title = Value(title);
+  }) : title = Value(title),
+       transactionType = Value(transactionType);
   static Insertable<Category> custom({
     Expression<int>? id,
     Expression<String>? cloudId,
@@ -1031,6 +1083,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<int>? parentId,
     Expression<String>? description,
     Expression<bool>? isSystemDefault,
+    Expression<String>? transactionType,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1044,6 +1097,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (parentId != null) 'parent_id': parentId,
       if (description != null) 'description': description,
       if (isSystemDefault != null) 'is_system_default': isSystemDefault,
+      if (transactionType != null) 'transaction_type': transactionType,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1059,6 +1113,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<int?>? parentId,
     Value<String?>? description,
     Value<bool>? isSystemDefault,
+    Value<String>? transactionType,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1072,6 +1127,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       parentId: parentId ?? this.parentId,
       description: description ?? this.description,
       isSystemDefault: isSystemDefault ?? this.isSystemDefault,
+      transactionType: transactionType ?? this.transactionType,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1107,6 +1163,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (isSystemDefault.present) {
       map['is_system_default'] = Variable<bool>(isSystemDefault.value);
     }
+    if (transactionType.present) {
+      map['transaction_type'] = Variable<String>(transactionType.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1128,6 +1187,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('parentId: $parentId, ')
           ..write('description: $description, ')
           ..write('isSystemDefault: $isSystemDefault, ')
+          ..write('transactionType: $transactionType, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -6939,6 +6999,7 @@ typedef $$CategoriesTableCreateCompanionBuilder =
       Value<int?> parentId,
       Value<String?> description,
       Value<bool> isSystemDefault,
+      required String transactionType,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -6953,6 +7014,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<int?> parentId,
       Value<String?> description,
       Value<bool> isSystemDefault,
+      Value<String> transactionType,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -7085,6 +7147,11 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<bool> get isSystemDefault => $composableBuilder(
     column: $table.isSystemDefault,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get transactionType => $composableBuilder(
+    column: $table.transactionType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7246,6 +7313,11 @@ class $$CategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get transactionType => $composableBuilder(
+    column: $table.transactionType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -7316,6 +7388,11 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<bool> get isSystemDefault => $composableBuilder(
     column: $table.isSystemDefault,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get transactionType => $composableBuilder(
+    column: $table.transactionType,
     builder: (column) => column,
   );
 
@@ -7466,6 +7543,7 @@ class $$CategoriesTableTableManager
                 Value<int?> parentId = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<bool> isSystemDefault = const Value.absent(),
+                Value<String> transactionType = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => CategoriesCompanion(
@@ -7478,6 +7556,7 @@ class $$CategoriesTableTableManager
                 parentId: parentId,
                 description: description,
                 isSystemDefault: isSystemDefault,
+                transactionType: transactionType,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -7492,6 +7571,7 @@ class $$CategoriesTableTableManager
                 Value<int?> parentId = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<bool> isSystemDefault = const Value.absent(),
+                required String transactionType,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => CategoriesCompanion.insert(
@@ -7504,6 +7584,7 @@ class $$CategoriesTableTableManager
                 parentId: parentId,
                 description: description,
                 isSystemDefault: isSystemDefault,
+                transactionType: transactionType,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

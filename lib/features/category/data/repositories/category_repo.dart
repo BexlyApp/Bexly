@@ -1,6 +1,7 @@
 import 'package:bexly/features/category/data/model/category_model.dart';
 
 final List<CategoryModel> categories = [
+  // ========== EXPENSE CATEGORIES ==========
   CategoryModel(
     id: 1,
     title: 'Food & Drinks',
@@ -8,6 +9,7 @@ final List<CategoryModel> categories = [
     icon: 'category-food-1',
     iconBackground: '',
     iconTypeValue: 'asset',
+    transactionType: 'expense',
     subCategories: [
       CategoryModel(
         id: 101,
@@ -17,6 +19,7 @@ final List<CategoryModel> categories = [
         icon: 'category-food-2',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 102,
@@ -26,6 +29,7 @@ final List<CategoryModel> categories = [
         icon: 'category-food-3',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 103,
@@ -35,6 +39,7 @@ final List<CategoryModel> categories = [
         icon: 'category-food-4',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 104,
@@ -44,6 +49,7 @@ final List<CategoryModel> categories = [
         icon: 'category-food-5',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 105,
@@ -53,6 +59,7 @@ final List<CategoryModel> categories = [
         icon: 'category-food-6',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
     ],
   ),
@@ -63,6 +70,7 @@ final List<CategoryModel> categories = [
     icon: 'category-transportation-1',
     iconBackground: '',
     iconTypeValue: 'asset',
+    transactionType: 'expense',
     subCategories: [
       CategoryModel(
         id: 201,
@@ -72,6 +80,7 @@ final List<CategoryModel> categories = [
         icon: 'category-transportation-2',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 202,
@@ -81,6 +90,7 @@ final List<CategoryModel> categories = [
         icon: 'category-transportation-3',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 203,
@@ -90,6 +100,7 @@ final List<CategoryModel> categories = [
         icon: 'category-transportation-4',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 204,
@@ -99,6 +110,7 @@ final List<CategoryModel> categories = [
         icon: 'category-transportation-5',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 205,
@@ -108,6 +120,7 @@ final List<CategoryModel> categories = [
         icon: 'category-transportation-6',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
     ],
   ),
@@ -118,6 +131,7 @@ final List<CategoryModel> categories = [
     icon: 'category-housing-1',
     iconBackground: '',
     iconTypeValue: 'asset',
+    transactionType: 'expense',
     subCategories: [
       CategoryModel(
         id: 301,
@@ -127,6 +141,7 @@ final List<CategoryModel> categories = [
         icon: 'category-housing-2',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 302,
@@ -136,6 +151,7 @@ final List<CategoryModel> categories = [
         icon: 'category-housing-3',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 303,
@@ -145,6 +161,7 @@ final List<CategoryModel> categories = [
         icon: 'category-housing-4',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 304,
@@ -154,6 +171,7 @@ final List<CategoryModel> categories = [
         icon: 'category-housing-5',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 305,
@@ -163,6 +181,7 @@ final List<CategoryModel> categories = [
         icon: 'category-housing-6',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
     ],
   ),
@@ -173,6 +192,7 @@ final List<CategoryModel> categories = [
     icon: 'category-entertainment-1',
     iconBackground: '',
     iconTypeValue: 'asset',
+    transactionType: 'expense',
     subCategories: [
       CategoryModel(
         id: 401,
@@ -182,6 +202,7 @@ final List<CategoryModel> categories = [
         icon: 'category-entertainment-2',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 402,
@@ -191,6 +212,7 @@ final List<CategoryModel> categories = [
         icon: 'category-entertainment-3',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 403,
@@ -200,6 +222,7 @@ final List<CategoryModel> categories = [
         icon: 'category-entertainment-4',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 404,
@@ -209,6 +232,7 @@ final List<CategoryModel> categories = [
         icon: 'category-entertainment-5',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 405,
@@ -218,6 +242,7 @@ final List<CategoryModel> categories = [
         icon: 'category-entertainment-6',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
     ],
   ),
@@ -228,6 +253,7 @@ final List<CategoryModel> categories = [
     icon: 'category-health-1',
     iconBackground: '',
     iconTypeValue: 'asset',
+    transactionType: 'expense',
     subCategories: [
       CategoryModel(
         id: 501,
@@ -237,6 +263,7 @@ final List<CategoryModel> categories = [
         icon: 'category-health-2',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 502,
@@ -246,6 +273,7 @@ final List<CategoryModel> categories = [
         icon: 'category-health-3',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 503,
@@ -255,6 +283,7 @@ final List<CategoryModel> categories = [
         icon: 'category-health-4',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 504,
@@ -264,6 +293,7 @@ final List<CategoryModel> categories = [
         icon: 'category-health-5',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 505,
@@ -273,6 +303,7 @@ final List<CategoryModel> categories = [
         icon: 'category-health-5',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
     ],
   ),
@@ -283,6 +314,7 @@ final List<CategoryModel> categories = [
     icon: 'category-shopping-1',
     iconBackground: '',
     iconTypeValue: 'asset',
+    transactionType: 'expense',
     subCategories: [
       CategoryModel(
         id: 601,
@@ -292,6 +324,7 @@ final List<CategoryModel> categories = [
         icon: 'category-shopping-2',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 602,
@@ -301,6 +334,7 @@ final List<CategoryModel> categories = [
         icon: 'category-shopping-3',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 603,
@@ -310,6 +344,7 @@ final List<CategoryModel> categories = [
         icon: 'category-shopping-4',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 604,
@@ -319,6 +354,7 @@ final List<CategoryModel> categories = [
         icon: 'category-shopping-5',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 605,
@@ -328,6 +364,7 @@ final List<CategoryModel> categories = [
         icon: 'category-shopping-6',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
     ],
   ),
@@ -338,6 +375,7 @@ final List<CategoryModel> categories = [
     icon: 'category-education-1',
     iconBackground: '',
     iconTypeValue: 'asset',
+    transactionType: 'expense',
     subCategories: [
       CategoryModel(
         id: 701,
@@ -347,6 +385,7 @@ final List<CategoryModel> categories = [
         icon: 'category-education-2',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 702,
@@ -356,6 +395,7 @@ final List<CategoryModel> categories = [
         icon: 'category-education-3',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 703,
@@ -365,6 +405,7 @@ final List<CategoryModel> categories = [
         icon: 'category-education-4',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 704,
@@ -374,6 +415,7 @@ final List<CategoryModel> categories = [
         icon: 'category-education-5',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 705,
@@ -383,6 +425,7 @@ final List<CategoryModel> categories = [
         icon: 'category-education-6',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
     ],
   ),
@@ -393,6 +436,7 @@ final List<CategoryModel> categories = [
     icon: 'category-travel-1',
     iconBackground: '',
     iconTypeValue: 'asset',
+    transactionType: 'expense',
     subCategories: [
       CategoryModel(
         id: 801,
@@ -402,6 +446,7 @@ final List<CategoryModel> categories = [
         icon: 'category-travel-2',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 802,
@@ -411,6 +456,7 @@ final List<CategoryModel> categories = [
         icon: 'category-travel-3',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 803,
@@ -420,6 +466,7 @@ final List<CategoryModel> categories = [
         icon: 'category-travel-4',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 804,
@@ -429,6 +476,7 @@ final List<CategoryModel> categories = [
         icon: 'category-travel-5',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 805,
@@ -438,6 +486,7 @@ final List<CategoryModel> categories = [
         icon: 'category-travel-6',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
     ],
   ),
@@ -448,6 +497,7 @@ final List<CategoryModel> categories = [
     icon: 'category-finance-1',
     iconBackground: '',
     iconTypeValue: 'asset',
+    transactionType: 'expense',
     subCategories: [
       CategoryModel(
         id: 901,
@@ -457,6 +507,7 @@ final List<CategoryModel> categories = [
         icon: 'category-finance-2',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 902,
@@ -466,6 +517,7 @@ final List<CategoryModel> categories = [
         icon: 'category-finance-3',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 903,
@@ -475,6 +527,7 @@ final List<CategoryModel> categories = [
         icon: 'category-finance-4',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 904,
@@ -484,6 +537,7 @@ final List<CategoryModel> categories = [
         icon: 'category-finance-5',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 905,
@@ -493,6 +547,7 @@ final List<CategoryModel> categories = [
         icon: 'category-finance-6',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
     ],
   ),
@@ -503,6 +558,7 @@ final List<CategoryModel> categories = [
     icon: 'category-utilities-1',
     iconBackground: '',
     iconTypeValue: 'asset',
+    transactionType: 'expense',
     subCategories: [
       CategoryModel(
         id: 1001,
@@ -512,6 +568,7 @@ final List<CategoryModel> categories = [
         icon: 'category-utilities-2',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 1002,
@@ -521,6 +578,7 @@ final List<CategoryModel> categories = [
         icon: 'category-utilities-3',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 1003,
@@ -530,6 +588,7 @@ final List<CategoryModel> categories = [
         icon: 'category-utilities-4',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 1004,
@@ -539,6 +598,7 @@ final List<CategoryModel> categories = [
         icon: 'category-utilities-5',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
       ),
       CategoryModel(
         id: 1005,
@@ -548,6 +608,171 @@ final List<CategoryModel> categories = [
         icon: 'category-utilities-6',
         iconBackground: '',
         iconTypeValue: 'asset',
+        transactionType: 'expense',
+      ),
+    ],
+  ),
+  // ========== INCOME CATEGORIES ==========
+  CategoryModel(
+    id: 11,
+    title: 'Work & Business',
+    description: 'Salary, wages, freelance, business income.',
+    icon: 'category-finance-1',
+    iconBackground: '',
+    iconTypeValue: 'asset',
+    transactionType: 'income',
+    subCategories: [
+      CategoryModel(
+        id: 1101,
+        parentId: 11,
+        title: 'Salary',
+        description: 'Monthly salary and wages.',
+        icon: 'category-finance-2',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+      CategoryModel(
+        id: 1102,
+        parentId: 11,
+        title: 'Bonus',
+        description: 'Work bonuses and commissions.',
+        icon: 'category-finance-3',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+      CategoryModel(
+        id: 1103,
+        parentId: 11,
+        title: 'Freelance',
+        description: 'Freelance project income.',
+        icon: 'category-finance-4',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+      CategoryModel(
+        id: 1104,
+        parentId: 11,
+        title: 'Business Income',
+        description: 'Revenue from business operations.',
+        icon: 'category-finance-5',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+    ],
+  ),
+  CategoryModel(
+    id: 12,
+    title: 'Investments',
+    description: 'Investment returns, dividends, capital gains.',
+    icon: 'category-finance-1',
+    iconBackground: '',
+    iconTypeValue: 'asset',
+    transactionType: 'income',
+    subCategories: [
+      CategoryModel(
+        id: 1201,
+        parentId: 12,
+        title: 'Dividends',
+        description: 'Stock dividends and distributions.',
+        icon: 'category-finance-2',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+      CategoryModel(
+        id: 1202,
+        parentId: 12,
+        title: 'Interest',
+        description: 'Savings account interest.',
+        icon: 'category-finance-3',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+      CategoryModel(
+        id: 1203,
+        parentId: 12,
+        title: 'Capital Gains',
+        description: 'Profits from investments.',
+        icon: 'category-finance-4',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+      CategoryModel(
+        id: 1204,
+        parentId: 12,
+        title: 'Rental Income',
+        description: 'Income from property rental.',
+        icon: 'category-finance-5',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+    ],
+  ),
+  CategoryModel(
+    id: 13,
+    title: 'Other Income',
+    description: 'Gifts, refunds, cashback, and other income.',
+    icon: 'category-finance-1',
+    iconBackground: '',
+    iconTypeValue: 'asset',
+    transactionType: 'income',
+    subCategories: [
+      CategoryModel(
+        id: 1301,
+        parentId: 13,
+        title: 'Gifts Received',
+        description: 'Money received as gifts.',
+        icon: 'category-finance-2',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+      CategoryModel(
+        id: 1302,
+        parentId: 13,
+        title: 'Refunds',
+        description: 'Refunds and reimbursements.',
+        icon: 'category-finance-3',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+      CategoryModel(
+        id: 1303,
+        parentId: 13,
+        title: 'Cashback',
+        description: 'Cashback and rewards.',
+        icon: 'category-finance-4',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+      CategoryModel(
+        id: 1304,
+        parentId: 13,
+        title: 'Tax Refund',
+        description: 'Tax returns and refunds.',
+        icon: 'category-finance-5',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
+      ),
+      CategoryModel(
+        id: 1305,
+        parentId: 13,
+        title: 'Other',
+        description: 'Miscellaneous income.',
+        icon: 'category-finance-6',
+        iconBackground: '',
+        iconTypeValue: 'asset',
+        transactionType: 'income',
       ),
     ],
   ),
