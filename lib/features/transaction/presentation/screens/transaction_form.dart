@@ -130,6 +130,7 @@ class TransactionForm extends HookConsumerWidget {
         const Gap(AppSpacing.spacing16),
         TransactionCategorySelector(
           controller: formState.categoryController,
+          currentTransactionType: formState.selectedTransactionType.value.name,
           onCategorySelected: (parentCategory, category) {
             formState.selectedCategory.value = category;
             formState.categoryController.text = formState.getCategoryText(

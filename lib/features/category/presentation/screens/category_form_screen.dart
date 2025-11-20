@@ -41,10 +41,12 @@ part '../components/form/category_delete_button.dart';
 class CategoryFormScreen extends HookConsumerWidget {
   final int? categoryId; // Nullable ID for edit mode
   final bool isEditingParent;
+  final String? initialTransactionType; // Transaction type for new categories
   const CategoryFormScreen({
     super.key,
     this.categoryId,
     this.isEditingParent = false,
+    this.initialTransactionType,
   });
 
   @override
@@ -56,6 +58,7 @@ class CategoryFormScreen extends HookConsumerWidget {
     final iconBackground = useState('');
     final iconType = useState(IconType.asset);
     final makeAsParent = useState(false);
+    final transactionType = useState(initialTransactionType ?? 'expense');
     final isEditing = categoryId != null;
 
     // State for the selected parent category
@@ -82,6 +85,7 @@ class CategoryFormScreen extends HookConsumerWidget {
         icon.value = category.icon ?? '';
         iconType.value = category.toModel().iconType;
         iconBackground.value = category.iconBackground ?? '';
+        transactionType.value = category.transactionType;
       }
       return null;
     }, [categoryFuture.connectionState, categoryFuture.data]);
@@ -128,6 +132,7 @@ class CategoryFormScreen extends HookConsumerWidget {
               iconType: iconType,
               iconBackground: iconBackground,
               isEditingParent: isEditingParent,
+              transactionType: transactionType,
             ),
             if (isEditing)
               CategoryDeleteButton(
