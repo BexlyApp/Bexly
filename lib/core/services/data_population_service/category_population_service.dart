@@ -27,6 +27,7 @@ class CategoryPopulationService {
             ? const Value.absent()
             : Value(categoryModel.description!),
         isSystemDefault: const Value(true), // Mark as system default
+        transactionType: Value(categoryModel.transactionType),
       );
       try {
         await categoryDao.addCategory(companion);
@@ -79,6 +80,7 @@ class CategoryPopulationService {
               ? const Value.absent()
               : Value(categoryModel.description!),
           isSystemDefault: const Value(true),
+          transactionType: Value(categoryModel.transactionType),
         );
 
         try {

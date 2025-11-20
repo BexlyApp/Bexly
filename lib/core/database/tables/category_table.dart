@@ -27,6 +27,10 @@ class Categories extends Table {
   /// These are the initial categories created on first app launch
   BoolColumn get isSystemDefault => boolean().withDefault(const Constant(false))();
 
+  /// Transaction type: 'income' or 'expense'
+  /// Required field to separate Income and Expense categories
+  TextColumn get transactionType => text().withLength(min: 6, max: 7)();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -44,6 +48,7 @@ extension CategoryExtension on Category {
       parentId: json['parentId'] as int?,
       description: json['description'] as String?,
       isSystemDefault: json['isSystemDefault'] as bool? ?? false,
+      transactionType: json['transactionType'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -72,6 +77,7 @@ extension CategoryTableExtensions on Category {
       // This needs to be populated by querying children if needed.
       subCategories: null,
       isSystemDefault: isSystemDefault,
+      transactionType: transactionType,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -93,6 +99,7 @@ extension CategoryModelExtensions on CategoryModel {
       parentId: Value(parentId),
       description: Value(description),
       isSystemDefault: Value(isSystemDefault),
+      transactionType: Value(transactionType),
       createdAt: createdAt != null
           ? Value(createdAt!)
           : (isInsert ? Value(DateTime.now()) : const Value.absent()),
