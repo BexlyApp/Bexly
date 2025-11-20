@@ -41,6 +41,7 @@ class CategoryFormService {
       iconBackground: Value(categoryModel.iconBackground),
       parentId: Value(categoryModel.parentId),
       description: Value(categoryModel.description ?? ''),
+      transactionType: Value(categoryModel.transactionType),
     );
 
     try {

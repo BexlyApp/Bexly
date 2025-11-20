@@ -12,6 +12,7 @@ class CategorySaveButton extends ConsumerWidget {
     required this.iconType,
     required this.iconBackground,
     required this.isEditingParent,
+    required this.transactionType,
   });
 
   final int? categoryId;
@@ -23,6 +24,7 @@ class CategorySaveButton extends ConsumerWidget {
   final ValueNotifier<IconType> iconType;
   final ValueNotifier<String> iconBackground;
   final bool isEditingParent;
+  final ValueNotifier<String> transactionType;
 
   @override
   Widget build(BuildContext context, ref) {
@@ -38,6 +40,7 @@ class CategorySaveButton extends ConsumerWidget {
           icon: icon.value,
           iconTypeValue: iconType.value.name,
           iconBackground: iconBackground.value,
+          transactionType: transactionType.value,
         );
 
         CategoryFormService().save(context, ref, newCategory);

@@ -8,7 +8,12 @@ class CategoryRouter {
   static final routes = <GoRoute>[
     GoRoute(
       path: Routes.categoryList,
-      builder: (context, state) => const CategoryPickerScreen(),
+      builder: (context, state) {
+        final type = state.uri.queryParameters['type'];
+        return CategoryPickerScreen(
+          initialTransactionType: type,
+        );
+      },
     ),
     GoRoute(
       path: Routes.manageCategories,
