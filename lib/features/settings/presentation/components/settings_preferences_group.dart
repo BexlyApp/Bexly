@@ -57,7 +57,7 @@ class SettingsPreferencesGroup extends ConsumerWidget {
         MenuTileButton(
           label: l10n.notifications,
           icon: HugeIcons.strokeRoundedNotification01,
-          onTap: () => context.push(Routes.comingSoon),
+          onTap: () => context.push(Routes.notificationSettings),
         ),
       ],
     );

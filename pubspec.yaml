@@ -56,6 +56,7 @@ dependencies:
   flutter_hooks: ^0.21.2
   flutter_local_notifications: ^19.2.1
   flutter_riverpod: ^2.6.1
+  timezone: ^0.10.1
   freezed_annotation: ^3.1.0
   gap: ^3.0.1
   go_router: ^16.2.1
