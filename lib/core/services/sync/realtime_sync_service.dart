@@ -429,6 +429,7 @@ class RealtimeSyncService {
             parentId: existingCategory.parentId,
             description: existingCategory.description,
             isSystemDefault: existingCategory.isSystemDefault,
+            transactionType: existingCategory.transactionType,
             createdAt: existingCategory.createdAt,
             updatedAt: DateTime.now(),
           );
@@ -449,6 +450,7 @@ class RealtimeSyncService {
         parentId: data['parentId'] as int?,
         description: data['description'] as String?,
         isSystemDefault: false, // Non-system category
+        transactionType: data['transactionType'] as String? ?? 'expense', // Default to expense if not specified
         createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate() ?? existingCategory.createdAt,
         updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
       );
