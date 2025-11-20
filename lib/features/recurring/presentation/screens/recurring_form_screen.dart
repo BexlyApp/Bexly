@@ -13,6 +13,7 @@ import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/recurring/presentation/riverpod/recurring_form_state.dart';
 import 'package:bexly/features/recurring/presentation/riverpod/recurring_providers.dart';
+import 'package:bexly/features/recurring/services/recurring_notification_service.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
@@ -550,6 +551,9 @@ class _ActionButtons extends HookConsumerWidget {
                         // Silently fail cloud sync
                       }
                     }
+
+                    // Cancel notification for this recurring
+                    await RecurringNotificationService.cancelNotification(recurringId);
 
                     // Delete from local database
                     await db.recurringDao.deleteRecurring(recurringId);

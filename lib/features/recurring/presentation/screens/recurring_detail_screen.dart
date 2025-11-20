@@ -11,6 +11,7 @@ import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/features/recurring/data/model/recurring_model.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/recurring/services/recurring_notification_service.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
@@ -306,6 +307,10 @@ class RecurringDetailScreen extends HookConsumerWidget {
                       Log.e('Failed to delete recurring from cloud: $e', label: 'RecurringDetail');
                     }
                   }
+
+                  // Cancel notification for this recurring
+                  await RecurringNotificationService.cancelNotification(currentRecurring.id!);
+                  Log.i('Notification cancelled for recurring ${currentRecurring.id}', label: 'RecurringDetail');
 
                   // Delete from local database
                   await db.recurringDao.deleteRecurring(currentRecurring.id!);
