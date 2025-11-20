@@ -5293,18 +5293,18 @@ class $RecurringsTable extends Recurrings
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _autoChargeMeta = const VerificationMeta(
-    'autoCharge',
+  static const VerificationMeta _autoCreateMeta = const VerificationMeta(
+    'autoCreate',
   );
   @override
-  late final GeneratedColumn<bool> autoCharge = GeneratedColumn<bool>(
-    'auto_charge',
+  late final GeneratedColumn<bool> autoCreate = GeneratedColumn<bool>(
+    'auto_create',
     aliasedName,
     false,
     type: DriftSqlType.bool,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("auto_charge" IN (0, 1))',
+      'CHECK ("auto_create" IN (0, 1))',
     ),
     defaultValue: const Constant(false),
   );
@@ -5442,7 +5442,7 @@ class $RecurringsTable extends Recurrings
     billingDay,
     endDate,
     status,
-    autoCharge,
+    autoCreate,
     enableReminder,
     reminderDaysBefore,
     notes,
@@ -5586,10 +5586,10 @@ class $RecurringsTable extends Recurrings
     } else if (isInserting) {
       context.missing(_statusMeta);
     }
-    if (data.containsKey('auto_charge')) {
+    if (data.containsKey('auto_create')) {
       context.handle(
-        _autoChargeMeta,
-        autoCharge.isAcceptableOrUnknown(data['auto_charge']!, _autoChargeMeta),
+        _autoCreateMeta,
+        autoCreate.isAcceptableOrUnknown(data['auto_create']!, _autoCreateMeta),
       );
     }
     if (data.containsKey('enable_reminder')) {
@@ -5737,9 +5737,9 @@ class $RecurringsTable extends Recurrings
         DriftSqlType.int,
         data['${effectivePrefix}status'],
       )!,
-      autoCharge: attachedDatabase.typeMapping.read(
+      autoCreate: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
-        data['${effectivePrefix}auto_charge'],
+        data['${effectivePrefix}auto_create'],
       )!,
       enableReminder: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
@@ -5844,7 +5844,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
   final int status;
 
   /// Whether to automatically create transactions when due
-  final bool autoCharge;
+  final bool autoCreate;
 
   /// Whether to enable payment reminders
   final bool enableReminder;
@@ -5892,7 +5892,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
     this.billingDay,
     this.endDate,
     required this.status,
-    required this.autoCharge,
+    required this.autoCreate,
     required this.enableReminder,
     required this.reminderDaysBefore,
     this.notes,
@@ -5935,7 +5935,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
       map['end_date'] = Variable<DateTime>(endDate);
     }
     map['status'] = Variable<int>(status);
-    map['auto_charge'] = Variable<bool>(autoCharge);
+    map['auto_create'] = Variable<bool>(autoCreate);
     map['enable_reminder'] = Variable<bool>(enableReminder);
     map['reminder_days_before'] = Variable<int>(reminderDaysBefore);
     if (!nullToAbsent || notes != null) {
@@ -5989,7 +5989,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
           ? const Value.absent()
           : Value(endDate),
       status: Value(status),
-      autoCharge: Value(autoCharge),
+      autoCreate: Value(autoCreate),
       enableReminder: Value(enableReminder),
       reminderDaysBefore: Value(reminderDaysBefore),
       notes: notes == null && nullToAbsent
@@ -6035,7 +6035,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
       billingDay: serializer.fromJson<int?>(json['billingDay']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
       status: serializer.fromJson<int>(json['status']),
-      autoCharge: serializer.fromJson<bool>(json['autoCharge']),
+      autoCreate: serializer.fromJson<bool>(json['autoCreate']),
       enableReminder: serializer.fromJson<bool>(json['enableReminder']),
       reminderDaysBefore: serializer.fromJson<int>(json['reminderDaysBefore']),
       notes: serializer.fromJson<String?>(json['notes']),
@@ -6068,7 +6068,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
       'billingDay': serializer.toJson<int?>(billingDay),
       'endDate': serializer.toJson<DateTime?>(endDate),
       'status': serializer.toJson<int>(status),
-      'autoCharge': serializer.toJson<bool>(autoCharge),
+      'autoCreate': serializer.toJson<bool>(autoCreate),
       'enableReminder': serializer.toJson<bool>(enableReminder),
       'reminderDaysBefore': serializer.toJson<int>(reminderDaysBefore),
       'notes': serializer.toJson<String?>(notes),
@@ -6099,7 +6099,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
     Value<int?> billingDay = const Value.absent(),
     Value<DateTime?> endDate = const Value.absent(),
     int? status,
-    bool? autoCharge,
+    bool? autoCreate,
     bool? enableReminder,
     int? reminderDaysBefore,
     Value<String?> notes = const Value.absent(),
@@ -6129,7 +6129,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
     billingDay: billingDay.present ? billingDay.value : this.billingDay,
     endDate: endDate.present ? endDate.value : this.endDate,
     status: status ?? this.status,
-    autoCharge: autoCharge ?? this.autoCharge,
+    autoCreate: autoCreate ?? this.autoCreate,
     enableReminder: enableReminder ?? this.enableReminder,
     reminderDaysBefore: reminderDaysBefore ?? this.reminderDaysBefore,
     notes: notes.present ? notes.value : this.notes,
@@ -6173,9 +6173,9 @@ class Recurring extends DataClass implements Insertable<Recurring> {
           : this.billingDay,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
       status: data.status.present ? data.status.value : this.status,
-      autoCharge: data.autoCharge.present
-          ? data.autoCharge.value
-          : this.autoCharge,
+      autoCreate: data.autoCreate.present
+          ? data.autoCreate.value
+          : this.autoCreate,
       enableReminder: data.enableReminder.present
           ? data.enableReminder.value
           : this.enableReminder,
@@ -6218,7 +6218,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
           ..write('billingDay: $billingDay, ')
           ..write('endDate: $endDate, ')
           ..write('status: $status, ')
-          ..write('autoCharge: $autoCharge, ')
+          ..write('autoCreate: $autoCreate, ')
           ..write('enableReminder: $enableReminder, ')
           ..write('reminderDaysBefore: $reminderDaysBefore, ')
           ..write('notes: $notes, ')
@@ -6251,7 +6251,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
     billingDay,
     endDate,
     status,
-    autoCharge,
+    autoCreate,
     enableReminder,
     reminderDaysBefore,
     notes,
@@ -6283,7 +6283,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
           other.billingDay == this.billingDay &&
           other.endDate == this.endDate &&
           other.status == this.status &&
-          other.autoCharge == this.autoCharge &&
+          other.autoCreate == this.autoCreate &&
           other.enableReminder == this.enableReminder &&
           other.reminderDaysBefore == this.reminderDaysBefore &&
           other.notes == this.notes &&
@@ -6313,7 +6313,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
   final Value<int?> billingDay;
   final Value<DateTime?> endDate;
   final Value<int> status;
-  final Value<bool> autoCharge;
+  final Value<bool> autoCreate;
   final Value<bool> enableReminder;
   final Value<int> reminderDaysBefore;
   final Value<String?> notes;
@@ -6341,7 +6341,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
     this.billingDay = const Value.absent(),
     this.endDate = const Value.absent(),
     this.status = const Value.absent(),
-    this.autoCharge = const Value.absent(),
+    this.autoCreate = const Value.absent(),
     this.enableReminder = const Value.absent(),
     this.reminderDaysBefore = const Value.absent(),
     this.notes = const Value.absent(),
@@ -6370,7 +6370,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
     this.billingDay = const Value.absent(),
     this.endDate = const Value.absent(),
     required int status,
-    this.autoCharge = const Value.absent(),
+    this.autoCreate = const Value.absent(),
     this.enableReminder = const Value.absent(),
     this.reminderDaysBefore = const Value.absent(),
     this.notes = const Value.absent(),
@@ -6407,7 +6407,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
     Expression<int>? billingDay,
     Expression<DateTime>? endDate,
     Expression<int>? status,
-    Expression<bool>? autoCharge,
+    Expression<bool>? autoCreate,
     Expression<bool>? enableReminder,
     Expression<int>? reminderDaysBefore,
     Expression<String>? notes,
@@ -6436,7 +6436,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
       if (billingDay != null) 'billing_day': billingDay,
       if (endDate != null) 'end_date': endDate,
       if (status != null) 'status': status,
-      if (autoCharge != null) 'auto_charge': autoCharge,
+      if (autoCreate != null) 'auto_create': autoCreate,
       if (enableReminder != null) 'enable_reminder': enableReminder,
       if (reminderDaysBefore != null)
         'reminder_days_before': reminderDaysBefore,
@@ -6468,7 +6468,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
     Value<int?>? billingDay,
     Value<DateTime?>? endDate,
     Value<int>? status,
-    Value<bool>? autoCharge,
+    Value<bool>? autoCreate,
     Value<bool>? enableReminder,
     Value<int>? reminderDaysBefore,
     Value<String?>? notes,
@@ -6497,7 +6497,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
       billingDay: billingDay ?? this.billingDay,
       endDate: endDate ?? this.endDate,
       status: status ?? this.status,
-      autoCharge: autoCharge ?? this.autoCharge,
+      autoCreate: autoCreate ?? this.autoCreate,
       enableReminder: enableReminder ?? this.enableReminder,
       reminderDaysBefore: reminderDaysBefore ?? this.reminderDaysBefore,
       notes: notes ?? this.notes,
@@ -6562,8 +6562,8 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
     if (status.present) {
       map['status'] = Variable<int>(status.value);
     }
-    if (autoCharge.present) {
-      map['auto_charge'] = Variable<bool>(autoCharge.value);
+    if (autoCreate.present) {
+      map['auto_create'] = Variable<bool>(autoCreate.value);
     }
     if (enableReminder.present) {
       map['enable_reminder'] = Variable<bool>(enableReminder.value);
@@ -6617,7 +6617,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
           ..write('billingDay: $billingDay, ')
           ..write('endDate: $endDate, ')
           ..write('status: $status, ')
-          ..write('autoCharge: $autoCharge, ')
+          ..write('autoCreate: $autoCreate, ')
           ..write('enableReminder: $enableReminder, ')
           ..write('reminderDaysBefore: $reminderDaysBefore, ')
           ..write('notes: $notes, ')
@@ -10456,7 +10456,7 @@ typedef $$RecurringsTableCreateCompanionBuilder =
       Value<int?> billingDay,
       Value<DateTime?> endDate,
       required int status,
-      Value<bool> autoCharge,
+      Value<bool> autoCreate,
       Value<bool> enableReminder,
       Value<int> reminderDaysBefore,
       Value<String?> notes,
@@ -10486,7 +10486,7 @@ typedef $$RecurringsTableUpdateCompanionBuilder =
       Value<int?> billingDay,
       Value<DateTime?> endDate,
       Value<int> status,
-      Value<bool> autoCharge,
+      Value<bool> autoCreate,
       Value<bool> enableReminder,
       Value<int> reminderDaysBefore,
       Value<String?> notes,
@@ -10619,8 +10619,8 @@ class $$RecurringsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get autoCharge => $composableBuilder(
-    column: $table.autoCharge,
+  ColumnFilters<bool> get autoCreate => $composableBuilder(
+    column: $table.autoCreate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10800,8 +10800,8 @@ class $$RecurringsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get autoCharge => $composableBuilder(
-    column: $table.autoCharge,
+  ColumnOrderings<bool> get autoCreate => $composableBuilder(
+    column: $table.autoCreate,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -10963,8 +10963,8 @@ class $$RecurringsTableAnnotationComposer
   GeneratedColumn<int> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
-  GeneratedColumn<bool> get autoCharge => $composableBuilder(
-    column: $table.autoCharge,
+  GeneratedColumn<bool> get autoCreate => $composableBuilder(
+    column: $table.autoCreate,
     builder: (column) => column,
   );
 
@@ -11099,7 +11099,7 @@ class $$RecurringsTableTableManager
                 Value<int?> billingDay = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
                 Value<int> status = const Value.absent(),
-                Value<bool> autoCharge = const Value.absent(),
+                Value<bool> autoCreate = const Value.absent(),
                 Value<bool> enableReminder = const Value.absent(),
                 Value<int> reminderDaysBefore = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
@@ -11127,7 +11127,7 @@ class $$RecurringsTableTableManager
                 billingDay: billingDay,
                 endDate: endDate,
                 status: status,
-                autoCharge: autoCharge,
+                autoCreate: autoCreate,
                 enableReminder: enableReminder,
                 reminderDaysBefore: reminderDaysBefore,
                 notes: notes,
@@ -11157,7 +11157,7 @@ class $$RecurringsTableTableManager
                 Value<int?> billingDay = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
                 required int status,
-                Value<bool> autoCharge = const Value.absent(),
+                Value<bool> autoCreate = const Value.absent(),
                 Value<bool> enableReminder = const Value.absent(),
                 Value<int> reminderDaysBefore = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
@@ -11185,7 +11185,7 @@ class $$RecurringsTableTableManager
                 billingDay: billingDay,
                 endDate: endDate,
                 status: status,
-                autoCharge: autoCharge,
+                autoCreate: autoCreate,
                 enableReminder: enableReminder,
                 reminderDaysBefore: reminderDaysBefore,
                 notes: notes,

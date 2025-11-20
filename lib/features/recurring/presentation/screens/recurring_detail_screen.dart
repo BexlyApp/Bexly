@@ -11,6 +11,9 @@ import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/features/recurring/data/model/recurring_model.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/core/services/sync/cloud_sync_service.dart';
+import 'package:bexly/core/riverpod/auth_providers.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'package:intl/intl.dart';
 
 class RecurringDetailScreen extends HookConsumerWidget {
@@ -25,6 +28,14 @@ class RecurringDetailScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final db = ref.watch(databaseProvider);
 
+    // Watch the recurring to auto-update when paused/resumed
+    final recurringStream = useMemoized(
+      () => db.recurringDao.watchRecurringById(recurring.id!),
+      [recurring.id],
+    );
+    final recurringSnapshot = useStream(recurringStream);
+    final currentRecurring = recurringSnapshot.data ?? recurring;
+
     // Watch payment history using the new query method
     final paymentHistoryStream = useMemoized(
       () => db.transactionDao.watchTransactionsByRecurringId(recurring.id!),
@@ -32,13 +43,13 @@ class RecurringDetailScreen extends HookConsumerWidget {
     );
     final paymentHistorySnapshot = useStream(paymentHistoryStream);
 
-    final daysUntilDue = recurring.nextDueDate.difference(DateTime.now()).inDays;
+    final daysUntilDue = currentRecurring.nextDueDate.difference(DateTime.now()).inDays;
     final isOverdue = daysUntilDue < 0;
     final isDueToday = daysUntilDue == 0;
 
     return CustomScaffold(
       context: context,
-      title: recurring.name,
+      title: currentRecurring.name,
       showBackButton: true,
       showBalance: false,
       body: SingleChildScrollView(
@@ -68,7 +79,7 @@ class RecurringDetailScreen extends HookConsumerWidget {
                           ),
                         ),
                         Text(
-                          '${recurring.amount.toPriceFormat()} ${recurring.currency}',
+                          '${currentRecurring.amount.toPriceFormat()} ${currentRecurring.currency}',
                           style: AppTextStyles.numericLarge.copyWith(
                             color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.bold,
@@ -84,7 +95,7 @@ class RecurringDetailScreen extends HookConsumerWidget {
                     _InfoRow(
                       icon: Icons.repeat,
                       label: 'Frequency',
-                      value: recurring.frequency.displayName,
+                      value: currentRecurring.frequency.displayName,
                     ),
                     const SizedBox(height: AppSpacing.spacing12),
 
@@ -92,7 +103,7 @@ class RecurringDetailScreen extends HookConsumerWidget {
                     _InfoRow(
                       icon: Icons.calendar_today,
                       label: 'Next Due Date',
-                      value: DateFormat('MMM dd, yyyy').format(recurring.nextDueDate),
+                      value: DateFormat('MMM dd, yyyy').format(currentRecurring.nextDueDate),
                       valueColor: isOverdue
                           ? Colors.red
                           : isDueToday
@@ -117,7 +128,7 @@ class RecurringDetailScreen extends HookConsumerWidget {
                     _InfoRow(
                       icon: Icons.category_outlined,
                       label: 'Category',
-                      value: recurring.category.title,
+                      value: currentRecurring.category.title,
                     ),
                     const SizedBox(height: AppSpacing.spacing12),
 
@@ -125,34 +136,39 @@ class RecurringDetailScreen extends HookConsumerWidget {
                     _InfoRow(
                       icon: Icons.account_balance_wallet_outlined,
                       label: 'Wallet',
-                      value: recurring.wallet.name,
+                      value: currentRecurring.wallet.name,
                     ),
                     const SizedBox(height: AppSpacing.spacing12),
 
                     // Auto Charge Status
                     _InfoRow(
-                      icon: recurring.autoCharge
+                      icon: currentRecurring.autoCreate
                           ? Icons.check_circle
                           : Icons.cancel,
                       label: 'Auto Charge',
-                      value: recurring.autoCharge ? 'Enabled' : 'Disabled',
-                      valueColor: recurring.autoCharge
+                      value: currentRecurring.autoCreate ? 'Enabled' : 'Disabled',
+                      valueColor: currentRecurring.autoCreate
                           ? Colors.green
                           : Colors.grey,
                     ),
 
-                    if (recurring.notes != null && recurring.notes!.isNotEmpty) ...[
+                    if (currentRecurring.notes != null && currentRecurring.notes!.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.spacing12),
                       _InfoRow(
                         icon: Icons.notes,
                         label: 'Notes',
-                        value: recurring.notes!,
+                        value: currentRecurring.notes!,
                       ),
                     ],
                   ],
                 ),
               ),
             ),
+
+            const SizedBox(height: AppSpacing.spacing24),
+
+            // Action Buttons
+            _buildActionButtons(context, ref, currentRecurring),
 
             const SizedBox(height: AppSpacing.spacing24),
 
@@ -166,16 +182,170 @@ class RecurringDetailScreen extends HookConsumerWidget {
             const SizedBox(height: AppSpacing.spacing12),
 
             // Payment History List
-            _buildPaymentHistorySection(context, paymentHistorySnapshot),
+            _buildPaymentHistorySection(context, paymentHistorySnapshot, currentRecurring),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildActionButtons(BuildContext context, WidgetRef ref, RecurringModel currentRecurring) {
+    final isPaused = currentRecurring.status == RecurringStatus.paused;
+
+    return Row(
+      children: [
+        // Pause/Resume Button
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () async {
+              try {
+                final db = ref.read(databaseProvider);
+                if (isPaused) {
+                  await db.recurringDao.resumeRecurring(currentRecurring.id!);
+                } else {
+                  await db.recurringDao.pauseRecurring(currentRecurring.id!);
+                }
+
+                // Sync to cloud
+                final user = ref.read(authStateProvider).valueOrNull;
+                if (user?.uid != null) {
+                  try {
+                    final syncService = ref.read(cloudSyncServiceProvider);
+                    final recurringEntity = await (db.select(db.recurrings)
+                          ..where((r) => r.id.equals(currentRecurring.id!)))
+                        .getSingleOrNull();
+
+                    if (recurringEntity != null) {
+                      await syncService.syncRecurring(recurringEntity);
+                      Log.i('Recurring status synced to cloud', label: 'RecurringDetail');
+                    }
+                  } catch (e) {
+                    Log.e('Failed to sync recurring status to cloud: $e', label: 'RecurringDetail');
+                  }
+                }
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isPaused
+                            ? 'Recurring payment resumed'
+                            : 'Recurring payment paused',
+                      ),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                  );
+                }
+              }
+            },
+            icon: Icon(
+              isPaused ? Icons.play_arrow : Icons.pause,
+              size: 20,
+            ),
+            label: Text(isPaused ? 'Resume' : 'Pause'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.spacing12),
+        // Delete Button
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () async {
+              // Show confirmation dialog
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete Recurring Payment'),
+                  content: Text(
+                    'Are you sure you want to delete "${currentRecurring.name}"? This action cannot be undone.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirmed == true && context.mounted) {
+                try {
+                  final db = ref.read(databaseProvider);
+
+                  // Sync delete to cloud first
+                  final user = ref.read(authStateProvider).valueOrNull;
+                  if (user?.uid != null) {
+                    try {
+                      final syncService = ref.read(cloudSyncServiceProvider);
+                      final recurringEntity = await (db.select(db.recurrings)
+                            ..where((r) => r.id.equals(currentRecurring.id!)))
+                          .getSingleOrNull();
+
+                      if (recurringEntity != null) {
+                        await syncService.deleteRecurring(recurringEntity);
+                        Log.i('Recurring deleted from cloud', label: 'RecurringDetail');
+                      }
+                    } catch (e) {
+                      Log.e('Failed to delete recurring from cloud: $e', label: 'RecurringDetail');
+                    }
+                  }
+
+                  // Delete from local database
+                  await db.recurringDao.deleteRecurring(currentRecurring.id!);
+                  if (context.mounted) {
+                    Navigator.of(context).pop(); // Go back to list
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error deleting: $e'),
+                        backgroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+            icon: const Icon(
+              Icons.delete_outline,
+              size: 20,
+            ),
+            label: const Text('Delete'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              foregroundColor: Theme.of(context).colorScheme.error,
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.error.withAlpha(100),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPaymentHistorySection(
     BuildContext context,
     AsyncSnapshot<List<TransactionModel>> snapshot,
+    RecurringModel currentRecurring,
   ) {
     // Loading state
     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -309,7 +479,7 @@ class RecurringDetailScreen extends HookConsumerWidget {
         // Payment list
         ...payments.map((payment) => _PaymentHistoryItem(
           payment: payment,
-          currency: recurring.currency,
+          currency: currentRecurring.currency,
         )),
       ],
     );
@@ -373,7 +543,7 @@ class _InfoRow extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: (badgeColor ?? Colors.grey).withOpacity(0.1),
+                        color: (badgeColor ?? Colors.grey).withAlpha(25),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -424,7 +594,7 @@ class _PaymentHistoryItem extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+            color: Theme.of(context).colorScheme.primaryContainer.withAlpha(76),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
@@ -455,3 +625,4 @@ class _PaymentHistoryItem extends StatelessWidget {
     );
   }
 }
+

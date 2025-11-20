@@ -42,11 +42,11 @@ SCHEMAS:
 8. update_transaction: {"action":"update_transaction","transactionId":<num>,"amount":<num>?,"currency":"USD|VND"?,"description":"<str>"?,"category":"<str>"?,"date":"YYYY-MM-DD"?}
 9. delete_transaction: {"action":"delete_transaction","transactionId":<num>}
 10. create_wallet: {"action":"create_wallet","name":"<str>","currency":"USD|VND","initialBalance":<num>?}
-11. create_recurring: {"action":"create_recurring","name":"<str>","amount":<num>,"currency":"USD|VND","category":"<str>","frequency":"daily|weekly|monthly|yearly","nextDueDate":"YYYY-MM-DD","enableReminder":<bool>?,"autoCharge":<bool>?,"wallet":"<str>"?}
+11. create_recurring: {"action":"create_recurring","name":"<str>","amount":<num>,"currency":"USD|VND","category":"<str>","frequency":"daily|weekly|monthly|yearly","nextDueDate":"YYYY-MM-DD","enableReminder":<bool>?,"autoCreate":<bool>?,"wallet":"<str>"?}
 
 RECURRING NOTES:
 - nextDueDate = first billing date
-- autoCharge defaults true (creates first transaction immediately)
+- autoCreate defaults true (creates first transaction immediately)
 - Echo user's time reference exactly in response''';
 
   // =========================================================================
@@ -294,15 +294,15 @@ JSON: {"action":"create_expense","amount":55000,"currency":"VND","description":"
 
 IN: "Netflix 300k hàng tháng từ hôm nay" (wallet uses USD, rate: 1 USD = 26,315 VND) [Vietnamese input]
 OUT: "Đã ghi nhận chi tiêu định kỳ **Netflix 300,000 VND** (quy đổi thành **\$11.40 USD**) cho **Streaming** vào ví **My Wallet**. Sẽ tự động trừ tiền hàng tháng từ hôm nay" [Vietnamese response]
-JSON: {"action":"create_recurring","name":"Netflix","amount":300000,"currency":"VND","category":"Streaming","frequency":"monthly","nextDueDate":"[TODAY]","autoCharge":true}
+JSON: {"action":"create_recurring","name":"Netflix","amount":300000,"currency":"VND","category":"Streaming","frequency":"monthly","nextDueDate":"[TODAY]","autoCreate":true}
 
 IN: "Spotify 350k hàng tuần" (wallet uses USD, rate: 1 USD = 26,315 VND) [Vietnamese input - weekly recurring]
 OUT: "Đã ghi nhận chi tiêu định kỳ **Spotify 350,000 VND** (quy đổi thành **\$13.30 USD**) cho **Music** vào ví **USDT**. Sẽ tự động trừ tiền hàng tuần từ hôm nay" [Vietnamese response]
-JSON: {"action":"create_recurring","name":"Spotify","amount":350000,"currency":"VND","category":"Music","frequency":"weekly","nextDueDate":"[TODAY]","autoCharge":true}
+JSON: {"action":"create_recurring","name":"Spotify","amount":350000,"currency":"VND","category":"Music","frequency":"weekly","nextDueDate":"[TODAY]","autoCreate":true}
 
 IN: "Spotify subscription 10 dollars weekly" [English input - weekly recurring]
 OUT: "Recorded recurring expense **\$10.00 USD** for **Spotify** (**Music**) to wallet **My Wallet**. Will auto-charge weekly starting today" [English response]
-JSON: {"action":"create_recurring","name":"Spotify","amount":10,"currency":"USD","category":"Music","frequency":"weekly","nextDueDate":"[TODAY]","autoCharge":true}
+JSON: {"action":"create_recurring","name":"Spotify","amount":10,"currency":"USD","category":"Music","frequency":"weekly","nextDueDate":"[TODAY]","autoCreate":true}
 
 RECURRING DETECTION EXAMPLES (semantic understanding across languages):
 ✅ "Netflix 每月 300元" → monthly recurring, 300 RMB (Chinese input, explicit currency)
@@ -437,3 +437,4 @@ $examples''';
   static String get exampleSection => examples;
   static String get recentTransactionsSection => '';
 }
+

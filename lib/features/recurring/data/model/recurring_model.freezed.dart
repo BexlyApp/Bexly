@@ -32,7 +32,7 @@ mixin _$RecurringModel {
  int? get billingDay;/// End date (null = no end date)
  DateTime? get endDate;/// Current status
  RecurringStatus get status;/// Auto-create transactions when due
- bool get autoCharge;/// Enable payment reminders
+ bool get autoCreate;/// Enable payment reminders
  bool get enableReminder;/// Days before due date to remind
  int get reminderDaysBefore;/// Additional notes
  String? get notes;/// Vendor/service name
@@ -55,16 +55,16 @@ $RecurringModelCopyWith<RecurringModel> get copyWith => _$RecurringModelCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RecurringModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.category, category) || other.category == category)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.nextDueDate, nextDueDate) || other.nextDueDate == nextDueDate)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.customInterval, customInterval) || other.customInterval == customInterval)&&(identical(other.customUnit, customUnit) || other.customUnit == customUnit)&&(identical(other.billingDay, billingDay) || other.billingDay == billingDay)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.status, status) || other.status == status)&&(identical(other.autoCharge, autoCharge) || other.autoCharge == autoCharge)&&(identical(other.enableReminder, enableReminder) || other.enableReminder == enableReminder)&&(identical(other.reminderDaysBefore, reminderDaysBefore) || other.reminderDaysBefore == reminderDaysBefore)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.vendorName, vendorName) || other.vendorName == vendorName)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.lastChargedDate, lastChargedDate) || other.lastChargedDate == lastChargedDate)&&(identical(other.totalPayments, totalPayments) || other.totalPayments == totalPayments)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RecurringModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.category, category) || other.category == category)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.nextDueDate, nextDueDate) || other.nextDueDate == nextDueDate)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.customInterval, customInterval) || other.customInterval == customInterval)&&(identical(other.customUnit, customUnit) || other.customUnit == customUnit)&&(identical(other.billingDay, billingDay) || other.billingDay == billingDay)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.status, status) || other.status == status)&&(identical(other.autoCreate, autoCreate) || other.autoCreate == autoCreate)&&(identical(other.enableReminder, enableReminder) || other.enableReminder == enableReminder)&&(identical(other.reminderDaysBefore, reminderDaysBefore) || other.reminderDaysBefore == reminderDaysBefore)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.vendorName, vendorName) || other.vendorName == vendorName)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.lastChargedDate, lastChargedDate) || other.lastChargedDate == lastChargedDate)&&(identical(other.totalPayments, totalPayments) || other.totalPayments == totalPayments)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,cloudId,name,description,wallet,category,amount,currency,startDate,nextDueDate,frequency,customInterval,customUnit,billingDay,endDate,status,autoCharge,enableReminder,reminderDaysBefore,notes,vendorName,iconName,colorHex,lastChargedDate,totalPayments,createdAt,updatedAt]);
+int get hashCode => Object.hashAll([runtimeType,id,cloudId,name,description,wallet,category,amount,currency,startDate,nextDueDate,frequency,customInterval,customUnit,billingDay,endDate,status,autoCreate,enableReminder,reminderDaysBefore,notes,vendorName,iconName,colorHex,lastChargedDate,totalPayments,createdAt,updatedAt]);
 
 @override
 String toString() {
-  return 'RecurringModel(id: $id, cloudId: $cloudId, name: $name, description: $description, wallet: $wallet, category: $category, amount: $amount, currency: $currency, startDate: $startDate, nextDueDate: $nextDueDate, frequency: $frequency, customInterval: $customInterval, customUnit: $customUnit, billingDay: $billingDay, endDate: $endDate, status: $status, autoCharge: $autoCharge, enableReminder: $enableReminder, reminderDaysBefore: $reminderDaysBefore, notes: $notes, vendorName: $vendorName, iconName: $iconName, colorHex: $colorHex, lastChargedDate: $lastChargedDate, totalPayments: $totalPayments, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'RecurringModel(id: $id, cloudId: $cloudId, name: $name, description: $description, wallet: $wallet, category: $category, amount: $amount, currency: $currency, startDate: $startDate, nextDueDate: $nextDueDate, frequency: $frequency, customInterval: $customInterval, customUnit: $customUnit, billingDay: $billingDay, endDate: $endDate, status: $status, autoCreate: $autoCreate, enableReminder: $enableReminder, reminderDaysBefore: $reminderDaysBefore, notes: $notes, vendorName: $vendorName, iconName: $iconName, colorHex: $colorHex, lastChargedDate: $lastChargedDate, totalPayments: $totalPayments, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -75,7 +75,7 @@ abstract mixin class $RecurringModelCopyWith<$Res>  {
   factory $RecurringModelCopyWith(RecurringModel value, $Res Function(RecurringModel) _then) = _$RecurringModelCopyWithImpl;
 @useResult
 $Res call({
- int? id, String? cloudId, String name, String? description, WalletModel wallet, CategoryModel category, double amount, String currency, DateTime startDate, DateTime nextDueDate, RecurringFrequency frequency, int? customInterval, String? customUnit, int? billingDay, DateTime? endDate, RecurringStatus status, bool autoCharge, bool enableReminder, int reminderDaysBefore, String? notes, String? vendorName, String? iconName, String? colorHex, DateTime? lastChargedDate, int totalPayments, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, String name, String? description, WalletModel wallet, CategoryModel category, double amount, String currency, DateTime startDate, DateTime nextDueDate, RecurringFrequency frequency, int? customInterval, String? customUnit, int? billingDay, DateTime? endDate, RecurringStatus status, bool autoCreate, bool enableReminder, int reminderDaysBefore, String? notes, String? vendorName, String? iconName, String? colorHex, DateTime? lastChargedDate, int totalPayments, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -92,7 +92,7 @@ class _$RecurringModelCopyWithImpl<$Res>
 
 /// Create a copy of RecurringModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? description = freezed,Object? wallet = null,Object? category = null,Object? amount = null,Object? currency = null,Object? startDate = null,Object? nextDueDate = null,Object? frequency = null,Object? customInterval = freezed,Object? customUnit = freezed,Object? billingDay = freezed,Object? endDate = freezed,Object? status = null,Object? autoCharge = null,Object? enableReminder = null,Object? reminderDaysBefore = null,Object? notes = freezed,Object? vendorName = freezed,Object? iconName = freezed,Object? colorHex = freezed,Object? lastChargedDate = freezed,Object? totalPayments = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? description = freezed,Object? wallet = null,Object? category = null,Object? amount = null,Object? currency = null,Object? startDate = null,Object? nextDueDate = null,Object? frequency = null,Object? customInterval = freezed,Object? customUnit = freezed,Object? billingDay = freezed,Object? endDate = freezed,Object? status = null,Object? autoCreate = null,Object? enableReminder = null,Object? reminderDaysBefore = null,Object? notes = freezed,Object? vendorName = freezed,Object? iconName = freezed,Object? colorHex = freezed,Object? lastChargedDate = freezed,Object? totalPayments = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -110,7 +110,7 @@ as int?,customUnit: freezed == customUnit ? _self.customUnit : customUnit // ign
 as String?,billingDay: freezed == billingDay ? _self.billingDay : billingDay // ignore: cast_nullable_to_non_nullable
 as int?,endDate: freezed == endDate ? _self.endDate : endDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as RecurringStatus,autoCharge: null == autoCharge ? _self.autoCharge : autoCharge // ignore: cast_nullable_to_non_nullable
+as RecurringStatus,autoCreate: null == autoCreate ? _self.autoCreate : autoCreate // ignore: cast_nullable_to_non_nullable
 as bool,enableReminder: null == enableReminder ? _self.enableReminder : enableReminder // ignore: cast_nullable_to_non_nullable
 as bool,reminderDaysBefore: null == reminderDaysBefore ? _self.reminderDaysBefore : reminderDaysBefore // ignore: cast_nullable_to_non_nullable
 as int,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
@@ -224,10 +224,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  String? description,  WalletModel wallet,  CategoryModel category,  double amount,  String currency,  DateTime startDate,  DateTime nextDueDate,  RecurringFrequency frequency,  int? customInterval,  String? customUnit,  int? billingDay,  DateTime? endDate,  RecurringStatus status,  bool autoCharge,  bool enableReminder,  int reminderDaysBefore,  String? notes,  String? vendorName,  String? iconName,  String? colorHex,  DateTime? lastChargedDate,  int totalPayments,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  String? description,  WalletModel wallet,  CategoryModel category,  double amount,  String currency,  DateTime startDate,  DateTime nextDueDate,  RecurringFrequency frequency,  int? customInterval,  String? customUnit,  int? billingDay,  DateTime? endDate,  RecurringStatus status,  bool autoCreate,  bool enableReminder,  int reminderDaysBefore,  String? notes,  String? vendorName,  String? iconName,  String? colorHex,  DateTime? lastChargedDate,  int totalPayments,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _RecurringModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.name,_that.description,_that.wallet,_that.category,_that.amount,_that.currency,_that.startDate,_that.nextDueDate,_that.frequency,_that.customInterval,_that.customUnit,_that.billingDay,_that.endDate,_that.status,_that.autoCharge,_that.enableReminder,_that.reminderDaysBefore,_that.notes,_that.vendorName,_that.iconName,_that.colorHex,_that.lastChargedDate,_that.totalPayments,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.name,_that.description,_that.wallet,_that.category,_that.amount,_that.currency,_that.startDate,_that.nextDueDate,_that.frequency,_that.customInterval,_that.customUnit,_that.billingDay,_that.endDate,_that.status,_that.autoCreate,_that.enableReminder,_that.reminderDaysBefore,_that.notes,_that.vendorName,_that.iconName,_that.colorHex,_that.lastChargedDate,_that.totalPayments,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -245,10 +245,10 @@ return $default(_that.id,_that.cloudId,_that.name,_that.description,_that.wallet
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  String? description,  WalletModel wallet,  CategoryModel category,  double amount,  String currency,  DateTime startDate,  DateTime nextDueDate,  RecurringFrequency frequency,  int? customInterval,  String? customUnit,  int? billingDay,  DateTime? endDate,  RecurringStatus status,  bool autoCharge,  bool enableReminder,  int reminderDaysBefore,  String? notes,  String? vendorName,  String? iconName,  String? colorHex,  DateTime? lastChargedDate,  int totalPayments,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  String? description,  WalletModel wallet,  CategoryModel category,  double amount,  String currency,  DateTime startDate,  DateTime nextDueDate,  RecurringFrequency frequency,  int? customInterval,  String? customUnit,  int? billingDay,  DateTime? endDate,  RecurringStatus status,  bool autoCreate,  bool enableReminder,  int reminderDaysBefore,  String? notes,  String? vendorName,  String? iconName,  String? colorHex,  DateTime? lastChargedDate,  int totalPayments,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _RecurringModel():
-return $default(_that.id,_that.cloudId,_that.name,_that.description,_that.wallet,_that.category,_that.amount,_that.currency,_that.startDate,_that.nextDueDate,_that.frequency,_that.customInterval,_that.customUnit,_that.billingDay,_that.endDate,_that.status,_that.autoCharge,_that.enableReminder,_that.reminderDaysBefore,_that.notes,_that.vendorName,_that.iconName,_that.colorHex,_that.lastChargedDate,_that.totalPayments,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.name,_that.description,_that.wallet,_that.category,_that.amount,_that.currency,_that.startDate,_that.nextDueDate,_that.frequency,_that.customInterval,_that.customUnit,_that.billingDay,_that.endDate,_that.status,_that.autoCreate,_that.enableReminder,_that.reminderDaysBefore,_that.notes,_that.vendorName,_that.iconName,_that.colorHex,_that.lastChargedDate,_that.totalPayments,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -265,10 +265,10 @@ return $default(_that.id,_that.cloudId,_that.name,_that.description,_that.wallet
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String name,  String? description,  WalletModel wallet,  CategoryModel category,  double amount,  String currency,  DateTime startDate,  DateTime nextDueDate,  RecurringFrequency frequency,  int? customInterval,  String? customUnit,  int? billingDay,  DateTime? endDate,  RecurringStatus status,  bool autoCharge,  bool enableReminder,  int reminderDaysBefore,  String? notes,  String? vendorName,  String? iconName,  String? colorHex,  DateTime? lastChargedDate,  int totalPayments,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String name,  String? description,  WalletModel wallet,  CategoryModel category,  double amount,  String currency,  DateTime startDate,  DateTime nextDueDate,  RecurringFrequency frequency,  int? customInterval,  String? customUnit,  int? billingDay,  DateTime? endDate,  RecurringStatus status,  bool autoCreate,  bool enableReminder,  int reminderDaysBefore,  String? notes,  String? vendorName,  String? iconName,  String? colorHex,  DateTime? lastChargedDate,  int totalPayments,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _RecurringModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.name,_that.description,_that.wallet,_that.category,_that.amount,_that.currency,_that.startDate,_that.nextDueDate,_that.frequency,_that.customInterval,_that.customUnit,_that.billingDay,_that.endDate,_that.status,_that.autoCharge,_that.enableReminder,_that.reminderDaysBefore,_that.notes,_that.vendorName,_that.iconName,_that.colorHex,_that.lastChargedDate,_that.totalPayments,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.name,_that.description,_that.wallet,_that.category,_that.amount,_that.currency,_that.startDate,_that.nextDueDate,_that.frequency,_that.customInterval,_that.customUnit,_that.billingDay,_that.endDate,_that.status,_that.autoCreate,_that.enableReminder,_that.reminderDaysBefore,_that.notes,_that.vendorName,_that.iconName,_that.colorHex,_that.lastChargedDate,_that.totalPayments,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -280,7 +280,7 @@ return $default(_that.id,_that.cloudId,_that.name,_that.description,_that.wallet
 @JsonSerializable()
 
 class _RecurringModel implements RecurringModel {
-  const _RecurringModel({this.id, this.cloudId, required this.name, this.description, required this.wallet, required this.category, required this.amount, required this.currency, required this.startDate, required this.nextDueDate, required this.frequency, this.customInterval, this.customUnit, this.billingDay, this.endDate, required this.status, this.autoCharge = false, this.enableReminder = true, this.reminderDaysBefore = 3, this.notes, this.vendorName, this.iconName, this.colorHex, this.lastChargedDate, this.totalPayments = 0, this.createdAt, this.updatedAt});
+  const _RecurringModel({this.id, this.cloudId, required this.name, this.description, required this.wallet, required this.category, required this.amount, required this.currency, required this.startDate, required this.nextDueDate, required this.frequency, this.customInterval, this.customUnit, this.billingDay, this.endDate, required this.status, this.autoCreate = false, this.enableReminder = true, this.reminderDaysBefore = 3, this.notes, this.vendorName, this.iconName, this.colorHex, this.lastChargedDate, this.totalPayments = 0, this.createdAt, this.updatedAt});
   factory _RecurringModel.fromJson(Map<String, dynamic> json) => _$RecurringModelFromJson(json);
 
 /// Unique identifier (null for new recurrings)
@@ -316,7 +316,7 @@ class _RecurringModel implements RecurringModel {
 /// Current status
 @override final  RecurringStatus status;
 /// Auto-create transactions when due
-@override@JsonKey() final  bool autoCharge;
+@override@JsonKey() final  bool autoCreate;
 /// Enable payment reminders
 @override@JsonKey() final  bool enableReminder;
 /// Days before due date to remind
@@ -351,16 +351,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RecurringModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.category, category) || other.category == category)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.nextDueDate, nextDueDate) || other.nextDueDate == nextDueDate)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.customInterval, customInterval) || other.customInterval == customInterval)&&(identical(other.customUnit, customUnit) || other.customUnit == customUnit)&&(identical(other.billingDay, billingDay) || other.billingDay == billingDay)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.status, status) || other.status == status)&&(identical(other.autoCharge, autoCharge) || other.autoCharge == autoCharge)&&(identical(other.enableReminder, enableReminder) || other.enableReminder == enableReminder)&&(identical(other.reminderDaysBefore, reminderDaysBefore) || other.reminderDaysBefore == reminderDaysBefore)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.vendorName, vendorName) || other.vendorName == vendorName)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.lastChargedDate, lastChargedDate) || other.lastChargedDate == lastChargedDate)&&(identical(other.totalPayments, totalPayments) || other.totalPayments == totalPayments)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RecurringModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.category, category) || other.category == category)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.nextDueDate, nextDueDate) || other.nextDueDate == nextDueDate)&&(identical(other.frequency, frequency) || other.frequency == frequency)&&(identical(other.customInterval, customInterval) || other.customInterval == customInterval)&&(identical(other.customUnit, customUnit) || other.customUnit == customUnit)&&(identical(other.billingDay, billingDay) || other.billingDay == billingDay)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.status, status) || other.status == status)&&(identical(other.autoCreate, autoCreate) || other.autoCreate == autoCreate)&&(identical(other.enableReminder, enableReminder) || other.enableReminder == enableReminder)&&(identical(other.reminderDaysBefore, reminderDaysBefore) || other.reminderDaysBefore == reminderDaysBefore)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.vendorName, vendorName) || other.vendorName == vendorName)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.lastChargedDate, lastChargedDate) || other.lastChargedDate == lastChargedDate)&&(identical(other.totalPayments, totalPayments) || other.totalPayments == totalPayments)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,cloudId,name,description,wallet,category,amount,currency,startDate,nextDueDate,frequency,customInterval,customUnit,billingDay,endDate,status,autoCharge,enableReminder,reminderDaysBefore,notes,vendorName,iconName,colorHex,lastChargedDate,totalPayments,createdAt,updatedAt]);
+int get hashCode => Object.hashAll([runtimeType,id,cloudId,name,description,wallet,category,amount,currency,startDate,nextDueDate,frequency,customInterval,customUnit,billingDay,endDate,status,autoCreate,enableReminder,reminderDaysBefore,notes,vendorName,iconName,colorHex,lastChargedDate,totalPayments,createdAt,updatedAt]);
 
 @override
 String toString() {
-  return 'RecurringModel(id: $id, cloudId: $cloudId, name: $name, description: $description, wallet: $wallet, category: $category, amount: $amount, currency: $currency, startDate: $startDate, nextDueDate: $nextDueDate, frequency: $frequency, customInterval: $customInterval, customUnit: $customUnit, billingDay: $billingDay, endDate: $endDate, status: $status, autoCharge: $autoCharge, enableReminder: $enableReminder, reminderDaysBefore: $reminderDaysBefore, notes: $notes, vendorName: $vendorName, iconName: $iconName, colorHex: $colorHex, lastChargedDate: $lastChargedDate, totalPayments: $totalPayments, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'RecurringModel(id: $id, cloudId: $cloudId, name: $name, description: $description, wallet: $wallet, category: $category, amount: $amount, currency: $currency, startDate: $startDate, nextDueDate: $nextDueDate, frequency: $frequency, customInterval: $customInterval, customUnit: $customUnit, billingDay: $billingDay, endDate: $endDate, status: $status, autoCreate: $autoCreate, enableReminder: $enableReminder, reminderDaysBefore: $reminderDaysBefore, notes: $notes, vendorName: $vendorName, iconName: $iconName, colorHex: $colorHex, lastChargedDate: $lastChargedDate, totalPayments: $totalPayments, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -371,7 +371,7 @@ abstract mixin class _$RecurringModelCopyWith<$Res> implements $RecurringModelCo
   factory _$RecurringModelCopyWith(_RecurringModel value, $Res Function(_RecurringModel) _then) = __$RecurringModelCopyWithImpl;
 @override @useResult
 $Res call({
- int? id, String? cloudId, String name, String? description, WalletModel wallet, CategoryModel category, double amount, String currency, DateTime startDate, DateTime nextDueDate, RecurringFrequency frequency, int? customInterval, String? customUnit, int? billingDay, DateTime? endDate, RecurringStatus status, bool autoCharge, bool enableReminder, int reminderDaysBefore, String? notes, String? vendorName, String? iconName, String? colorHex, DateTime? lastChargedDate, int totalPayments, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, String name, String? description, WalletModel wallet, CategoryModel category, double amount, String currency, DateTime startDate, DateTime nextDueDate, RecurringFrequency frequency, int? customInterval, String? customUnit, int? billingDay, DateTime? endDate, RecurringStatus status, bool autoCreate, bool enableReminder, int reminderDaysBefore, String? notes, String? vendorName, String? iconName, String? colorHex, DateTime? lastChargedDate, int totalPayments, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -388,7 +388,7 @@ class __$RecurringModelCopyWithImpl<$Res>
 
 /// Create a copy of RecurringModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? description = freezed,Object? wallet = null,Object? category = null,Object? amount = null,Object? currency = null,Object? startDate = null,Object? nextDueDate = null,Object? frequency = null,Object? customInterval = freezed,Object? customUnit = freezed,Object? billingDay = freezed,Object? endDate = freezed,Object? status = null,Object? autoCharge = null,Object? enableReminder = null,Object? reminderDaysBefore = null,Object? notes = freezed,Object? vendorName = freezed,Object? iconName = freezed,Object? colorHex = freezed,Object? lastChargedDate = freezed,Object? totalPayments = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? description = freezed,Object? wallet = null,Object? category = null,Object? amount = null,Object? currency = null,Object? startDate = null,Object? nextDueDate = null,Object? frequency = null,Object? customInterval = freezed,Object? customUnit = freezed,Object? billingDay = freezed,Object? endDate = freezed,Object? status = null,Object? autoCreate = null,Object? enableReminder = null,Object? reminderDaysBefore = null,Object? notes = freezed,Object? vendorName = freezed,Object? iconName = freezed,Object? colorHex = freezed,Object? lastChargedDate = freezed,Object? totalPayments = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_RecurringModel(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -406,7 +406,7 @@ as int?,customUnit: freezed == customUnit ? _self.customUnit : customUnit // ign
 as String?,billingDay: freezed == billingDay ? _self.billingDay : billingDay // ignore: cast_nullable_to_non_nullable
 as int?,endDate: freezed == endDate ? _self.endDate : endDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as RecurringStatus,autoCharge: null == autoCharge ? _self.autoCharge : autoCharge // ignore: cast_nullable_to_non_nullable
+as RecurringStatus,autoCreate: null == autoCreate ? _self.autoCreate : autoCreate // ignore: cast_nullable_to_non_nullable
 as bool,enableReminder: null == enableReminder ? _self.enableReminder : enableReminder // ignore: cast_nullable_to_non_nullable
 as bool,reminderDaysBefore: null == reminderDaysBefore ? _self.reminderDaysBefore : reminderDaysBefore // ignore: cast_nullable_to_non_nullable
 as int,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable

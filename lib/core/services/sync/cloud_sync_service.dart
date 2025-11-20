@@ -134,6 +134,60 @@ class CloudSyncService {
     }
   }
 
+  /// Sync a recurring payment to Firestore
+  Future<void> syncRecurring(Recurring recurring) async {
+    if (!isAuthenticated) {
+      Log.w('Cannot sync recurring: User not authenticated', label: 'sync');
+      return;
+    }
+
+    try {
+      // Generate cloudId if not exists
+      String cloudId = recurring.cloudId ?? UuidGenerator.generate();
+
+      final data = {
+        'localId': recurring.id,
+        'name': recurring.name,
+        'amount': recurring.amount,
+        'currency': recurring.currency,
+        'categoryId': recurring.categoryId,
+        'walletId': recurring.walletId,
+        'frequency': recurring.frequency,
+        'startDate': Timestamp.fromDate(recurring.startDate),
+        'nextDueDate': Timestamp.fromDate(recurring.nextDueDate),
+        'endDate': recurring.endDate != null ? Timestamp.fromDate(recurring.endDate!) : null,
+        'autoCreate': recurring.autoCreate,
+        'status': recurring.status,
+        'notes': recurring.notes,
+        'createdAt': Timestamp.fromDate(recurring.createdAt),
+        'updatedAt': Timestamp.fromDate(recurring.updatedAt),
+      };
+
+      // Use cloudId as Firestore document ID
+      await _userCollection
+          .doc('recurrings')
+          .collection('items')
+          .doc(cloudId)
+          .set(data, SetOptions(merge: true));
+
+      // Update local database with cloudId if it was just generated
+      if (recurring.cloudId == null) {
+        await (_localDb.update(_localDb.recurrings)
+              ..where((r) => r.id.equals(recurring.id)))
+            .write(
+          RecurringsCompanion(
+            cloudId: Value(cloudId),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+      }
+
+      Log.i('Synced recurring ${recurring.id} with cloudId: $cloudId', label: 'sync');
+    } catch (e) {
+      Log.e('Failed to sync recurring: $e', label: 'sync');
+    }
+  }
+
   /// Sync all wallets to Firestore
   Future<void> syncAllWallets() async {
     if (!isAuthenticated) {
@@ -178,6 +232,28 @@ class CloudSyncService {
     }
   }
 
+  /// Sync all recurring payments to Firestore
+  Future<void> syncAllRecurrings() async {
+    if (!isAuthenticated) {
+      Log.w('Cannot sync: User not authenticated', label: 'sync');
+      return;
+    }
+
+    try {
+      final recurrings = await _localDb.recurringDao.getAllRecurrings();
+      int synced = 0;
+
+      for (final recurring in recurrings) {
+        await syncRecurring(recurring);
+        synced++;
+      }
+
+      Log.i('Synced $synced/${recurrings.length} recurring payments', label: 'sync');
+    } catch (e) {
+      Log.e('Failed to sync all recurrings: $e', label: 'sync');
+    }
+  }
+
   /// Full sync - upload all local data to cloud
   /// This is typically called after first login
   Future<void> fullSync() async {
@@ -191,6 +267,7 @@ class CloudSyncService {
 
       await syncAllWallets();
       await syncAllTransactions();
+      await syncAllRecurrings();
 
       Log.i('✅ Full sync completed successfully', label: 'sync');
 
@@ -246,6 +323,22 @@ class CloudSyncService {
       Log.e('Failed to delete transaction from cloud: $e', label: 'sync');
     }
   }
+
+  /// Delete a recurring payment from Firestore
+  Future<void> deleteRecurring(Recurring recurring) async {
+    if (!isAuthenticated || recurring.cloudId == null) return;
+
+    try {
+      await _userCollection
+          .doc('recurrings')
+          .collection('items')
+          .doc(recurring.cloudId!)
+          .delete();
+      Log.i('Deleted recurring ${recurring.id} from cloud', label: 'sync');
+    } catch (e) {
+      Log.e('Failed to delete recurring from cloud: $e', label: 'sync');
+    }
+  }
 }
 
 /// Provider for CloudSyncService
@@ -261,3 +354,4 @@ final cloudSyncServiceProvider = Provider<CloudSyncService>((ref) {
     userId: userId,
   );
 });
+

@@ -59,7 +59,7 @@ abstract class RecurringModel with _$RecurringModel {
     required RecurringStatus status,
 
     /// Auto-create transactions when due
-    @Default(false) bool autoCharge,
+    @Default(false) bool autoCreate,
 
     /// Enable payment reminders
     @Default(true) bool enableReminder,

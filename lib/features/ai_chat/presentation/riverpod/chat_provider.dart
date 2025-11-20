@@ -364,12 +364,12 @@ class ChatNotifier extends StateNotifier<ChatState> {
         messages: [welcomeMessage],
       );
 
-      // Save welcome message to database
-      await _saveMessageToDatabase(welcomeMessage);
+      // Save welcome message to database (local only, don't sync)
+      await _saveMessageToDatabase(welcomeMessage, shouldSync: false);
     }
   }
 
-  Future<void> _saveMessageToDatabase(ChatMessage message) async {
+  Future<void> _saveMessageToDatabase(ChatMessage message, {bool shouldSync = true}) async {
     final dao = _ref.read(chatMessageDaoProvider);
     await dao.addMessage(db.ChatMessagesCompanion(
       messageId: drift.Value(message.id),
@@ -381,8 +381,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
     ));
 
     // Sync to cloud (if authenticated)
-    // Don't sync typing messages
-    if (!message.isTyping) {
+    // Don't sync typing messages or welcome messages
+    if (shouldSync && !message.isTyping) {
       final syncService = _ref.read(chatMessageSyncServiceProvider);
       final dbMessage = db.ChatMessage(
         id: 0, // Not used for Firestore sync
@@ -1883,7 +1883,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       final frequencyString = (action['frequency'] as String?) ?? 'monthly';
       final nextDueDateString = action['nextDueDate'] as String?;
       final enableReminder = (action['enableReminder'] as bool?) ?? true;
-      final autoCharge = (action['autoCharge'] as bool?) ?? true; // Default to true (charge immediately)
+      final autoCreate = (action['autoCreate'] as bool?) ?? true; // Default to true (charge immediately)
       final notes = action['notes'] as String?;
 
       Log.d('Creating recurring: $name, amount: $amount, aiCurrency: $aiCurrency, frequency: $frequencyString', label: 'CREATE_RECURRING');
@@ -2034,7 +2034,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
                          nextDueDate.month == today.month &&
                          nextDueDate.day == today.day;
       final isPastDue = nextDueDate.isBefore(today);
-      final shouldChargeNow = autoCharge && (isDueToday || isPastDue);
+      final shouldChargeNow = autoCreate && (isDueToday || isPastDue);
 
       // CRITICAL FIX: If shouldChargeNow, advance nextDueDate BEFORE saving recurring
       // This prevents RecurringChargeService from auto-charging the same payment again
@@ -2088,7 +2088,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         status: RecurringStatus.active,
         enableReminder: enableReminder,
         reminderDaysBefore: 1,
-        autoCharge: autoCharge,
+        autoCreate: autoCreate,
         notes: notes,
         lastChargedDate: shouldChargeNow ? DateTime.now() : null,  // Mark as charged if shouldChargeNow
         totalPayments: shouldChargeNow ? 1 : 0,  // Set totalPayments if shouldChargeNow
