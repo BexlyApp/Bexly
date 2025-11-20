@@ -3,7 +3,7 @@
 ## Overview
 This document outlines the development roadmap for Pockaw, focusing on transforming it from a basic expense tracker to a comprehensive financial management platform with AI-powered features.
 
-## Current State (v1.0.0+257)
+## Current State (v0.0.7+314)
 - ✅ Core expense/income tracking
 - ✅ Multi-wallet support with real-time cloud sync
 - ✅ Budget management
@@ -19,6 +19,10 @@ This document outlines the development roadmap for Pockaw, focusing on transform
 - ✅ **Multi-language AI chat support (v257)**
 - ✅ **Built-in category protection from cloud corruption (v257)**
 - ✅ **Chat message deduplication (v250-v257)**
+- ✅ **Vietnamese wallet type detection with 3-tier fuzzy matching (v286-288)**
+- ✅ **UNIQUE constraint on wallet names to prevent duplicates (v286)**
+- ✅ **Dynamic AI context updates for current wallet list (v287-288)**
+- ✅ **SIM card currency detection with 3-level fallback (v314)**
 
 ---
 
