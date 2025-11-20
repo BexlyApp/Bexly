@@ -41,7 +41,10 @@ class WalletFormBottomSheet extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch currency provider to get updated value when user picks new currency
     final currency = ref.watch(currencyProvider);
-    final isEditing = wallet != null && !allowFullEdit; // If allowFullEdit, treat as create mode
+    // Check if wallet has ID - if yes, it's editing regardless of allowFullEdit
+    final isEditing = wallet?.id != null;
+    // Lock currency/balance change unless it's a new wallet or allowFullEdit is true
+    final canEditCurrencyAndBalance = wallet?.id == null || allowFullEdit;
 
     final nameController = useTextEditingController();
     final balanceController = useTextEditingController();
@@ -75,6 +78,15 @@ class WalletFormBottomSheet extends HookConsumerWidget {
         if (wallet!.interestRate != null) {
           interestRateController.text = wallet!.interestRate.toString();
         }
+      } else {
+        // For new wallets, pre-fill with currency-based placeholder
+        final placeholderName = 'My ${currency.isoCode} Wallet';
+        nameController.text = placeholderName;
+        // Select all text so it's easy to replace
+        nameController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: placeholderName.length,
+        );
       }
       return null;
     }, [wallet]);
@@ -103,22 +115,22 @@ class WalletFormBottomSheet extends HookConsumerWidget {
               selectedType: walletType.value,
               onTypeChanged: (type) => walletType.value = type,
               label: 'Wallet Type',
-              enabled: !isEditing, // Lock wallet type when editing
+              enabled: canEditCurrencyAndBalance, // Lock wallet type unless allowFullEdit
             ),
 
             CurrencyPickerField(
               defaultCurrency: currency,
-              enabled: !isEditing, // Disable currency change when editing
+              enabled: canEditCurrencyAndBalance, // Disable currency change unless allowFullEdit
             ),
             CustomNumericField(
               controller: balanceController,
-              label: isEditing ? 'Current Balance (read-only)' : 'Initial Balance',
+              label: canEditCurrencyAndBalance ? 'Initial Balance' : 'Current Balance (read-only)',
               hint: '1,000.00',
               icon: HugeIcons.strokeRoundedMoney01,
               isRequired: true,
               appendCurrencySymbolToHint: true,
               useSelectedCurrency: true,
-              enabled: !isEditing, // Disable balance change when editing
+              enabled: canEditCurrencyAndBalance, // Disable balance change unless allowFullEdit
               // autofocus: !isEditing, // Optional: autofocus if adding new
             ),
 
