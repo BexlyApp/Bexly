@@ -132,6 +132,26 @@ class ConflictResolutionService {
         return null;
       }
 
+      // Rule 3: If data is already synced (all local items have matching cloudIds in cloud) -> No conflict
+      if (localWalletCount == cloudWalletCount && localTxCount == cloudTxCount) {
+        // Check if all local wallets have cloudId that exists in cloud
+        final localCloudIds = localWallets.where((w) => w.cloudId != null).map((w) => w.cloudId!).toSet();
+        final cloudCloudIds = allCloudWallets.docs.map((d) => d.id).toSet();
+
+        // Check if all local transactions have cloudId that exists in cloud
+        final localTxCloudIds = localTransactions.where((t) => t.cloudId != null).map((t) => t.cloudId!).toSet();
+        final cloudTxCloudIds = allCloudTransactions.docs.map((d) => d.id).toSet();
+
+        // If all local items have matching cloud IDs, data is already synced
+        final walletsMatch = localCloudIds.length == localWalletCount && localCloudIds.every((id) => cloudCloudIds.contains(id));
+        final txMatch = localTxCloudIds.length == localTxCount && localTxCloudIds.every((id) => cloudTxCloudIds.contains(id));
+
+        if (walletsMatch && txMatch) {
+          Log.i('✅ Auto-resolve: All local data already synced to cloud (matching cloudIds). No conflict needed.', label: 'sync');
+          return null;
+        }
+      }
+
       // If we reach here, it's a real conflict that needs user decision
       Log.w('⚠️ Real conflict detected - user decision required', label: 'sync');
 
