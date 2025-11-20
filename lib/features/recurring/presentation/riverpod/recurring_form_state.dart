@@ -4,6 +4,7 @@ import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/recurring/presentation/riverpod/recurring_providers.dart';
+import 'package:bexly/features/recurring/services/recurring_notification_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/services/recurring_charge_service.dart';
@@ -367,6 +368,19 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
         } catch (e) {
           Log.e('Failed to create transaction for recurring: $e', label: 'RecurringForm');
           // Don't fail the save operation if transaction creation fails
+        }
+      }
+
+      // Schedule notification for this recurring payment
+      if (savedRecurringId != null) {
+        try {
+          // Create a complete recurring model with the saved ID
+          final savedRecurring = recurring.copyWith(id: savedRecurringId);
+          await RecurringNotificationService.scheduleNotification(savedRecurring);
+          Log.i('Notification scheduled for recurring $savedRecurringId', label: 'RecurringForm');
+        } catch (e) {
+          Log.e('Failed to schedule notification: $e', label: 'RecurringForm');
+          // Don't fail the save operation if notification scheduling fails
         }
       }
 
