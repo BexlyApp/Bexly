@@ -10,7 +10,6 @@ import 'package:bexly/features/recurring/presentation/riverpod/recurring_provide
 import 'package:bexly/features/recurring/presentation/components/recurring_card.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
 import 'package:bexly/features/recurring/presentation/screens/recurring_form_screen.dart';
-import 'package:bexly/features/recurring/presentation/screens/recurring_detail_screen.dart';
 
 class RecurringScreen extends HookConsumerWidget {
   const RecurringScreen({super.key});
@@ -117,7 +116,7 @@ class _ActiveRecurringsTab extends HookConsumerWidget {
                     isScrollControlled: true,
                     showDragHandle: true,
                     useSafeArea: true,
-                    builder: (context) => RecurringDetailScreen(recurring: recurring),
+                    builder: (context) => RecurringFormScreen(recurringId: recurring.id),
                   );
                 },
               ),
@@ -167,7 +166,7 @@ class _AllRecurringsTab extends HookConsumerWidget {
                     isScrollControlled: true,
                     showDragHandle: true,
                     useSafeArea: true,
-                    builder: (context) => RecurringDetailScreen(recurring: recurring),
+                    builder: (context) => RecurringFormScreen(recurringId: recurring.id),
                   );
                 },
               ),
@@ -219,7 +218,7 @@ class _PausedRecurringsTab extends HookConsumerWidget {
                     isScrollControlled: true,
                     showDragHandle: true,
                     useSafeArea: true,
-                    builder: (context) => RecurringDetailScreen(recurring: recurring),
+                    builder: (context) => RecurringFormScreen(recurringId: recurring.id),
                   );
                 },
               ),

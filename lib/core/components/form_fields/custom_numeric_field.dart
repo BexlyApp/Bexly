@@ -23,6 +23,7 @@ class CustomNumericField extends ConsumerWidget {
   final bool isRequired;
   final bool autofocus;
   final bool enabled;
+  final ValueChanged<String>? onChanged;
 
   const CustomNumericField({
     super.key,
@@ -39,6 +40,7 @@ class CustomNumericField extends ConsumerWidget {
     this.isRequired = false,
     this.autofocus = false,
     this.enabled = true,
+    this.onChanged,
   });
 
   @override
@@ -59,7 +61,7 @@ class CustomNumericField extends ConsumerWidget {
 
     var lastFormattedValue = '';
 
-    void onChanged(String value) {
+    void handleTextChanged(String value) {
       if (value == lastFormattedValue) return;
 
       // Remove the currency prefix and sanitize input
@@ -107,7 +109,7 @@ class CustomNumericField extends ConsumerWidget {
         );
 
         // Notify parent widget with the raw numeric value
-        onChanged(sanitizedValue);
+        onChanged?.call(sanitizedValue);
       }
     }
 
@@ -125,7 +127,7 @@ class CustomNumericField extends ConsumerWidget {
         DecimalInputFormatter(),
         LengthLimitingTextInputFormatter(12),
       ],
-      onChanged: onChanged,
+      onChanged: handleTextChanged,
       isRequired: isRequired,
       autofocus: autofocus,
       enabled: enabled,

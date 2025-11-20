@@ -378,77 +378,88 @@ class FirestoreDatabase implements DatabaseInterface {
 
   /// Delete all user data from Firestore
   /// This is used when user deletes their account
+  /// Deletes ALL subcollections under the 'data' document recursively
   Future<void> deleteAllUserData() async {
     if (_userId == null) {
       throw Exception('User not logged in');
     }
 
-    final batch = _firestore.batch();
-    int deleteCount = 0;
+    Log.i('Starting to delete all user data from Firestore...', label: 'firestore');
 
-    // Delete all wallets
-    final wallets = await _userCollection
-        .doc('wallets')
-        .collection('items')
-        .get();
-    for (final doc in wallets.docs) {
-      batch.delete(doc.reference);
-      deleteCount++;
+    // List of all known collection names under 'data' document
+    final collections = [
+      'wallets',
+      'transactions',
+      'categories',
+      'budgets',
+      'recurrings',
+      'chat_messages',
+      'goals', // Future-proof: include potential future collections
+      'settings',
+    ];
+
+    int totalDeleted = 0;
+
+    // Delete each collection's items
+    for (final collectionName in collections) {
+      try {
+        final itemsSnapshot = await _userCollection
+            .doc(collectionName)
+            .collection('items')
+            .get();
+
+        if (itemsSnapshot.docs.isEmpty) {
+          Log.i('No items in $collectionName collection', label: 'firestore');
+          continue;
+        }
+
+        // Delete in batches of 500 (Firestore limit)
+        final batches = <firestore.WriteBatch>[];
+        var currentBatch = _firestore.batch();
+        var operationCount = 0;
+
+        for (final doc in itemsSnapshot.docs) {
+          currentBatch.delete(doc.reference);
+          operationCount++;
+          totalDeleted++;
+
+          // Firestore batch limit is 500 operations
+          if (operationCount >= 500) {
+            batches.add(currentBatch);
+            currentBatch = _firestore.batch();
+            operationCount = 0;
+          }
+        }
+
+        // Add the last batch if it has operations
+        if (operationCount > 0) {
+          batches.add(currentBatch);
+        }
+
+        // Commit all batches
+        for (final batch in batches) {
+          await batch.commit();
+        }
+
+        Log.i('Deleted ${itemsSnapshot.docs.length} items from $collectionName', label: 'firestore');
+      } catch (e) {
+        Log.e('Failed to delete $collectionName: $e', label: 'firestore');
+        // Continue with other collections even if one fails
+      }
     }
 
-    // Delete all transactions
-    final transactions = await _userCollection
-        .doc('transactions')
-        .collection('items')
-        .get();
-    for (final doc in transactions.docs) {
-      batch.delete(doc.reference);
-      deleteCount++;
+    // Finally, delete the collection documents themselves (not just items)
+    try {
+      final batch = _firestore.batch();
+      for (final collectionName in collections) {
+        batch.delete(_userCollection.doc(collectionName));
+      }
+      await batch.commit();
+      Log.i('Deleted collection documents', label: 'firestore');
+    } catch (e) {
+      Log.w('Failed to delete collection documents: $e', label: 'firestore');
     }
 
-    // Delete all categories
-    final categories = await _userCollection
-        .doc('categories')
-        .collection('items')
-        .get();
-    for (final doc in categories.docs) {
-      batch.delete(doc.reference);
-      deleteCount++;
-    }
-
-    // Delete all budgets
-    final budgets = await _userCollection
-        .doc('budgets')
-        .collection('items')
-        .get();
-    for (final doc in budgets.docs) {
-      batch.delete(doc.reference);
-      deleteCount++;
-    }
-
-    // Delete all recurring payments
-    final recurring = await _userCollection
-        .doc('recurring')
-        .collection('items')
-        .get();
-    for (final doc in recurring.docs) {
-      batch.delete(doc.reference);
-      deleteCount++;
-    }
-
-    // Delete all chat messages
-    final chatMessages = await _userCollection
-        .doc('chat_messages')
-        .collection('items')
-        .get();
-    for (final doc in chatMessages.docs) {
-      batch.delete(doc.reference);
-      deleteCount++;
-    }
-
-    // Commit the batch delete
-    await batch.commit();
-
-    Log.i('Deleted $deleteCount documents from Firestore', label: 'firestore');
+    Log.i('Successfully deleted $totalDeleted total documents from Firestore', label: 'firestore');
   }
 }

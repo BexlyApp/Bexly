@@ -5,6 +5,10 @@ import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/recurring/presentation/riverpod/recurring_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/services/sync/cloud_sync_service.dart';
+import 'package:bexly/core/services/recurring_charge_service.dart';
+import 'package:bexly/core/riverpod/auth_providers.dart';
+import 'package:bexly/core/database/database_provider.dart';
 
 /// Provider for recurring form state
 final recurringFormProvider = StateNotifierProvider.autoDispose<RecurringFormNotifier, RecurringFormState>((ref) {
@@ -27,7 +31,7 @@ class RecurringFormState {
   final int? billingDay;
   final DateTime? endDate;
   final RecurringStatus status;
-  final bool autoCharge;
+  final bool autoCreate;
   final bool enableReminder;
   final int reminderDaysBefore;
   final String? notes;
@@ -52,7 +56,7 @@ class RecurringFormState {
     this.billingDay,
     this.endDate,
     this.status = RecurringStatus.active,
-    this.autoCharge = false,
+    this.autoCreate = false,
     this.enableReminder = true,
     this.reminderDaysBefore = 3,
     this.notes,
@@ -79,7 +83,7 @@ class RecurringFormState {
     int? billingDay,
     DateTime? endDate,
     RecurringStatus? status,
-    bool? autoCharge,
+    bool? autoCreate,
     bool? enableReminder,
     int? reminderDaysBefore,
     String? notes,
@@ -104,7 +108,7 @@ class RecurringFormState {
       billingDay: billingDay ?? this.billingDay,
       endDate: endDate ?? this.endDate,
       status: status ?? this.status,
-      autoCharge: autoCharge ?? this.autoCharge,
+      autoCreate: autoCreate ?? this.autoCreate,
       enableReminder: enableReminder ?? this.enableReminder,
       reminderDaysBefore: reminderDaysBefore ?? this.reminderDaysBefore,
       notes: notes ?? this.notes,
@@ -147,7 +151,7 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
       billingDay: recurring.billingDay,
       endDate: recurring.endDate,
       status: recurring.status,
-      autoCharge: recurring.autoCharge,
+      autoCreate: recurring.autoCreate,
       enableReminder: recurring.enableReminder,
       reminderDaysBefore: recurring.reminderDaysBefore,
       notes: recurring.notes,
@@ -220,8 +224,8 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
     state = state.copyWith(status: status);
   }
 
-  void setAutoCharge(bool autoCharge) {
-    state = state.copyWith(autoCharge: autoCharge);
+  void setAutoCreate(bool autoCreate) {
+    state = state.copyWith(autoCreate: autoCreate);
   }
 
   void setEnableReminder(bool enableReminder) {
@@ -282,7 +286,7 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
         billingDay: state.billingDay,
         endDate: state.endDate,
         status: state.status,
-        autoCharge: state.autoCharge,
+        autoCreate: state.autoCreate,
         enableReminder: state.enableReminder,
         reminderDaysBefore: state.reminderDaysBefore,
         notes: state.notes,
@@ -295,13 +299,13 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
         updatedAt: DateTime.now(),
       );
 
+      int? savedRecurringId;
       if (state.editingRecurring != null) {
         // Update existing
         final success = await actions.updateRecurring(recurring);
         if (success) {
+          savedRecurringId = recurring.id;
           Log.i('Recurring updated successfully', label: 'RecurringForm');
-          state = state.copyWith(isLoading: false);
-          return true;
         } else {
           state = state.copyWith(
             isLoading: false,
@@ -313,9 +317,8 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
         // Add new
         final id = await actions.addRecurring(recurring);
         if (id > 0) {
+          savedRecurringId = id;
           Log.i('Recurring added successfully with ID: $id', label: 'RecurringForm');
-          state = state.copyWith(isLoading: false);
-          return true;
         } else {
           state = state.copyWith(
             isLoading: false,
@@ -324,6 +327,51 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
           return false;
         }
       }
+
+      // Sync to cloud if user is authenticated
+      final user = _ref.read(authStateProvider).valueOrNull;
+      if (user?.uid != null && savedRecurringId != null) {
+        try {
+          final db = _ref.read(databaseProvider);
+          final syncService = _ref.read(cloudSyncServiceProvider);
+
+          // Get the recurring entity from database
+          final recurringEntity = await (db.select(db.recurrings)
+                ..where((r) => r.id.equals(savedRecurringId!)))
+              .getSingleOrNull();
+
+          if (recurringEntity != null) {
+            await syncService.syncRecurring(recurringEntity);
+            Log.i('Recurring synced to cloud successfully', label: 'RecurringForm');
+          }
+        } catch (e) {
+          Log.e('Failed to sync recurring to cloud: $e', label: 'RecurringForm');
+          // Don't fail the save operation if cloud sync fails
+        }
+      }
+
+      // Create transaction immediately if recurring is due and auto-create is enabled
+      if (state.autoCreate && savedRecurringId != null) {
+        try {
+          final today = DateTime.now();
+          final dueDateOnly = DateTime(state.nextDueDate.year, state.nextDueDate.month, state.nextDueDate.day);
+          final todayOnly = DateTime(today.year, today.month, today.day);
+
+          // If next due date is today or in the past, create transaction immediately
+          if (dueDateOnly.isBefore(todayOnly) || dueDateOnly.isAtSameMomentAs(todayOnly)) {
+            Log.i('Recurring is due now, creating transaction...', label: 'RecurringForm');
+            final chargeService = _ref.read(recurringChargeServiceProvider);
+            await chargeService.createDueTransactions();
+            Log.i('Transaction created for new recurring', label: 'RecurringForm');
+          }
+        } catch (e) {
+          Log.e('Failed to create transaction for recurring: $e', label: 'RecurringForm');
+          // Don't fail the save operation if transaction creation fails
+        }
+      }
+
+      state = state.copyWith(isLoading: false);
+      return true;
     } catch (e) {
       Log.e('Error saving recurring: $e', label: 'RecurringForm');
       state = state.copyWith(
@@ -334,3 +382,4 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
     }
   }
 }
+

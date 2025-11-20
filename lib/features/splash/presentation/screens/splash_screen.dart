@@ -36,13 +36,13 @@ class SplashScreen extends HookConsumerWidget {
           Log.e('Failed to validate category integrity: $e', label: 'SplashScreen');
         }
 
-        // Process due recurring payments
+        // Create transactions for due recurring payments
         try {
           final recurringService = ref.read(recurringChargeServiceProvider);
-          await recurringService.processDueRecurringPayments();
-          Log.d('Processed recurring payments', label: 'SplashScreen');
+          await recurringService.createDueTransactions();
+          Log.d('Created due transactions', label: 'SplashScreen');
         } catch (e) {
-          Log.e('Failed to process recurring payments: $e', label: 'SplashScreen');
+          Log.e('Failed to create due transactions: $e', label: 'SplashScreen');
         }
 
         // Small delay for splash screen visibility

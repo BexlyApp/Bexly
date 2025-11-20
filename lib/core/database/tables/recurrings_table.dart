@@ -58,7 +58,7 @@ class Recurrings extends Table {
   IntColumn get status => integer()();
 
   /// Whether to automatically create transactions when due
-  BoolColumn get autoCharge => boolean().withDefault(const Constant(false))();
+  BoolColumn get autoCreate => boolean().withDefault(const Constant(false))();
 
   /// Whether to enable payment reminders
   BoolColumn get enableReminder => boolean().withDefault(const Constant(true))();

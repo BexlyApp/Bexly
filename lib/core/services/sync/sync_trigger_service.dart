@@ -15,7 +15,6 @@ import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/services/data_population_service/category_population_service.dart';
-import 'package:bexly/core/services/data_population_service/wallet_population_service.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 /// Service to trigger initial sync when user logs in for the first time
@@ -75,26 +74,17 @@ class SyncTriggerService {
       Log.i('📍 Local database has data: $hasLocalData (${wallets.length} wallets, ${transactions.length} transactions)', label: 'sync');
       print('📍 Local database has data: $hasLocalData (${wallets.length} wallets, ${transactions.length} transactions)');
 
-      // Skip sync only if:
-      // - User has synced before (hasSynced = true)
-      // - Has local data (not empty database after reinstall)
-      // - Was NOT in guest mode (no need to upload guest data)
-      if (hasSynced && hasLocalData && !wasGuestMode) {
-        Log.i('User has synced before and has local data, skipping initial sync', label: 'sync');
-        print('⏭️ User has synced before and has local data, skipping initial sync');
-        return;
-      }
+      // Always run sync to check cloud data, even if user has synced before
+      // This handles cases where:
+      // 1. User deleted local data but cloud still has data → need to pull
+      // 2. User created new data after delete → need to check for conflicts
+      // 3. Guest mode binding → need to upload local data
 
       if (wasGuestMode && hasLocalData) {
         Log.i('🔗 Guest mode → account binding detected, will upload local data', label: 'sync');
         print('🔗 Guest mode → account binding detected, will upload local data');
         // Clear guest mode flag after binding
         await prefs.setBool('hasSkippedAuth', false);
-      }
-
-      if (hasSynced && !hasLocalData) {
-        Log.i('⚠️ User has synced before but local database is empty, forcing sync', label: 'sync');
-        print('⚠️ User has synced before but local database is empty, forcing sync');
       }
 
       Log.i('🚀 First time login or guest binding detected, checking for conflicts...', label: 'sync');
@@ -239,21 +229,11 @@ class SyncTriggerService {
             Log.i('📍 After cloud pull: ${walletsAfterPull.length} wallets, ${categoriesAfterPull.length} categories', label: 'sync');
             print('📍 After cloud pull: ${walletsAfterPull.length} wallets, ${categoriesAfterPull.length} categories');
 
-            // Populate wallets if missing (but check local DB first!)
+            // Don't auto-create wallet here - let onboarding flow handle it
+            // This prevents race condition where sync creates wallet before splash screen checks
             if (walletsAfterPull.isEmpty) {
-              // CRITICAL: Check if we already have wallets in local DB before creating
-              final localWallets = await localDb.walletDao.getAllWallets();
-              if (localWallets.isEmpty) {
-                Log.i('📦 No wallets from cloud and no local wallets, creating default wallet...', label: 'sync');
-                print('📦 No wallets from cloud, creating default wallet...');
-                final walletDao = ref.read(walletDaoProvider);
-                await WalletPopulationService.populateWithDao(walletDao);
-                Log.i('✅ Default wallet created', label: 'sync');
-                print('✅ Default wallet created');
-              } else {
-                Log.i('✅ No wallets from cloud but found ${localWallets.length} local wallet(s), skipping creation', label: 'sync');
-                print('✅ Found ${localWallets.length} local wallet(s), no need to create');
-              }
+              Log.i('📦 No wallets from cloud - user will be directed to onboarding', label: 'sync');
+              print('📦 No wallets from cloud - onboarding will handle wallet creation');
             } else {
               Log.i('✅ Pulled ${walletsAfterPull.length} wallet(s) from cloud', label: 'sync');
               print('✅ Pulled ${walletsAfterPull.length} wallet(s) from cloud');
@@ -308,45 +288,10 @@ class SyncTriggerService {
             Log.w('Failed to pull cloud data (might not exist): $e', label: 'sync');
             print('❌ Failed to pull cloud data: $e');
 
-            // CRITICAL: Only create default wallet if cloud pull failed due to "no data"
-            // Do NOT create wallet if error is "Too many elements" or other data integrity issues
-            final errorMessage = e.toString().toLowerCase();
-            final isDataIntegrityError = errorMessage.contains('too many') ||
-                                        errorMessage.contains('duplicate') ||
-                                        errorMessage.contains('bad state');
-
-            if (isDataIntegrityError) {
-              Log.w('⚠️ Cloud pull failed due to data integrity issue: $e. Skipping wallet creation to prevent duplicates.', label: 'sync');
-              print('⚠️ Data integrity error detected - skipping default wallet creation');
-            } else {
-              // If cloud pull failed due to "no data", ensure we have default data
-              final walletsAfterError = await localDb.walletDao.getAllWallets();
-              if (walletsAfterError.isEmpty) {
-                Log.i('📦 No cloud data and no local wallets, populating defaults...', label: 'sync');
-                print('📦 No wallets found, creating default wallet...');
-                final walletDao = ref.read(walletDaoProvider);
-                await WalletPopulationService.populateWithDao(walletDao);
-                Log.i('✅ Default wallet populated after cloud pull failure', label: 'sync');
-                print('✅ Default wallet created');
-
-                // CRITICAL: Upload the default wallet to cloud immediately to get cloudId
-                // This prevents duplicate wallet creation on transaction upload
-                try {
-                  final syncService = ref.read(realtimeSyncServiceProvider);
-                  final createdWallets = await localDb.walletDao.getAllWallets();
-                  if (createdWallets.isNotEmpty) {
-                    Log.i('📤 Uploading default wallet to cloud...', label: 'sync');
-                    print('📤 Uploading default wallet to cloud...');
-                    await syncService.uploadWallet(createdWallets.first.toModel());
-                    Log.i('✅ Default wallet uploaded to cloud', label: 'sync');
-                    print('✅ Default wallet uploaded to cloud');
-                  }
-                } catch (uploadError) {
-                  Log.w('Failed to upload default wallet: $uploadError', label: 'sync');
-                  print('⚠️ Failed to upload default wallet (will retry later): $uploadError');
-                }
-              }
-            }
+            // Don't auto-create wallet on error - let onboarding handle it
+            // This prevents race condition and ensures consistent user flow
+            Log.i('📦 Cloud pull failed - user will be directed to onboarding if no wallet exists', label: 'sync');
+            print('📦 Cloud pull failed - onboarding will handle wallet creation if needed');
 
             // Populate categories if missing
             final categoriesAfterError = await localDb.categoryDao.getAllCategories();

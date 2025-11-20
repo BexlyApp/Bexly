@@ -87,31 +87,43 @@ class _LifecycleManagerState extends ConsumerState<LifecycleManager>
 
   Future<void> _checkRecurringPayments() async {
     try {
+      Log.d('🔍 Starting recurring payment check...', label: 'LifecycleManager');
+      print('🔍 [LifecycleManager] Starting recurring payment check...');
+
       // Debounce: Don't check more than once per hour
       if (_lastChargeCheck != null) {
         final hoursSinceLastCheck =
             DateTime.now().difference(_lastChargeCheck!).inHours;
         if (hoursSinceLastCheck < 1) {
           Log.d(
-              'Skipping recurring check - last check was $hoursSinceLastCheck hours ago',
+              '⏭️ Skipping recurring check - last check was $hoursSinceLastCheck hours ago',
               label: 'LifecycleManager');
+          print('⏭️ [LifecycleManager] Skipping recurring check - last check was $hoursSinceLastCheck hours ago');
           return;
         }
       }
 
-      Log.d('App resumed - checking for due recurring payments',
+      Log.d('✅ Passed debounce check - proceeding with recurring check',
           label: 'LifecycleManager');
+      print('✅ [LifecycleManager] Passed debounce check - proceeding with recurring check');
 
       final recurringService = ref.read(recurringChargeServiceProvider);
-      await recurringService.processDueRecurringPayments();
+      Log.d('📦 Got recurring service, calling createDueTransactions()',
+          label: 'LifecycleManager');
+      print('📦 [LifecycleManager] Got recurring service, calling createDueTransactions()');
+
+      await recurringService.createDueTransactions();
 
       _lastChargeCheck = DateTime.now();
 
-      Log.d('Recurring payment check completed', label: 'LifecycleManager');
+      Log.d('✅ Recurring payment check completed', label: 'LifecycleManager');
+      print('✅ [LifecycleManager] Recurring payment check completed');
     } catch (e, stackTrace) {
-      Log.e('Error checking recurring payments on app resume: $e',
+      Log.e('❌ Error checking recurring payments on app resume: $e',
           label: 'LifecycleManager');
       Log.e('Stack trace: $stackTrace', label: 'LifecycleManager');
+      print('❌ [LifecycleManager] Error checking recurring payments: $e');
+      print('❌ [LifecycleManager] Stack trace: $stackTrace');
     }
   }
 

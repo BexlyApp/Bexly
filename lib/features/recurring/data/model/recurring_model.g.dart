@@ -28,7 +28,7 @@ _RecurringModel _$RecurringModelFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['endDate'] as String),
       status: $enumDecode(_$RecurringStatusEnumMap, json['status']),
-      autoCharge: json['autoCharge'] as bool? ?? false,
+      autoCreate: json['autoCreate'] as bool? ?? false,
       enableReminder: json['enableReminder'] as bool? ?? true,
       reminderDaysBefore: (json['reminderDaysBefore'] as num?)?.toInt() ?? 3,
       notes: json['notes'] as String?,
@@ -65,7 +65,7 @@ Map<String, dynamic> _$RecurringModelToJson(_RecurringModel instance) =>
       'billingDay': instance.billingDay,
       'endDate': instance.endDate?.toIso8601String(),
       'status': _$RecurringStatusEnumMap[instance.status]!,
-      'autoCharge': instance.autoCharge,
+      'autoCreate': instance.autoCreate,
       'enableReminder': instance.enableReminder,
       'reminderDaysBefore': instance.reminderDaysBefore,
       'notes': instance.notes,

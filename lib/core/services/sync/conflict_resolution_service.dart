@@ -183,16 +183,25 @@ class ConflictResolutionService {
       Log.i('Using cloud data, clearing local data...', label: 'sync');
 
       // Clear all local data EXCEPT system default categories
+      // IMPORTANT: Delete in correct order to avoid foreign key constraint violations
+      // Delete child tables first (tables with foreign keys), then parent tables
       await _localDb.transaction(() async {
+        // 1. Delete child tables first (no dependencies)
+        await _localDb.delete(_localDb.checklistItems).go();
+
+        // 2. Delete tables that reference wallets
         await _localDb.delete(_localDb.transactions).go();
+        await _localDb.delete(_localDb.budgets).go();
+        await _localDb.delete(_localDb.goals).go();
+        await _localDb.delete(_localDb.recurrings).go(); // FK to wallets!
+
+        // 3. Now safe to delete wallets (no more FKs referencing it)
         await _localDb.delete(_localDb.wallets).go();
-        // CRITICAL: Only delete non-system categories to preserve defaults
+
+        // 4. Categories - only delete non-system to preserve defaults
         await (_localDb.delete(_localDb.categories)
           ..where((c) => c.isSystemDefault.equals(false)))
           .go();
-        await _localDb.delete(_localDb.budgets).go();
-        await _localDb.delete(_localDb.goals).go();
-        await _localDb.delete(_localDb.checklistItems).go();
       });
 
       // Download cloud data

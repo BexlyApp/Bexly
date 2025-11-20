@@ -11,10 +11,10 @@ class RecurringChargeService {
 
   RecurringChargeService(this._ref);
 
-  /// Process all due recurring payments and create transactions
-  Future<void> processDueRecurringPayments() async {
+  /// Create transactions for all due recurring payments
+  Future<void> createDueTransactions() async {
     try {
-      Log.d('Processing due recurring payments...', label: 'RecurringChargeService');
+      Log.d('Creating transactions for due recurring payments...', label: 'RecurringChargeService');
 
       final db = _ref.read(databaseProvider);
       final today = DateTime.now();
@@ -26,7 +26,7 @@ class RecurringChargeService {
 
       for (final recurring in activeRecurrings) {
         // Skip if not auto-charge enabled
-        if (!recurring.autoCharge) {
+        if (!recurring.autoCreate) {
           Log.d('Skipping ${recurring.name} - auto-charge disabled', label: 'RecurringChargeService');
           continue;
         }
@@ -40,15 +40,15 @@ class RecurringChargeService {
         }
       }
 
-      Log.d('Finished processing recurring payments', label: 'RecurringChargeService');
+      Log.d('Finished creating due transactions', label: 'RecurringChargeService');
     } catch (e, stackTrace) {
-      Log.e('Error processing recurring payments: $e', label: 'RecurringChargeService');
+      Log.e('Error creating due transactions: $e', label: 'RecurringChargeService');
       Log.e('Stack trace: $stackTrace', label: 'RecurringChargeService');
     }
   }
 
   /// Create transaction from recurring payment and update next due date
-  /// IMPORTANT: This method now handles ALL past due payments, not just one
+  /// IMPORTANT: This method handles ALL past due payments, not just one
   Future<void> _chargeRecurring(RecurringModel recurring) async {
     try {
       final db = _ref.read(databaseProvider);
@@ -69,7 +69,7 @@ class RecurringChargeService {
           title: current.name,
           category: current.category,
           wallet: current.wallet,
-          notes: 'Auto-charged from recurring payment: ${current.name}',
+          notes: 'Auto-created from recurring payment: ${current.name}',
           recurringId: current.id, // Link transaction to recurring payment for history tracking
         );
 
@@ -198,3 +198,4 @@ class RecurringChargeService {
 final recurringChargeServiceProvider = Provider<RecurringChargeService>((ref) {
   return RecurringChargeService(ref);
 });
+

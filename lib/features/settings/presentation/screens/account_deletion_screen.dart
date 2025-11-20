@@ -3,6 +3,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/components/bottom_sheets/alert_bottom_sheet.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/components/form_fields/custom_text_field.dart';
@@ -38,10 +39,10 @@ class AccountDeletionScreen extends HookConsumerWidget {
       showDragHandle: true,
       builder: (_) => AlertBottomSheet(
         context: context,
-        title: 'Confirm Account Deletion',
+        title: 'Confirm Data Deletion',
         confirmText: 'Delete',
         content: Text(
-          'This action is irreversible. All your data, including goals, transactions, budgets, and personal settings, will be permanently erased from this device. The app will reset to its initial state.',
+          'All your data, including goals, transactions, budgets, and personal settings, will be permanently erased. Your account will remain active and you can start fresh.',
           textAlign: TextAlign.center,
           style: AppTextStyles.body2,
         ),
@@ -66,11 +67,31 @@ class AccountDeletionScreen extends HookConsumerWidget {
       // STEP 1: Delete cloud data from Firestore (if user is logged in)
       try {
         final firestoreDb = FirestoreDatabase();
+        Log.i('Starting cloud data deletion...', label: 'delete account');
         await firestoreDb.deleteAllUserData();
-        Log.i('Cloud data deleted from Firestore.');
-      } catch (e) {
+        Log.i('✅ Cloud data deleted from Firestore successfully.', label: 'delete account');
+      } catch (e, stackTrace) {
         // User might not be logged in, or network error
-        Log.w('Failed to delete cloud data (user might be offline or not logged in): $e', label: 'delete account');
+        Log.e('❌ Failed to delete cloud data: $e', label: 'delete account');
+        Log.e('Stack trace: $stackTrace', label: 'delete account');
+
+        // Dismiss loading dialog
+        if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+
+        // Show error to user
+        if (context.mounted) {
+          toastification.show(
+            context: context,
+            type: ToastificationType.error,
+            style: ToastificationStyle.minimal,
+            title: const Text('Failed to delete cloud data'),
+            description: Text('Error: $e'),
+            alignment: Alignment.bottomCenter,
+            autoCloseDuration: const Duration(seconds: 5),
+            showProgressBar: false,
+          );
+        }
+        return; // Stop execution if cloud deletion fails
       }
 
       // STEP 2: Logout user
@@ -85,8 +106,19 @@ class AccountDeletionScreen extends HookConsumerWidget {
       await CategoryPopulationService.populate(db);
       Log.i('Default categories populated.');
 
-      // STEP 5: Reset all providers
-      ref.read(activeWalletProvider.notifier).reset();
+      // STEP 5: Clear all SharedPreferences
+      await _clearAllSharedPreferences();
+      Log.i('SharedPreferences cleared.');
+
+      // STEP 6: Invalidate all providers and wait for them to rebuild
+      ref.invalidate(activeWalletProvider);
+      ref.invalidate(allWalletsStreamProvider);
+
+      // Force rebuild providers by reading them
+      // This ensures they query fresh data from the cleared database
+      await Future.delayed(const Duration(milliseconds: 100));
+      final wallets = await ref.read(allWalletsStreamProvider.future);
+      Log.i('All providers invalidated and refreshed. Current wallets: ${wallets.length}');
 
       // Dismiss loading dialog
       if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
@@ -107,6 +139,35 @@ class AccountDeletionScreen extends HookConsumerWidget {
       // If the widget is disposed (e.g. due to navigation), autoDispose handles the provider.
       // If still mounted (e.g. error occurred), this hides the overlay.
       ref.read(accountDeletionLoadingProvider.notifier).state = false;
+    }
+  }
+
+  /// Clear all SharedPreferences to reset app state
+  Future<void> _clearAllSharedPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Clear specific keys that should be reset on account deletion
+      final keysToRemove = [
+        'has_synced_to_cloud',      // Sync status - reset so first sync after re-login is initial sync
+        'app_language',             // Language preference
+        'themeMode',                // Theme mode
+        'language_usage_stats',     // Analytics
+        'llm_provider',             // AI config
+        'llm_api_key',
+        'llm_model',
+        'custom_llm_endpoint',
+        'claude_api_key',
+      ];
+
+      for (final key in keysToRemove) {
+        await prefs.remove(key);
+      }
+
+      Log.i('Cleared ${keysToRemove.length} SharedPreferences keys');
+    } catch (e) {
+      Log.e('Error clearing SharedPreferences: $e', label: 'delete account');
+      // Don't rethrow - this is not critical
     }
   }
 
