@@ -60,10 +60,16 @@ class RecurringChargeService {
       // Loop to create ALL past due transactions
       // This ensures we don't skip payments if user doesn't open app for weeks/months
       while (_isDueOrPastDue(current.nextDueDate, today)) {
+        // Parse transaction type from category's transactionType string
+        final transactionTypeString = current.category.transactionType.toLowerCase();
+        final transactionType = transactionTypeString == 'income'
+            ? TransactionType.income
+            : TransactionType.expense;
+
         // Create transaction with the actual due date (not current date)
         // This ensures transaction shows on correct date even if charged late
         final transaction = TransactionModel(
-          transactionType: TransactionType.expense,
+          transactionType: transactionType,
           amount: current.amount,
           date: current.nextDueDate, // Use due date, not current date!
           title: current.name,

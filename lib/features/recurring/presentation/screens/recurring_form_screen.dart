@@ -7,9 +7,12 @@ import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/components/form_fields/custom_text_field.dart';
 import 'package:bexly/core/components/form_fields/custom_select_field.dart';
 import 'package:bexly/core/components/form_fields/custom_numeric_field.dart';
+import 'package:bexly/core/components/bottom_sheets/alert_bottom_sheet.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/recurring/presentation/riverpod/recurring_form_state.dart';
 import 'package:bexly/features/recurring/presentation/riverpod/recurring_providers.dart';
@@ -222,7 +225,7 @@ class RecurringFormScreen extends HookConsumerWidget {
                   SwitchListTile(
                     title: const Text('Enable Reminder'),
                     subtitle: Text(
-                      'Remind ${formState.reminderDaysBefore} days before due date',
+                      _getReminderText(formState.frequency, formState.reminderDaysBefore),
                     ),
                     value: formState.enableReminder,
                     onChanged: formNotifier.setEnableReminder,
@@ -295,6 +298,25 @@ class RecurringFormScreen extends HookConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Get reminder text based on frequency
+  String _getReminderText(RecurringFrequency frequency, int daysBefore) {
+    switch (frequency) {
+      case RecurringFrequency.daily:
+        // For daily, 1 hour before is more reasonable than days
+        return 'Remind 1 hour before due time';
+      case RecurringFrequency.weekly:
+        // For weekly, 1 day before is reasonable
+        return 'Remind 1 day before due date';
+      case RecurringFrequency.monthly:
+      case RecurringFrequency.quarterly:
+      case RecurringFrequency.yearly:
+        // For longer intervals, use the configured days
+        return 'Remind $daysBefore days before due date';
+      case RecurringFrequency.custom:
+        return 'Remind $daysBefore days before due date';
+    }
   }
 }
 
@@ -507,31 +529,21 @@ class _ActionButtons extends HookConsumerWidget {
           Expanded(
             child: OutlinedButton.icon(
               onPressed: () async {
-                // Show confirmation dialog
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Delete Recurring Payment'),
-                    content: const Text(
+                // Show confirmation bottom sheet
+                context.openBottomSheet(
+                  child: AlertBottomSheet(
+                    context: context,
+                    title: 'Delete Recurring Payment',
+                    content: Text(
                       'Are you sure you want to delete this recurring payment? This action cannot be undone.',
+                      style: AppTextStyles.body2,
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Theme.of(context).colorScheme.error,
-                        ),
-                        child: const Text('Delete'),
-                      ),
-                    ],
-                  ),
-                );
+                    onConfirm: () async {
+                      if (context.mounted) {
+                        context.pop(); // Close bottom sheet
+                      }
 
-                if (confirmed == true && context.mounted) {
+                      if (!context.mounted) return;
                   try {
                     final db = ref.read(databaseProvider);
 
@@ -570,7 +582,9 @@ class _ActionButtons extends HookConsumerWidget {
                       );
                     }
                   }
-                }
+                    },
+                  ),
+                );
               },
               icon: const Icon(
                 Icons.delete_outline,
