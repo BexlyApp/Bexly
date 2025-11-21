@@ -8,11 +8,62 @@ class BalanceCard extends ConsumerWidget {
     final selectedWallet = ref.watch(dashboardWalletFilterProvider);
     final totalBalanceAsync = ref.watch(totalBalanceConvertedProvider);
     final baseCurrency = ref.watch(baseCurrencyProvider);
+    final transactionsAsync = ref.watch(allTransactionsProvider);
+    final selectedMonth = ref.watch(selectedMonthProvider);
 
     return totalBalanceAsync.when(
       data: (totalBalance) {
         final walletsAsync = ref.watch(allWalletsStreamProvider);
         final wallets = walletsAsync.valueOrNull ?? [];
+        final transactions = transactionsAsync.valueOrNull ?? [];
+
+        // Calculate balance change percentage
+        double balancePercentChange = 0.0;
+        if (selectedWallet == null) {
+          // Calculate for total balance
+          // Filter transactions by selected month
+          final currentMonth = selectedMonth.month;
+          final currentYear = selectedMonth.year;
+
+          // Calculate net change this month (income - expense)
+          double netChangeThisMonth = 0;
+          for (var t in transactions) {
+            if (t.date.year == currentYear && t.date.month == currentMonth) {
+              if (t.transactionType == TransactionType.income) {
+                netChangeThisMonth += t.amount;
+              } else if (t.transactionType == TransactionType.expense) {
+                netChangeThisMonth -= t.amount;
+              }
+            }
+          }
+
+          // Balance last month = Current balance - Net change this month
+          final balanceLastMonth = totalBalance - netChangeThisMonth;
+          balancePercentChange = totalBalance.calculatePercentDifference(balanceLastMonth);
+        } else {
+          // Calculate for individual wallet
+          final currentMonth = selectedMonth.month;
+          final currentYear = selectedMonth.year;
+
+          // Filter transactions for this wallet
+          final walletTransactions = transactions.where((t) => t.wallet.id == selectedWallet.id).toList();
+
+          // Calculate net change this month for this wallet
+          double netChangeThisMonth = 0;
+          for (var t in walletTransactions) {
+            if (t.date.year == currentYear && t.date.month == currentMonth) {
+              if (t.transactionType == TransactionType.income) {
+                netChangeThisMonth += t.amount;
+              } else if (t.transactionType == TransactionType.expense) {
+                netChangeThisMonth -= t.amount;
+              }
+            }
+          }
+
+          // Balance last month = Current balance - Net change this month
+          final balanceLastMonth = selectedWallet.balance - netChangeThisMonth;
+          balancePercentChange = selectedWallet.balance.calculatePercentDifference(balanceLastMonth);
+        }
 
         // If no wallets exist
         if (wallets.isEmpty) {
@@ -49,7 +100,16 @@ class BalanceCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: AppSpacing.spacing8,
                 children: [
-                  const WalletSwitcherDropdown(),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 88), // Space for visibility + edit buttons
+                    child: Row(
+                      children: [
+                        const Flexible(child: WalletSwitcherDropdown()),
+                        const Gap(AppSpacing.spacing8),
+                        _buildPercentageIndicator(context, balancePercentChange),
+                      ],
+                    ),
+                  ),
                   Consumer(
                     builder: (context, ref, child) {
                       final isVisible = ref.watch(
@@ -168,6 +228,51 @@ class BalanceCard extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Build percentage change indicator similar to Income/Expense cards
+  Widget _buildPercentageIndicator(BuildContext context, double percentChange) {
+    // Determine color based on whether it's positive or negative
+    final isPositive = !percentChange.isNegative;
+    final backgroundColor = isPositive
+        ? context.incomeBackground
+        : context.expenseStatsBackground;
+    final foregroundColor = isPositive
+        ? context.incomeForeground
+        : context.expenseForeground;
+    final iconColor = isPositive
+        ? context.incomeText
+        : context.expenseText;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.spacing8,
+        vertical: AppSpacing.spacing4,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(AppRadius.radius8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            percentChange.isNegative
+                ? HugeIcons.strokeRoundedArrowDown01
+                : HugeIcons.strokeRoundedArrowUp01,
+            size: 14,
+            color: iconColor,
+          ),
+          const Gap(AppSpacing.spacing2),
+          Text(
+            '${percentChange.abs().toStringAsFixed(1)}%',
+            style: AppTextStyles.body5.copyWith(
+              color: foregroundColor,
+            ),
+          ),
+        ],
       ),
     );
   }

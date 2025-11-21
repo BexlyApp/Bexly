@@ -37,6 +37,7 @@ import 'package:bexly/features/wallet/screens/wallet_form_bottom_sheet.dart';
 import 'package:bexly/features/wallet_switcher/presentation/screens/wallet_switcher_dropdown.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_filter_provider.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/selected_month_provider.dart';
+import 'package:bexly/features/notification/presentation/riverpod/notification_providers.dart';
 
 part '../components/action_button.dart';
 part '../components/balance_card_v2.dart';
