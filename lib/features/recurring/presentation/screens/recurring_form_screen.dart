@@ -151,6 +151,8 @@ class RecurringFormScreen extends HookConsumerWidget {
                           isScrollControlled: true,
                           showDragHandle: true,
                           builder: (context) => WalletSelectorBottomSheet(
+                            currentlySelectedWallet: formState.wallet,
+                            filterByCurrency: recurringId != null ? formState.wallet?.currency : null,
                             onWalletSelected: (WalletModel wallet) {
                               formNotifier.setWallet(wallet);
                               walletController.text = '${wallet.name} - ${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}';
@@ -188,6 +190,7 @@ class RecurringFormScreen extends HookConsumerWidget {
                     icon: HugeIcons.strokeRoundedCoins01,
                     appendCurrencySymbolToHint: true,
                     isRequired: true,
+                    defaultCurreny: formState.wallet?.currencyByIsoCode(ref).symbol,
                     onChanged: (value) {
                       final amount = double.tryParse(value.replaceAll(',', '')) ?? 0.0;
                       formNotifier.setAmount(amount);

@@ -90,9 +90,18 @@ class CustomNumericField extends ConsumerWidget {
           : '';
 
       // Combine integer and decimal parts
-      String formattedValue = (decimalPart.isNotEmpty || parts.length == 2)
-          ? "$defaultCurrency $formattedInteger.$decimalPart"
-          : "$defaultCurrency $formattedInteger";
+      // Only add decimal point if user explicitly typed it or there are decimal digits
+      String formattedValue;
+      if (decimalPart.isNotEmpty) {
+        // User has decimal digits
+        formattedValue = "$defaultCurrency $formattedInteger.$decimalPart";
+      } else if (parts.length == 2 && sanitizedValue.endsWith('.')) {
+        // User typed a dot but no decimal digits yet
+        formattedValue = "$defaultCurrency $formattedInteger.";
+      } else {
+        // No decimal point
+        formattedValue = "$defaultCurrency $formattedInteger";
+      }
 
       if (formattedInteger.isEmpty) {
         formattedValue = '';
