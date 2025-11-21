@@ -13,17 +13,27 @@ import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 class WalletSelectorBottomSheet extends ConsumerWidget {
   final Function(WalletModel)? onWalletSelected;
-  const WalletSelectorBottomSheet({super.key, this.onWalletSelected});
+  final WalletModel? currentlySelectedWallet;
+  final String? filterByCurrency; // Only show wallets with this currency
+  const WalletSelectorBottomSheet({
+    super.key,
+    this.onWalletSelected,
+    this.currentlySelectedWallet,
+    this.filterByCurrency,
+  });
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final allWalletsAsync = ref.watch(allWalletsStreamProvider);
-    final selectedWallet = ref.watch(dashboardWalletFilterProvider);
+    final selectedWallet = currentlySelectedWallet ?? ref.watch(dashboardWalletFilterProvider);
 
     // If used in form context (onWalletSelected provided), hide "Total Balance"
     final bool isFormContext = onWalletSelected != null;
 
     return CustomBottomSheet(
       title: 'Select Wallet',
+      subtitle: filterByCurrency != null
+          ? 'You can only switch to wallets with the same currency'
+          : null,
       child: allWalletsAsync.when(
         data: (wallets) {
           if (wallets.isEmpty) {
@@ -78,38 +88,61 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
               final wallet = wallets[walletIndex];
               final bool isSelected = selectedWallet?.id == wallet.id;
 
-              return ListTile(
-                title: Text(wallet.name, style: AppTextStyles.body1),
-                dense: true,
-                leading: Icon(_getWalletTypeIcon(wallet.walletType)),
-                subtitle: Text(
-                  '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}',
-                  style: AppTextStyles.body3,
-                ),
-                trailing: Icon(
-                  isSelected
-                      ? HugeIcons.strokeRoundedCheckmarkCircle01
-                      : HugeIcons.strokeRoundedCircle,
-                  color: isSelected ? Colors.green : Colors.grey,
-                ),
-                onTap: () {
-                  // If callback provided, just call it (for budget form use)
-                  if (onWalletSelected != null) {
-                    onWalletSelected!(wallet);
-                    context.pop();
-                    return;
-                  }
+              // Check if wallet has different currency (when editing)
+              final bool isDifferentCurrency = filterByCurrency != null &&
+                  wallet.currency != filterByCurrency;
+              final bool isDisabled = isDifferentCurrency;
 
-                  // Already selected, just close
-                  if (isSelected) {
-                    context.pop();
-                    return;
-                  }
+              return Opacity(
+                opacity: isDisabled ? 0.4 : 1.0,
+                child: ListTile(
+                  title: Text(
+                    wallet.name,
+                    style: AppTextStyles.body1.copyWith(
+                      color: isDisabled ? Colors.grey : null,
+                    ),
+                  ),
+                  dense: true,
+                  leading: Icon(
+                    _getWalletTypeIcon(wallet.walletType),
+                    color: isDisabled ? Colors.grey : null,
+                  ),
+                  subtitle: Text(
+                    '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}',
+                    style: AppTextStyles.body3.copyWith(
+                      color: isDisabled ? Colors.grey : null,
+                    ),
+                  ),
+                  trailing: Icon(
+                    isSelected
+                        ? HugeIcons.strokeRoundedCheckmarkCircle01
+                        : HugeIcons.strokeRoundedCircle,
+                    color: isDisabled
+                        ? Colors.grey
+                        : (isSelected ? Colors.green : Colors.grey),
+                  ),
+                  enabled: !isDisabled,
+                  onTap: isDisabled
+                      ? null
+                      : () {
+                          // If callback provided, just call it (for budget form use)
+                          if (onWalletSelected != null) {
+                            onWalletSelected!(wallet);
+                            context.pop();
+                            return;
+                          }
 
-                  // Set wallet filter (no confirmation needed - just a filter)
-                  ref.read(dashboardWalletFilterProvider.notifier).state = wallet;
-                  context.pop(); // Close the bottom sheet
-                },
+                          // Already selected, just close
+                          if (isSelected) {
+                            context.pop();
+                            return;
+                          }
+
+                          // Set wallet filter (no confirmation needed - just a filter)
+                          ref.read(dashboardWalletFilterProvider.notifier).state = wallet;
+                          context.pop(); // Close the bottom sheet
+                        },
+                ),
               );
             },
             separatorBuilder: (context, index) => const Divider(height: 1),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/form_fields/custom_select_field.dart';
 import 'package:bexly/features/wallet_switcher/presentation/components/wallet_selector_bottom_sheet.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
@@ -9,37 +10,39 @@ class TransactionWalletSelector extends HookConsumerWidget {
   final TextEditingController controller;
   final Function(WalletModel wallet) onWalletSelected;
   final WalletModel? selectedWallet;
+  final bool isEditing;
 
   const TransactionWalletSelector({
     super.key,
     required this.controller,
     required this.onWalletSelected,
     this.selectedWallet,
+    this.isEditing = false,
   });
 
   IconData _getWalletIcon() {
     if (selectedWallet == null) {
-      return Icons.account_balance_wallet;
+      return HugeIcons.strokeRoundedWallet01;
     }
 
     switch (selectedWallet!.walletType) {
       case WalletType.cash:
-        return Icons.payments;
+        return HugeIcons.strokeRoundedMoney02;
       case WalletType.bankAccount:
-        return Icons.account_balance;
+        return HugeIcons.strokeRoundedBank;
       case WalletType.creditCard:
-        return Icons.credit_card;
+        return HugeIcons.strokeRoundedCreditCard;
       case WalletType.eWallet:
-        return Icons.phone_iphone;
+        return HugeIcons.strokeRoundedMoney04;
       case WalletType.investment:
-        return Icons.trending_up;
+        return HugeIcons.strokeRoundedChart;
       case WalletType.savings:
-        return Icons.savings;
+        return HugeIcons.strokeRoundedPiggyBank;
       case WalletType.insurance:
-        return Icons.security;
+        return HugeIcons.strokeRoundedSecurityCheck;
       case WalletType.other:
       default:
-        return Icons.account_balance_wallet;
+        return HugeIcons.strokeRoundedWallet03;
     }
   }
 
@@ -57,6 +60,8 @@ class TransactionWalletSelector extends HookConsumerWidget {
           context: context,
           isScrollControlled: true,
           builder: (context) => WalletSelectorBottomSheet(
+            currentlySelectedWallet: selectedWallet,
+            filterByCurrency: isEditing ? selectedWallet?.currency : null,
             onWalletSelected: (wallet) {
               onWalletSelected.call(wallet);
             },

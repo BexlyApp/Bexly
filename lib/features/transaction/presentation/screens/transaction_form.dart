@@ -126,7 +126,10 @@ class TransactionForm extends HookConsumerWidget {
           isEditing: formState.isEditing,
         ),
         const Gap(AppSpacing.spacing16),
-        TransactionAmountField(controller: formState.amountController),
+        TransactionAmountField(
+          controller: formState.amountController,
+          currencySymbol: formState.selectedWallet.value?.currencyByIsoCode(ref).symbol,
+        ),
         const Gap(AppSpacing.spacing16),
         TransactionCategorySelector(
           controller: formState.categoryController,
@@ -143,6 +146,7 @@ class TransactionForm extends HookConsumerWidget {
         TransactionWalletSelector(
           controller: formState.walletController,
           selectedWallet: formState.selectedWallet.value,
+          isEditing: formState.isEditing,
           onWalletSelected: (wallet) {
             formState.selectedWallet.value = wallet;
             formState.walletController.text = formState.getWalletText();

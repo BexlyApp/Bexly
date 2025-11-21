@@ -6,11 +6,13 @@ import 'package:bexly/core/components/form_fields/custom_numeric_field.dart';
 class TransactionAmountField extends HookConsumerWidget {
   final TextEditingController controller;
   final bool autofocus;
+  final String? currencySymbol;
 
   const TransactionAmountField({
     super.key,
     required this.controller,
     this.autofocus = false,
+    this.currencySymbol,
   });
 
   @override
@@ -23,6 +25,7 @@ class TransactionAmountField extends HookConsumerWidget {
       autofocus: autofocus,
       isRequired: true,
       appendCurrencySymbolToHint: true,
+      defaultCurreny: currencySymbol,
     );
   }
 }
