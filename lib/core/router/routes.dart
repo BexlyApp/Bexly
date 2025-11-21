@@ -23,6 +23,7 @@ class Routes {
   static const String settings = '/settings';
   static const String personalDetails = '/personal-details';
   static const String notificationSettings = '/notification-settings';
+  static const String notifications = '/notifications';
   static const String backupAndRestore = '/backup-restore';
   static const String accountDeletion = '/account-deletion';
   static const String developerPortal = '/developer-portal';

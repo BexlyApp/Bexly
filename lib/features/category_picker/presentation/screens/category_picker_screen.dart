@@ -16,11 +16,13 @@ class CategoryPickerScreen extends HookConsumerWidget {
   final bool isManageCategories;
   final bool isPickingParent;
   final String? initialTransactionType; // Initial transaction type to display
+  final int? selectedCategoryId; // Currently selected category ID to highlight and expand
   const CategoryPickerScreen({
     super.key,
     this.isManageCategories = false,
     this.isPickingParent = false,
     this.initialTransactionType,
+    this.selectedCategoryId,
   });
 
   @override
@@ -116,6 +118,7 @@ class CategoryPickerScreen extends HookConsumerWidget {
                       itemBuilder: (context, index) => CategoryDropdown(
                         category: filteredCategories[index],
                         isManageCategory: isManageCategories,
+                        selectedCategoryId: selectedCategoryId,
                       ),
                       separatorBuilder: (context, index) =>
                           const Gap(AppSpacing.spacing12),

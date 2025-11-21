@@ -10,8 +10,11 @@ class CategoryRouter {
       path: Routes.categoryList,
       builder: (context, state) {
         final type = state.uri.queryParameters['type'];
+        final categoryIdStr = state.uri.queryParameters['categoryId'];
+        final categoryId = categoryIdStr != null ? int.tryParse(categoryIdStr) : null;
         return CategoryPickerScreen(
           initialTransactionType: type,
+          selectedCategoryId: categoryId,
         );
       },
     ),

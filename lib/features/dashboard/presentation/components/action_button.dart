@@ -12,7 +12,7 @@ class ActionButton extends ConsumerWidget {
       children: [
         CustomIconButton(
           context,
-          onPressed: () => context.push(Routes.comingSoon),
+          onPressed: () => context.push(Routes.notifications),
           icon: HugeIcons.strokeRoundedNotification02,
           showBadge: true,
           themeMode: context.themeMode,
