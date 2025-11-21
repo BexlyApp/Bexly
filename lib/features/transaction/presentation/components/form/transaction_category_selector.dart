@@ -13,12 +13,14 @@ class TransactionCategorySelector extends HookConsumerWidget {
   final Function(CategoryModel? parentCategory, CategoryModel? category)
   onCategorySelected;
   final String? currentTransactionType; // Current transaction type to pre-select tab
+  final int? currentCategoryId; // Current selected category ID to highlight
 
   const TransactionCategorySelector({
     super.key,
     required this.controller,
     required this.onCategorySelected,
     this.currentTransactionType,
+    this.currentCategoryId,
   });
 
   @override
@@ -30,10 +32,17 @@ class TransactionCategorySelector extends HookConsumerWidget {
       hint: 'Select Category',
       isRequired: true,
       onTap: () async {
-        // Pass transaction type as query parameter if available
-        final route = currentTransactionType != null
-            ? '${Routes.categoryList}?type=$currentTransactionType'
-            : Routes.categoryList;
+        // Build route with query parameters
+        final params = <String>[];
+        if (currentTransactionType != null) {
+          params.add('type=$currentTransactionType');
+        }
+        if (currentCategoryId != null) {
+          params.add('categoryId=$currentCategoryId');
+        }
+        final route = params.isEmpty
+            ? Routes.categoryList
+            : '${Routes.categoryList}?${params.join('&')}';
         final category = await context.push<CategoryModel>(route);
         Log.d(category?.toJson(), label: 'category selected via text field');
         if (category != null) {

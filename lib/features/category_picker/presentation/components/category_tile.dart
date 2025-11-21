@@ -17,6 +17,7 @@ class CategoryTile extends StatelessWidget {
   final IconData? suffixIcon;
   final GestureTapCallback? onSuffixIconPressed;
   final Function(CategoryModel)? onSelectCategory;
+  final bool isSelected; // Whether this category is currently selected
   const CategoryTile({
     super.key,
     required this.category,
@@ -25,6 +26,7 @@ class CategoryTile extends StatelessWidget {
     this.suffixIcon,
     this.height,
     this.iconSize = AppSpacing.spacing32,
+    this.isSelected = false,
   });
 
   @override
@@ -63,6 +65,19 @@ class CategoryTile extends StatelessWidget {
                 style: AppTextStyles.body3,
               ),
             ),
+            // Show checkmark if selected
+            if (isSelected)
+              const Padding(
+                padding: EdgeInsets.only(right: 4),
+                child: Text(
+                  '✓',
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: AppColors.green200,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             if (suffixIcon != null)
               CustomIconButton(
                 context,

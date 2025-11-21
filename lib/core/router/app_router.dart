@@ -8,6 +8,7 @@ import 'package:bexly/core/router/budget_router.dart';
 import 'package:bexly/core/router/category_router.dart';
 import 'package:bexly/core/router/currency_router.dart';
 import 'package:bexly/core/router/goal_router.dart'; // ← import your GoalRouter
+import 'package:bexly/core/router/notification_router.dart';
 import 'package:bexly/core/router/onboarding_router.dart';
 import 'package:bexly/core/router/report_router.dart';
 import 'package:bexly/core/router/routes.dart';
@@ -39,6 +40,7 @@ final router = GoRouter(
     ...CategoryRouter.routes,
     ...GoalRouter.routes,
     ...BudgetRouter.routes,
+    ...NotificationRouter.routes,
     ...SettingsRouter.routes,
     ...CurrencyRouter.routes,
     ...WalletRouter.routes,

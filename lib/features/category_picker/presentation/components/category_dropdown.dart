@@ -21,10 +21,12 @@ import 'category_tile.dart';
 class CategoryDropdown extends HookConsumerWidget {
   final bool isManageCategory;
   final CategoryModel category;
+  final int? selectedCategoryId; // Currently selected category ID to highlight
   const CategoryDropdown({
     super.key,
     this.isManageCategory = false,
     required this.category,
+    this.selectedCategoryId,
   });
 
   @override
@@ -34,10 +36,23 @@ class CategoryDropdown extends HookConsumerWidget {
 
     final List<CategoryModel> subCategories = category.subCategories ?? [];
 
+    // Check if this parent category contains the selected subcategory
+    final containsSelected = selectedCategoryId != null &&
+        subCategories.any((sub) => sub.id == selectedCategoryId);
+
+    // Auto-expand if this category contains the selected category
+    if (containsSelected && !expanded.value) {
+      Future.microtask(() {
+        expandableController.expanded = true;
+        expanded.value = true;
+      });
+    }
+
     return ExpandablePanel(
       controller: expandableController,
       header: CategoryTile(
         category: category,
+        isSelected: selectedCategoryId == category.id,
         suffixIcon: expanded.value
             ? HugeIcons.strokeRoundedArrowDown01
             : HugeIcons.strokeRoundedArrowRight01,
@@ -77,6 +92,7 @@ class CategoryDropdown extends HookConsumerWidget {
           final subCategory = subCategories[index];
           return CategoryTile(
             category: subCategory,
+            isSelected: selectedCategoryId == subCategory.id,
             onSelectCategory: (selectedCategory) async {
               Log.d(selectedCategory.toJson(), label: 'category');
               // if picking category, then return to previous screen with selected category

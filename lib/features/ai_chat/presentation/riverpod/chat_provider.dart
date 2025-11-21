@@ -983,7 +983,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   void clearError() {
+    Log.d('🗑️ clearError called - clearing error state', label: 'Chat Provider');
     state = state.copyWith(error: null);
+    Log.d('✅ Error state cleared - error is now: ${state.error}', label: 'Chat Provider');
   }
 
   void clearChat() async {
@@ -1120,7 +1122,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
       double amount = (action['amount'] as num).toDouble();
       final String? actionCurrency = action['currency'] as String?;
       final String walletCurrency = wallet.currency;
-      final title = action['description'] as String;
+      final rawTitle = action['description'] as String;
+      // Capitalize first letter of title
+      final title = rawTitle.isEmpty
+          ? rawTitle
+          : rawTitle[0].toUpperCase() + rawTitle.substring(1);
       final date = DateTime.now();
 
       // Debug currency detection

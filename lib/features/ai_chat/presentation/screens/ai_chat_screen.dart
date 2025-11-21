@@ -69,12 +69,18 @@ class AIChatScreen extends HookConsumerWidget {
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: chatNotifier.clearError,
-                    icon: Icon(
-                      Icons.close,
-                      color: AppColors.red600,
-                      size: 18,
+                  GestureDetector(
+                    onTap: () {
+                      Log.d('❌ Error dismiss button tapped', label: 'Chat Screen');
+                      chatNotifier.clearError();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.close,
+                        color: AppColors.red600,
+                        size: 18,
+                      ),
                     ),
                   ),
                 ],
