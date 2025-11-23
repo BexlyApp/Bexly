@@ -170,37 +170,38 @@ class _ChartWithConversion extends ConsumerWidget {
     final Map<String, double> categoryExpenses = {};
 
     // Convert all amounts to base currency before summing
+    // Process BOTH expense and income transactions
     for (var transaction in transactions) {
-      if (transaction.transactionType == TransactionType.expense) {
-        final categoryTitle = transaction.category.title;
+      final categoryTitle = transaction.category.title;
 
-        // Convert transaction amount to base currency
-        double amountInBaseCurrency;
-        if (transaction.wallet.currency == baseCurrency) {
-          // Same currency, no conversion needed
+      // Convert transaction amount to base currency
+      double amountInBaseCurrency;
+      if (transaction.wallet.currency == baseCurrency) {
+        // Same currency, no conversion needed
+        amountInBaseCurrency = transaction.amount;
+      } else {
+        // Different currency, need to convert
+        try {
+          amountInBaseCurrency = await exchangeRateService.convertAmount(
+            amount: transaction.amount,
+            fromCurrency: transaction.wallet.currency,
+            toCurrency: baseCurrency,
+          );
+        } catch (e) {
+          Log.e(
+            'Failed to convert ${transaction.amount} ${transaction.wallet.currency} to $baseCurrency: $e',
+            label: 'SpendingChart',
+          );
+          // Fallback: use original amount if conversion fails
           amountInBaseCurrency = transaction.amount;
-        } else {
-          // Different currency, need to convert
-          try {
-            amountInBaseCurrency = await exchangeRateService.convertAmount(
-              amount: transaction.amount,
-              fromCurrency: transaction.wallet.currency,
-              toCurrency: baseCurrency,
-            );
-          } catch (e) {
-            Log.e('Failed to convert ${transaction.amount} ${transaction.wallet.currency} to $baseCurrency: $e',
-                  label: 'SpendingChart');
-            // Fallback: use original amount if conversion fails
-            amountInBaseCurrency = transaction.amount;
-          }
         }
-
-        categoryExpenses.update(
-          categoryTitle,
-          (value) => value + amountInBaseCurrency,
-          ifAbsent: () => amountInBaseCurrency,
-        );
       }
+
+      categoryExpenses.update(
+        categoryTitle,
+        (value) => value + amountInBaseCurrency,
+        ifAbsent: () => amountInBaseCurrency,
+      );
     }
 
     // Define color palette for chart segments
