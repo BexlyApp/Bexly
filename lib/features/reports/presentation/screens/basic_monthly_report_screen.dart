@@ -13,6 +13,7 @@ import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/features/reports/presentation/riverpod/filtered_transactions_provider.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/core/extensions/currency_extension.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_filter_provider.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
@@ -24,6 +25,8 @@ import 'package:bexly/core/services/exchange_rate_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 
 part '../components/spending_by_category_chart.dart';
+part '../components/income_by_category_chart.dart';
+part '../components/report_summary_cards.dart';
 
 /// State provider for selected wallet filter (null = All Wallets)
 final reportWalletFilterProvider = StateProvider<int?>((ref) => null);
@@ -49,11 +52,22 @@ class BasicMonthlyReportScreen extends ConsumerWidget {
             loading: () => const SizedBox.shrink(),
             error: (error, _) => const SizedBox.shrink(),
           ),
-          // Chart
+          // Charts and Summary
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.spacing20),
-              children: [SpendingByCategoryChart(date: date)],
+              children: [
+                // Summary cards
+                ReportSummaryCards(date: date),
+                const SizedBox(height: AppSpacing.spacing20),
+
+                // Spending chart
+                SpendingByCategoryChart(date: date),
+                const SizedBox(height: AppSpacing.spacing20),
+
+                // Income chart
+                IncomeByCategoryChart(date: date),
+              ],
             ),
           ),
         ],

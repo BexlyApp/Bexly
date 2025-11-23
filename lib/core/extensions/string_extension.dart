@@ -93,19 +93,27 @@ extension CustomDateParsing on String {
         baseDate = DateTime(now.year, now.month, now.day + 1);
         break;
       default:
+        // For full date format like "20 November 2025, 00.00"
+        // Parse the date part first, then handle time separately
         try {
+          // Try parsing with AM/PM first
           return standardFormat.parse(this);
         } catch (e) {
-          // If standard format fails, throw a more helpful error
-          throw FormatException(
-            'Invalid date format. Expected "26 June 2025 hh.mm AM" or "Today, hh.mm"',
-            this,
-          );
+          // If that fails, try parsing date only and combine with time
+          final dateOnlyFormat = DateFormat("d MMMM yyyy");
+          try {
+            baseDate = dateOnlyFormat.parse(dateStr);
+          } catch (e) {
+            throw FormatException(
+              'Invalid date format. Expected "26 June 2025" or "Today"',
+              dateStr,
+            );
+          }
         }
     }
 
     // If we have a time part, parse and combine it with the base date
-    if (timeStr != null) {
+    if (timeStr != null && timeStr.isNotEmpty) {
       try {
         final time = timeOnlyFormat.parse(timeStr);
         return DateTime(
@@ -116,8 +124,24 @@ extension CustomDateParsing on String {
           time.minute,
         );
       } catch (e) {
+        // If time parsing fails (e.g., "00.00" without AM/PM), try to parse as 24-hour format
+        // This handles cases where time is displayed without AM/PM
+        final timeParts = timeStr.split('.');
+        if (timeParts.length == 2) {
+          final hour = int.tryParse(timeParts[0]);
+          final minute = int.tryParse(timeParts[1]);
+          if (hour != null && minute != null && hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
+            return DateTime(
+              baseDate.year,
+              baseDate.month,
+              baseDate.day,
+              hour,
+              minute,
+            );
+          }
+        }
         throw FormatException(
-          'Invalid time format. Expected "hh.mm AM"',
+          'Invalid time format. Expected "hh.mm AM" or "HH.mm"',
           timeStr,
         );
       }

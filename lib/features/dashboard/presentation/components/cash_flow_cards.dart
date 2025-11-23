@@ -5,105 +5,108 @@ class CashFlowCards extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transactionsAsyncValue = ref.watch(allTransactionsProvider);
-    final selectedMonth = ref.watch(selectedMonthProvider);
-    final selectedWallet = ref.watch(dashboardWalletFilterProvider);
+    // Use converted providers that handle currency conversion
+    final currentIncomeAsync = ref.watch(convertedMonthlyIncomeProvider);
+    final currentExpenseAsync = ref.watch(convertedMonthlyExpenseProvider);
+    final lastMonthIncomeAsync = ref.watch(convertedLastMonthIncomeProvider);
+    final lastMonthExpenseAsync = ref.watch(convertedLastMonthExpenseProvider);
 
-    return transactionsAsyncValue.when(
-      data: (transactions) {
-        // Filter by wallet if selected
-        final filteredTransactions = selectedWallet != null
-            ? transactions.where((t) => t.wallet.id == selectedWallet.id).toList()
-            : transactions;
+    // Wait for all providers to load
+    return currentIncomeAsync.when(
+      data: (currentIncome) {
+        return currentExpenseAsync.when(
+          data: (currentExpense) {
+            return lastMonthIncomeAsync.when(
+              data: (lastIncome) {
+                return lastMonthExpenseAsync.when(
+                  data: (lastExpense) {
+                    final incomePercentDifference =
+                        currentIncome.calculatePercentDifference(lastIncome);
+                    final expensePercentDifference =
+                        currentExpense.calculatePercentDifference(lastExpense);
 
-        final currentMonth = selectedMonth.month;
-        final currentYear = selectedMonth.year;
-
-        final lastMonthDate = DateTime(currentYear, currentMonth - 1);
-        final lastMonth = lastMonthDate.month;
-        final lastMonthYear = lastMonthDate.year;
-
-        // Calculate current month's income and expenses
-        double currentMonthIncome = 0;
-        double currentMonthExpense = 0;
-        for (var t in filteredTransactions) {
-          if (t.date.year == currentYear && t.date.month == currentMonth) {
-            if (t.transactionType == TransactionType.income) {
-              currentMonthIncome += t.amount;
-            } else if (t.transactionType == TransactionType.expense) {
-              currentMonthExpense += t.amount;
-            }
-          }
-        }
-
-        // Calculate last month's income and expenses
-        double lastMonthIncome = 0;
-        double lastMonthExpense = 0;
-        for (var t in filteredTransactions) {
-          if (t.date.year == lastMonthYear && t.date.month == lastMonth) {
-            if (t.transactionType == TransactionType.income) {
-              lastMonthIncome += t.amount;
-            } else if (t.transactionType == TransactionType.expense) {
-              lastMonthExpense += t.amount;
-            }
-          }
-        }
-
-        final incomePercentDifference = currentMonthIncome
-            .calculatePercentDifference(lastMonthIncome);
-        final expensePercentDifference = currentMonthExpense
-            .calculatePercentDifference(lastMonthExpense);
-
-        return Row(
-          children: [
-            Expanded(
-              child: TransactionCard(
-                title: AppLocalizations.of(context)!.income,
-                amount: currentMonthIncome,
-                amountLastMonth: lastMonthIncome,
-                percentDifference: incomePercentDifference,
-                backgroundColor: context.incomeBackground,
-                titleColor: context.incomeForeground,
-                borderColor: context.incomeLine,
-                amountColor: context.incomeText,
-                statsBackgroundColor: context.incomeBackground,
-                statsForegroundColor: context.incomeForeground,
-                statsIconColor: context.incomeText,
-              ),
-            ),
-            const Gap(AppSpacing.spacing12),
-            Expanded(
-              child: TransactionCard(
-                title: AppLocalizations.of(context)!.expense,
-                amount: currentMonthExpense,
-                amountLastMonth: lastMonthExpense,
-                percentDifference: expensePercentDifference,
-                backgroundColor: context.expenseBackground,
-                titleColor: context.expenseForeground,
-                borderColor: context.expenseLine,
-                amountColor: context.expenseText,
-                statsBackgroundColor: context.expenseStatsBackground,
-                statsForegroundColor: context.expenseForeground,
-                statsIconColor: context.expenseText,
-              ),
-            ),
-          ],
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: TransactionCard(
+                            title: AppLocalizations.of(context)!.income,
+                            amount: currentIncome,
+                            amountLastMonth: lastIncome,
+                            percentDifference: incomePercentDifference,
+                            backgroundColor: context.incomeBackground,
+                            titleColor: context.incomeForeground,
+                            borderColor: context.incomeLine,
+                            amountColor: context.incomeText,
+                            statsBackgroundColor: context.incomeBackground,
+                            statsForegroundColor: context.incomeForeground,
+                            statsIconColor: context.incomeText,
+                          ),
+                        ),
+                        const Gap(AppSpacing.spacing12),
+                        Expanded(
+                          child: TransactionCard(
+                            title: AppLocalizations.of(context)!.expense,
+                            amount: currentExpense,
+                            amountLastMonth: lastExpense,
+                            percentDifference: expensePercentDifference,
+                            backgroundColor: context.expenseBackground,
+                            titleColor: context.expenseForeground,
+                            borderColor: context.expenseLine,
+                            amountColor: context.expenseText,
+                            statsBackgroundColor: context.expenseStatsBackground,
+                            statsForegroundColor: context.expenseForeground,
+                            statsIconColor: context.expenseText,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => _buildLoadingRow(),
+                  error: (error, stack) => _buildErrorRow(context),
+                );
+              },
+              loading: () => _buildLoadingRow(),
+              error: (error, stack) => _buildErrorRow(context),
+            );
+          },
+          loading: () => _buildLoadingRow(),
+          error: (error, stack) => _buildErrorRow(context),
         );
       },
-      loading: () => const Row(
-        children: [
-          Expanded(child: ShimmerTransactionCardPlaceholder()),
-          Gap(AppSpacing.spacing12),
-          Expanded(child: ShimmerTransactionCardPlaceholder()),
-        ],
-      ),
-      error: (error, stack) => Row(
-        children: [
-          Expanded(child: Center(child: Text(AppLocalizations.of(context)!.errorLoadingIncomeData))),
-          const Gap(AppSpacing.spacing12),
-          Expanded(child: Center(child: Text(AppLocalizations.of(context)!.errorLoadingExpenseData))),
-        ],
-      ),
+      loading: () => _buildLoadingRow(),
+      error: (error, stack) => _buildErrorRow(context),
+    );
+  }
+
+  Widget _buildLoadingRow() {
+    return const Row(
+      children: [
+        Expanded(child: ShimmerTransactionCardPlaceholder()),
+        Gap(AppSpacing.spacing12),
+        Expanded(child: ShimmerTransactionCardPlaceholder()),
+      ],
+    );
+  }
+
+  Widget _buildErrorRow(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Center(
+            child: Text(
+              AppLocalizations.of(context)!.errorLoadingIncomeData,
+            ),
+          ),
+        ),
+        const Gap(AppSpacing.spacing12),
+        Expanded(
+          child: Center(
+            child: Text(
+              AppLocalizations.of(context)!.errorLoadingExpenseData,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

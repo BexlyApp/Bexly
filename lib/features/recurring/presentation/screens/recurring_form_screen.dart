@@ -22,6 +22,8 @@ import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet_switcher/presentation/components/wallet_selector_bottom_sheet.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
+import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/features/transaction/presentation/components/form/transaction_type_selector.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
@@ -52,6 +54,13 @@ class RecurringFormScreen extends HookConsumerWidget {
     );
     final walletController = useTextEditingController();
     final categoryController = useTextEditingController();
+
+    // Track selected transaction type (default to expense or from category when editing)
+    final selectedTransactionType = useState<TransactionType>(
+      formState.category?.transactionType == 'income'
+        ? TransactionType.income
+        : TransactionType.expense,
+    );
 
     // Initialize form with recurring data when editing
     useEffect(() {
@@ -136,6 +145,22 @@ class RecurringFormScreen extends HookConsumerWidget {
                     onChanged: formNotifier.setName,
                   ),
 
+                  // Transaction type selector
+                  TransactionTypeSelector(
+                    selectedType: selectedTransactionType.value,
+                    onTypeSelected: (type) {
+                      // Reset category if type changes and current category doesn't match new type
+                      if (formState.category != null) {
+                        final categoryType = formState.category!.transactionType;
+                        if (categoryType != type.name) {
+                          // Clear category controller - user must reselect category
+                          categoryController.clear();
+                        }
+                      }
+                      selectedTransactionType.value = type;
+                    },
+                  ),
+
                   // Wallet selector - only show if multiple wallets
                   if (allWalletsAsync.valueOrNull != null && allWalletsAsync.valueOrNull!.length > 1)
                     CustomSelectField(
@@ -172,8 +197,9 @@ class RecurringFormScreen extends HookConsumerWidget {
                     isRequired: true,
                     prefixIcon: HugeIcons.strokeRoundedPackage,
                     onTap: () async {
+                      // Pass transaction type to category picker
                       final CategoryModel? result = await context.push(
-                        Routes.categoryList,
+                        '${Routes.categoryList}?type=${selectedTransactionType.value.name}',
                       );
                       if (result != null) {
                         formNotifier.setCategory(result);
