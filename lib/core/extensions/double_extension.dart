@@ -21,7 +21,8 @@ extension DoubleFormattingExtensions on double {
 
   /// Formats the double as a human-readable short price (e.g., 1K, 2,5M)
   /// Uses comma as decimal separator and up to 2 decimals for M, K, etc.
-  String toShortPriceFormat() {
+  /// Optionally adds currency symbol prefix (e.g., "$1.5K" or "₫500K")
+  String toShortPriceFormat({String? currencySymbol}) {
     final absValue = abs();
     String suffix = '';
     double divisor = 1;
@@ -46,6 +47,10 @@ extension DoubleFormattingExtensions on double {
       } else if (formatted.endsWith('0')) {
         formatted = formatted.substring(0, formatted.length - 1);
       }
+    }
+    // Add currency symbol if provided
+    if (currencySymbol != null && currencySymbol.isNotEmpty) {
+      return '$currencySymbol$formatted$suffix';
     }
     return '$formatted$suffix';
   }
