@@ -19,6 +19,9 @@ import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/wallet_switcher/presentation/components/wallet_selector_bottom_sheet.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
+import 'package:bexly/core/services/exchange_rate_service.dart';
+import 'package:bexly/core/utils/logger.dart';
 
 part '../components/spending_by_category_chart.dart';
 

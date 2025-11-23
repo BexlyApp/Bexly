@@ -5,6 +5,7 @@ import 'package:bexly/core/database/daos/category_dao.dart';
 import 'package:bexly/core/database/daos/transaction_dao.dart';
 import 'package:bexly/core/database/daos/budget_dao.dart';
 import 'package:bexly/core/database/daos/goal_dao.dart';
+import 'package:bexly/core/database/daos/notification_dao.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/category_integrity_service.dart';
 
@@ -56,4 +57,11 @@ final budgetDaoProvider = Provider<BudgetDao>((ref) {
 final goalDaoProvider = Provider<GoalDao>((ref) {
   final db = ref.watch(databaseProvider);
   return GoalDao(db, ref);
+});
+
+/// Notification DAO provider
+/// Use this instead of db.notificationDao to avoid creating multiple database instances
+final notificationDaoProvider = Provider<NotificationDao>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.notificationDao;
 });
