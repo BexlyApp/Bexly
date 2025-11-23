@@ -1116,9 +1116,14 @@ class ChatNotifier extends StateNotifier<ChatState> {
       }
 
       // Create transaction model
-      final transactionType = action['action'] == 'create_income'
+      // IMPORTANT: Get transaction type from CATEGORY, not from action
+      // This ensures consistency - category.transactionType is the source of truth
+      final transactionType = category.transactionType == 'income'
           ? TransactionType.income
           : TransactionType.expense;
+
+      // Log for debugging
+      Log.d('Transaction type from category "${category.title}": ${category.transactionType} → $transactionType', label: 'TRANSACTION_DEBUG');
       double amount = (action['amount'] as num).toDouble();
       final String? actionCurrency = action['currency'] as String?;
       final String walletCurrency = wallet.currency;

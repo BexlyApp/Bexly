@@ -170,8 +170,13 @@ class _ChartWithConversion extends ConsumerWidget {
     final Map<String, double> categoryExpenses = {};
 
     // Convert all amounts to base currency before summing
-    // Process BOTH expense and income transactions
+    // Process ONLY expense transactions (chart is "Spending by Category")
     for (var transaction in transactions) {
+      // Skip income transactions - this chart is for expenses only
+      if (transaction.transactionType == TransactionType.income) {
+        continue;
+      }
+
       final categoryTitle = transaction.category.title;
 
       // Convert transaction amount to base currency
