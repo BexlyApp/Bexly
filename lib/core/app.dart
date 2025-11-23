@@ -10,6 +10,7 @@ import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/router/app_router.dart';
 import 'package:bexly/core/services/sync/sync_manager_widget.dart';
 import 'package:bexly/core/services/lifecycle_manager.dart';
+import 'package:bexly/core/services/fcm_token_sync_widget.dart';
 import 'package:bexly/features/settings/presentation/riverpod/language_provider.dart';
 import 'package:bexly/features/theme_switcher/presentation/riverpod/theme_mode_provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
@@ -163,8 +164,9 @@ class MyApp extends ConsumerWidget {
 
     return LifecycleManager(
       child: SyncManagerWidget(
-        child: ToastificationWrapper(
-          child: MaterialApp.router(
+        child: FcmTokenSyncWidget(
+          child: ToastificationWrapper(
+            child: MaterialApp.router(
           key: rootKey,
           title: AppConstants.appName,
           debugShowCheckedModeBanner: false,
@@ -217,6 +219,7 @@ class MyApp extends ConsumerWidget {
           routerConfig: router,
         ),
       ),
+        ),
       ),
     );
   }

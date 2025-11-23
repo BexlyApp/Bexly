@@ -5,8 +5,8 @@ class ActionButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
-    // Watch for pending notifications
-    final hasPendingNotifications = ref.watch(hasPendingNotificationsProvider);
+    // Watch for unread notifications
+    final hasUnreadNotifications = ref.watch(hasUnreadNotificationsProvider);
 
     return Row(
       spacing: context.isDesktopLayout
@@ -17,7 +17,7 @@ class ActionButton extends ConsumerWidget {
           context,
           onPressed: () => context.push(Routes.notifications),
           icon: HugeIcons.strokeRoundedNotification02,
-          showBadge: hasPendingNotifications.valueOrNull ?? false,
+          showBadge: hasUnreadNotifications.valueOrNull ?? false,
           themeMode: context.themeMode,
         ),
         CustomIconButton(

@@ -10,6 +10,7 @@ import 'package:bexly/core/database/daos/user_dao.dart';
 import 'package:bexly/core/database/daos/wallet_dao.dart'; // Import new DAO
 import 'package:bexly/core/database/daos/chat_message_dao.dart';
 import 'package:bexly/core/database/daos/recurring_dao.dart';
+import 'package:bexly/core/database/daos/notification_dao.dart';
 import 'package:bexly/core/database/tables/budgets_table.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/transaction_table.dart';
@@ -19,6 +20,7 @@ import 'package:bexly/core/database/tables/users.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart'; // Import new table
 import 'package:bexly/core/database/tables/chat_messages_table.dart';
 import 'package:bexly/core/database/tables/recurrings_table.dart';
+import 'package:bexly/core/database/tables/notifications_table.dart';
 import 'package:bexly/core/services/data_population_service/category_population_service.dart';
 import 'package:bexly/core/services/data_population_service/wallet_population_service.dart'; // Import new population service
 import 'package:bexly/core/utils/logger.dart';
@@ -36,6 +38,7 @@ part 'app_database.g.dart';
     Budgets,
     ChatMessages,
     Recurrings,
+    Notifications,
   ],
   daos: [
     UserDao,
@@ -47,13 +50,14 @@ part 'app_database.g.dart';
     BudgetDao,
     ChatMessageDao,
     RecurringDao,
+    NotificationDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 16; // Add recurringId to transactions for payment history tracking
+  int get schemaVersion => 17; // Add notifications table for notification history
 
   @override
   MigrationStrategy get migration {
@@ -208,6 +212,16 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Added recurringId column to transactions table for payment history', label: 'database');
           } catch (e) {
             Log.e('Failed to add recurringId column: $e', label: 'database');
+          }
+        }
+
+        // For version 17, add notifications table
+        if (from < 17) {
+          try {
+            await m.createTable(notifications);
+            Log.i('Created notifications table for notification history', label: 'database');
+          } catch (e) {
+            Log.e('Failed to create notifications table: $e', label: 'database');
           }
         }
 

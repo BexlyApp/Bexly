@@ -495,12 +495,112 @@ class ConflictResolutionService {
       }
       print('✅ [DOWNLOAD] Transactions inserted to local DB');
 
+      // Download recurrings
+      print('🔍 [DOWNLOAD] Starting recurring download...');
+      final recurringsSnapshot = await _userCollection
+          .doc('recurrings')
+          .collection('items')
+          .get()
+          .timeout(const Duration(seconds: 10));
+      print('✓ [DOWNLOAD] Downloaded ${recurringsSnapshot.docs.length} recurrings from cloud');
+
+      for (final doc in recurringsSnapshot.docs) {
+        final data = doc.data();
+        final cloudId = doc.id;
+
+        // Get wallet - handle both String (cloudId) and int (legacy local ID)
+        final walletIdData = data['walletId'];
+        Wallet? wallet;
+
+        if (walletIdData is String) {
+          // New format: cloudId (UUID)
+          wallet = await (_localDb.select(_localDb.wallets)
+            ..where((w) => w.cloudId.equals(walletIdData)))
+            .getSingleOrNull();
+        } else if (walletIdData is int) {
+          // Legacy format: local ID - try to find first wallet (fallback)
+          final wallets = await _localDb.walletDao.getAllWallets();
+          wallet = wallets.isNotEmpty ? wallets.first : null;
+          print('⚠️ [DOWNLOAD] Recurring ${doc.id} has legacy int walletId=$walletIdData, using first wallet');
+        }
+
+        if (wallet == null) {
+          print('⚠️ [DOWNLOAD] Skipping recurring ${doc.id} - wallet not found');
+          continue;
+        }
+
+        // Get category - handle both String (cloudId) and int (legacy local ID)
+        final categoryIdData = data['categoryId'];
+        int? categoryId;
+
+        if (categoryIdData is String) {
+          // New format: cloudId (UUID)
+          final category = await (_localDb.select(_localDb.categories)
+            ..where((c) => c.cloudId.equals(categoryIdData)))
+            .getSingleOrNull();
+          categoryId = category?.id;
+        } else if (categoryIdData is int) {
+          // Legacy format: local ID - try to find matching category
+          categoryId = categoryIdData;
+          print('⚠️ [DOWNLOAD] Recurring ${doc.id} has legacy int categoryId=$categoryIdData');
+        }
+
+        // Check if recurring already exists
+        final existingRecurrings = await (_localDb.select(_localDb.recurrings)
+          ..where((r) => r.cloudId.equals(cloudId)))
+          .get();
+
+        if (existingRecurrings.isNotEmpty) {
+          // Update existing
+          await (_localDb.update(_localDb.recurrings)
+            ..where((r) => r.id.equals(existingRecurrings.first.id)))
+            .write(RecurringsCompanion(
+              name: Value(data['name'] as String),
+              amount: Value(data['amount'] as double),
+              currency: Value(data['currency'] as String? ?? wallet.currency),
+              frequency: Value(data['frequency'] as int),
+              startDate: Value((data['startDate'] as Timestamp?)?.toDate() ?? DateTime.now()),
+              nextDueDate: Value((data['nextDueDate'] as Timestamp).toDate()),
+              walletId: Value(wallet.id),
+              categoryId: Value(categoryId ?? 0),
+              autoCreate: Value(data['autoCreate'] as bool? ?? false),
+              status: Value(data['status'] as int? ?? 0),
+              notes: Value(data['notes'] as String?),
+              cloudId: Value(cloudId),
+              updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
+            ));
+          print('[DOWNLOAD] Updated existing recurring: ${data['name']} (id=${existingRecurrings.first.id}, cloudId=$cloudId)');
+        } else {
+          // Insert new
+          await _localDb.into(_localDb.recurrings).insert(
+            RecurringsCompanion.insert(
+              name: data['name'] as String,
+              amount: data['amount'] as double,
+              currency: data['currency'] as String? ?? wallet.currency,
+              frequency: data['frequency'] as int,
+              startDate: (data['startDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+              nextDueDate: (data['nextDueDate'] as Timestamp).toDate(),
+              walletId: wallet.id,
+              categoryId: categoryId ?? 0,
+              autoCreate: Value(data['autoCreate'] as bool? ?? false),
+              status: data['status'] as int? ?? 0,
+              notes: Value(data['notes'] as String?),
+              cloudId: Value(cloudId),
+              createdAt: Value((data['createdAt'] as Timestamp).toDate()),
+              updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
+            ),
+          );
+          print('[DOWNLOAD] Inserted new recurring: ${data['name']} (cloudId=$cloudId)');
+        }
+      }
+      print('✅ [DOWNLOAD] Recurrings inserted to local DB');
+
       // Recalculate all wallet balances from transactions
       print('🔍 [DOWNLOAD] Recalculating wallet balances...');
       await _localDb.walletDao.recalculateAllBalances();
       print('✅ [DOWNLOAD] Wallet balances recalculated');
 
-      print('✅ [DOWNLOAD] COMPLETE: ${categoriesSnapshot.docs.length} categories, ${walletsSnapshot.docs.length} wallets, ${transactionsSnapshot.docs.length} transactions');
+      print('✅ [DOWNLOAD] COMPLETE: ${categoriesSnapshot.docs.length} categories, ${walletsSnapshot.docs.length} wallets, ${transactionsSnapshot.docs.length} transactions, ${recurringsSnapshot.docs.length} recurrings');
     } catch (e, stackTrace) {
       print('❌ [DOWNLOAD] ERROR during download: $e');
       print('❌ [DOWNLOAD] Stack trace: $stackTrace');

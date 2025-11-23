@@ -1,5 +1,7 @@
 import 'package:bexly/core/services/notification_service.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/database/app_database.dart';
+import 'package:drift/drift.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 
@@ -9,6 +11,30 @@ class ScheduledNotificationsService {
   static const int _dailyReminderId = 9000;
   static const int _weeklyReportId = 9001;
   static const int _monthlyReportId = 9002;
+
+  /// Helper to create notification record in database
+  static Future<void> _createNotificationRecord({
+    required String title,
+    required String body,
+    required String type,
+    required tz.TZDateTime scheduledFor,
+  }) async {
+    try {
+      final db = AppDatabase();
+      await db.notificationDao.insertNotification(
+        NotificationsCompanion(
+          title: Value(title),
+          body: Value(body),
+          type: Value(type),
+          scheduledFor: Value(scheduledFor),
+          isRead: const Value(false),
+        ),
+      );
+      Log.d('Created notification record: $title', label: 'notification');
+    } catch (e) {
+      Log.e('Failed to create notification record: $e', label: 'notification');
+    }
+  }
 
   /// Schedule daily reminder notification (9 PM every day)
   static Future<void> scheduleDailyReminder() async {
@@ -43,6 +69,14 @@ class ScheduledNotificationsService {
         title: 'Log Your Expenses',
         body: 'Don\'t forget to record today\'s spending!',
         scheduledDate: scheduledDate,
+      );
+
+      // Create notification record in database
+      await _createNotificationRecord(
+        title: 'Log Your Expenses',
+        body: 'Don\'t forget to record today\'s spending!',
+        type: 'daily_reminder',
+        scheduledFor: scheduledDate,
       );
 
       // Schedule to repeat daily
@@ -91,6 +125,14 @@ class ScheduledNotificationsService {
         scheduledDate: scheduledDate,
       );
 
+      // Create notification record in database
+      await _createNotificationRecord(
+        title: 'Weekly Spending Report',
+        body: 'Check out your spending summary from last week',
+        type: 'weekly_report',
+        scheduledFor: scheduledDate,
+      );
+
       Log.i('Weekly report scheduled for $scheduledDate', label: 'notification');
     } catch (e) {
       Log.e('Failed to schedule weekly report: $e', label: 'notification');
@@ -125,6 +167,14 @@ class ScheduledNotificationsService {
         title: 'Monthly Financial Report',
         body: 'Your complete financial summary for last month is ready',
         scheduledDate: scheduledDate,
+      );
+
+      // Create notification record in database
+      await _createNotificationRecord(
+        title: 'Monthly Financial Report',
+        body: 'Your complete financial summary for last month is ready',
+        type: 'monthly_report',
+        scheduledFor: scheduledDate,
       );
 
       Log.i('Monthly report scheduled for $scheduledDate', label: 'notification');

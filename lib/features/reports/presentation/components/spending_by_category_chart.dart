@@ -11,7 +11,62 @@ class SpendingByCategoryChart extends ConsumerWidget {
 
     return transactionsAsync.when(
       data: (transactions) {
-        final expenseData = _processData(context, transactions);
+        // Use FutureBuilder to handle async currency conversion
+        return _ChartWithConversion(
+          date: date,
+          transactions: transactions,
+        );
+      },
+      loading: () => const SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (err, stack) => SizedBox(
+        height: 200,
+        child: Center(child: Text('Error: ${err.toString()}')),
+      ),
+    );
+  }
+}
+
+/// Inner widget that handles async currency conversion
+class _ChartWithConversion extends ConsumerWidget {
+  final DateTime date;
+  final List<TransactionModel> transactions;
+
+  const _ChartWithConversion({
+    required this.date,
+    required this.transactions,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final baseCurrency = ref.watch(baseCurrencyProvider);
+    final exchangeRateService = ref.watch(exchangeRateServiceProvider);
+
+    return FutureBuilder<List<_ChartData>>(
+      future: _processData(
+        context,
+        transactions,
+        baseCurrency,
+        exchangeRateService,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 200,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return SizedBox(
+            height: 200,
+            child: Center(child: Text('Error: ${snapshot.error}')),
+          );
+        }
+
+        final expenseData = snapshot.data ?? [];
 
         if (expenseData.isEmpty) {
           return const SizedBox(
@@ -102,30 +157,48 @@ class SpendingByCategoryChart extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const SizedBox(
-        height: 200,
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (err, stack) => SizedBox(
-        height: 200,
-        child: Center(child: Text('Error: ${err.toString()}')),
-      ),
     );
   }
 
-  List<_ChartData> _processData(
+  /// Process transaction data with currency conversion to base currency
+  Future<List<_ChartData>> _processData(
     BuildContext context,
     List<TransactionModel> transactions,
-  ) {
+    String baseCurrency,
+    ExchangeRateService exchangeRateService,
+  ) async {
     final Map<String, double> categoryExpenses = {};
 
+    // Convert all amounts to base currency before summing
     for (var transaction in transactions) {
       if (transaction.transactionType == TransactionType.expense) {
         final categoryTitle = transaction.category.title;
+
+        // Convert transaction amount to base currency
+        double amountInBaseCurrency;
+        if (transaction.wallet.currency == baseCurrency) {
+          // Same currency, no conversion needed
+          amountInBaseCurrency = transaction.amount;
+        } else {
+          // Different currency, need to convert
+          try {
+            amountInBaseCurrency = await exchangeRateService.convertAmount(
+              amount: transaction.amount,
+              fromCurrency: transaction.wallet.currency,
+              toCurrency: baseCurrency,
+            );
+          } catch (e) {
+            Log.e('Failed to convert ${transaction.amount} ${transaction.wallet.currency} to $baseCurrency: $e',
+                  label: 'SpendingChart');
+            // Fallback: use original amount if conversion fails
+            amountInBaseCurrency = transaction.amount;
+          }
+        }
+
         categoryExpenses.update(
           categoryTitle,
-          (value) => value + transaction.amount,
-          ifAbsent: () => transaction.amount,
+          (value) => value + amountInBaseCurrency,
+          ifAbsent: () => amountInBaseCurrency,
         );
       }
     }
