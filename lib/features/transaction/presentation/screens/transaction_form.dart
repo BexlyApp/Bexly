@@ -117,8 +117,17 @@ class TransactionForm extends HookConsumerWidget {
         const Gap(AppSpacing.spacing12),
         TransactionTypeSelector(
           selectedType: formState.selectedTransactionType.value,
-          onTypeSelected: (type) =>
-              formState.selectedTransactionType.value = type,
+          onTypeSelected: (type) {
+            // Reset category if type changes and current category doesn't match new type
+            if (formState.selectedCategory.value != null) {
+              final categoryType = formState.selectedCategory.value!.transactionType;
+              if (categoryType != type.name) {
+                formState.selectedCategory.value = null;
+                formState.categoryController.clear();
+              }
+            }
+            formState.selectedTransactionType.value = type;
+          },
         ),
         const Gap(AppSpacing.spacing12),
         TransactionTitleField(

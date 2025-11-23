@@ -1,18 +1,16 @@
 part of '../screens/basic_monthly_report_screen.dart';
 
-class SpendingByCategoryChart extends ConsumerWidget {
+class IncomeByCategoryChart extends ConsumerWidget {
   final DateTime date;
-  const SpendingByCategoryChart({super.key, required this.date});
+  const IncomeByCategoryChart({super.key, required this.date});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch transactions filtered by the given month
     final transactionsAsync = ref.watch(monthlyTransactionsProvider(date));
 
     return transactionsAsync.when(
       data: (transactions) {
-        // Use FutureBuilder to handle async currency conversion
-        return _ChartWithConversion(
+        return _IncomeChartWithConversion(
           date: date,
           transactions: transactions,
         );
@@ -29,12 +27,11 @@ class SpendingByCategoryChart extends ConsumerWidget {
   }
 }
 
-/// Inner widget that handles async currency conversion
-class _ChartWithConversion extends ConsumerWidget {
+class _IncomeChartWithConversion extends ConsumerWidget {
   final DateTime date;
   final List<TransactionModel> transactions;
 
-  const _ChartWithConversion({
+  const _IncomeChartWithConversion({
     required this.date,
     required this.transactions,
   });
@@ -45,7 +42,7 @@ class _ChartWithConversion extends ConsumerWidget {
     final exchangeRateService = ref.watch(exchangeRateServiceProvider);
 
     return FutureBuilder<List<_ChartData>>(
-      future: _processData(
+      future: _processIncomeData(
         context,
         transactions,
         baseCurrency,
@@ -66,21 +63,21 @@ class _ChartWithConversion extends ConsumerWidget {
           );
         }
 
-        final expenseData = snapshot.data ?? [];
+        final incomeData = snapshot.data ?? [];
 
-        if (expenseData.isEmpty) {
+        if (incomeData.isEmpty) {
           return const SizedBox(
             height: 200,
             child: Center(
               child: Text(
-                'No expense data for this period.',
+                'No income data for this period.',
                 style: AppTextStyles.body3,
               ),
             ),
           );
         }
 
-        final totalExpenses = expenseData.fold(
+        final totalIncome = incomeData.fold(
           0.0,
           (sum, item) => sum + item.amount,
         );
@@ -99,7 +96,7 @@ class _ChartWithConversion extends ConsumerWidget {
               Expanded(
                 child: SfCircularChart(
                   title: ChartTitle(
-                    text: 'Spending by Category',
+                    text: 'Income by Category',
                     textStyle: AppTextStyles.body2,
                   ),
                   legend: const Legend(
@@ -114,13 +111,13 @@ class _ChartWithConversion extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Total Spent',
+                            'Total Earned',
                             style: AppTextStyles.body3.copyWith(
                               color: AppColors.neutral400,
                             ),
                           ),
                           Text(
-                            totalExpenses.toShortPriceFormat(
+                            totalIncome.toShortPriceFormat(
                               currencySymbol: baseCurrency.currencySymbol,
                             ),
                             style: AppTextStyles.body2,
@@ -131,7 +128,7 @@ class _ChartWithConversion extends ConsumerWidget {
                   ],
                   series: <CircularSeries>[
                     DoughnutSeries<_ChartData, String>(
-                      dataSource: expenseData,
+                      dataSource: incomeData,
                       xValueMapper: (_ChartData data, _) => data.category,
                       yValueMapper: (_ChartData data, _) => data.amount,
                       pointColorMapper: (_ChartData data, _) => data.color,
@@ -143,11 +140,10 @@ class _ChartWithConversion extends ConsumerWidget {
                       groupMode: CircularChartGroupMode.point,
                       dataLabelSettings: const DataLabelSettings(
                         isVisible: true,
-                        // Display percentage on slices
                         labelPosition: ChartDataLabelPosition.outside,
                         textStyle: AppTextStyles.body4,
                       ),
-                      innerRadius: '70%', // This creates the donut shape
+                      innerRadius: '70%',
                     ),
                   ],
                 ),
@@ -164,89 +160,63 @@ class _ChartWithConversion extends ConsumerWidget {
     );
   }
 
-  /// Process transaction data with currency conversion to base currency
-  Future<List<_ChartData>> _processData(
+  Future<List<_ChartData>> _processIncomeData(
     BuildContext context,
     List<TransactionModel> transactions,
     String baseCurrency,
     ExchangeRateService exchangeRateService,
   ) async {
-    final Map<String, double> categoryExpenses = {};
+    final Map<String, double> categoryTotals = {};
+    final Map<String, Color> categoryColors = {};
 
-    // Convert all amounts to base currency before summing
-    // Process ONLY expense transactions (chart is "Spending by Category")
+    // Process ONLY income transactions
     for (var transaction in transactions) {
-      // Skip income transactions - this chart is for expenses only
-      if (transaction.transactionType == TransactionType.income) {
+      // Skip expense transactions - this chart is for income only
+      if (transaction.transactionType == TransactionType.expense) {
         continue;
       }
-
       final categoryTitle = transaction.category.title;
 
-      // Convert transaction amount to base currency
-      double amountInBaseCurrency;
-      if (transaction.wallet.currency == baseCurrency) {
-        // Same currency, no conversion needed
-        amountInBaseCurrency = transaction.amount;
-      } else {
-        // Different currency, need to convert
+      // Convert amount to base currency if needed
+      double convertedAmount = transaction.amount;
+      if (transaction.wallet.currency != baseCurrency) {
         try {
-          amountInBaseCurrency = await exchangeRateService.convertAmount(
+          convertedAmount = await exchangeRateService.convertAmount(
             amount: transaction.amount,
             fromCurrency: transaction.wallet.currency,
             toCurrency: baseCurrency,
           );
-        } catch (e) {
-          Log.e(
-            'Failed to convert ${transaction.amount} ${transaction.wallet.currency} to $baseCurrency: $e',
-            label: 'SpendingChart',
+          Log.d(
+            'Converted ${transaction.amount} ${transaction.wallet.currency} to $convertedAmount $baseCurrency',
+            label: 'IncomeChart',
           );
-          // Fallback: use original amount if conversion fails
-          amountInBaseCurrency = transaction.amount;
+        } catch (e) {
+          Log.e('Failed to convert currency: $e', label: 'IncomeChart');
+          // Use original amount if conversion fails
         }
       }
 
-      categoryExpenses.update(
-        categoryTitle,
-        (value) => value + amountInBaseCurrency,
-        ifAbsent: () => amountInBaseCurrency,
-      );
+      categoryTotals[categoryTitle] =
+          (categoryTotals[categoryTitle] ?? 0) + convertedAmount;
+
+      // Use green shades for income categories
+      if (!categoryColors.containsKey(categoryTitle)) {
+        categoryColors[categoryTitle] = AppColors.green200;
+      }
     }
 
-    // Define color palette for chart segments
-    final colorPalette = [
-      AppColors.primary600,
-      AppColors.secondary600,
-      AppColors.tertiary600,
-      AppColors.red600,
-      AppColors.purple600,
-      AppColors.green200,
-      AppColors.primary400,
-      AppColors.secondary400,
-      AppColors.tertiary400,
-      AppColors.red400,
-      AppColors.purple400,
-      AppColors.primary800,
-      AppColors.secondary800,
-      AppColors.tertiary800,
-      AppColors.red800,
-      AppColors.purple800,
-    ];
-
-    var colorIndex = 0;
-    return categoryExpenses.entries
+    // Convert to chart data
+    return categoryTotals.entries
         .map((entry) => _ChartData(
               entry.key,
               entry.value,
-              colorPalette[colorIndex++ % colorPalette.length],
+              categoryColors[entry.key]!,
             ))
-        .toList();
+        .toList()
+      ..sort((a, b) => b.amount.compareTo(a.amount));
   }
 }
 
-class _ChartData {
-  _ChartData(this.category, this.amount, this.color);
-  final String category;
-  final double amount;
-  final Color color;
-}
+// _ChartData is already defined in spending_by_category_chart.dart
+// and will be shared across both charts via the part file
+

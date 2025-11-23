@@ -177,11 +177,13 @@ class RecurringCard extends StatelessWidget {
                       ),
                       const Gap(AppSpacing.spacing4),
 
-                      // Amount
+                      // Amount with +/- sign based on transaction type
                       Text(
-                        '${recurring.amount.toPriceFormat()} ${recurring.currency}',
+                        '${recurring.category.transactionType == 'income' ? '+' : '-'}${recurring.amount.toPriceFormat()} ${recurring.currency}',
                         style: AppTextStyles.numericMedium.copyWith(
-                          color: AppColors.red700,
+                          color: recurring.category.transactionType == 'income'
+                              ? AppColors.green200
+                              : AppColors.red700,
                           height: 1.12,
                         ),
                       ),

@@ -204,6 +204,24 @@ class _NotificationSettingsScreenState
               value,
             ),
           ),
+
+          const SizedBox(height: AppSpacing.spacing24),
+
+          // Test notification button
+          ElevatedButton.icon(
+            onPressed: () async {
+              await NotificationService.showInstantNotification(
+                id: 99999,
+                title: 'Test Notification',
+                body: 'If you see this, notifications are working! 🎉',
+              );
+            },
+            icon: const Icon(Icons.notifications_active),
+            label: const Text('Test Notification'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+            ),
+          ),
         ],
       ),
     );
