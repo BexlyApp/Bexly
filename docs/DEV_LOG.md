@@ -1,5 +1,175 @@
 # AI Chat Transaction Debug Log
 
+## Ngày: 2025-11-24
+## Developer: Claude Code
+
+---
+
+## BUILD 317: ANALYTICS CHARTS WITH CURRENCY CONVERSION FIX
+
+### Vấn đề
+**Chart Bug:** 6-month Income vs Expense chart hiển thị giá trị sai và expense line bị invisible.
+
+**Triệu chứng:**
+1. Chart Y-axis hiển thị 36.6M thay vì $4.6K
+2. Expense line ($22.60) không visible trên chart vì quá nhỏ so với income ($4.66K)
+3. Chart chỉ hiển thị income line, không có expense line
+
+### Root Cause Analysis
+
+**Issue 1: Currency Conversion Missing**
+- `FinancialHealthRepository` aggregate raw transaction amounts WITHOUT converting to base currency
+- VNĐ amounts (~30M VNĐ) displayed directly instead of converting to USD
+- Summary cards had currency conversion (correct $4.66K) but charts didn't
+
+**Evidence from logs:**
+```
+Month 11/2025: 12 transactions
+  💰 Income: Salary = 380.0 (VND)  // Raw VND amount!
+  💸 Expense: Spotify = 5.0 (USD)
+✅ Month 11/2025: income=4659.0, expense=22.60038
+```
+
+**Issue 2: Y-axis Scaling**
+- When expense ($22.60) is very small compared to income ($4659), it becomes invisible
+- Y-axis scales 0-5.6K based on max income
+- Expense at $22.60 is only ~0.4% of scale height
+
+### Solution Implementation
+
+**Part 1: Currency Conversion in Repository (v317)**
+
+**File:** `lib/features/reports/data/repositories/financial_health_repository.dart`
+
+Added ExchangeRateService dependency:
+```dart
+class FinancialHealthRepository {
+  final List<TransactionModel> _transactions;
+  final ExchangeRateService _exchangeRateService;  // NEW
+  final String _baseCurrency;  // NEW
+
+  FinancialHealthRepository(
+    this._transactions,
+    this._exchangeRateService,
+    this._baseCurrency,
+  );
+```
+
+Added currency conversion in both aggregation methods:
+```dart
+// In getLastMonthsSummary() and getCurrentMonthWeeklySummary()
+for (var t in transactionsInMonth) {
+  double amount = t.amount;
+
+  // Convert to base currency if needed
+  if (t.wallet.currency != _baseCurrency) {
+    try {
+      amount = await _exchangeRateService.convertAmount(
+        amount: t.amount,
+        fromCurrency: t.wallet.currency,
+        toCurrency: _baseCurrency,
+      );
+    } catch (e) {
+      Log.e('Failed to convert ${t.wallet.currency} to $_baseCurrency: $e');
+    }
+  }
+
+  if (t.transactionType == TransactionType.income) {
+    income += amount;  // Now converted!
+  }
+}
+```
+
+**Part 2: Provider Dependency Injection (v317)**
+
+**File:** `lib/features/reports/presentation/riverpod/financial_health_provider.dart`
+
+Updated repository provider to inject dependencies:
+```dart
+final financialHealthRepositoryProvider =
+    Provider<FinancialHealthRepository>((ref) {
+  final transactionsAsync = ref.watch(allTransactionsProvider);
+  final exchangeRateService = ref.watch(exchangeRateServiceProvider);  // NEW
+  final baseCurrency = ref.watch(baseCurrencyProvider);  // NEW
+
+  return FinancialHealthRepository(
+    transactionsAsync.whenData((data) => data).value ?? [],
+    exchangeRateService,  // Inject service
+    baseCurrency,  // Inject base currency
+  );
+});
+```
+
+**Part 3: Intelligent minY Calculation (v317)**
+
+**File:** `lib/features/reports/presentation/components/six_months_income_vs_expense_chart.dart`
+
+Added smart Y-axis scaling to make small expense lines visible:
+```dart
+// Calculate max Y to give some headroom
+double maxIncome = 0;
+double maxExpense = 0;
+for (var item in data) {
+  if (item.income > maxIncome) maxIncome = item.income;
+  if (item.expense > maxExpense) maxExpense = item.expense;
+}
+
+double maxY = maxIncome > maxExpense ? maxIncome : maxExpense;
+maxY = maxY * 1.2;  // 20% buffer
+
+// Calculate minY to ensure small values are visible
+double minY = 0;
+if (maxExpense > 0 && maxExpense < maxY * 0.05) {
+  // If expense < 5% of max, adjust minY to "lift" the line
+  minY = -(maxY * 0.1);
+}
+
+// Apply to chart
+LineChartData(
+  minY: minY,
+  maxY: maxY,
+  // ...
+)
+```
+
+### Test Results (v317)
+
+**Before Fix:**
+- Chart showed 36.6M (raw VNĐ amounts)
+- Expense line invisible
+
+**After Fix:**
+- Chart shows correct $4.66K income, $22.60 expense
+- Both lines visible and properly scaled
+- User added more expenses → chart displays correctly
+
+**User Confirmation:** "Tôi thêm expense thì nó lên rồi" ✅
+
+### Code Changes Summary
+
+**Files Modified:**
+1. `lib/features/reports/data/repositories/financial_health_repository.dart` - Currency conversion in aggregation
+2. `lib/features/reports/presentation/riverpod/financial_health_provider.dart` - Dependency injection
+3. `lib/features/reports/presentation/components/six_months_income_vs_expense_chart.dart` - Smart minY calculation
+4. `lib/features/reports/presentation/components/weekly_income_vs_expense_chart.dart` - Consistent formatting
+5. `pubspec.yaml` - v0.0.7+317
+
+### Lessons Learned
+
+1. **Currency Conversion Must Be Consistent** - If summary cards convert currency, charts must too
+2. **Repository Should Handle Business Logic** - Currency conversion belongs in data layer, not UI
+3. **Y-axis Scaling Requires Edge Case Handling** - Small values need special treatment
+4. **Debug Logs Are Essential** - Without logs showing raw VNĐ amounts, would never find root cause
+5. **Test with Real Multi-Currency Data** - Edge cases appear when income/expense ratios are extreme
+
+### Commit
+
+**Commit:** `497ee6e` - fix: resolve currency conversion and chart visualization issues
+
+**STATUS: ✅ RESOLVED**
+
+---
+
 ## Ngày: 2025-11-20
 ## Developer: Claude Code
 
