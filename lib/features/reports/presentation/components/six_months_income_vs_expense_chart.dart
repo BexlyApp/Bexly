@@ -40,14 +40,27 @@ class SixMonthsIncomeExpenseChart extends ConsumerWidget {
     }
 
     // Calculate max Y to give some headroom
-    double maxY = 0;
+    double maxIncome = 0;
+    double maxExpense = 0;
     for (var item in data) {
-      if (item.income > maxY) maxY = item.income;
-      if (item.expense > maxY) maxY = item.expense;
+      if (item.income > maxIncome) maxIncome = item.income;
+      if (item.expense > maxExpense) maxExpense = item.expense;
     }
+
+    // Set maxY based on the larger value
+    double maxY = maxIncome > maxExpense ? maxIncome : maxExpense;
+
     // Add 20% buffer
     maxY = maxY * 1.2;
     if (maxY == 0) maxY = 100;
+
+    // Calculate minY to ensure small values are visible
+    // If expense is very small compared to income (< 5%), adjust minY
+    double minY = 0;
+    if (maxExpense > 0 && maxExpense < maxY * 0.05) {
+      // Set minY to negative to "lift" the expense line
+      minY = -(maxY * 0.1);
+    }
 
     return LineChart(
       LineChartData(
@@ -125,7 +138,7 @@ class SixMonthsIncomeExpenseChart extends ConsumerWidget {
               getTitlesWidget: (value, meta) {
                 if (value == 0) return const SizedBox.shrink();
                 return Text(
-                  NumberFormat.compact().format(value),
+                  _formatCompact(value),
                   style: AppTextStyles.body4,
                 );
               },
@@ -135,7 +148,7 @@ class SixMonthsIncomeExpenseChart extends ConsumerWidget {
         borderData: FlBorderData(show: false),
         minX: 0,
         maxX: (data.length - 1).toDouble(),
-        minY: 0,
+        minY: minY,
         maxY: maxY,
         lineBarsData: [
           // Income Line (Green)
@@ -171,5 +184,15 @@ class SixMonthsIncomeExpenseChart extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _formatCompact(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}K';
+    } else {
+      return value.toStringAsFixed(0);
+    }
   }
 }

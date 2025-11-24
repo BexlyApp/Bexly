@@ -3,6 +3,7 @@ import 'package:bexly/features/reports/data/models/monthly_financial_summary_mod
 import 'package:bexly/features/reports/data/models/weekly_financial_summary_model.dart';
 import 'package:bexly/features/reports/data/repositories/financial_health_repository.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 
 // Provider for 6 months summary
 final sixMonthSummaryProvider =
@@ -22,7 +23,13 @@ final weeklySummaryProvider =
 final financialHealthRepositoryProvider =
     Provider<FinancialHealthRepository>((ref) {
   final transactionsAsync = ref.watch(allTransactionsProvider);
+  final exchangeRateService = ref.watch(exchangeRateServiceProvider);
+  final baseCurrency = ref.watch(baseCurrencyProvider);
+
+  // Only create repository when data is available
   return FinancialHealthRepository(
-    transactionsAsync.value ?? [],
+    transactionsAsync.whenData((data) => data).value ?? [],
+    exchangeRateService,
+    baseCurrency,
   );
 });

@@ -26,7 +26,13 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(flutter pub get:*)"
+      "Bash(flutter pub get:*)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\" \"FinancialHealth:I\")",
+      "Bash(timeout 30 \"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -s \"flutter:I\")",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\")",
+      "Bash(findstr:*)",
+      "Bash(Select-String \"FinancialHealth\")",
+      "Bash(d:/temp_logcat.txt)"
     ],
     "deny": [],
     "ask": []
