@@ -1,7 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:bexly/core/components/charts/chart_container.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
@@ -9,6 +8,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/text_style_extensions.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/reports/data/models/weekly_financial_summary_model.dart';
 import 'package:bexly/features/reports/presentation/riverpod/financial_health_provider.dart';
 
@@ -45,12 +45,15 @@ class WeeklyIncomeExpenseChart extends ConsumerWidget {
     // Calculate max Y to give some headroom
     double maxY = 0;
     for (var item in data) {
+      Log.i('Week ${item.weekNumber}: income=${item.income}, expense=${item.expense}',
+        label: 'WeeklyChart');
       if (item.income > maxY) maxY = item.income;
       if (item.expense > maxY) maxY = item.expense;
     }
     // Add 20% buffer
     maxY = maxY * 1.2;
     if (maxY == 0) maxY = 100;
+    Log.i('Weekly chart maxY: $maxY', label: 'WeeklyChart');
 
     return LineChart(
       LineChartData(
@@ -130,7 +133,7 @@ class WeeklyIncomeExpenseChart extends ConsumerWidget {
               getTitlesWidget: (value, meta) {
                 if (value == 0) return const SizedBox.shrink();
                 return Text(
-                  NumberFormat.compact().format(value),
+                  _formatCompact(value),
                   style: AppTextStyles.body4,
                 );
               },
@@ -176,5 +179,15 @@ class WeeklyIncomeExpenseChart extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _formatCompact(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}K';
+    } else {
+      return value.toStringAsFixed(0);
+    }
   }
 }

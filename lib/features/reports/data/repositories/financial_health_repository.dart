@@ -1,11 +1,19 @@
 import 'package:bexly/features/reports/data/models/monthly_financial_summary_model.dart';
 import 'package:bexly/features/reports/data/models/weekly_financial_summary_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/services/exchange_rate_service.dart';
 
 class FinancialHealthRepository {
   final List<TransactionModel> _transactions;
+  final ExchangeRateService _exchangeRateService;
+  final String _baseCurrency;
 
-  FinancialHealthRepository(this._transactions);
+  FinancialHealthRepository(
+    this._transactions,
+    this._exchangeRateService,
+    this._baseCurrency,
+  );
 
   /// Fetches the last [monthsCount] months of data and aggregates income/expense.
   Future<List<MonthlyFinancialSummary>> getLastMonthsSummary(
@@ -28,16 +36,32 @@ class FinancialHealthRepository {
       // Filter transactions for this specific month
       final transactionsInMonth = recentTransactions.where((t) {
         return t.date.year == monthDate.year && t.date.month == monthDate.month;
-      });
+      }).toList();
 
       double income = 0;
       double expense = 0;
 
       for (var t in transactionsInMonth) {
+        // Convert to base currency if needed
+        double amount = t.amount;
+        if (t.wallet.currency != _baseCurrency) {
+          try {
+            amount = await _exchangeRateService.convertAmount(
+              amount: t.amount,
+              fromCurrency: t.wallet.currency,
+              toCurrency: _baseCurrency,
+            );
+          } catch (e) {
+            Log.e('Failed to convert ${t.wallet.currency} to $_baseCurrency: $e',
+              label: 'FinancialHealth');
+            // Use original amount if conversion fails
+          }
+        }
+
         if (t.transactionType == TransactionType.income) {
-          income += t.amount;
+          income += amount;
         } else if (t.transactionType == TransactionType.expense) {
-          expense += t.amount;
+          expense += amount;
         }
       }
 
@@ -82,10 +106,26 @@ class FinancialHealthRepository {
       double expense = 0;
 
       for (var t in transactionsInWeek) {
+        // Convert to base currency if needed
+        double amount = t.amount;
+        if (t.wallet.currency != _baseCurrency) {
+          try {
+            amount = await _exchangeRateService.convertAmount(
+              amount: t.amount,
+              fromCurrency: t.wallet.currency,
+              toCurrency: _baseCurrency,
+            );
+          } catch (e) {
+            Log.e('Failed to convert ${t.wallet.currency} to $_baseCurrency: $e',
+              label: 'FinancialHealth');
+            // Use original amount if conversion fails
+          }
+        }
+
         if (t.transactionType == TransactionType.income) {
-          income += t.amount;
+          income += amount;
         } else if (t.transactionType == TransactionType.expense) {
-          expense += t.amount;
+          expense += amount;
         }
       }
 
