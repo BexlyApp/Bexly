@@ -23,7 +23,10 @@
       "Bash(flutter build:*)",
       "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 install -r \"d:\\Projects\\Bexly\\build\\app\\outputs\\flutter-apk\\app-release.apk\")",
       "Bash(cat:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(flutter pub get:*)"
     ],
     "deny": [],
     "ask": []

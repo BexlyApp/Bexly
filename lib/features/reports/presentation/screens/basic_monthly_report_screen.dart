@@ -23,6 +23,8 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/services/exchange_rate_service.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/reports/presentation/components/weekly_income_vs_expense_chart.dart';
+import 'package:bexly/features/reports/presentation/components/six_months_income_vs_expense_chart.dart';
 
 part '../components/spending_by_category_chart.dart';
 part '../components/income_by_category_chart.dart';
@@ -59,6 +61,17 @@ class BasicMonthlyReportScreen extends ConsumerWidget {
               children: [
                 // Summary cards
                 ReportSummaryCards(date: date),
+                const SizedBox(height: AppSpacing.spacing20),
+
+                // Weekly trend chart
+                const WeeklyIncomeExpenseChart(),
+                const SizedBox(height: AppSpacing.spacing20),
+
+                // 6 months trend chart
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.spacing20),
+                  child: SixMonthsIncomeExpenseChart(),
+                ),
                 const SizedBox(height: AppSpacing.spacing20),
 
                 // Spending chart
