@@ -7,7 +7,8 @@ import 'package:bexly/core/extensions/double_extension.dart';
 
 class BudgetSpentCard extends StatelessWidget {
   final double spentAmount;
-  const BudgetSpentCard({super.key, required this.spentAmount});
+  final String currencySymbol;
+  const BudgetSpentCard({super.key, required this.spentAmount, this.currencySymbol = 'đ'});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +29,20 @@ class BudgetSpentCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          Text(spentAmount.toPriceFormat(), style: AppTextStyles.numericMedium),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            spacing: AppSpacing.spacing2,
+            children: [
+              Text(
+                currencySymbol,
+                style: AppTextStyles.body3.copyWith(color: context.expenseText),
+              ),
+              Text(
+                spentAmount.toPriceFormat(),
+                style: AppTextStyles.numericMedium.copyWith(color: context.expenseText),
+              ),
+            ],
+          ),
         ],
       ),
     );

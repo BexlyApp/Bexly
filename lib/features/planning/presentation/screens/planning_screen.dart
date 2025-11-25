@@ -3,12 +3,16 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:bexly/core/components/buttons/custom_icon_button.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/date_time_extension.dart';
 import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
+import 'package:bexly/features/budget/presentation/screens/budget_filter_dialog.dart';
 import 'package:bexly/features/budget/presentation/screens/budget_screen.dart';
 import 'package:bexly/features/goal/presentation/screens/goal_form_dialog.dart';
 import 'package:bexly/features/goal/presentation/screens/goal_screen.dart';
@@ -30,11 +34,55 @@ class PlanningScreen extends HookConsumerWidget {
       return () => tabController.removeListener(listener);
     }, [tabController]);
 
+    final selectedPeriod = ref.watch(selectedBudgetPeriodProvider);
+    final now = DateTime.now();
+    final isCurrentMonth = selectedPeriod.year == now.year && selectedPeriod.month == now.month;
+
     return CustomScaffold(
       context: context,
       showBackButton: false,
       showBalance: false,
       title: 'Planning',
+      actions: [
+        // Only show filter when on Budget tab (index 0)
+        if (currentTab.value == 0)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Show selected month as chip
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.spacing12,
+                  vertical: AppSpacing.spacing4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary100,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  selectedPeriod.toMonthTabLabel(now),
+                  style: AppTextStyles.body4.copyWith(
+                    color: AppColors.primary700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              CustomIconButton(
+                context,
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    showDragHandle: true,
+                    builder: (context) => const BudgetFilterDialog(),
+                  );
+                },
+                icon: HugeIcons.strokeRoundedFilter,
+                showBadge: !isCurrentMonth,
+                themeMode: context.themeMode,
+              ),
+            ],
+          ),
+      ],
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           // Navigate to budget or goal form based on current tab

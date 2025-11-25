@@ -7,7 +7,8 @@ import 'package:bexly/core/extensions/double_extension.dart';
 
 class BudgetTotalCard extends StatelessWidget {
   final double totalAmount;
-  const BudgetTotalCard({super.key, required this.totalAmount});
+  final String currencySymbol;
+  const BudgetTotalCard({super.key, required this.totalAmount, this.currencySymbol = 'đ'});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +29,20 @@ class BudgetTotalCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          Text(totalAmount.toPriceFormat(), style: AppTextStyles.numericMedium),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            spacing: AppSpacing.spacing2,
+            children: [
+              Text(
+                currencySymbol,
+                style: AppTextStyles.body3.copyWith(color: context.incomeText),
+              ),
+              Text(
+                totalAmount.toPriceFormat(),
+                style: AppTextStyles.numericMedium.copyWith(color: context.incomeText),
+              ),
+            ],
+          ),
         ],
       ),
     );

@@ -689,12 +689,7 @@ Please create a transaction based on this receipt data.''';
                   ...action,
                   'amount': amount,
                 });
-
-                final amountText = _formatAmount(amount, currency: walletCurrency);
-                final categoryName = action['category']?.toString() ?? 'General';
-                final period = action['period']?.toString() ?? 'monthly';
-
-                displayMessage += '\n\n✅ Created $period budget of $amountText for $categoryName.';
+                // AI already provides confirmation in user's language
                 break;
               }
             case 'create_goal':
@@ -724,11 +719,7 @@ Please create a transaction based on this receipt data.''';
                   'targetAmount': targetAmount,
                   'currentAmount': currentAmount,
                 });
-
-                final targetAmountText = _formatAmount(targetAmount, currency: walletCurrency);
-                final goalTitle = action['title']?.toString() ?? 'New Goal';
-
-                displayMessage += '\n\n✅ Created goal "$goalTitle" with target of $targetAmountText.';
+                // AI already provides confirmation in user's language
                 break;
               }
             case 'get_balance':
@@ -1380,38 +1371,54 @@ Please create a transaction based on this receipt data.''';
         return;
       }
 
-      // Flatten hierarchy to include subcategories
+      // Flatten hierarchy to include BOTH parent and subcategories
       final List<CategoryModel> allCategories = [];
+      final Map<String, CategoryModel> parentToFirstSubcategory = {};
+
       for (final cat in hierarchicalCategories) {
+        // Always add parent category
+        allCategories.add(cat);
+
         if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
-          // Has subcategories - add ONLY subcategories (NOT parent)
+          // Map parent title to first subcategory for fallback
+          parentToFirstSubcategory[cat.title.toLowerCase()] = cat.subCategories!.first;
+          // Also add all subcategories
           allCategories.addAll(cat.subCategories!);
-        } else {
-          // Standalone category - add it
-          allCategories.add(cat);
         }
       }
 
-      // Find matching category (case-insensitive, partial match)
+      // Find matching category - PRIORITY ORDER:
+      // 1. Exact match (case-insensitive)
       var category = allCategories.firstWhereOrNull(
+        (c) => c.title.toLowerCase() == categoryName.toLowerCase()
+      );
+
+      // 2. Partial match (case-insensitive)
+      category ??= allCategories.firstWhereOrNull(
         (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
                categoryName.toLowerCase().contains(c.title.toLowerCase())
       );
 
-      // If no match, try exact match
-      category ??= allCategories.firstWhereOrNull(
-        (c) => c.title.toLowerCase() == categoryName.toLowerCase()
-      );
+      // 3. If matched a parent category with subcategories, use first subcategory
+      if (category != null && category.subCategories != null && category.subCategories!.isNotEmpty) {
+        Log.d('Matched parent category "${category.title}", using first subcategory', label: 'BUDGET_DEBUG');
+        category = category.subCategories!.first;
+      }
 
-      // If still no match, use "Others" or first category
+      // 4. If still no match, try parent-to-subcategory map
+      category ??= parentToFirstSubcategory[categoryName.toLowerCase()];
+
+      // 5. Fallback to "Others" or first non-parent category
       if (category == null) {
-        category = allCategories.firstWhereOrNull((c) => c.title == 'Others') ??
-                  allCategories.firstOrNull;
+        category = allCategories.firstWhereOrNull((c) => c.title == 'Others' && (c.subCategories == null || c.subCategories!.isEmpty));
+        category ??= allCategories.firstWhereOrNull((c) => c.subCategories == null || c.subCategories!.isEmpty);
         if (category == null) {
           Log.e('No categories available for budget', label: 'BUDGET_DEBUG');
           return;
         }
       }
+
+      Log.d('Final category for budget: ${category.title}', label: 'BUDGET_DEBUG');
 
       // Determine budget period dates
       final now = DateTime.now();
