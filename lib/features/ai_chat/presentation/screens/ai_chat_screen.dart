@@ -536,16 +536,13 @@ class _ChatInput extends HookWidget {
     final imagePicker = ImagePicker();
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.spacing16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(
-          top: BorderSide(
-            color: AppColors.neutral200,
-            width: 1,
-          ),
-        ),
+      padding: const EdgeInsets.only(
+        left: AppSpacing.spacing16,
+        right: AppSpacing.spacing16,
+        top: AppSpacing.spacing12,
+        bottom: AppSpacing.spacing16,
       ),
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -595,20 +592,13 @@ class _ChatInput extends HookWidget {
 
               return Row(
                 children: [
-                  // Add/Send button (morphs based on text input)
+                  // Add image button (left side)
                   Container(
                     width: 40,
                     height: 40,
                     margin: const EdgeInsets.only(right: AppSpacing.spacing8),
                     decoration: BoxDecoration(
-                      gradient: canSend && !isLoading
-                          ? const LinearGradient(
-                              colors: [AppColors.primary500, AppColors.primary700],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : null,
-                      color: !canSend || isLoading ? AppColors.neutral200 : null,
+                      color: AppColors.neutral200,
                       shape: BoxShape.circle,
                     ),
                     child: Material(
@@ -617,27 +607,22 @@ class _ChatInput extends HookWidget {
                         borderRadius: BorderRadius.circular(20),
                         onTap: isLoading
                             ? null
-                            : canSend
-                                ? () {
-                                    HapticFeedback.lightImpact();
-                                    onSend(controller.text, selectedImage.value);
-                                    selectedImage.value = null;
-                                  }
-                                : () {
-                                    HapticFeedback.lightImpact();
-                                    _showImageSourceBottomSheet(context, imagePicker, selectedImage);
-                                  },
+                            : () {
+                                HapticFeedback.lightImpact();
+                                _showImageSourceBottomSheet(context, imagePicker, selectedImage);
+                              },
                         child: Center(
                           child: Icon(
-                            canSend ? Icons.send_rounded : Icons.add,
-                            color: canSend ? AppColors.light : AppColors.neutral600,
-                            size: canSend ? 20 : 24,
+                            Icons.add,
+                            color: AppColors.neutral600,
+                            size: 24,
                           ),
                         ),
                       ),
                     ),
                   ),
 
+                  // Text input
                   Expanded(
                     child: TextField(
                       controller: controller,
@@ -686,6 +671,44 @@ class _ChatInput extends HookWidget {
                           selectedImage.value = null;
                         }
                       },
+                    ),
+                  ),
+
+                  // Send button (right side)
+                  Container(
+                    width: 40,
+                    height: 40,
+                    margin: const EdgeInsets.only(left: AppSpacing.spacing8),
+                    decoration: BoxDecoration(
+                      gradient: canSend && !isLoading
+                          ? const LinearGradient(
+                              colors: [AppColors.primary500, AppColors.primary700],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : null,
+                      color: !canSend || isLoading ? AppColors.neutral200 : null,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: isLoading || !canSend
+                            ? null
+                            : () {
+                                HapticFeedback.lightImpact();
+                                onSend(controller.text, selectedImage.value);
+                                selectedImage.value = null;
+                              },
+                        child: Center(
+                          child: Icon(
+                            Icons.send_rounded,
+                            color: canSend && !isLoading ? AppColors.light : AppColors.neutral400,
+                            size: 20,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
