@@ -50,10 +50,22 @@ class MainScreen extends ConsumerWidget {
                   Expanded(child: pageViewWidget),
                 ],
               )
-            : Column(
+            : Stack(
                 children: [
-                  Expanded(child: pageViewWidget),
-                  navigationControls,
+                  // Page content - add bottom padding for nav bar
+                  Positioned.fill(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 80),
+                      child: pageViewWidget,
+                    ),
+                  ),
+                  // Liquid glass bottom navigation bar
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: navigationControls,
+                  ),
                 ],
               ),
       ),

@@ -526,36 +526,42 @@ Please create a transaction based on this receipt data.''';
       // Extract JSON action if present
       String displayMessage = response;
 
-      // Look for ACTION_JSON: prefix
-      final actionIndex = response.indexOf('ACTION_JSON:');
-      print('📱 [DEBUG] ACTION_JSON index: $actionIndex');
-      Log.d('🔍 ACTION_JSON index: $actionIndex', label: 'Chat Provider');
+      // Look for all ACTION_JSON: prefixes (AI may return multiple on separate lines)
+      final actionJsonPattern = RegExp(r'ACTION_JSON:\s*(\{[^}]+\})');
+      final matches = actionJsonPattern.allMatches(response).toList();
 
-      if (actionIndex != -1) {
+      print('📱 [DEBUG] Found ${matches.length} ACTION_JSON matches');
+      Log.d('🔍 Found ${matches.length} ACTION_JSON matches', label: 'Chat Provider');
+
+      if (matches.isNotEmpty) {
         print('📱 [DEBUG] Found ACTION_JSON in response, parsing...');
         Log.d('🔍 Found ACTION_JSON in response, parsing...', label: 'Chat Provider');
 
-        // Extract the display message (everything before ACTION_JSON)
-        displayMessage = response.substring(0, actionIndex).trim();
+        // Extract the display message (everything before first ACTION_JSON)
+        displayMessage = response.substring(0, matches.first.start).trim();
 
-        // Extract JSON after ACTION_JSON:
-        // Add safety check to prevent RangeError
-        final jsonStartIndex = actionIndex + 12; // Length of "ACTION_JSON:"
-        if (jsonStartIndex >= response.length) {
-          Log.e('Invalid ACTION_JSON format: no JSON content after marker', label: 'Chat Provider');
-          throw Exception('Invalid AI response format: ACTION_JSON marker found but no JSON content');
+        // Parse each ACTION_JSON into actions list
+        final List<Map<String, dynamic>> actions = [];
+        for (final match in matches) {
+          final jsonStr = match.group(1)!;
+          print('📱 [DEBUG] Parsing JSON: $jsonStr');
+          Log.d('🔍 Parsing JSON: $jsonStr', label: 'Chat Provider');
+
+          try {
+            final decoded = jsonDecode(jsonStr);
+            if (decoded is Map<String, dynamic>) {
+              actions.add(decoded);
+            }
+          } catch (e) {
+            Log.e('Failed to parse individual ACTION_JSON: $e', label: 'Chat Provider');
+          }
         }
 
-        final jsonStr = response.substring(jsonStartIndex).trim();
-        print('📱 [DEBUG] Extracted JSON string: $jsonStr');
-        Log.d('🔍 Extracted JSON string: $jsonStr', label: 'Chat Provider');
+        Log.d('🔍 Total actions parsed: ${actions.length}', label: 'Chat Provider');
 
         try {
-          print('📱 [DEBUG] Attempting to parse JSON...');
-          final action = jsonDecode(jsonStr);
-          print('📱 [DEBUG] Parsed action successfully: $action');
-          Log.d('🔍 Parsed action: $action', label: 'Chat Provider');
-
+          // Process each action
+          for (final action in actions) {
           // Parse the action
           final String actionType = (action['action'] ?? '').toString();
           Log.d('🔍 Action type: $actionType', label: 'Chat Provider');
@@ -902,6 +908,7 @@ Please create a transaction based on this receipt data.''';
                 Log.d('Unknown action: $actionType', label: 'Chat Provider');
               }
           }
+          } // end for loop
         } catch (e, stackTrace) {
           print('📱 [DEBUG] Exception caught while parsing: $e');
           print('📱 [DEBUG] Stack trace: $stackTrace');
