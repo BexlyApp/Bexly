@@ -79,7 +79,7 @@ android {
             }
             // Disable native debug symbol stripping for bundle builds
             ndk {
-                debugSymbolLevel = 'SYMBOL_TABLE'
+                debugSymbolLevel = 'NONE'
             }
         }
     }

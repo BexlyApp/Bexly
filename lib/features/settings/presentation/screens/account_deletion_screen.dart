@@ -43,7 +43,6 @@ class AccountDeletionScreen extends HookConsumerWidget {
         confirmText: 'Delete',
         content: Text(
           'All your data, including goals, transactions, budgets, and personal settings, will be permanently erased. Your account will remain active and you can start fresh.',
-          textAlign: TextAlign.center,
           style: AppTextStyles.body2,
         ),
         onConfirm: () {
@@ -219,7 +218,7 @@ class AccountDeletionScreen extends HookConsumerWidget {
                 ),
                 const Spacer(),
                 PrimaryButton(
-                  label: 'Delete My Account and Erase Data',
+                  label: 'Delete My Account',
                   onPressed: isChallengeMet.value
                       ? () => _showConfirmationSheet(context, ref)
                       : null,
