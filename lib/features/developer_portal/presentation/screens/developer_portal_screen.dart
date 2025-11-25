@@ -10,7 +10,11 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/database/firestore_database.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DeveloperPortalScreen extends HookConsumerWidget {
   const DeveloperPortalScreen({super.key});
@@ -93,10 +97,45 @@ class DeveloperPortalScreen extends HookConsumerWidget {
                           onConfirm: () async {
                             isLoading.value = true;
                             context.pop();
+
+                            final user = ref.read(authProvider).valueOrNull;
+                            final isLoggedIn = user != null && user.email.isNotEmpty;
+                            String resultMessage;
+
+                            // Delete cloud data first (if user is logged in)
+                            if (isLoggedIn) {
+                              try {
+                                final firestoreDb = FirestoreDatabase();
+                                await firestoreDb.deleteAllUserData();
+                                Log.i('Cloud data deleted successfully', label: 'DevPortal');
+                                resultMessage = 'Local + Cloud data deleted';
+                              } catch (e) {
+                                Log.e('Failed to delete cloud data: $e', label: 'DevPortal');
+                                resultMessage = 'Local data deleted (Cloud delete failed: $e)';
+                              }
+                            } else {
+                              resultMessage = 'Local data deleted (Not logged in)';
+                            }
+
+                            // Clear SharedPreferences (base_currency, etc.)
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.remove('base_currency');
+
+                            // Then reset local database
                             final db = ref.read(databaseProvider);
                             await db.clearAllDataAndReset();
                             await db.populateData();
+
+                            // Note: base currency will be set when user creates their first wallet
+
                             isLoading.value = false;
+
+                            // Show result to user
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(resultMessage)),
+                              );
+                            }
                           },
                         ),
                       );

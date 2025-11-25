@@ -5,6 +5,7 @@ import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 
 part 'wallet_dao.g.dart';
 
@@ -62,11 +63,25 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   Future<int> addWallet(WalletModel walletModel) async {
     Log.d('Saving New Wallet: ${walletModel.toJson()}', label: 'wallet');
 
+    // Check if this is the first wallet (before inserting)
+    final existingWallets = await getAllWallets();
+    final isFirstWallet = existingWallets.isEmpty;
+
     // 1. Save to local database
     final companion = walletModel.toCompanion(isInsert: true);
     final id = await into(wallets).insert(companion);
 
-    // 2. Upload to cloud (if sync available)
+    // 2. Set base currency if this is the first wallet
+    if (isFirstWallet && _ref != null) {
+      try {
+        await _ref.read(baseCurrencyProvider.notifier).setBaseCurrency(walletModel.currency);
+        Log.d('Set base currency to ${walletModel.currency} (first wallet)', label: 'wallet');
+      } catch (e) {
+        Log.e('Failed to set base currency: $e', label: 'wallet');
+      }
+    }
+
+    // 3. Upload to cloud (if sync available)
     if (_ref != null) {
       try {
         final syncService = _ref.read(realtimeSyncServiceProvider);

@@ -5,6 +5,8 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
 
 class TransactionOptionsMenu extends StatelessWidget {
   const TransactionOptionsMenu({super.key});
@@ -53,9 +55,19 @@ class TransactionOptionsMenu extends StatelessWidget {
           ),
           const Divider(),
           ListTile(
-            onTap: () {
+            onTap: () async {
               Navigator.pop(context);
-              context.push(Routes.scanReceipt);
+              Log.d('🔵 Opening receipt scanner', label: 'TransactionOptions');
+              final result = await context.push<ReceiptScanResult>(Routes.scanReceipt);
+              Log.d('🔵 Received result from scanner: $result', label: 'TransactionOptions');
+              Log.d('🔵 Result is null: ${result == null}', label: 'TransactionOptions');
+              Log.d('🔵 Context mounted: ${context.mounted}', label: 'TransactionOptions');
+              if (result != null && context.mounted) {
+                Log.d('🔵 Navigating to transaction form with result', label: 'TransactionOptions');
+                context.push(Routes.transactionForm, extra: result);
+              } else {
+                Log.d('🔵 FAILED: Result is null=${result == null} or context not mounted=${!context.mounted}', label: 'TransactionOptions');
+              }
             },
             leading: Container(
               padding: const EdgeInsets.all(AppSpacing.spacing8),

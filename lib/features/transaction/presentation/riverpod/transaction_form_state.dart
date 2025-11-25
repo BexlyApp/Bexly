@@ -9,6 +9,7 @@ import 'package:bexly/core/components/bottom_sheets/alert_bottom_sheet.dart';
 import 'package:bexly/core/components/dialogs/toast.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/database/tables/category_table.dart'; // For Category.toModel() extension
 import 'package:bexly/core/extensions/date_time_extension.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
@@ -18,6 +19,7 @@ import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/services/receipt_storage/receipt_storage_service_provider.dart';
@@ -73,10 +75,17 @@ class TransactionFormState {
   }
 
   Future<void> saveTransaction(WidgetRef ref, BuildContext context) async {
+    Log.d('💾 === SAVE TRANSACTION START ===', label: 'TransactionForm');
+    Log.d('💾 Title: "${titleController.text}"', label: 'TransactionForm');
+    Log.d('💾 Amount: "${amountController.text}"', label: 'TransactionForm');
+    Log.d('💾 Category: ${selectedCategory.value?.title ?? "null"}', label: 'TransactionForm');
+    Log.d('💾 Wallet: ${selectedWallet.value?.name ?? "null"}', label: 'TransactionForm');
+
     if (titleController.text.isEmpty ||
         amountController.text.isEmpty ||
         selectedCategory.value == null ||
         selectedWallet.value == null) {
+      Log.e('❌ Validation failed: missing required fields', label: 'TransactionForm');
       Toast.show(
         'Please fill all required fields.',
         type: ToastificationType.error,
@@ -88,7 +97,10 @@ class TransactionFormState {
     final imagePickerState = ref.read(imageProvider);
     final wallet = selectedWallet.value!;
 
+    Log.d('💾 Wallet ID: ${wallet.id}', label: 'TransactionForm');
+
     if (wallet.id == null) {
+      Log.e('❌ Wallet ID is null', label: 'TransactionForm');
       Toast.show(
         'Invalid wallet selected.',
         type: ToastificationType.warning,
@@ -97,15 +109,20 @@ class TransactionFormState {
     }
 
     String imagePath = '';
+    Log.d('💾 Image savedPath: ${imagePickerState.savedPath}', label: 'TransactionForm');
     // Check if image exists (skip File check on web)
     if (imagePickerState.savedPath != null && imagePickerState.savedPath!.isNotEmpty) {
       if (kIsWeb) {
         // On web, trust that the path exists if it's not empty
         imagePath = imagePickerState.savedPath!;
+        Log.d('💾 Web image path set: $imagePath', label: 'TransactionForm');
       } else {
         // On native platforms, check if file exists
-        if (await File(imagePickerState.savedPath!).exists()) {
+        final fileExists = await File(imagePickerState.savedPath!).exists();
+        Log.d('💾 Image file exists: $fileExists', label: 'TransactionForm');
+        if (fileExists) {
           imagePath = imagePickerState.savedPath!;
+          Log.d('💾 Image path set: $imagePath', label: 'TransactionForm');
         }
       }
     }
@@ -136,14 +153,19 @@ class TransactionFormState {
     );
 
     try {
+      Log.d('💾 Entering try block', label: 'TransactionForm');
       int? savedTransactionId;
       if (!isEditing) {
+        Log.d('💾 Adding new transaction to database...', label: 'TransactionForm');
         savedTransactionId = await db.transactionDao.addTransaction(
           transactionToSave,
         );
+        Log.d('💾 Transaction saved with ID: $savedTransactionId', label: 'TransactionForm');
 
         if (savedTransactionId > 0) {
+          Log.d('💾 Adjusting wallet balance...', label: 'TransactionForm');
           await _adjustWalletBalance(ref, null, transactionToSave);
+          Log.d('💾 Wallet balance adjusted', label: 'TransactionForm');
         }
       } else {
         // This is the update case
@@ -205,11 +227,15 @@ class TransactionFormState {
         }
       }
 
+      Log.d('💾 Transaction save completed successfully', label: 'TransactionForm');
       if (context.mounted) {
+        Log.d('💾 Popping context', label: 'TransactionForm');
         context.pop();
+        Log.d('💾 Context popped', label: 'TransactionForm');
       }
-    } catch (e) {
-      Log.e('Error saving transaction: $e');
+    } catch (e, stackTrace) {
+      Log.e('❌ Error saving transaction: $e', label: 'TransactionForm');
+      Log.e('❌ Stack trace: $stackTrace', label: 'TransactionForm');
       if (context.mounted) {
         Toast.show(
           'Failed to save transaction: $e',
@@ -217,6 +243,7 @@ class TransactionFormState {
         );
       }
     }
+    Log.d('💾 === SAVE TRANSACTION END ===', label: 'TransactionForm');
   }
 
   Future<void> deleteTransaction(WidgetRef ref, BuildContext context) async {
@@ -330,17 +357,26 @@ TransactionFormState useTransactionFormState({
   required String defaultCurrency,
   required bool isEditing,
   TransactionModel? transaction,
+  ReceiptScanResult? receiptData,
 }) {
   final titleController = useTextEditingController(
-    text: isEditing ? transaction?.title : '',
+    text: isEditing
+        ? transaction?.title
+        : receiptData?.merchant ?? '',
   );
   final amountController = useTextEditingController(
     text: isEditing && transaction != null
         ? '$defaultCurrency ${transaction.amount.toPriceFormat()}'
-        : '',
+        : receiptData != null
+            ? '${receiptData.currency ?? defaultCurrency} ${receiptData.amount.toPriceFormat()}'
+            : '',
   );
   final notesController = useTextEditingController(
-    text: isEditing ? transaction?.notes ?? '' : '',
+    text: isEditing
+        ? transaction?.notes ?? ''
+        : receiptData != null && receiptData.items.isNotEmpty
+            ? receiptData.items.join(', ')
+            : '',
   );
   final categoryController = useTextEditingController();
   final walletController = useTextEditingController();
@@ -454,6 +490,105 @@ TransactionFormState useTransactionFormState({
       selectedTransactionType,
       selectedCategory,
     ],
+  );
+
+  // Handle receipt data population
+  useEffect(
+    () {
+      if (receiptData != null && !isEditing) {
+        Future.microtask(() async {
+          // Populate title from merchant
+          titleController.text = receiptData.merchant;
+
+          // Populate amount with currency prefix for UI display
+          final currency = receiptData.currency ?? 'VND';
+          amountController.text = '$currency ${receiptData.amount.toPriceFormat()}';
+
+          // Populate notes from items
+          if (receiptData.items.isNotEmpty) {
+            notesController.text = receiptData.items.join(', ');
+          }
+
+          // Use receipt date with fallback to current date, include time component
+          try {
+            final receiptDate = DateTime.parse(receiptData.date);
+            dateFieldController.text = receiptDate.toRelativeDayFormatted(showTime: true);
+          } catch (e) {
+            // Fallback to current date if receipt date cannot be parsed
+            dateFieldController.text = DateTime.now().toRelativeDayFormatted(showTime: true);
+          }
+
+          // Auto-select wallet matching receipt currency
+          if (receiptData.currency != null) {
+            final db = ref.read(databaseProvider);
+            final wallets = await db.walletDao.watchAllWallets().first;
+
+            // Find wallet with matching currency
+            WalletModel? matchingWallet;
+            try {
+              matchingWallet = wallets.firstWhere(
+                (w) => w.currency.toUpperCase() == receiptData.currency!.toUpperCase(),
+              );
+            } catch (e) {
+              // No matching wallet found, use first available
+              matchingWallet = wallets.firstOrNull;
+            }
+
+            if (matchingWallet != null && matchingWallet.id != null) {
+              selectedWallet.value = matchingWallet;
+            }
+          }
+
+          // Auto-select category from receipt category text
+          // Map receipt category to DB category
+          final categoryMapping = {
+            'Food & Dining': ['Food', 'Dining', 'Restaurant', 'Ăn uống'],
+            'Transportation': ['Transport', 'Travel', 'Di chuyển'],
+            'Shopping': ['Shopping', 'Mua sắm'],
+            'Entertainment': ['Entertainment', 'Giải trí'],
+            'Healthcare': ['Health', 'Medical', 'Y tế'],
+            'Utilities': ['Utilities', 'Bills', 'Hóa đơn'],
+          };
+
+          // Get all categories from DB
+          final db = ref.read(databaseProvider);
+          final allCategories = await db.categoryDao.watchAllCategories().first;
+
+          CategoryModel? matchedCategory;
+          for (final entry in categoryMapping.entries) {
+            if (receiptData.category.contains(entry.key)) {
+              // Try to find matching category in DB
+              for (final dbCat in allCategories) {
+                for (final keyword in entry.value) {
+                  if (dbCat.title.toLowerCase().contains(keyword.toLowerCase()) ||
+                      keyword.toLowerCase().contains(dbCat.title.toLowerCase())) {
+                    matchedCategory = dbCat.toModel();
+                    break;
+                  }
+                }
+                if (matchedCategory != null) break;
+              }
+            }
+            if (matchedCategory != null) break;
+          }
+
+          // Only set category if there's a match, don't auto-fill if no match
+          if (matchedCategory != null) {
+            selectedCategory.value = matchedCategory;
+          }
+
+          // Set receipt image if available
+          if (receiptData.imageBytes != null) {
+            final imageNotifier = ref.read(imageProvider.notifier);
+            await imageNotifier.setImageFromBytes(receiptData.imageBytes!);
+            // Save image to persistent storage so it can be used when saving transaction
+            await imageNotifier.saveImage();
+          }
+        });
+      }
+      return null;
+    },
+    [receiptData],
   );
 
   useEffect(
