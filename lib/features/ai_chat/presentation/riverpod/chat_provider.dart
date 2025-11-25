@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:collection/collection.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -26,6 +27,9 @@ import 'package:drift/drift.dart' as drift;
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/services/sync/chat_message_sync_service.dart';
 import 'package:bexly/core/utils/category_translation_map.dart';
+import 'package:bexly/features/receipt_scanner/presentation/riverpod/receipt_scanner_provider.dart';
+import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
+import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 
 // Simple category info for AI
 class CategoryInfo {
@@ -276,6 +280,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
   final Uuid _uuid = const Uuid();
   StreamSubscription? _typingSubscription;
 
+  // Store current receipt image for attaching to transactions
+  Uint8List? _currentReceiptImage;
+
   // Get AI service when needed to avoid provider rebuilds
   AIService get _aiService => _ref.read(aiServiceProvider);
 
@@ -398,9 +405,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
   }
 
-  Future<void> sendMessage(String content) async {
-    print('🚀 [DEBUG] sendMessage() CALLED with content: ${content.substring(0, content.length > 30 ? 30 : content.length)}...');
-    if (content.trim().isEmpty || state.isLoading) return;
+  Future<void> sendMessage(String content, {Uint8List? imageBytes}) async {
+    print('🚀 [DEBUG] sendMessage() CALLED with content: ${content.substring(0, content.length > 30 ? 30 : content.length)}... imageBytes: ${imageBytes != null ? "${imageBytes.length} bytes" : "null"}');
+    if ((content.trim().isEmpty && imageBytes == null) || state.isLoading) return;
 
     // NOTE: DO NOT invalidate aiServiceProvider here!
     // Invalidating destroys the service instance and loses conversation history
@@ -418,6 +425,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       content: content.trim(),
       isFromUser: true,
       timestamp: DateTime.now(),
+      imageBytes: imageBytes,
     );
 
     // Add user message and set loading state
@@ -432,6 +440,47 @@ class ChatNotifier extends StateNotifier<ChatState> {
     await _saveMessageToDatabase(userMessage);
 
     try {
+      // If image is provided, analyze it as a receipt first
+      String enhancedContent = content;
+      if (imageBytes != null) {
+        print('📸 [RECEIPT] Receipt image detected, analyzing...');
+        Log.d('Receipt image detected, analyzing...', label: 'Chat Provider');
+
+        try {
+          final receiptService = _ref.read(receiptScannerServiceProvider);
+          final receiptResult = await receiptService.analyzeReceipt(imageBytes: imageBytes);
+
+          print('📸 [RECEIPT] Receipt analyzed: ${receiptResult.merchant}, ${receiptResult.amount} ${receiptResult.currency}');
+          Log.d('Receipt analyzed: ${receiptResult.merchant}, ${receiptResult.amount} ${receiptResult.currency}', label: 'Chat Provider');
+
+          // Store receipt image for attaching to transaction
+          _currentReceiptImage = imageBytes;
+
+          // Build enhanced prompt with receipt data
+          enhancedContent = '''${content.trim()}
+
+RECEIPT_DATA:
+- Merchant: ${receiptResult.merchant}
+- Amount: ${receiptResult.amount} ${receiptResult.currency ?? 'VND'}
+- Date: ${receiptResult.date}
+- Category: ${receiptResult.category}
+- Payment Method: ${receiptResult.paymentMethod}
+- Items: ${receiptResult.items.join(', ')}
+${receiptResult.taxAmount != null ? '- Tax: ${receiptResult.taxAmount}' : ''}
+${receiptResult.tipAmount != null ? '- Tip: ${receiptResult.tipAmount}' : ''}
+
+Please create a transaction based on this receipt data.''';
+
+          print('📸 [RECEIPT] Enhanced content prepared');
+          Log.d('Enhanced content prepared for AI', label: 'Chat Provider');
+        } catch (e) {
+          print('❌ [RECEIPT] Failed to analyze receipt: $e');
+          Log.e('Failed to analyze receipt: $e', label: 'Chat Provider');
+          enhancedContent = '${content.trim()}\n\n[Failed to analyze receipt image. Please try again or enter transaction details manually.]';
+          _currentReceiptImage = null; // Clear on error
+        }
+      }
+
       // Update AI with recent transactions context before sending message
       await _updateRecentTransactionsContext();
 
@@ -464,8 +513,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
       // Start typing indicator
       _startTypingEffect();
 
-      // Get AI response
-      final response = await _aiService.sendMessage(content);
+      // Get AI response (use enhancedContent if receipt was analyzed)
+      final response = await _aiService.sendMessage(enhancedContent);
 
       print('📱 [DEBUG] AI Response received, length: ${response.length}');
       print('📱 [DEBUG] Response content: ${response.substring(0, response.length > 100 ? 100 : response.length)}...');
@@ -1217,6 +1266,38 @@ class ChatNotifier extends StateNotifier<ChatState> {
         Log.e('ERROR: Invalid insert ID: $insertedId', label: 'TRANSACTION_DEBUG');
         _addErrorMessage('❌ Failed to save transaction to database. Please try again.');
         return null;
+      }
+
+      // Attach receipt image if available
+      if (_currentReceiptImage != null) {
+        try {
+          print('📸 [RECEIPT] Attaching receipt image to transaction $insertedId');
+          Log.d('Attaching receipt image to transaction $insertedId', label: 'TRANSACTION_DEBUG');
+
+          final imageNotifier = _ref.read(imageProvider.notifier);
+          await imageNotifier.setImageFromBytes(_currentReceiptImage!);
+          final savedPath = await imageNotifier.saveImage();
+
+          if (savedPath != null) {
+            // Update transaction with image path
+            final updatedTransaction = transaction.copyWith(
+              id: insertedId,
+              imagePath: savedPath,
+            );
+            await transactionDao.updateTransaction(updatedTransaction);
+
+            print('📸 [RECEIPT] Receipt image attached successfully: $savedPath');
+            Log.d('Receipt image attached successfully: $savedPath', label: 'TRANSACTION_DEBUG');
+          }
+
+          // Clear receipt image after attaching
+          _currentReceiptImage = null;
+          imageNotifier.clearImage();
+        } catch (e) {
+          print('❌ [RECEIPT] Failed to attach receipt image: $e');
+          Log.e('Failed to attach receipt image: $e', label: 'TRANSACTION_DEBUG');
+          // Don't fail transaction creation if image attachment fails
+        }
       }
 
       // Adjust wallet balance
