@@ -248,7 +248,7 @@ void _showImageSourceBottomSheet(
   );
 }
 
-class _MessageBubble extends StatelessWidget {
+class _MessageBubble extends ConsumerWidget {
   final ChatMessage message;
   final bool isLast;
 
@@ -297,9 +297,10 @@ class _MessageBubble extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isUser = message.isFromUser;
     final isTyping = message.isTyping;
+    final hasPendingAction = message.hasPendingAction;
 
     return Container(
       margin: EdgeInsets.only(
@@ -405,6 +406,46 @@ class _MessageBubble extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                            // Show action buttons if pending action exists
+                            if (hasPendingAction) ...[
+                              const SizedBox(height: AppSpacing.spacing12),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: message.pendingAction!.buttons.map((button) {
+                                  final isConfirm = button.actionType == 'confirm';
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: AppSpacing.spacing8),
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        ref.read(chatProvider.notifier).handlePendingAction(
+                                          message.id,
+                                          button.actionType,
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: isConfirm ? AppColors.red : AppColors.neutral200,
+                                        foregroundColor: isConfirm ? AppColors.light : AppColors.neutral900,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSpacing.spacing16,
+                                          vertical: AppSpacing.spacing8,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        elevation: 0,
+                                      ),
+                                      child: Text(
+                                        button.label,
+                                        style: AppTextStyles.body4.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: isConfirm ? AppColors.light : AppColors.neutral900,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
                           ],
                         ),
                 ),

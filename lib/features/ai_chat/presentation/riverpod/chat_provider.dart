@@ -481,8 +481,9 @@ Please create a transaction based on this receipt data.''';
         }
       }
 
-      // Update AI with recent transactions context before sending message
+      // Update AI with recent transactions and budgets context before sending message
       await _updateRecentTransactionsContext();
+      await _updateBudgetsContext();
 
       // Update AI with current wallet context (CRITICAL: wallet list must be current!)
       print('🔧 [CHAT_DEBUG] About to update AI context...');
@@ -525,6 +526,7 @@ Please create a transaction based on this receipt data.''';
 
       // Extract JSON action if present
       String displayMessage = response;
+      PendingAction? pendingAction; // For destructive actions requiring confirmation
 
       // Look for all ACTION_JSON: prefixes (AI may return multiple on separate lines)
       final actionJsonPattern = RegExp(r'ACTION_JSON:\s*(\{[^}]+\})');
@@ -894,6 +896,76 @@ Please create a transaction based on this receipt data.''';
                 // a natural language confirmation in its response with wallet name
                 break;
               }
+            case 'list_budgets':
+              {
+                Log.d('Processing list_budgets action: $action', label: 'Chat Provider');
+                final listText = await _getBudgetsListText(action);
+                displayMessage += '\n\n' + listText;
+                break;
+              }
+            case 'delete_budget':
+              {
+                Log.d('Processing delete_budget action: $action', label: 'Chat Provider');
+                final requiresConfirmation = action['requiresConfirmation'] == true;
+
+                if (requiresConfirmation) {
+                  // Create pending action for confirmation
+                  pendingAction = PendingAction(
+                    actionType: 'delete_budget',
+                    actionData: action,
+                    buttons: [
+                      ChatActionButton(label: 'Xoá', actionType: 'confirm', actionData: action),
+                      ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
+                    ],
+                  );
+                } else {
+                  final deleteResult = await _deleteBudgetFromAction(action);
+                  displayMessage += '\n\n' + deleteResult;
+                }
+                break;
+              }
+            case 'delete_all_budgets':
+              {
+                Log.d('Processing delete_all_budgets action: $action', label: 'Chat Provider');
+                final requiresConfirmation = action['requiresConfirmation'] == true;
+
+                if (requiresConfirmation) {
+                  // Create pending action for confirmation
+                  pendingAction = PendingAction(
+                    actionType: 'delete_all_budgets',
+                    actionData: action,
+                    buttons: [
+                      ChatActionButton(label: 'Xoá tất cả', actionType: 'confirm', actionData: action),
+                      ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
+                    ],
+                  );
+                } else {
+                  final deleteResult = await _deleteAllBudgetsFromAction(action);
+                  displayMessage += '\n\n' + deleteResult;
+                }
+                break;
+              }
+            case 'update_budget':
+              {
+                Log.d('Processing update_budget action: $action', label: 'Chat Provider');
+                final requiresConfirmation = action['requiresConfirmation'] == true;
+
+                if (requiresConfirmation) {
+                  // Create pending action for confirmation
+                  pendingAction = PendingAction(
+                    actionType: 'update_budget',
+                    actionData: action,
+                    buttons: [
+                      ChatActionButton(label: 'Cập nhật', actionType: 'confirm', actionData: action),
+                      ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
+                    ],
+                  );
+                } else {
+                  final updateResult = await _updateBudgetFromAction(action);
+                  displayMessage += '\n\n' + updateResult;
+                }
+                break;
+              }
             default:
               {
                 Log.d('Unknown action: $actionType', label: 'Chat Provider');
@@ -916,6 +988,7 @@ Please create a transaction based on this receipt data.''';
         content: displayMessage,
         isFromUser: false,
         timestamp: DateTime.now(),
+        pendingAction: pendingAction,
       );
 
       print('[CHAT_DEBUG] Created AI message: ${aiMessage.content.length > 50 ? aiMessage.content.substring(0, 50) + '...' : aiMessage.content}');
@@ -2357,6 +2430,221 @@ Please create a transaction based on this receipt data.''';
     } catch (e, stackTrace) {
       Log.e('Failed to update recent transactions context: $e', label: 'Chat Provider');
       Log.e('Stack trace: $stackTrace', label: 'Chat Provider');
+    }
+  }
+
+  /// Get list of budgets for AI context
+  Future<String> _getBudgetsListText(Map<String, dynamic> action) async {
+    try {
+      final budgets = await _ref.read(budgetListProvider.future);
+      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final currency = wallet?.currency ?? 'VND';
+
+      if (budgets.isEmpty) {
+        return '📋 Không có budget nào.';
+      }
+
+      final period = action['period'] ?? 'current';
+      final now = DateTime.now();
+      final currentMonthStart = DateTime(now.year, now.month, 1);
+      final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
+
+      List<BudgetModel> filteredBudgets;
+      if (period == 'current') {
+        filteredBudgets = budgets.where((b) {
+          return (b.startDate.isBefore(currentMonthEnd) || b.startDate.isAtSameMomentAs(currentMonthEnd)) &&
+              (b.endDate.isAfter(currentMonthStart) || b.endDate.isAtSameMomentAs(currentMonthStart));
+        }).toList();
+      } else {
+        filteredBudgets = budgets;
+      }
+
+      if (filteredBudgets.isEmpty) {
+        return '📋 Không có budget nào trong tháng này.';
+      }
+
+      final buffer = StringBuffer('📋 Danh sách budget:\n');
+      for (final budget in filteredBudgets) {
+        final amountText = _formatAmount(budget.amount, currency: currency);
+        buffer.writeln('• #${budget.id} - ${budget.category?.title ?? 'Unknown'}: $amountText');
+      }
+
+      return buffer.toString().trim();
+    } catch (e) {
+      Log.e('Failed to get budgets list: $e', label: 'BUDGET_LIST');
+      return '❌ Lỗi khi lấy danh sách budget.';
+    }
+  }
+
+  /// Delete a single budget
+  Future<String> _deleteBudgetFromAction(Map<String, dynamic> action) async {
+    try {
+      final budgetId = (action['budgetId'] as num).toInt();
+      Log.d('Deleting budget ID: $budgetId', label: 'DELETE_BUDGET');
+
+      final budgetDao = _ref.read(budgetDaoProvider);
+      await budgetDao.deleteBudget(budgetId);
+
+      // Invalidate providers to refresh UI
+      _ref.invalidate(budgetListProvider);
+
+      return '✅ Đã xoá budget thành công.';
+    } catch (e, stackTrace) {
+      Log.e('Failed to delete budget: $e', label: 'DELETE_BUDGET');
+      Log.e('Stack trace: $stackTrace', label: 'DELETE_BUDGET');
+      return '❌ Lỗi khi xoá budget: $e';
+    }
+  }
+
+  /// Delete all budgets
+  Future<String> _deleteAllBudgetsFromAction(Map<String, dynamic> action) async {
+    try {
+      final period = action['period'] ?? 'current';
+      final budgets = await _ref.read(budgetListProvider.future);
+
+      if (budgets.isEmpty) {
+        return '📋 Không có budget nào để xoá.';
+      }
+
+      final budgetDao = _ref.read(budgetDaoProvider);
+      final now = DateTime.now();
+      final currentMonthStart = DateTime(now.year, now.month, 1);
+      final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
+
+      int deletedCount = 0;
+      for (final budget in budgets) {
+        bool shouldDelete = false;
+        if (period == 'all') {
+          shouldDelete = true;
+        } else {
+          // current month only
+          shouldDelete = (budget.startDate.isBefore(currentMonthEnd) || budget.startDate.isAtSameMomentAs(currentMonthEnd)) &&
+              (budget.endDate.isAfter(currentMonthStart) || budget.endDate.isAtSameMomentAs(currentMonthStart));
+        }
+
+        if (shouldDelete && budget.id != null) {
+          await budgetDao.deleteBudget(budget.id!);
+          deletedCount++;
+        }
+      }
+
+      // Invalidate providers to refresh UI
+      _ref.invalidate(budgetListProvider);
+
+      return '✅ Đã xoá $deletedCount budget thành công.';
+    } catch (e, stackTrace) {
+      Log.e('Failed to delete all budgets: $e', label: 'DELETE_ALL_BUDGETS');
+      Log.e('Stack trace: $stackTrace', label: 'DELETE_ALL_BUDGETS');
+      return '❌ Lỗi khi xoá budgets: $e';
+    }
+  }
+
+  /// Update a budget
+  Future<String> _updateBudgetFromAction(Map<String, dynamic> action) async {
+    try {
+      final budgetId = (action['budgetId'] as num).toInt();
+      Log.d('Updating budget ID: $budgetId', label: 'UPDATE_BUDGET');
+
+      final budgets = await _ref.read(budgetListProvider.future);
+      final budget = budgets.firstWhereOrNull((b) => b.id == budgetId);
+
+      if (budget == null) {
+        return '❌ Không tìm thấy budget #$budgetId.';
+      }
+
+      // Update fields if provided
+      double newAmount = budget.amount;
+      if (action['amount'] != null) {
+        newAmount = (action['amount'] as num).toDouble();
+      }
+
+      final updatedBudget = budget.copyWith(
+        amount: newAmount,
+        updatedAt: DateTime.now(),
+      );
+
+      final budgetDao = _ref.read(budgetDaoProvider);
+      await budgetDao.updateBudget(updatedBudget);
+
+      // Invalidate providers to refresh UI
+      _ref.invalidate(budgetListProvider);
+
+      final amountText = _formatAmount(newAmount, currency: _ref.read(activeWalletProvider).valueOrNull?.currency ?? 'VND');
+      return '✅ Đã cập nhật budget thành $amountText.';
+    } catch (e, stackTrace) {
+      Log.e('Failed to update budget: $e', label: 'UPDATE_BUDGET');
+      Log.e('Stack trace: $stackTrace', label: 'UPDATE_BUDGET');
+      return '❌ Lỗi khi cập nhật budget: $e';
+    }
+  }
+
+  /// Handle pending action confirmation
+  Future<void> handlePendingAction(String messageId, String actionType) async {
+    try {
+      // Find message with pending action
+      final messageIndex = state.messages.indexWhere((m) => m.id == messageId);
+      if (messageIndex == -1) return;
+
+      final message = state.messages[messageIndex];
+      if (message.pendingAction == null) return;
+
+      String resultMessage = '';
+
+      if (actionType == 'confirm') {
+        // Execute the action
+        switch (message.pendingAction!.actionType) {
+          case 'delete_budget':
+            resultMessage = await _deleteBudgetFromAction(message.pendingAction!.actionData);
+            break;
+          case 'delete_all_budgets':
+            resultMessage = await _deleteAllBudgetsFromAction(message.pendingAction!.actionData);
+            break;
+          case 'update_budget':
+            resultMessage = await _updateBudgetFromAction(message.pendingAction!.actionData);
+            break;
+        }
+      } else {
+        resultMessage = '❌ Đã huỷ thao tác.';
+      }
+
+      // Mark action as handled and add result to message
+      final updatedMessage = message.copyWith(
+        content: '${message.content}\n\n$resultMessage',
+        isActionHandled: true,
+      );
+
+      final updatedMessages = [...state.messages];
+      updatedMessages[messageIndex] = updatedMessage;
+
+      state = state.copyWith(messages: updatedMessages);
+    } catch (e) {
+      Log.e('Failed to handle pending action: $e', label: 'Chat Provider');
+    }
+  }
+
+  /// Update AI with current budgets context
+  Future<void> _updateBudgetsContext() async {
+    try {
+      final budgets = await _ref.read(budgetListProvider.future);
+      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final currency = wallet?.currency ?? 'VND';
+
+      if (budgets.isEmpty) {
+        _aiService.updateBudgetsContext('');
+        return;
+      }
+
+      final buffer = StringBuffer();
+      for (final budget in budgets) {
+        final amountText = _formatAmount(budget.amount, currency: currency);
+        buffer.writeln('#${budget.id} - ${budget.category?.title ?? 'Unknown'}: $amountText');
+      }
+
+      final contextString = buffer.toString().trim();
+      Log.d('Updating AI with budgets context:\n$contextString', label: 'Chat Provider');
+      _aiService.updateBudgetsContext(contextString);
+    } catch (e) {
+      Log.e('Failed to update budgets context: $e', label: 'Chat Provider');
     }
   }
 

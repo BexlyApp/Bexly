@@ -9,6 +9,7 @@ abstract class AIService {
   Future<String> sendMessage(String message);
   Stream<String> sendMessageStream(String message);
   void updateRecentTransactions(String recentTransactionsContext);
+  void updateBudgetsContext(String budgetsContext); // Update budgets list for AI
   void updateContext({
     String? walletName,
     String? walletCurrency,
@@ -22,6 +23,7 @@ abstract class AIService {
 mixin AIServicePromptMixin {
   List<String> get categories;
   String get recentTransactionsContext;
+  String get budgetsContext; // Current budgets for AI context
   String? get categoryHierarchy => null; // Optional hierarchy text
   String? get walletCurrency => null; // Optional wallet currency for conversion notification
   String? get walletName => null; // Optional wallet name for personalized responses
@@ -37,6 +39,7 @@ mixin AIServicePromptMixin {
         walletName: walletName,
         exchangeRateVndToUsd: exchangeRateVndToUsd,
         wallets: wallets,
+        budgetsContext: budgetsContext,
       );
 
   // Legacy getters for backwards compatibility (all delegate to AIPrompts)
@@ -74,9 +77,13 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   List<String>? wallets;
 
   String _recentTransactionsContext = '';
+  String _budgetsContext = '';
 
   @override
   String get recentTransactionsContext => _recentTransactionsContext;
+
+  @override
+  String get budgetsContext => _budgetsContext;
 
   // Conversation history for context
   final List<Map<String, String>> _conversationHistory = [];
@@ -99,6 +106,12 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   void updateRecentTransactions(String recentTransactionsContext) {
     _recentTransactionsContext = recentTransactionsContext;
     Log.d('Updated recent transactions context (${recentTransactionsContext.length} chars)', label: 'AI Service');
+  }
+
+  @override
+  void updateBudgetsContext(String budgetsContext) {
+    _budgetsContext = budgetsContext;
+    Log.d('Updated budgets context (${budgetsContext.length} chars)', label: 'AI Service');
   }
 
   @override
@@ -275,9 +288,13 @@ class GeminiService with AIServicePromptMixin implements AIService {
   List<String>? wallets;
 
   String _recentTransactionsContext = '';
+  String _budgetsContext = '';
 
   @override
   String get recentTransactionsContext => _recentTransactionsContext;
+
+  @override
+  String get budgetsContext => _budgetsContext;
 
   // Conversation history for context (using Gemini's Content format)
   final List<Content> _conversationHistory = [];
@@ -298,7 +315,13 @@ class GeminiService with AIServicePromptMixin implements AIService {
   @override
   void updateRecentTransactions(String recentTransactionsContext) {
     _recentTransactionsContext = recentTransactionsContext;
-    Log.d('Updated recent transactions context (${recentTransactionsContext.length} chars)', label: 'AI Service');
+    Log.d('Updated recent transactions context (${recentTransactionsContext.length} chars)', label: 'Gemini Service');
+  }
+
+  @override
+  void updateBudgetsContext(String budgetsContext) {
+    _budgetsContext = budgetsContext;
+    Log.d('Updated budgets context (${budgetsContext.length} chars)', label: 'Gemini Service');
   }
 
   @override
