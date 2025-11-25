@@ -10,6 +10,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/transaction/presentation/components/transaction_grouped_card.dart';
 import 'package:bexly/features/transaction/presentation/components/transaction_summary_card.dart';
@@ -46,7 +47,11 @@ class TransactionScreen extends ConsumerWidget {
       ],
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          context.push(Routes.transactionForm);
+          showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const TransactionOptionsMenu(),
+          );
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
         child: Icon(

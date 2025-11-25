@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 class ChatMessage {
   final String id;
   final String content;
@@ -5,6 +7,7 @@ class ChatMessage {
   final DateTime timestamp;
   final bool isTyping;
   final String? error;
+  final Uint8List? imageBytes;
 
   ChatMessage({
     required this.id,
@@ -13,6 +16,7 @@ class ChatMessage {
     required this.timestamp,
     this.isTyping = false,
     this.error,
+    this.imageBytes,
   });
 
   ChatMessage copyWith({
@@ -22,6 +26,7 @@ class ChatMessage {
     DateTime? timestamp,
     bool? isTyping,
     String? error,
+    Uint8List? imageBytes,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -30,6 +35,7 @@ class ChatMessage {
       timestamp: timestamp ?? this.timestamp,
       isTyping: isTyping ?? this.isTyping,
       error: error ?? this.error,
+      imageBytes: imageBytes ?? this.imageBytes,
     );
   }
 }

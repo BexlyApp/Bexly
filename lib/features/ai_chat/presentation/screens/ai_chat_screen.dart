@@ -1,7 +1,9 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
@@ -129,8 +131,8 @@ class AIChatScreen extends HookConsumerWidget {
             color: Theme.of(context).scaffoldBackgroundColor,
             child: _ChatInput(
               controller: textController,
-              onSend: (message) {
-                chatNotifier.sendMessage(message);
+              onSend: (message, imageBytes) {
+                chatNotifier.sendMessage(message, imageBytes: imageBytes);
                 textController.clear();
               },
               isLoading: chatState.isLoading,
@@ -140,6 +142,110 @@ class AIChatScreen extends HookConsumerWidget {
       ),
     );
   }
+}
+
+// Show bottom sheet to select image source
+void _showImageSourceBottomSheet(
+  BuildContext context,
+  ImagePicker imagePicker,
+  ValueNotifier<Uint8List?> selectedImage,
+) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (context) => Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.spacing16,
+        vertical: AppSpacing.spacing24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary600.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.camera_alt,
+                color: AppColors.primary600,
+              ),
+            ),
+            title: Text(
+              'Camera',
+              style: AppTextStyles.body2,
+            ),
+            subtitle: Text(
+              'Capture receipt with camera',
+              style: AppTextStyles.body4.copyWith(
+                color: AppColors.neutral400,
+              ),
+            ),
+            onTap: () async {
+              Navigator.pop(context);
+              try {
+                final XFile? image = await imagePicker.pickImage(
+                  source: ImageSource.camera,
+                  imageQuality: 85,
+                );
+                if (image != null) {
+                  final bytes = await image.readAsBytes();
+                  selectedImage.value = bytes;
+                }
+              } catch (e) {
+                Log.e('Failed to pick image from camera: $e', label: 'ImagePicker');
+              }
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.greenAlpha10,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.photo_library,
+                color: AppColors.green200,
+              ),
+            ),
+            title: Text(
+              'Gallery',
+              style: AppTextStyles.body2,
+            ),
+            subtitle: Text(
+              'Choose from your photos',
+              style: AppTextStyles.body4.copyWith(
+                color: AppColors.neutral400,
+              ),
+            ),
+            onTap: () async {
+              Navigator.pop(context);
+              try {
+                final XFile? image = await imagePicker.pickImage(
+                  source: ImageSource.gallery,
+                  imageQuality: 85,
+                );
+                if (image != null) {
+                  final bytes = await image.readAsBytes();
+                  selectedImage.value = bytes;
+                }
+              } catch (e) {
+                Log.e('Failed to pick image from gallery: $e', label: 'ImagePicker');
+              }
+            },
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _MessageBubble extends StatelessWidget {
@@ -265,21 +371,41 @@ class _MessageBubble extends StatelessWidget {
                             ),
                           ],
                         )
-                      : SelectableText.rich(
-                          TextSpan(
-                            children: _parseMarkdownBold(
-                              message.content,
-                              AppTextStyles.body2.copyWith(
-                                color: isUser
-                                    ? AppColors.light
-                                    : AppColors.neutral900,
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Show image thumbnail if present
+                            if (message.imageBytes != null) ...[
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.memory(
+                                  message.imageBytes!,
+                                  width: 200,
+                                  fit: BoxFit.cover,
+                                ),
                               ),
-                              // Highlight color for bold text
-                              isUser
-                                  ? AppColors.light
-                                  : AppColors.primary600, // Use primary color for AI highlights
-                            ),
-                          ),
+                              if (message.content.trim().isNotEmpty)
+                                const SizedBox(height: AppSpacing.spacing8),
+                            ],
+                            // Show text content if present
+                            if (message.content.trim().isNotEmpty)
+                              SelectableText.rich(
+                                TextSpan(
+                                  children: _parseMarkdownBold(
+                                    message.content,
+                                    AppTextStyles.body2.copyWith(
+                                      color: isUser
+                                          ? AppColors.light
+                                          : AppColors.neutral900,
+                                    ),
+                                    // Highlight color for bold text
+                                    isUser
+                                        ? AppColors.light
+                                        : AppColors.primary600, // Use primary color for AI highlights
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                 ),
 
@@ -394,7 +520,7 @@ class _TypingDotState extends State<_TypingDot>
 
 class _ChatInput extends HookWidget {
   final TextEditingController controller;
-  final Function(String) onSend;
+  final Function(String, Uint8List?) onSend;
   final bool isLoading;
 
   const _ChatInput({
@@ -406,6 +532,8 @@ class _ChatInput extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final focusNode = useFocusNode();
+    final selectedImage = useState<Uint8List?>(null);
+    final imagePicker = ImagePicker();
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.spacing16),
@@ -418,115 +546,154 @@ class _ChatInput extends HookWidget {
           ),
         ),
       ),
-      child: ValueListenableBuilder<TextEditingValue>(
-        valueListenable: controller,
-        builder: (context, value, child) {
-          return Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  maxLines: 4,
-                  minLines: 1,
-                  enabled: !isLoading,
-                  textCapitalization: TextCapitalization.sentences,
-                  style: AppTextStyles.body2.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Image preview if selected
+          if (selectedImage.value != null)
+            Container(
+              padding: const EdgeInsets.only(bottom: AppSpacing.spacing8),
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.memory(
+                      selectedImage.value!,
+                      height: 100,
+                      width: 100,
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                  decoration: InputDecoration(
-                hintText: AppLocalizations.of(context)?.typeYourMessage ?? 'Type your message...',
-                hintStyle: AppTextStyles.body2.copyWith(
-                  color: AppColors.neutral400,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.spacing16,
-                  vertical: AppSpacing.spacing8,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(
-                    color: AppColors.neutral200,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(
-                    color: AppColors.neutral200,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(
-                    color: AppColors.primary600,
-                    width: 2,
-                  ),
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-              ),
-              onSubmitted: (value) {
-                if (value.trim().isNotEmpty && !isLoading) {
-                  onSend(value);
-                }
-              },
-            ),
-          ),
-
-          const SizedBox(width: AppSpacing.spacing8),
-
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              gradient: controller.text.trim().isNotEmpty && !isLoading
-                  ? const LinearGradient(
-                      colors: [AppColors.primary500, AppColors.primary700],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              color: controller.text.trim().isEmpty || isLoading
-                  ? AppColors.neutral200
-                  : null,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(24),
-                onTap: controller.text.trim().isNotEmpty && !isLoading
-                    ? () {
-                        HapticFeedback.lightImpact();
-                        onSend(controller.text);
-                      }
-                    : null,
-                child: Center(
-                  child: isLoading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppColors.primary600,
-                            ),
-                          ),
-                        )
-                      : Icon(
-                          Icons.send_rounded,
-                          color: controller.text.trim().isNotEmpty
-                              ? AppColors.light
-                              : AppColors.neutral400,
-                          size: 20,
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => selectedImage.value = null,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
                         ),
-                ),
+                        child: Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, child) {
+              final hasText = controller.text.trim().isNotEmpty;
+              final canSend = hasText || selectedImage.value != null;
+
+              return Row(
+                children: [
+                  // Add/Send button (morphs based on text input)
+                  Container(
+                    width: 40,
+                    height: 40,
+                    margin: const EdgeInsets.only(right: AppSpacing.spacing8),
+                    decoration: BoxDecoration(
+                      gradient: canSend && !isLoading
+                          ? const LinearGradient(
+                              colors: [AppColors.primary500, AppColors.primary700],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : null,
+                      color: !canSend || isLoading ? AppColors.neutral200 : null,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: isLoading
+                            ? null
+                            : canSend
+                                ? () {
+                                    HapticFeedback.lightImpact();
+                                    onSend(controller.text, selectedImage.value);
+                                    selectedImage.value = null;
+                                  }
+                                : () {
+                                    HapticFeedback.lightImpact();
+                                    _showImageSourceBottomSheet(context, imagePicker, selectedImage);
+                                  },
+                        child: Center(
+                          child: Icon(
+                            canSend ? Icons.send_rounded : Icons.add,
+                            color: canSend ? AppColors.light : AppColors.neutral600,
+                            size: canSend ? 20 : 24,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      maxLines: 4,
+                      minLines: 1,
+                      enabled: !isLoading,
+                      textCapitalization: TextCapitalization.sentences,
+                      style: AppTextStyles.body2.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: AppLocalizations.of(context)?.typeYourMessage ?? 'Type your message...',
+                        hintStyle: AppTextStyles.body2.copyWith(
+                          color: AppColors.neutral400,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.spacing16,
+                          vertical: AppSpacing.spacing8,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide(
+                            color: AppColors.neutral200,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide(
+                            color: AppColors.neutral200,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide(
+                            color: AppColors.primary600,
+                            width: 2,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
+                      ),
+                      onSubmitted: (value) {
+                        if ((value.trim().isNotEmpty || selectedImage.value != null) && !isLoading) {
+                          onSend(value, selectedImage.value);
+                          selectedImage.value = null;
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
-      );
-      }),
+      ),
     );
   }
 }

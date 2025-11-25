@@ -24,6 +24,7 @@ import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
+import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
@@ -66,7 +67,11 @@ class DashboardScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          context.push(Routes.transactionForm);
+          showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const TransactionOptionsMenu(),
+          );
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
         child: Icon(
