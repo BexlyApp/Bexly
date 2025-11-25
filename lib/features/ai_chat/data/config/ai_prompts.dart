@@ -43,11 +43,20 @@ SCHEMAS:
 9. delete_transaction: {"action":"delete_transaction","transactionId":<num>}
 10. create_wallet: {"action":"create_wallet","name":"<str>","currency":"USD|VND","initialBalance":<num>?}
 11. create_recurring: {"action":"create_recurring","name":"<str>","amount":<num>,"currency":"USD|VND","category":"<str>","frequency":"daily|weekly|monthly|yearly","nextDueDate":"YYYY-MM-DD","enableReminder":<bool>?,"autoCreate":<bool>?,"wallet":"<str>"?}
+12. update_budget: {"action":"update_budget","budgetId":<num>,"amount":<num>?,"category":"<str>"?,"period":"monthly|weekly|custom"?}
+13. delete_budget: {"action":"delete_budget","budgetId":<num>}
+14. delete_all_budgets: {"action":"delete_all_budgets","period":"current|all"?}
+15. list_budgets: {"action":"list_budgets","period":"current|all"?}
 
 BUDGET NOTES:
 - period defaults to "monthly" if not specified - DO NOT ask user!
 - Budget = spending limit for a category over time period
 - If user says "ngân sách X cho Y" without period, use monthly
+- DESTRUCTIVE ACTIONS (delete_budget, delete_all_budgets, update_budget):
+  - Set "requiresConfirmation": true in your ACTION_JSON
+  - Include clear details in response so user knows what will be affected
+  - list_budgets first if user asks to delete/update without specifying which one
+  - Example: User says "xoá budget ăn uống" → list budgets first, then confirm
 
 RECURRING NOTES:
 - nextDueDate = first billing date
@@ -372,7 +381,24 @@ FOOD CATEGORY RULES:
 - Use "Food & Drinks" for general food expenses (breakfast, lunch, snacks, groceries eaten)
 - Use "Restaurants" ONLY when explicitly mentioned or clear dining out context
 - Use "Groceries" for grocery shopping
-- Use "Coffee & Tea" for cafes, coffee shops''';
+- Use "Coffee & Tea" for cafes, coffee shops
+
+BUDGET MANAGEMENT EXAMPLES:
+IN: "xoá tất cả budget"
+OUT: "❓ Bạn có 3 budget hiện tại. Xác nhận xoá tất cả?"
+JSON: {"action":"delete_all_budgets","period":"current","requiresConfirmation":true}
+
+IN: "xoá budget ăn uống"
+OUT: "❓ Xoá budget **Ăn uống** (đ 3,000,000/tháng)?"
+JSON: {"action":"delete_budget","budgetId":1,"requiresConfirmation":true}
+
+IN: "sửa budget điện thoại thành 500k"
+OUT: "❓ Cập nhật budget **Điện thoại** từ đ 300,000 → đ 500,000?"
+JSON: {"action":"update_budget","budgetId":2,"amount":500000,"requiresConfirmation":true}
+
+IN: "liệt kê các budget"
+OUT: "📋 Danh sách budget tháng này:\\n1. Ăn uống: đ 3,000,000\\n2. Điện thoại: đ 300,000"
+JSON: {"action":"list_budgets","period":"current"}''';
 
   // =========================================================================
   // DYNAMIC SECTIONS (Context-dependent)
@@ -411,6 +437,18 @@ $recentTransactionsContext
 Use transaction IDs from this list when user references them.''';
   }
 
+  /// Build budgets section for AI context
+  static String buildBudgetsSection(String budgetsContext) {
+    if (budgetsContext.isEmpty) return '';
+
+    return '''
+CURRENT BUDGETS:
+$budgetsContext
+
+Use budget IDs from this list when user wants to delete/update budgets.
+Always reference the exact budget by ID in your ACTION_JSON.''';
+  }
+
   // =========================================================================
   // MAIN PROMPT BUILDER (Optimized Order)
   // =========================================================================
@@ -424,6 +462,7 @@ Use transaction IDs from this list when user references them.''';
     String? walletName,
     double? exchangeRateVndToUsd,
     List<String>? wallets,
+    String? budgetsContext,
   }) {
     // Add wallet context if provided
     final walletContext = (walletCurrency != null || walletName != null)
@@ -434,6 +473,9 @@ Use transaction IDs from this list when user references them.''';
     final exchangeRateContext = (exchangeRateVndToUsd != null)
         ? '\n\nEXCHANGE_RATE:\n1 USD = ${exchangeRateVndToUsd.toStringAsFixed(2)} VND\n1 VND = ${(1 / exchangeRateVndToUsd).toStringAsFixed(6)} USD'
         : '';
+
+    // Build budgets section
+    final budgetsSectionText = buildBudgetsSection(budgetsContext ?? '');
 
     // OPTIMAL ORDER: Role → Output Format → Input Rules → Context → Examples
     return '''$systemInstruction$walletContext$exchangeRateContext
@@ -447,6 +489,8 @@ ${buildDateParsingRules()}
 ${buildContextSection(categories, categoryHierarchy: categoryHierarchy, wallets: wallets)}
 
 ${buildRecentTransactionsSection(recentTransactionsContext)}
+
+$budgetsSectionText
 
 $businessRules
 
