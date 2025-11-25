@@ -10,6 +10,7 @@ import 'package:bexly/core/router/currency_router.dart';
 import 'package:bexly/core/router/goal_router.dart'; // ← import your GoalRouter
 import 'package:bexly/core/router/notification_router.dart';
 import 'package:bexly/core/router/onboarding_router.dart';
+import 'package:bexly/core/router/receipt_scanner_router.dart';
 import 'package:bexly/core/router/report_router.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/router/settings_router.dart';
@@ -45,5 +46,6 @@ final router = GoRouter(
     ...CurrencyRouter.routes,
     ...WalletRouter.routes,
     ...ReportRouter.routes,
+    ...ReceiptScannerRouter.routes,
   ],
 );

@@ -293,12 +293,10 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> populateData() async {
-    // More direct would be to call populate services directly.
-    // Let's call population services directly to avoid redundant createAll.
+    // Only populate categories - user must create their own wallet
     Log.i('Populating default categories during reset...', label: 'database');
     await CategoryPopulationService.populate(this);
-    Log.i('Populating default wallets during reset...', label: 'database');
-    await WalletPopulationService.populate(this);
+    // Note: Do NOT populate default wallets - user should create their own
   }
 
   // --- Data Management Methods ---

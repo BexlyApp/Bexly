@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:bexly/core/services/image_service/domain/image_state.dart';
 import 'package:bexly/core/services/image_service/image_service.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_service_provider.dart';
@@ -102,6 +104,31 @@ class ImageNotifier extends StateNotifier<ImageState> {
     } catch (e) {
       state = state.copyWith(
         error: 'Failed to load image from path: $e',
+        isLoading: false,
+      );
+    }
+  }
+
+  /// Sets an image from bytes (e.g., from receipt scanner)
+  /// Creates a temporary file and saves the bytes to it
+  Future<void> setImageFromBytes(Uint8List imageBytes, {String fileName = 'receipt.jpg'}) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      // Create temporary file
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/$fileName');
+
+      // Write bytes to file
+      await tempFile.writeAsBytes(imageBytes);
+
+      // Update state with the file
+      state = state.copyWith(
+        imageFile: tempFile,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        error: 'Failed to load image from bytes: $e',
         isLoading: false,
       );
     }

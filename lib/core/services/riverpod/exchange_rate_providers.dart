@@ -34,6 +34,12 @@ class BaseCurrencyNotifier extends StateNotifier<String> {
     }
   }
 
+  /// Public method to re-initialize base currency from first wallet
+  /// Call this after resetting data
+  Future<void> initializeFromFirstWallet() async {
+    await _initializeFromFirstWallet();
+  }
+
   Future<void> _initializeFromFirstWallet() async {
     try {
       final db = _ref.read(databaseProvider);
