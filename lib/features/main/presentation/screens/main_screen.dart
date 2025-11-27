@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:bexly/features/main/presentation/components/custom_bottom_app_bar.dart';
@@ -10,19 +9,43 @@ import 'package:bexly/features/ai_chat/presentation/screens/ai_chat_screen.dart'
 import 'package:bexly/features/recurring/presentation/screens/recurring_screen.dart';
 import 'package:bexly/features/planning/presentation/screens/planning_screen.dart';
 
-class MainScreen extends ConsumerWidget {
+class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 
   @override
-  Widget build(BuildContext context, ref) {
+  ConsumerState<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends ConsumerState<MainScreen> {
+  // PageController must be created once and reused to prevent rebuilding pages
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialPage = ref.read(pageControllerProvider);
+    _pageController = PageController(initialPage: initialPage);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentPage = ref.watch(pageControllerProvider);
-    // It's generally recommended to create PageController outside build or use usePageController hook if stateful,
-    // but for this structure, ensure it's stable or managed by a provider if complex interactions are needed.
-    // For this specific case where it's driven by Riverpod's currentPage, it's acceptable.
-    final pageController = PageController(initialPage: currentPage);
+
+    // Sync PageController with provider state (when changed externally)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_pageController.hasClients && _pageController.page?.round() != currentPage) {
+        _pageController.jumpToPage(currentPage);
+      }
+    });
 
     final Widget pageViewWidget = PageView(
-      controller: pageController,
+      controller: _pageController,
       onPageChanged: (value) {
         ref.read(pageControllerProvider.notifier).setPage(value);
       },
@@ -36,7 +59,7 @@ class MainScreen extends ConsumerWidget {
     );
 
     final Widget navigationControls = CustomBottomAppBar(
-      pageController: pageController,
+      pageController: _pageController,
     );
 
     return PopScope(

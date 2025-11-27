@@ -429,12 +429,14 @@ class ChatNotifier extends StateNotifier<ChatState> {
     );
 
     // Add user message and set loading state
+    print('[CHAT_DEBUG] Adding user message. Current count: ${state.messages.length}');
     state = state.copyWith(
       messages: [...state.messages, userMessage],
       isLoading: true,
       isTyping: false,
       error: null,
     );
+    print('[CHAT_DEBUG] User message added. New count: ${state.messages.length}');
 
     // Save user message to database
     await _saveMessageToDatabase(userMessage);
@@ -518,7 +520,8 @@ Please create a transaction based on this receipt data.''';
       final response = await _aiService.sendMessage(enhancedContent);
 
       print('📱 [DEBUG] AI Response received, length: ${response.length}');
-      print('📱 [DEBUG] Response content: ${response.substring(0, response.length > 100 ? 100 : response.length)}...');
+      print('📱 [DEBUG] Response FULL: $response');
+      print('📱 [DEBUG] Contains ACTION_JSON: ${response.contains('ACTION_JSON')}');
       Log.d('AI Response: $response', label: 'Chat Provider');
 
       // NOTE: Do NOT cancel typing effect here - we'll replace the typing message instead
@@ -528,35 +531,62 @@ Please create a transaction based on this receipt data.''';
       String displayMessage = response;
       PendingAction? pendingAction; // For destructive actions requiring confirmation
 
-      // Look for all ACTION_JSON: prefixes (AI may return multiple on separate lines)
-      final actionJsonPattern = RegExp(r'ACTION_JSON:\s*(\{[^}]+\})');
-      final matches = actionJsonPattern.allMatches(response).toList();
+      // Extract ACTION_JSON by finding balanced braces (handles any JSON structure)
+      final List<Map<String, dynamic>> actions = [];
+      int? firstJsonStart;
 
-      print('📱 [DEBUG] Found ${matches.length} ACTION_JSON matches');
-      Log.d('🔍 Found ${matches.length} ACTION_JSON matches', label: 'Chat Provider');
+      final actionPrefix = 'ACTION_JSON:';
+      int searchStart = 0;
+      while (true) {
+        final prefixIndex = response.indexOf(actionPrefix, searchStart);
+        if (prefixIndex == -1) break;
 
-      if (matches.isNotEmpty) {
-        print('📱 [DEBUG] Found ACTION_JSON in response, parsing...');
-        Log.d('🔍 Found ACTION_JSON in response, parsing...', label: 'Chat Provider');
+        firstJsonStart ??= prefixIndex;
 
-        // Extract the display message (everything before first ACTION_JSON)
-        displayMessage = response.substring(0, matches.first.start).trim();
+        // Find the opening brace
+        final braceStart = response.indexOf('{', prefixIndex);
+        if (braceStart == -1) break;
 
-        // Parse each ACTION_JSON into actions list
-        final List<Map<String, dynamic>> actions = [];
-        for (final match in matches) {
-          final jsonStr = match.group(1)!;
-          print('📱 [DEBUG] Parsing JSON: $jsonStr');
-          Log.d('🔍 Parsing JSON: $jsonStr', label: 'Chat Provider');
+        // Find matching closing brace by counting braces
+        int braceCount = 0;
+        int? jsonEnd;
+        for (int i = braceStart; i < response.length; i++) {
+          if (response[i] == '{') braceCount++;
+          if (response[i] == '}') braceCount--;
+          if (braceCount == 0) {
+            jsonEnd = i + 1;
+            break;
+          }
+        }
+
+        if (jsonEnd != null) {
+          final jsonStr = response.substring(braceStart, jsonEnd);
+          print('📱 [DEBUG] Extracted JSON: $jsonStr');
+          Log.d('🔍 Extracted JSON: $jsonStr', label: 'Chat Provider');
 
           try {
             final decoded = jsonDecode(jsonStr);
             if (decoded is Map<String, dynamic>) {
               actions.add(decoded);
+              print('📱 [DEBUG] Parsed action: ${decoded['action']}, requiresConfirmation: ${decoded['requiresConfirmation']}');
             }
           } catch (e) {
-            Log.e('Failed to parse individual ACTION_JSON: $e', label: 'Chat Provider');
+            Log.e('Failed to parse ACTION_JSON: $e', label: 'Chat Provider');
           }
+        }
+
+        searchStart = prefixIndex + actionPrefix.length;
+      }
+
+      print('📱 [DEBUG] Found ${actions.length} ACTION_JSON actions');
+      Log.d('🔍 Found ${actions.length} ACTION_JSON actions', label: 'Chat Provider');
+
+      if (actions.isNotEmpty) {
+        print('📱 [DEBUG] Processing ${actions.length} actions...');
+
+        // Extract the display message (everything before first ACTION_JSON)
+        if (firstJsonStart != null) {
+          displayMessage = response.substring(0, firstJsonStart).trim();
         }
 
         Log.d('🔍 Total actions parsed: ${actions.length}', label: 'Chat Provider');
@@ -906,64 +936,43 @@ Please create a transaction based on this receipt data.''';
             case 'delete_budget':
               {
                 Log.d('Processing delete_budget action: $action', label: 'Chat Provider');
-                final requiresConfirmation = action['requiresConfirmation'] == true;
-
-                if (requiresConfirmation) {
-                  // Create pending action for confirmation
-                  pendingAction = PendingAction(
-                    actionType: 'delete_budget',
-                    actionData: action,
-                    buttons: [
-                      ChatActionButton(label: 'Xoá', actionType: 'confirm', actionData: action),
-                      ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
-                    ],
-                  );
-                } else {
-                  final deleteResult = await _deleteBudgetFromAction(action);
-                  displayMessage += '\n\n' + deleteResult;
-                }
+                // ALWAYS require confirmation for destructive actions - don't trust AI
+                pendingAction = PendingAction(
+                  actionType: 'delete_budget',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: 'Xoá', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
+                  ],
+                );
                 break;
               }
             case 'delete_all_budgets':
               {
                 Log.d('Processing delete_all_budgets action: $action', label: 'Chat Provider');
-                final requiresConfirmation = action['requiresConfirmation'] == true;
-
-                if (requiresConfirmation) {
-                  // Create pending action for confirmation
-                  pendingAction = PendingAction(
-                    actionType: 'delete_all_budgets',
-                    actionData: action,
-                    buttons: [
-                      ChatActionButton(label: 'Xoá tất cả', actionType: 'confirm', actionData: action),
-                      ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
-                    ],
-                  );
-                } else {
-                  final deleteResult = await _deleteAllBudgetsFromAction(action);
-                  displayMessage += '\n\n' + deleteResult;
-                }
+                // ALWAYS require confirmation for destructive actions - don't trust AI
+                pendingAction = PendingAction(
+                  actionType: 'delete_all_budgets',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: 'Xoá tất cả', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
+                  ],
+                );
                 break;
               }
             case 'update_budget':
               {
                 Log.d('Processing update_budget action: $action', label: 'Chat Provider');
-                final requiresConfirmation = action['requiresConfirmation'] == true;
-
-                if (requiresConfirmation) {
-                  // Create pending action for confirmation
-                  pendingAction = PendingAction(
-                    actionType: 'update_budget',
-                    actionData: action,
-                    buttons: [
-                      ChatActionButton(label: 'Cập nhật', actionType: 'confirm', actionData: action),
-                      ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
-                    ],
-                  );
-                } else {
-                  final updateResult = await _updateBudgetFromAction(action);
-                  displayMessage += '\n\n' + updateResult;
-                }
+                // ALWAYS require confirmation for destructive actions - don't trust AI
+                pendingAction = PendingAction(
+                  actionType: 'update_budget',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: 'Cập nhật', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
+                  ],
+                );
                 break;
               }
             default:
@@ -983,6 +992,10 @@ Please create a transaction based on this receipt data.''';
       // The AI should explicitly return ACTION_JSON when user wants to create a transaction
       // Otherwise, responding to AI questions with numbers would incorrectly create transactions
 
+      print('[CHAT_DEBUG] pendingAction before create message: $pendingAction');
+      print('[CHAT_DEBUG] pendingAction buttons: ${pendingAction?.buttons.length ?? 0}');
+      print('[CHAT_DEBUG] displayMessage FINAL: $displayMessage');
+
       final aiMessage = ChatMessage(
         id: _uuid.v4(),
         content: displayMessage,
@@ -992,6 +1005,7 @@ Please create a transaction based on this receipt data.''';
       );
 
       print('[CHAT_DEBUG] Created AI message: ${aiMessage.content.length > 50 ? aiMessage.content.substring(0, 50) + '...' : aiMessage.content}');
+      print('[CHAT_DEBUG] AI message hasPendingAction: ${aiMessage.hasPendingAction}');
 
       // Update state - wrap ALL state access in try-catch to handle dispose
       try {
@@ -1521,6 +1535,24 @@ Please create a transaction based on this receipt data.''';
 
       final amount = (action['amount'] as num).toDouble();
       final isRoutine = action['isRoutine'] ?? false;
+
+      // Check for duplicate budget before creating
+      final existingBudgets = await _ref.read(budgetListProvider.future);
+      final categoryId = category.id;
+      final walletId = wallet.id;
+      final isDuplicate = existingBudgets.any((b) =>
+          b.category.id == categoryId &&
+          b.wallet.id == walletId &&
+          b.amount == amount &&
+          b.startDate.year == startDate.year &&
+          b.startDate.month == startDate.month &&
+          b.endDate.year == endDate.year &&
+          b.endDate.month == endDate.month);
+
+      if (isDuplicate) {
+        Log.d('Skipping duplicate budget: category=${category.title}, amount=$amount', label: 'BUDGET_DEBUG');
+        return;
+      }
 
       // Import budget model and providers
       final BudgetModel budget = BudgetModel(
@@ -2499,8 +2531,12 @@ Please create a transaction based on this receipt data.''';
   /// Delete all budgets
   Future<String> _deleteAllBudgetsFromAction(Map<String, dynamic> action) async {
     try {
-      final period = action['period'] ?? 'current';
+      print('🗑️ [DELETE_ALL] Starting delete all budgets...');
+      final period = action['period'] ?? 'all'; // Default to 'all' to delete everything
       final budgets = await _ref.read(budgetListProvider.future);
+
+      print('🗑️ [DELETE_ALL] period=$period, total budgets=${budgets.length}');
+      Log.d('Delete all budgets: period=$period, total budgets=${budgets.length}', label: 'DELETE_ALL_BUDGETS');
 
       if (budgets.isEmpty) {
         return '📋 Không có budget nào để xoá.';
@@ -2522,9 +2558,13 @@ Please create a transaction based on this receipt data.''';
               (budget.endDate.isAfter(currentMonthStart) || budget.endDate.isAtSameMomentAs(currentMonthStart));
         }
 
+        Log.d('Budget ${budget.id}: shouldDelete=$shouldDelete, startDate=${budget.startDate}, endDate=${budget.endDate}', label: 'DELETE_ALL_BUDGETS');
+
         if (shouldDelete && budget.id != null) {
+          print('🗑️ [DELETE_ALL] Deleting budget id=${budget.id}');
           await budgetDao.deleteBudget(budget.id!);
           deletedCount++;
+          print('🗑️ [DELETE_ALL] Deleted budget id=${budget.id}, total deleted=$deletedCount');
         }
       }
 
@@ -2611,14 +2651,34 @@ Please create a transaction based on this receipt data.''';
       final updatedMessage = message.copyWith(
         content: '${message.content}\n\n$resultMessage',
         isActionHandled: true,
+        pendingAction: null, // Clear pending action after handling
       );
 
       final updatedMessages = [...state.messages];
       updatedMessages[messageIndex] = updatedMessage;
 
       state = state.copyWith(messages: updatedMessages);
+
+      // Save updated message to database
+      await _updateMessageInDatabase(updatedMessage);
+      Log.d('Updated message saved to database: ${updatedMessage.id}', label: 'Chat Provider');
     } catch (e) {
       Log.e('Failed to handle pending action: $e', label: 'Chat Provider');
+    }
+  }
+
+  /// Update existing message in database
+  Future<void> _updateMessageInDatabase(ChatMessage message) async {
+    try {
+      final dao = _ref.read(chatMessageDaoProvider);
+      Log.d('Updating message ${message.id} with content: ${message.content}', label: 'Chat Provider');
+      final rowsAffected = await dao.updateMessageContent(
+        message.id,
+        message.content,
+      );
+      Log.d('Updated $rowsAffected rows in database', label: 'Chat Provider');
+    } catch (e) {
+      Log.e('Failed to update message in database: $e', label: 'Chat Provider');
     }
   }
 

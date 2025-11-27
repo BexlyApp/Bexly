@@ -757,13 +757,31 @@ class RealtimeSyncService {
         return;
       }
 
+      final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+      final startDate = (data['startDate'] as firestore.Timestamp?)?.toDate() ?? DateTime.now();
+      final endDate = (data['endDate'] as firestore.Timestamp?)?.toDate() ?? DateTime.now();
+
+      // Check for duplicate budget before inserting
+      final existingBudgets = await _db.budgetDao.getAllBudgets();
+      final isDuplicate = existingBudgets.any((b) =>
+          b.categoryId == category.id &&
+          b.walletId == wallet.id &&
+          b.amount == amount &&
+          b.startDate.year == startDate.year &&
+          b.startDate.month == startDate.month);
+
+      if (isDuplicate) {
+        Log.d('Skipping duplicate budget from cloud: category=${category.title}, amount=$amount', label: 'sync');
+        return;
+      }
+
       final budget = BudgetModel(
         cloudId: cloudId,
         wallet: wallet.toModel(),
         category: category.toModel(),
-        amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
-        startDate: (data['startDate'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
-        endDate: (data['endDate'] as firestore.Timestamp?)?.toDate() ?? DateTime.now(),
+        amount: amount,
+        startDate: startDate,
+        endDate: endDate,
         isRoutine: data['isRoutine'] as bool? ?? false,
         createdAt: (data['createdAt'] as firestore.Timestamp?)?.toDate(),
         updatedAt: (data['updatedAt'] as firestore.Timestamp?)?.toDate(),
@@ -1261,6 +1279,8 @@ class RealtimeSyncService {
 
       final collection = _getUserCollection('budgets');
 
+      // Generate new cloudId if budget doesn't have one
+      final isNewCloudId = budget.cloudId == null;
       final cloudId = budget.cloudId ?? const Uuid().v7();
 
       final data = {
@@ -1276,7 +1296,14 @@ class RealtimeSyncService {
 
       await collection.doc(cloudId).set(data, firestore.SetOptions(merge: true));
 
-      Log.i('Uploaded budget to cloud', label: 'sync');
+      // If we generated a new cloudId, save it to local database
+      if (isNewCloudId && budget.id != null) {
+        await (_db.update(_db.budgets)..where((b) => b.id.equals(budget.id!)))
+            .write(BudgetsCompanion(cloudId: Value(cloudId)));
+        Log.i('Saved cloudId $cloudId to local budget ${budget.id}', label: 'sync');
+      }
+
+      Log.i('Uploaded budget to cloud: $cloudId', label: 'sync');
     } catch (e, stack) {
       Log.e('Failed to upload budget: $e', label: 'sync');
       Log.e('Stack: $stack', label: 'sync');
@@ -1296,6 +1323,47 @@ class RealtimeSyncService {
       Log.e('Failed to delete budget from cloud: $e', label: 'sync');
       Log.e('Stack: $stack', label: 'sync');
       rethrow;
+    }
+  }
+
+  /// Delete a budget from Firestore by matching fields (when cloudId is not available)
+  Future<bool> deleteBudgetFromCloudByMatch({
+    required String categoryCloudId,
+    required String walletCloudId,
+    required double amount,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    if (!isAuthenticated) return false;
+
+    try {
+      final collection = _getUserCollection('budgets');
+
+      // Query for matching budget
+      final query = await collection
+          .where('categoryCloudId', isEqualTo: categoryCloudId)
+          .where('walletCloudId', isEqualTo: walletCloudId)
+          .where('amount', isEqualTo: amount)
+          .get();
+
+      if (query.docs.isEmpty) {
+        Log.w('No matching budget found in cloud for deletion', label: 'sync');
+        return false;
+      }
+
+      // Delete all matching documents (should be just one)
+      int deletedCount = 0;
+      for (final doc in query.docs) {
+        await doc.reference.delete();
+        deletedCount++;
+        Log.i('Deleted budget from cloud by match: ${doc.id}', label: 'sync');
+      }
+
+      return deletedCount > 0;
+    } catch (e, stack) {
+      Log.e('Failed to delete budget from cloud by match: $e', label: 'sync');
+      Log.e('Stack: $stack', label: 'sync');
+      return false;
     }
   }
 
