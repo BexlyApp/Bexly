@@ -76,4 +76,10 @@ class ChatMessageDao extends DatabaseAccessor<AppDatabase> with _$ChatMessageDao
           ..orderBy([(t) => OrderingTerm(expression: t.timestamp)]))
         .get();
   }
+
+  /// Update message content by messageId
+  Future<int> updateMessageContent(String messageId, String newContent) {
+    return (update(chatMessages)..where((t) => t.messageId.equals(messageId)))
+        .write(ChatMessagesCompanion(content: Value(newContent)));
+  }
 }

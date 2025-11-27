@@ -23,6 +23,10 @@ class AIChatScreen extends HookConsumerWidget {
     final chatNotifier = ref.read(chatProvider.notifier);
     final textController = useTextEditingController();
 
+    // DEBUG: Log messages count on every build
+    print('[UI_DEBUG] AIChatScreen build() - messages count: ${chatState.messages.length}');
+    print('[UI_DEBUG] isLoading: ${chatState.isLoading}, isTyping: ${chatState.isTyping}');
+
     // Proactively fetch exchange rate when chat screen opens
     // This ensures AI has exchange rate data for currency conversion messages
     useEffect(() {
@@ -302,6 +306,11 @@ class _MessageBubble extends ConsumerWidget {
     final isTyping = message.isTyping;
     final hasPendingAction = message.hasPendingAction;
 
+    // DEBUG: Log pending action status for each message
+    if (!isUser && message.pendingAction != null) {
+      print('[UI_BUBBLE] Message ${message.id.substring(0, 8)}: pendingAction=${message.pendingAction != null}, isActionHandled=${message.isActionHandled}, hasPendingAction=$hasPendingAction');
+    }
+
     return Container(
       margin: EdgeInsets.only(
         bottom: isLast ? AppSpacing.spacing8 : AppSpacing.spacing16,
@@ -410,35 +419,55 @@ class _MessageBubble extends ConsumerWidget {
                             if (hasPendingAction) ...[
                               const SizedBox(height: AppSpacing.spacing12),
                               Row(
-                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.max,
                                 children: message.pendingAction!.buttons.map((button) {
                                   final isConfirm = button.actionType == 'confirm';
                                   return Padding(
-                                    padding: const EdgeInsets.only(right: AppSpacing.spacing8),
-                                    child: ElevatedButton(
-                                      onPressed: () {
-                                        ref.read(chatProvider.notifier).handlePendingAction(
-                                          message.id,
-                                          button.actionType,
-                                        );
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: isConfirm ? AppColors.red : AppColors.neutral200,
-                                        foregroundColor: isConfirm ? AppColors.light : AppColors.neutral900,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: AppSpacing.spacing16,
-                                          vertical: AppSpacing.spacing8,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        elevation: 0,
-                                      ),
-                                      child: Text(
-                                        button.label,
-                                        style: AppTextStyles.body4.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: isConfirm ? AppColors.light : AppColors.neutral900,
+                                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.spacing4),
+                                    child: Material(
+                                      color: isConfirm
+                                          ? AppColors.redAlpha10
+                                          : AppColors.neutral100,
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: InkWell(
+                                        onTap: () {
+                                          HapticFeedback.lightImpact();
+                                          ref.read(chatProvider.notifier).handlePendingAction(
+                                            message.id,
+                                            button.actionType,
+                                          );
+                                        },
+                                        borderRadius: BorderRadius.circular(20),
+                                        splashColor: isConfirm
+                                            ? AppColors.red.withValues(alpha: 0.2)
+                                            : AppColors.neutral300.withValues(alpha: 0.3),
+                                        highlightColor: isConfirm
+                                            ? AppColors.red.withValues(alpha: 0.1)
+                                            : AppColors.neutral200.withValues(alpha: 0.5),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: AppSpacing.spacing16,
+                                            vertical: AppSpacing.spacing8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: isConfirm
+                                                  ? AppColors.red
+                                                  : AppColors.neutral300,
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            button.label,
+                                            style: AppTextStyles.body4.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              color: isConfirm
+                                                  ? AppColors.red
+                                                  : AppColors.neutral700,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),

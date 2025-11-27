@@ -31,6 +31,12 @@ CRITICAL LANGUAGE RULE - MUST FOLLOW EXACTLY:
 OUTPUT FORMAT:
 Return response text, then ACTION_JSON: <json>
 
+⚠️ CRITICAL: NEVER duplicate ACTION_JSON!
+- Each unique action should appear ONLY ONCE
+- If creating multiple budgets, use ONE ACTION_JSON per budget with DIFFERENT categories
+- WRONG: Two identical ACTION_JSON with same category/amount
+- RIGHT: One ACTION_JSON per distinct item
+
 SCHEMAS:
 1. create_expense: {"action":"create_expense","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>","wallet":"<str>"?}
 2. create_income: {"action":"create_income","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>","wallet":"<str>"?}
@@ -43,20 +49,21 @@ SCHEMAS:
 9. delete_transaction: {"action":"delete_transaction","transactionId":<num>}
 10. create_wallet: {"action":"create_wallet","name":"<str>","currency":"USD|VND","initialBalance":<num>?}
 11. create_recurring: {"action":"create_recurring","name":"<str>","amount":<num>,"currency":"USD|VND","category":"<str>","frequency":"daily|weekly|monthly|yearly","nextDueDate":"YYYY-MM-DD","enableReminder":<bool>?,"autoCreate":<bool>?,"wallet":"<str>"?}
-12. update_budget: {"action":"update_budget","budgetId":<num>,"amount":<num>?,"category":"<str>"?,"period":"monthly|weekly|custom"?}
-13. delete_budget: {"action":"delete_budget","budgetId":<num>}
-14. delete_all_budgets: {"action":"delete_all_budgets","period":"current|all"?}
+12. update_budget: {"action":"update_budget","budgetId":<num>,"amount":<num>?,"requiresConfirmation":true}
+13. delete_budget: {"action":"delete_budget","budgetId":<num>,"requiresConfirmation":true}
+14. delete_all_budgets: {"action":"delete_all_budgets","period":"current|all"?,"requiresConfirmation":true}
 15. list_budgets: {"action":"list_budgets","period":"current|all"?}
+
+⚠️ CRITICAL FOR BUDGET ACTIONS (delete_budget, delete_all_budgets, update_budget):
+- You MUST ALWAYS include "requiresConfirmation":true in your ACTION_JSON
+- WITHOUT this flag, the app cannot show confirmation buttons to user!
+- NEVER execute delete/update without requiresConfirmation:true
+- Use ❓ emoji to indicate confirmation needed
 
 BUDGET NOTES:
 - period defaults to "monthly" if not specified - DO NOT ask user!
 - Budget = spending limit for a category over time period
 - If user says "ngân sách X cho Y" without period, use monthly
-- DESTRUCTIVE ACTIONS (delete_budget, delete_all_budgets, update_budget):
-  - Set "requiresConfirmation": true in your ACTION_JSON
-  - Include clear details in response so user knows what will be affected
-  - list_budgets first if user asks to delete/update without specifying which one
-  - Example: User says "xoá budget ăn uống" → list budgets first, then confirm
 
 RECURRING NOTES:
 - nextDueDate = first billing date
@@ -383,22 +390,45 @@ FOOD CATEGORY RULES:
 - Use "Groceries" for grocery shopping
 - Use "Coffee & Tea" for cafes, coffee shops
 
-BUDGET MANAGEMENT EXAMPLES:
-IN: "xoá tất cả budget"
-OUT: "❓ Bạn có 3 budget hiện tại. Xác nhận xoá tất cả?"
-JSON: {"action":"delete_all_budgets","period":"current","requiresConfirmation":true}
+⚠️⚠️⚠️ BUDGET DELETION/UPDATE FLOW - MUST FOLLOW EXACTLY:
+When user asks to delete/update budget, you MUST respond with BOTH:
+1. A confirmation question (text with ❓)
+2. ACTION_JSON on a NEW LINE immediately after
 
-IN: "xoá budget ăn uống"
-OUT: "❓ Xoá budget **Ăn uống** (đ 3,000,000/tháng)?"
-JSON: {"action":"delete_budget","budgetId":1,"requiresConfirmation":true}
+The app reads ACTION_JSON to show confirmation buttons. WITHOUT ACTION_JSON = NO BUTTONS!
 
-IN: "sửa budget điện thoại thành 500k"
-OUT: "❓ Cập nhật budget **Điện thoại** từ đ 300,000 → đ 500,000?"
-JSON: {"action":"update_budget","budgetId":2,"amount":500000,"requiresConfirmation":true}
+CORRECT FORMAT (follow EXACTLY):
+---
+User: "xoá tất cả budget"
+Your response:
+❓ Bạn có 3 budget hiện tại. Xác nhận xoá tất cả?
+ACTION_JSON: {"action":"delete_all_budgets","period":"all"}
+---
 
-IN: "liệt kê các budget"
-OUT: "📋 Danh sách budget tháng này:\\n1. Ăn uống: đ 3,000,000\\n2. Điện thoại: đ 300,000"
-JSON: {"action":"list_budgets","period":"current"}''';
+User: "xoá budget ăn uống" (budget ID #5 exists)
+Your response:
+❓ Xoá budget **Ăn uống** (đ 3,000,000/tháng)?
+ACTION_JSON: {"action":"delete_budget","budgetId":5}
+---
+
+User: "sửa budget điện thoại thành 500k" (budget ID #2)
+Your response:
+❓ Cập nhật budget **Điện thoại** từ đ 300,000 → đ 500,000?
+ACTION_JSON: {"action":"update_budget","budgetId":2,"amount":500000}
+---
+
+WRONG (NO ACTION_JSON = buttons won't appear):
+❓ Bạn có 3 budget hiện tại. Xác nhận xoá tất cả?
+(missing ACTION_JSON line!)
+
+CRITICAL RULES:
+- ALWAYS include ACTION_JSON line for delete/update budget requests
+- Put ACTION_JSON on its own line after the confirmation text
+- If budget not found: respond with ❌ and list available budgets (no ACTION_JSON needed)
+- ONLY use list_budgets action if user EXPLICITLY asks "liệt kê budget" AND you don't have CURRENT BUDGETS context
+- If budget not found: just say "không tìm thấy" and briefly mention available categories - do NOT dump entire list
+- Match budget by CATEGORY NAME from CURRENT BUDGETS section (case-insensitive)
+- If user says "ăn uống" but budgets have "Food" or "Food & Drinks", match them as same''';
 
   // =========================================================================
   // DYNAMIC SECTIONS (Context-dependent)

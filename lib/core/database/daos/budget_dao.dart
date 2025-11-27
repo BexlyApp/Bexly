@@ -192,22 +192,52 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
   Future<int> deleteBudget(int id) async {
     Log.d('Deleting budget with ID: $id', label: 'budget');
 
-    // 1. Get budget to retrieve cloudId
+    // 1. Get budget with full details for cloud deletion
+    final budgetModel = await getBudgetById(id);
     final budget = await (select(budgets)..where((b) => b.id.equals(id))).getSingleOrNull();
+    Log.d('Budget found: ${budget != null}, cloudId: ${budget?.cloudId}', label: 'budget');
 
     // 2. Delete from local database
     final count = await (delete(budgets)..where((b) => b.id.equals(id))).go();
+    Log.d('Deleted $count rows from local database', label: 'budget');
 
-    // 3. Delete from cloud (if sync available and has cloudId)
-    if (count > 0 && _ref != null && budget != null && budget.cloudId != null) {
+    // 3. Delete from cloud
+    if (count > 0 && _ref != null && budget != null) {
       try {
         final syncService = _ref.read(realtimeSyncServiceProvider);
-        await syncService.deleteBudgetFromCloud(budget.cloudId!);
+
+        if (budget.cloudId != null) {
+          // Method 1: Delete by cloudId (preferred)
+          Log.d('Deleting from cloud with cloudId: ${budget.cloudId}', label: 'budget');
+          await syncService.deleteBudgetFromCloud(budget.cloudId!);
+          Log.d('Successfully deleted from cloud by cloudId', label: 'budget');
+        } else if (budgetModel != null &&
+                   budgetModel.category.cloudId != null &&
+                   budgetModel.wallet.cloudId != null) {
+          // Method 2: Delete by matching fields (for budgets without cloudId)
+          Log.d('No cloudId, trying to delete from cloud by matching fields', label: 'budget');
+          final deleted = await syncService.deleteBudgetFromCloudByMatch(
+            categoryCloudId: budgetModel.category.cloudId!,
+            walletCloudId: budgetModel.wallet.cloudId!,
+            amount: budgetModel.amount,
+            startDate: budgetModel.startDate,
+            endDate: budgetModel.endDate,
+          );
+          if (deleted) {
+            Log.d('Successfully deleted from cloud by matching', label: 'budget');
+          } else {
+            Log.w('Could not find matching budget in cloud to delete', label: 'budget');
+          }
+        } else {
+          Log.w('Cannot delete from cloud: missing cloudId and category/wallet cloudIds', label: 'budget');
+        }
       } catch (e, stack) {
         Log.e('Failed to delete budget from cloud: $e', label: 'sync');
         Log.e('Stack: $stack', label: 'sync');
         // Don't rethrow - local delete succeeded
       }
+    } else {
+      Log.w('Skipping cloud delete: count=$count, ref=${_ref != null}, budget=${budget != null}', label: 'budget');
     }
 
     return count;
