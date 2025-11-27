@@ -2,7 +2,32 @@
   "permissions": {
     "allow": [
       "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 install:*)",
-      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat:*)"
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat:*)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\" \"BUDGET_DEBUG:I\" -t 50)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -t 300)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\" -t 50)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -t 100)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\" -t 200)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\":*)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\" -t 150)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -t 500)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -t 1000)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" devices)",
+      "Bash(D:/SDK/Android/emulator/emulator.exe:*)",
+      "Bash(start \"\" \"D:/SDK/Android/emulator/emulator.exe\" -avd Medium_Phone_API_36.1)",
+      "Bash(ping:*)",
+      "Bash(flutter build:*)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -c)",
+      "Bash(findstr:*)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\" -t 100)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -t 200)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 install -r \"d:\\Projects\\Bexly\\build\\app\\outputs\\flutter-apk\\app-debug.apk\")",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 uninstall com.joy.bexly)",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 install \"d:\\Projects\\Bexly\\build\\app\\outputs\\flutter-apk\\app-debug.apk\")",
+      "Bash(\"D:/SDK/Android/platform-tools/adb.exe\" -s emulator-5554 logcat -d -s \"flutter:I\" -t 300)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
