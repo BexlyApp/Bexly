@@ -127,10 +127,18 @@ feature_name/
 ### Security Best Practices (CRITICAL)
 
 **NEVER commit sensitive files to git:**
-- ❌ `google-services.json` or any `.backup` variants
-- ❌ `.env` files containing API keys
+- ❌ `google-services.json` - Contains OAuth client IDs and is environment-specific (each developer needs their own)
+- ❌ `keystore.properties` - Contains keystore passwords
+- ❌ `*.jks` files - Release signing keys
+- ❌ `.env` files - Contains API keys for Gemini, OpenAI, Claude, etc.
 - ❌ Any file with credentials, tokens, or secrets
-- ❌ Firebase config files with API keys exposed
+
+**Why `google-services.json` should NOT be committed:**
+- Contains OAuth 2.0 client IDs tied to specific SHA-1 fingerprints
+- Each developer has different keystores with different SHA-1s
+- Each environment (dev/staging/prod) may need different configs
+- Already in `.gitignore` - keep it there
+- Each developer must download their own from Firebase Console after adding their keystore's SHA-1 fingerprint
 
 **Before EVERY commit:**
 1. Run `git status` and carefully review ALL files

@@ -327,6 +327,8 @@ keytool -list -v -keystore C:\Users\JOY\DOS-key.jks -alias dos -storepass DOSLab
 
 **Note:** Firebase automatically creates OAuth 2.0 Client IDs in Google Cloud Console when you add SHA-1 fingerprints.
 
+**Important:** `google-services.json` is environment-specific and should NOT be committed to git. It's already in `.gitignore`. Each developer must download their own copy from Firebase Console after configuring their keystore's SHA-1 fingerprints.
+
 **Current SHA-1 Fingerprints:**
 - Debug: `44:91:55:73:94:15:0E:B0:64:19:18:B3:49:27:C3:C4:59:63:42:68`
 - Release (DOS-key.jks): `B8:B5:58:78:A4:1E:59:70:69:C6:0E:97:0F:B6:33:E2:A6:4A:6A:39`
