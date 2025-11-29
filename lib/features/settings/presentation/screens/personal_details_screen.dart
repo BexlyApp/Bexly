@@ -7,8 +7,12 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:gap/gap.dart';
+import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
+import 'package:bexly/core/components/buttons/secondary_button.dart';
 import 'package:bexly/core/components/dialogs/toast.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/components/form_fields/custom_text_field.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
@@ -94,22 +98,48 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                   GestureDetector(
                     onTap: () async {
                       final imageService = ImageService();
-                      // Call pickImageFromGallery directly to bypass bottom sheet
-                      final pickedImage = await imageService.pickImageFromGallery();
-                      if (pickedImage != null) {
-                        profilePicture.value = pickedImage; // pickImageFromGallery already returns File
-                        Log.d('Profile picture selected: ${pickedImage.path}', label: 'PersonalDetails');
-                        Toast.show(
-                          'Image selected! Tap Save to upload.',
-                          type: ToastificationType.success,
-                        );
-                      } else {
-                        Log.w('No image selected from gallery', label: 'PersonalDetails');
-                        Toast.show(
-                          'No image selected',
-                          type: ToastificationType.info,
-                        );
-                      }
+
+                      // Show bottom sheet with Camera + Gallery options
+                      await context.openBottomSheet<void>(
+                        child: CustomBottomSheet(
+                          title: 'Choose Photo',
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: SecondaryButton(
+                                  context: context,
+                                  onPressed: () async {
+                                    Navigator.pop(context); // Close bottom sheet first
+                                    final file = await imageService.takePhoto();
+                                    if (file != null) {
+                                      profilePicture.value = file;
+                                      Log.d('Profile picture taken: ${file.path}', label: 'PersonalDetails');
+                                    }
+                                  },
+                                  label: 'Camera',
+                                  icon: HugeIcons.strokeRoundedCamera01,
+                                ),
+                              ),
+                              const Gap(AppSpacing.spacing8),
+                              Expanded(
+                                child: SecondaryButton(
+                                  context: context,
+                                  onPressed: () async {
+                                    Navigator.pop(context); // Close bottom sheet first
+                                    final file = await imageService.pickImageFromGallery();
+                                    if (file != null) {
+                                      profilePicture.value = file;
+                                      Log.d('Profile picture selected: ${file.path}', label: 'PersonalDetails');
+                                    }
+                                  },
+                                  label: 'Gallery',
+                                  icon: HugeIcons.strokeRoundedImage01,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     },
                     child: Stack(
                       children: [
@@ -194,10 +224,6 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                 // Upload profile picture to Firebase Storage if changed
                 if (profilePicture.value != null && firebaseUser != null) {
                   Log.i('Uploading new profile picture...', label: 'PersonalDetails');
-                  Toast.show(
-                    'Uploading avatar...',
-                    type: ToastificationType.info,
-                  );
                   final (photoURL, errorMessage) = await _uploadProfilePicture(
                     profilePicture.value!,
                     firebaseUser.uid,
@@ -206,24 +232,13 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                   if (photoURL != null) {
                     await firebaseUser.updatePhotoURL(photoURL);
                     Log.i('Profile photo URL updated: $photoURL', label: 'PersonalDetails');
-                    Toast.show(
-                      'Avatar uploaded successfully!',
-                      type: ToastificationType.success,
-                    );
                   } else {
-                    Log.w('Failed to upload profile picture, skipping photoURL update', label: 'PersonalDetails');
+                    Log.w('Failed to upload profile picture: $errorMessage', label: 'PersonalDetails');
                     Toast.show(
-                      'Failed to upload avatar: ${errorMessage ?? "Unknown error"}',
+                      'Failed to upload avatar',
                       type: ToastificationType.error,
                     );
-                  }
-                } else {
-                  // DEBUG: Show why upload didn't happen
-                  if (profilePicture.value == null) {
-                    Toast.show(
-                      'DEBUG: No new image selected (profilePicture.value is null)',
-                      type: ToastificationType.warning,
-                    );
+                    return; // Don't continue if upload failed
                   }
                 }
 
