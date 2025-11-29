@@ -311,6 +311,30 @@ class RecurringDao extends DatabaseAccessor<AppDatabase> with _$RecurringDaoMixi
         .then((count) => count > 0);
   }
 
+  /// Cancel a recurring payment
+  Future<bool> cancelRecurring(int id) {
+    return (update(recurrings)..where((r) => r.id.equals(id)))
+        .write(
+          RecurringsCompanion(
+            status: Value(RecurringStatus.cancelled.toDbValue()),
+            updatedAt: Value(DateTime.now()),
+          ),
+        )
+        .then((count) => count > 0);
+  }
+
+  /// Mark a recurring payment as expired
+  Future<bool> expireRecurring(int id) {
+    return (update(recurrings)..where((r) => r.id.equals(id)))
+        .write(
+          RecurringsCompanion(
+            status: Value(RecurringStatus.expired.toDbValue()),
+            updatedAt: Value(DateTime.now()),
+          ),
+        )
+        .then((count) => count > 0);
+  }
+
   /// Process payment for a recurring (updates next due date and total payments)
   Future<bool> processPayment(int id, DateTime nextDueDate) async {
     // First get current recurring to increment totalPayments

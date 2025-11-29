@@ -31,6 +31,22 @@ class RecurringChargeService {
           continue;
         }
 
+        // Skip if recurring has expired (endDate passed)
+        if (_hasExpired(recurring, today)) {
+          Log.d('Skipping ${recurring.name} - expired on ${recurring.endDate?.toIso8601String()}',
+                label: 'RecurringChargeService');
+          // Auto-update status to expired
+          await db.recurringDao.expireRecurring(recurring.id!);
+          continue;
+        }
+
+        // Skip if already charged today (duplicate prevention)
+        if (_wasChargedToday(recurring, today)) {
+          Log.d('Skipping ${recurring.name} - already charged today',
+                label: 'RecurringChargeService');
+          continue;
+        }
+
         // Check if due or past due
         if (_isDueOrPastDue(recurring.nextDueDate, today)) {
           Log.d('Processing recurring: ${recurring.name} - due on ${recurring.nextDueDate.toIso8601String()}',
@@ -122,6 +138,30 @@ class RecurringChargeService {
     final todayOnly = DateTime(today.year, today.month, today.day);
 
     return dueDateOnly.isBefore(todayOnly) || dueDateOnly.isAtSameMomentAs(todayOnly);
+  }
+
+  /// Check if recurring has expired (endDate has passed)
+  bool _hasExpired(RecurringModel recurring, DateTime today) {
+    if (recurring.endDate == null) return false;
+
+    final endDateOnly = DateTime(recurring.endDate!.year, recurring.endDate!.month, recurring.endDate!.day);
+    final todayOnly = DateTime(today.year, today.month, today.day);
+
+    return endDateOnly.isBefore(todayOnly);
+  }
+
+  /// Check if recurring was already charged today (duplicate prevention)
+  bool _wasChargedToday(RecurringModel recurring, DateTime today) {
+    if (recurring.lastChargedDate == null) return false;
+
+    final lastChargedOnly = DateTime(
+      recurring.lastChargedDate!.year,
+      recurring.lastChargedDate!.month,
+      recurring.lastChargedDate!.day,
+    );
+    final todayOnly = DateTime(today.year, today.month, today.day);
+
+    return lastChargedOnly.isAtSameMomentAs(todayOnly);
   }
 
   /// Calculate next due date based on frequency

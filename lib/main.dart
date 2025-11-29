@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/app.dart';
+import 'package:bexly/core/services/background_service.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/services/notification_service.dart';
 import 'package:bexly/core/services/firebase_messaging_service.dart';
@@ -58,6 +59,15 @@ Future<void> main() async {
   } catch (e) {
     print('FCM init error: $e');
     // Continue without FCM if init fails
+  }
+
+  // Initialize Background Service for recurring payments (Android/iOS only)
+  try {
+    await BackgroundService.initialize();
+    await BackgroundService.scheduleRecurringChargeTask();
+  } catch (e) {
+    print('BackgroundService init error: $e');
+    // Continue without background service if init fails
   }
 
   runApp(
