@@ -3,7 +3,7 @@
 ## Overview
 This document outlines the development roadmap for Pockaw, focusing on transforming it from a basic expense tracker to a comprehensive financial management platform with AI-powered features.
 
-## Current State (v0.0.7+317)
+## Current State (v0.0.7+356)
 - ✅ Core expense/income tracking
 - ✅ Multi-wallet support with real-time cloud sync
 - ✅ Budget management
@@ -25,6 +25,8 @@ This document outlines the development roadmap for Pockaw, focusing on transform
 - ✅ **SIM card currency detection with 3-level fallback (v314)**
 - ✅ **Currency conversion in analytics charts (v317)**
 - ✅ **Smart Y-axis scaling for better data visualization (v317)**
+- ✅ **Avatar upload to Firebase Storage with sync to AI Chat (v350-356)**
+- ✅ **Transparent PNG avatar support (v356)**
 
 ---
 

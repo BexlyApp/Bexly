@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/components/dialogs/toast.dart';
 import 'package:bexly/core/components/form_fields/custom_text_field.dart';
@@ -14,10 +15,45 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/services/image_service/image_service.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart' as firebase_auth;
+import 'package:bexly/core/utils/logger.dart';
 import 'package:toastification/toastification.dart';
 
 class PersonalDetailsScreen extends HookConsumerWidget {
   const PersonalDetailsScreen({super.key});
+
+  /// Upload profile picture to Firebase Storage and return download URL
+  Future<(String?, String?)> _uploadProfilePicture(File imageFile, String userId) async {
+    try {
+      Log.i('Uploading profile picture for user: $userId', label: 'ProfileUpload');
+
+      // Use Bexly Firebase Storage (same project as Authentication)
+      // FirebaseStorage.instance uses DEFAULT app which is Bexly
+      final storage = FirebaseStorage.instance;
+
+      // Create unique file path: avatars/{userId}/profile.jpg
+      final storageRef = storage.ref().child('avatars/$userId/profile.jpg');
+
+      Log.i('Storage path: avatars/$userId/profile.jpg', label: 'ProfileUpload');
+      Log.i('Using default Firebase Storage (bexly-app)', label: 'ProfileUpload');
+
+      // Upload file
+      final uploadTask = storageRef.putFile(imageFile);
+
+      // Wait for upload to complete
+      final snapshot = await uploadTask;
+
+      // Get download URL
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      Log.i('Profile picture uploaded successfully: $downloadUrl', label: 'ProfileUpload');
+      return (downloadUrl, null);
+    } catch (e, stack) {
+      Log.e('Failed to upload profile picture: $e', label: 'ProfileUpload');
+      Log.e('Stack: $stack', label: 'ProfileUpload');
+      return (null, e.toString());
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final firebaseUser = FirebaseAuth.instance.currentUser;
@@ -58,9 +94,21 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                   GestureDetector(
                     onTap: () async {
                       final imageService = ImageService();
-                      final pickedImage = await imageService.pickImage(context);
+                      // Call pickImageFromGallery directly to bypass bottom sheet
+                      final pickedImage = await imageService.pickImageFromGallery();
                       if (pickedImage != null) {
-                        profilePicture.value = File(pickedImage.path);
+                        profilePicture.value = pickedImage; // pickImageFromGallery already returns File
+                        Log.d('Profile picture selected: ${pickedImage.path}', label: 'PersonalDetails');
+                        Toast.show(
+                          'Image selected! Tap Save to upload.',
+                          type: ToastificationType.success,
+                        );
+                      } else {
+                        Log.w('No image selected from gallery', label: 'PersonalDetails');
+                        Toast.show(
+                          'No image selected',
+                          type: ToastificationType.info,
+                        );
                       }
                     },
                     child: Stack(
@@ -70,14 +118,17 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                           // Use colorScheme.surfaceVariant for a subtle background
                           radius: 70,
                           child: CircleAvatar(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.surface, // Use colorScheme.surface
+                            // Only show background when no image (to support transparent PNGs)
+                            backgroundColor: (profilePicture.value == null && firebaseUser?.photoURL == null)
+                                ? Theme.of(context).colorScheme.surface
+                                : Colors.transparent,
                             backgroundImage: profilePicture.value != null
                                 ? FileImage(profilePicture.value!)
-                                : null,
+                                : (firebaseUser?.photoURL != null
+                                    ? NetworkImage(firebaseUser!.photoURL!)
+                                    : null),
                             radius: 69,
-                            child: profilePicture.value == null
+                            child: profilePicture.value == null && firebaseUser?.photoURL == null
                                 ? Icon(
                                     Icons.camera_alt,
                                     color: AppColors.darkAlpha30,
@@ -140,11 +191,41 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                 // Update Firebase Auth profile directly (source of truth)
                 await firebaseUser?.updateDisplayName(newName);
 
-                // TODO: Upload profile picture to Firebase Storage if changed
-                // if (profilePicture.value != null) {
-                //   final photoURL = await uploadProfilePicture(profilePicture.value!);
-                //   await firebaseUser?.updatePhotoURL(photoURL);
-                // }
+                // Upload profile picture to Firebase Storage if changed
+                if (profilePicture.value != null && firebaseUser != null) {
+                  Log.i('Uploading new profile picture...', label: 'PersonalDetails');
+                  Toast.show(
+                    'Uploading avatar...',
+                    type: ToastificationType.info,
+                  );
+                  final (photoURL, errorMessage) = await _uploadProfilePicture(
+                    profilePicture.value!,
+                    firebaseUser.uid,
+                  );
+
+                  if (photoURL != null) {
+                    await firebaseUser.updatePhotoURL(photoURL);
+                    Log.i('Profile photo URL updated: $photoURL', label: 'PersonalDetails');
+                    Toast.show(
+                      'Avatar uploaded successfully!',
+                      type: ToastificationType.success,
+                    );
+                  } else {
+                    Log.w('Failed to upload profile picture, skipping photoURL update', label: 'PersonalDetails');
+                    Toast.show(
+                      'Failed to upload avatar: ${errorMessage ?? "Unknown error"}',
+                      type: ToastificationType.error,
+                    );
+                  }
+                } else {
+                  // DEBUG: Show why upload didn't happen
+                  if (profilePicture.value == null) {
+                    Toast.show(
+                      'DEBUG: No new image selected (profilePicture.value is null)',
+                      type: ToastificationType.warning,
+                    );
+                  }
+                }
 
                 // Reload user to get updated profile
                 await firebaseUser?.reload();

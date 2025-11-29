@@ -1451,12 +1451,16 @@ Please create a transaction based on this receipt data.''';
       // CRITICAL: hierarchicalCategoriesProvider returns only PARENT categories!
       // We need to FLATTEN to include ALL subcategories for matching
       final categoryName = action['category']?.toString() ?? 'Others';
+      Log.d('🔍 Searching for category: "$categoryName"', label: 'BUDGET_DEBUG');
+
       final hierarchicalCategories = _ref.read(hierarchicalCategoriesProvider).valueOrNull ?? [];
 
       if (hierarchicalCategories.isEmpty) {
-        Log.e('No categories available for budget', label: 'BUDGET_DEBUG');
+        Log.e('❌ No categories available for budget', label: 'BUDGET_DEBUG');
         return;
       }
+
+      Log.d('📂 Found ${hierarchicalCategories.length} parent categories', label: 'BUDGET_DEBUG');
 
       // Flatten hierarchy to include BOTH parent and subcategories
       final List<CategoryModel> allCategories = [];
@@ -1467,12 +1471,17 @@ Please create a transaction based on this receipt data.''';
         allCategories.add(cat);
 
         if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
+          Log.d('  📁 ${cat.title} has ${cat.subCategories!.length} subcategories: ${cat.subCategories!.map((s) => s.title).join(", ")}', label: 'BUDGET_DEBUG');
           // Map parent title to first subcategory for fallback
           parentToFirstSubcategory[cat.title.toLowerCase()] = cat.subCategories!.first;
           // Also add all subcategories
           allCategories.addAll(cat.subCategories!);
+        } else {
+          Log.d('  📄 ${cat.title} (no subcategories)', label: 'BUDGET_DEBUG');
         }
       }
+
+      Log.d('📊 Total ${allCategories.length} categories available (including subcategories)', label: 'BUDGET_DEBUG');
 
       // Find matching category - PRIORITY ORDER:
       // 1. Exact match (case-insensitive)
@@ -1480,32 +1489,49 @@ Please create a transaction based on this receipt data.''';
         (c) => c.title.toLowerCase() == categoryName.toLowerCase()
       );
 
+      if (category != null) {
+        Log.d('✅ Step 1: Found EXACT match: "${category.title}" (ID: ${category.id})', label: 'BUDGET_DEBUG');
+      }
+
       // 2. Partial match (case-insensitive)
-      category ??= allCategories.firstWhereOrNull(
-        (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
-               categoryName.toLowerCase().contains(c.title.toLowerCase())
-      );
+      if (category == null) {
+        category = allCategories.firstWhereOrNull(
+          (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
+                 categoryName.toLowerCase().contains(c.title.toLowerCase())
+        );
+        if (category != null) {
+          Log.d('✅ Step 2: Found PARTIAL match: "${category.title}" (ID: ${category.id})', label: 'BUDGET_DEBUG');
+        }
+      }
 
       // 3. If matched a parent category with subcategories, use first subcategory
       if (category != null && category.subCategories != null && category.subCategories!.isNotEmpty) {
-        Log.d('Matched parent category "${category.title}", using first subcategory', label: 'BUDGET_DEBUG');
+        final originalCategory = category.title;
+        Log.w('⚠️ Step 3: Matched PARENT category "$originalCategory" with subcategories, using first subcategory instead', label: 'BUDGET_DEBUG');
         category = category.subCategories!.first;
+        Log.d('   → Switched to: "${category.title}" (ID: ${category.id})', label: 'BUDGET_DEBUG');
       }
 
       // 4. If still no match, try parent-to-subcategory map
-      category ??= parentToFirstSubcategory[categoryName.toLowerCase()];
+      if (category == null) {
+        category = parentToFirstSubcategory[categoryName.toLowerCase()];
+        if (category != null) {
+          Log.d('✅ Step 4: Found via parent mapping: "${category.title}" (ID: ${category.id})', label: 'BUDGET_DEBUG');
+        }
+      }
 
       // 5. Fallback to "Others" or first non-parent category
       if (category == null) {
         category = allCategories.firstWhereOrNull((c) => c.title == 'Others' && (c.subCategories == null || c.subCategories!.isEmpty));
         category ??= allCategories.firstWhereOrNull((c) => c.subCategories == null || c.subCategories!.isEmpty);
         if (category == null) {
-          Log.e('No categories available for budget', label: 'BUDGET_DEBUG');
+          Log.e('❌ Step 5: No categories available for budget (even after fallback)', label: 'BUDGET_DEBUG');
           return;
         }
+        Log.w('⚠️ Step 5: Using FALLBACK category: "${category.title}" (ID: ${category.id})', label: 'BUDGET_DEBUG');
       }
 
-      Log.d('Final category for budget: ${category.title}', label: 'BUDGET_DEBUG');
+      Log.d('🎯 FINAL category for budget: "${category.title}" (ID: ${category.id})', label: 'BUDGET_DEBUG');
 
       // Determine budget period dates
       final now = DateTime.now();

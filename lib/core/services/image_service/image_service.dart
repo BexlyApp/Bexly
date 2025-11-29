@@ -22,30 +22,46 @@ class ImageService {
 
   /// Pick image from gallery
   Future<File?> pickImageFromGallery() async {
-    final XFile? image = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 90,
-    );
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 90,
+      );
 
-    if (image != null) {
-      return File(image.path);
+      if (image != null) {
+        Log.d('Image picked from gallery: ${image.path}', label: 'ImageService');
+        return File(image.path);
+      }
+
+      Log.d('No image selected from gallery', label: 'ImageService');
+      return null;
+    } catch (e, stack) {
+      Log.e('Error picking image from gallery: $e', label: 'ImageService');
+      Log.e('Stack: $stack', label: 'ImageService');
+      return null;
     }
-
-    return null;
   }
 
   /// Take a photo with camera
   Future<File?> takePhoto() async {
-    final XFile? photo = await _imagePicker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 90,
-    );
+    try {
+      final XFile? photo = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 90,
+      );
 
-    if (photo != null) {
-      return File(photo.path);
+      if (photo != null) {
+        Log.d('Photo taken from camera: ${photo.path}', label: 'ImageService');
+        return File(photo.path);
+      }
+
+      Log.d('No photo taken', label: 'ImageService');
+      return null;
+    } catch (e, stack) {
+      Log.e('Error taking photo: $e', label: 'ImageService');
+      Log.e('Stack: $stack', label: 'ImageService');
+      return null;
     }
-
-    return null;
   }
 
   Future<File?> pickImage(BuildContext context) async {

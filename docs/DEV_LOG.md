@@ -1198,3 +1198,222 @@ class WalletTypeSelectorField extends StatelessWidget {
 **Commit:** `a1c1ff9` - feat(ai-chat): Add Vietnamese wallet type detection and fix currency conversion
 
 **STATUS: ✅ RESOLVED**
+
+---
+
+## SESSION: AVATAR UPLOAD & SYNC (v350-356)
+
+### Ngày: 2025-11-29
+### Developer: Claude Code
+
+---
+
+### 13.1. Problem: Avatar Upload Not Working
+
+**Issue:** User uploads avatar in Personal Details screen, toast shows "Personal details updated!" but avatar never changes in UI.
+
+**Test Cases:**
+- ❌ Build 347-349: Upload avatar → Toast "success" but avatar remains letter "A" placeholder
+- ❌ Build 350-352: Upload avatar → "Failed to upload avatar" error
+- ❌ Build 353-354: Upload avatar → "object-not-found" Firebase Storage error
+- ✅ Build 355-356: Upload avatar → Success! Avatar displays correctly
+
+### 13.2. Root Cause Analysis (Multi-Layer)
+
+**Layer 1: Image Picker Bug (Build 349)**
+
+**Symptom:** `PlatformException(already_active, Image picker is already active)`
+
+**Root Cause:** Image picker crashing, `profilePicture.value` never set
+
+**Fix Applied:**
+- Added try-catch error handling to `ImageService.pickImageFromGallery()` and `takePhoto()`
+- Added logging for image picker operations
+
+**Layer 2: Bottom Sheet Context Issue (Build 350)**
+
+**Symptom:** Image selected (logs show PNG file picked) but `profilePicture.value` still null
+
+**Root Cause:**
+1. `pickImage()` opens bottom sheet with Camera/Gallery buttons
+2. After image selection, `context.mounted` check might fail
+3. `context.pop(file)` never executes → `pickImage()` returns null
+
+**Code Problem:**
+```dart
+// WRONG - pickImage() returns File?, not XFile
+final pickedImage = await imageService.pickImage(context);
+if (pickedImage != null) {
+  profilePicture.value = File(pickedImage.path); // BUG: File doesn't have .path like XFile
+}
+```
+
+**Fix Applied:**
+```dart
+// CORRECT - bypass bottom sheet, call pickImageFromGallery directly
+final pickedImage = await imageService.pickImageFromGallery();
+if (pickedImage != null) {
+  profilePicture.value = pickedImage; // Already File, no conversion needed
+}
+```
+
+**Layer 3: Firebase Storage Not Enabled (Build 352-354)**
+
+**Symptom:** `[firebase_storage/object-not-found] No object exists at the desired reference.`
+
+**Root Cause:** Firebase Storage was NOT enabled in Firebase Console for `bexly-app` project
+
+**Confusion During Debug:**
+- Initially thought issue was using wrong Firebase app (DOS-Me vs Bexly)
+- Tried switching between `FirebaseStorage.instance` and `FirebaseStorage.instanceFor(app: dosmeApp)`
+- Real issue: Storage bucket didn't exist at all
+
+**Fix Applied:**
+1. User enabled Firebase Storage in Firebase Console for `bexly-app`
+2. Set Storage location (asia-southeast1)
+3. Added Storage Rules allowing authenticated users to upload their own avatars
+
+**Layer 4: Transparent PNG Background (Build 356)**
+
+**Symptom:** Avatar with transparent background shows colored background instead of transparency
+
+**Root Cause:**
+- `CircleAvatar` widget has default `backgroundColor`
+- `Container` decoration has default `color` property
+- These show through when image has alpha channel
+
+**Fix Applied:**
+
+**File:** `ai_chat_screen.dart` (line 502-503)
+```dart
+// OLD:
+color: AppColors.secondary600,
+
+// NEW - Only show color when no avatar:
+color: userPhotoUrl == null ? AppColors.secondary600 : null,
+```
+
+**File:** `personal_details_screen.dart` (line 121-124)
+```dart
+// OLD:
+backgroundColor: Theme.of(context).colorScheme.surface,
+
+// NEW - Transparent when has avatar:
+backgroundColor: (profilePicture.value == null && firebaseUser?.photoURL == null)
+    ? Theme.of(context).colorScheme.surface
+    : Colors.transparent,
+```
+
+### 13.3. Implementation Details
+
+**Avatar Upload Function** (`personal_details_screen.dart:25-54`)
+
+```dart
+Future<(String?, String?)> _uploadProfilePicture(File imageFile, String userId) async {
+  try {
+    // Use default Firebase Storage (bexly-app project)
+    final storage = FirebaseStorage.instance;
+
+    // Create unique file path: avatars/{userId}/profile.jpg
+    final storageRef = storage.ref().child('avatars/$userId/profile.jpg');
+
+    // Upload file
+    final uploadTask = storageRef.putFile(imageFile);
+    final snapshot = await uploadTask;
+
+    // Get download URL
+    final downloadUrl = await snapshot.ref.getDownloadURL();
+
+    return (downloadUrl, null); // Success: (url, null)
+  } catch (e, stack) {
+    return (null, e.toString()); // Error: (null, errorMessage)
+  }
+}
+```
+
+**Avatar Display Logic** (`personal_details_screen.dart:124-137`)
+
+Priority order:
+1. Local file (just selected, not yet uploaded): `FileImage(profilePicture.value!)`
+2. Network URL (from Firebase): `NetworkImage(firebaseUser!.photoURL!)`
+3. Placeholder icon: Camera icon
+
+**Debug Toasts Added** (Build 351-352)
+
+For debugging in release builds (no console logs):
+- "Image selected! Tap Save to upload." - Image picker success
+- "No image selected" - Image picker cancelled
+- "Uploading avatar..." - Upload starting
+- "Avatar uploaded successfully!" - Upload complete
+- "Failed to upload avatar: {error}" - Upload failed with details
+- "DEBUG: No new image selected" - profilePicture.value is null
+
+### 13.4. Firebase Storage Configuration
+
+**Project:** `bexly-app`
+**Bucket:** `bexly-app.firebasestorage.app`
+**Location:** asia-southeast1 (Singapore)
+
+**Storage Rules:**
+```javascript
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /avatars/{userId}/{fileName} {
+      allow read: if true;  // Anyone can read avatars
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+```
+
+### 13.5. Code Changes Summary
+
+**Files Modified:**
+
+1. `lib/features/settings/presentation/screens/personal_details_screen.dart`
+   - Added `_uploadProfilePicture()` function
+   - Changed from `pickImage()` to `pickImageFromGallery()` directly
+   - Added debug toasts for release build debugging
+   - Fixed transparent background support
+
+2. `lib/features/ai_chat/presentation/screens/ai_chat_screen.dart`
+   - Fixed avatar background color to support transparency
+
+3. `lib/core/services/image_service/image_service.dart`
+   - Added try-catch error handling
+   - Added logging for debugging
+
+4. `pubspec.yaml` - v0.0.7+350 → v0.0.7+356
+
+### 13.6. Version History
+
+- **v350**: Initial fix - bypass bottom sheet for image picker
+- **v351**: Added debug toasts (can't use logs in release build)
+- **v352**: Added detailed error message in toast
+- **v353**: Tried DOS-Me Firebase app (wrong approach)
+- **v354**: Tried explicit DOS-Me app reference (still wrong)
+- **v355**: Reverted to default Firebase Storage (bexly-app) + user enabled Storage in Console
+- **v356**: Fixed transparent PNG background support
+
+### 13.7. Lessons Learned
+
+1. **Release builds have NO console logs** - Use toasts for debugging
+2. **Firebase Storage must be enabled manually** - Not auto-created
+3. **`object-not-found` can mean bucket doesn't exist** - Not just file missing
+4. **Read CLAUDE.md carefully** - Project uses `bexly-app`, not `dos-me`
+5. **Context.mounted can cause silent failures** - Async operations after awaits may fail
+6. **CircleAvatar backgroundColor shows through transparency** - Set to transparent when using images
+
+### 13.8. Testing Checklist
+
+- [x] Upload avatar from gallery
+- [x] Avatar displays in Personal Details screen
+- [x] Avatar syncs to AI Chat screen
+- [x] Transparent PNG displays without colored background
+- [x] Toast notifications work in release build
+- [x] Error messages show Firebase errors clearly
+
+### 13.9. Commit
+
+**STATUS: ✅ RESOLVED**

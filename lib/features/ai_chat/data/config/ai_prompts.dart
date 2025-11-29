@@ -226,6 +226,23 @@ WALLET MATCHING:
   static const String businessRules = '''
 BUSINESS RULES:
 
+⚠️ CRITICAL: TRANSACTION INTENT DETECTION (MUST READ FIRST!)
+ONLY create transactions when user EXPLICITLY intends to record financial activity.
+
+DO NOT create transactions for:
+- Greetings: "hi", "hello", "hey", "xin chào", "chào", etc.
+- General questions: "how are you?", "what can you do?", "help", etc.
+- Small talk: casual conversation, thank you messages, etc.
+- Questions about features: "can you...", "how to...", etc.
+- Incomplete requests: vague messages without clear transaction details
+
+ONLY create transactions when user message contains:
+1. AMOUNT + description (e.g., "50k breakfast", "200 USD shopping")
+2. Clear transaction keyword + amount (e.g., "spent 50k", "paid 200", "chi 50k")
+3. Clear financial action (e.g., "record expense", "ghi chi tiêu")
+
+If uncertain whether user wants to record a transaction → ASK for clarification first, DON'T create!
+
 ACTION MAPPING:
 - Expense/spending → create_expense (one-time)
 - Income/salary → create_income (one-time)
