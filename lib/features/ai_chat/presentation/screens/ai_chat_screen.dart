@@ -13,6 +13,7 @@ import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/presentation/riverpod/chat_provider.dart';
+import 'package:bexly/core/riverpod/auth_providers.dart' as firebase_auth;
 
 class AIChatScreen extends HookConsumerWidget {
   const AIChatScreen({super.key});
@@ -305,6 +306,7 @@ class _MessageBubble extends ConsumerWidget {
     final isUser = message.isFromUser;
     final isTyping = message.isTyping;
     final hasPendingAction = message.hasPendingAction;
+    final userPhotoUrl = ref.watch(firebase_auth.userPhotoUrlProvider);
 
     // DEBUG: Log pending action status for each message
     if (!isUser && message.pendingAction != null) {
@@ -497,14 +499,25 @@ class _MessageBubble extends ConsumerWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: AppColors.secondary600,
+                // Only show background color when no avatar (to support transparent PNGs)
+                color: userPhotoUrl == null ? AppColors.secondary600 : null,
                 borderRadius: BorderRadius.circular(16),
+                // Show user avatar if available
+                image: userPhotoUrl != null
+                    ? DecorationImage(
+                        image: NetworkImage(userPhotoUrl),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
-              child: const Icon(
-                Icons.person_outline,
-                color: AppColors.light,
-                size: 16,
-              ),
+              // Only show icon if no avatar
+              child: userPhotoUrl == null
+                  ? const Icon(
+                      Icons.person_outline,
+                      color: AppColors.light,
+                      size: 16,
+                    )
+                  : null,
             ),
           ],
         ],
