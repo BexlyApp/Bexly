@@ -1417,3 +1417,106 @@ service firebase.storage {
 ### 13.9. Commit
 
 **STATUS: ✅ RESOLVED**
+
+---
+
+## SESSION: AI CHAT IMPROVEMENTS & RECURRING AUTO-CREATE (v358-359)
+
+### Ngày: 2025-11-30
+### Developer: Claude Code
+
+---
+
+### 14.1. Features Implemented
+
+**A. Recurring Transactions Auto-Create Improvements**
+
+1. **Duplicate Prevention** - `recurring_charge_service.dart`
+   - Added `_wasChargedToday()` method to check if recurring was already charged today
+   - Prevents duplicate transactions when app is opened multiple times in a day
+
+2. **Expiration Check** - `recurring_charge_service.dart`
+   - Added `_hasExpired()` method to check if recurring's endDate has passed
+   - Auto-updates status to "expired" when endDate is reached
+
+3. **New DAO Methods** - `recurring_dao.dart`
+   - Added `cancelRecurring(int id)` method
+   - Added `expireRecurring(int id)` method
+
+4. **Background Service** - `background_service.dart` (NEW FILE)
+   - WorkManager integration for 24-hour periodic task scheduling
+   - `callbackDispatcher()` top-level function for background execution
+   - `BackgroundService.initialize()` and `scheduleRecurringChargeTask()`
+
+5. **Main.dart Integration**
+   - Added BackgroundService initialization on app startup
+
+**B. AI Chat Response Format Fixes**
+
+1. **JSON Display Bug Fix** - `ai_prompts.dart`
+   - AI was displaying raw `JSON: {...}` in chat responses
+   - Changed all examples to use `ACTION_JSON:` format consistently
+   - System parses `ACTION_JSON:` separately, user only sees clean text
+
+2. **Missing Category in Response** - `ai_prompts.dart`
+   - Added `⚠️ CRITICAL: ALWAYS mention BOTH wallet name AND category in response`
+   - Added EXACT RESPONSE TEMPLATES for one-time and recurring transactions
+   - Updated all examples to show category in parentheses: `(**{category}**)`
+
+3. **Transaction Type Detection** - `ai_prompts.dart`
+   - Fixed "Trả tiền lãi" (pay interest) being categorized as income
+   - Added rule: "trả" (pay) → expense category, "thu" (receive) → income category
+   - "Interest" category is income - should NOT be used for paying interest
+   - Added examples contrasting "Trả tiền lãi" (Bills) vs "Thu tiền lãi" (Interest)
+
+### 14.2. Code Changes
+
+**Files Modified:**
+
+1. `lib/core/services/recurring_charge_service.dart`
+   - Added `_hasExpired()` method
+   - Added `_wasChargedToday()` method
+   - Updated `createDueTransactions()` to use these checks
+
+2. `lib/core/database/daos/recurring_dao.dart`
+   - Added `cancelRecurring()` method
+   - Added `expireRecurring()` method
+
+3. `lib/core/services/background_service.dart` (NEW)
+   - WorkManager integration for background scheduling
+
+4. `lib/main.dart`
+   - Added BackgroundService initialization
+
+5. `lib/features/ai_chat/data/config/ai_prompts.dart`
+   - Fixed JSON → ACTION_JSON in examples
+   - Added response templates
+   - Added transaction type detection rules
+   - Added pay vs receive interest examples
+
+6. `pubspec.yaml`
+   - Added `workmanager: ^0.9.0` dependency
+
+### 14.3. Bug Fixes Summary
+
+| Bug | Root Cause | Fix |
+|-----|------------|-----|
+| AI shows raw JSON | Examples used `JSON:` instead of `ACTION_JSON:` | Updated all examples |
+| Missing category in response | No explicit rule requiring category | Added CRITICAL rule + templates |
+| "Trả tiền lãi" = income | AI used "Interest" (income category) for paying | Added expense/income keyword detection |
+
+### 14.4. Testing Results
+
+- ✅ "Trả tiền lãi hàng ngày 50k" → Bills (expense), shows `-50,000 VND`
+- ✅ "Thu tiền lãi 100k mỗi ngày" → Interest (income), shows `+100,000 VND`
+- ✅ Response includes category in parentheses
+- ✅ No raw JSON visible in chat
+
+### 14.5. Lessons Learned
+
+1. **AI learns from examples** - Wrong format in examples → wrong output
+2. **Category transactionType matters** - UI displays +/- based on category type
+3. **Semantic understanding is key** - "trả" vs "thu" determines expense/income
+4. **WorkManager API changes** - `NetworkType.not_required` → `NetworkType.notRequired`
+
+**STATUS: ✅ RESOLVED**
