@@ -4,11 +4,14 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/form_fields/custom_text_field.dart';
+import 'package:bexly/core/components/buttons/menu_tile_button.dart';
+// ignore: unused_import
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/services/device_location_service.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
@@ -24,6 +27,28 @@ final displayNameProvider = StateProvider.autoDispose<String>((ref) {
   final firebaseDisplayName = ref.watch(userDisplayNameProvider);
   return firebaseDisplayName ?? '';
 });
+
+/// Get HugeIcon for wallet type
+IconData _getWalletIcon(WalletType type) {
+  switch (type) {
+    case WalletType.cash:
+      return HugeIcons.strokeRoundedMoney02;
+    case WalletType.bankAccount:
+      return HugeIcons.strokeRoundedBank;
+    case WalletType.creditCard:
+      return HugeIcons.strokeRoundedCreditCard;
+    case WalletType.eWallet:
+      return HugeIcons.strokeRoundedMoney04;
+    case WalletType.investment:
+      return HugeIcons.strokeRoundedChart;
+    case WalletType.savings:
+      return HugeIcons.strokeRoundedPiggyBank;
+    case WalletType.insurance:
+      return HugeIcons.strokeRoundedSecurityCheck;
+    case WalletType.other:
+      return HugeIcons.strokeRoundedWallet03;
+  }
+}
 
 class OnboardingSlide3 extends HookConsumerWidget {
   const OnboardingSlide3({super.key});
@@ -57,6 +82,9 @@ class OnboardingSlide3 extends HookConsumerWidget {
 
     final displayName = ref.watch(displayNameProvider);
     final wallet = ref.watch(activeWalletProvider).valueOrNull;
+
+    // Watch all wallets for display
+    final allWalletsAsync = ref.watch(allWalletsStreamProvider);
 
     // Initialize currency from device location on first load
     final isInitialized = useState(false);
@@ -141,65 +169,98 @@ class OnboardingSlide3 extends HookConsumerWidget {
           const Gap(AppSpacing.spacing24),
 
           // Wallet setup section
-          const Text(
-            'Setup Your First Wallet',
+          Text(
+            wallet == null ? 'Setup Your First Wallet' : 'Your Wallets',
             style: AppTextStyles.heading4,
             textAlign: TextAlign.center,
           ),
           const Gap(AppSpacing.spacing16),
 
-          // Wallet field (tap to edit)
-          CustomTextField(
-            context: context,
-            controller: walletTextController,
-            label: wallet?.name ?? 'Wallet',
-            hint: wallet != null ? '' : 'Tap to setup your first wallet',
-            prefixIcon: HugeIcons.strokeRoundedWallet01,
-            isRequired: true, // Mark as required with red asterisk
-            readOnly: true,
-            onTap: () {
-              context.openBottomSheet(
-                child: WalletFormBottomSheet(
-                  wallet: wallet, // Edit current wallet or create first one
-                  showDeleteButton: false,
-                  allowFullEdit: true,
-                ),
-              );
-            },
-          ),
-          const Gap(AppSpacing.spacing12),
-
-          // Add another wallet button (only show after first wallet created)
-          if (wallet != null)
-            InkWell(
-              onTap: () {
-                context.openBottomSheet(
-                  child: WalletFormBottomSheet(
-                    wallet: null, // Create new wallet
-                    showDeleteButton: false,
-                    allowFullEdit: true,
-                  ),
+          // Show all wallets list
+          allWalletsAsync.when(
+            data: (wallets) {
+              if (wallets.isEmpty) {
+                // No wallets yet - show create button
+                return CustomTextField(
+                  context: context,
+                  controller: walletTextController,
+                  label: 'Wallet',
+                  hint: 'Tap to setup your first wallet',
+                  prefixIcon: HugeIcons.strokeRoundedWallet01,
+                  isRequired: true,
+                  readOnly: true,
+                  onTap: () {
+                    context.openBottomSheet(
+                      child: WalletFormBottomSheet(
+                        wallet: null,
+                        showDeleteButton: false,
+                        allowFullEdit: true,
+                      ),
+                    );
+                  },
                 );
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              }
+
+              // Show list of all wallets
+              return Column(
                 children: [
-                  Icon(
-                    HugeIcons.strokeRoundedAdd01,
-                    size: 20,
-                    color: AppColors.primary,
-                  ),
+                  ...wallets.map((w) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.spacing8),
+                    child: MenuTileButton(
+                      label: w.name,
+                      subtitle: Text(
+                        '${w.currencyByIsoCode(ref).symbol} ${w.balance.toPriceFormat()}',
+                        style: AppTextStyles.body3,
+                      ),
+                      icon: _getWalletIcon(w.walletType),
+                      onTap: () {
+                        context.openBottomSheet(
+                          child: WalletFormBottomSheet(
+                            wallet: w,
+                            showDeleteButton: wallets.length > 1,
+                            allowFullEdit: true,
+                          ),
+                        );
+                      },
+                    ),
+                  )),
                   const Gap(AppSpacing.spacing8),
-                  Text(
-                    'Add another wallet',
-                    style: AppTextStyles.body3.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
+                  // Add another wallet button
+                  InkWell(
+                    onTap: () {
+                      context.openBottomSheet(
+                        child: WalletFormBottomSheet(
+                          wallet: null,
+                          showDeleteButton: false,
+                          allowFullEdit: true,
+                        ),
+                      );
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          HugeIcons.strokeRoundedAdd01,
+                          size: 20,
+                          color: AppColors.primary,
+                        ),
+                        const Gap(AppSpacing.spacing8),
+                        Text(
+                          'Add another wallet',
+                          style: AppTextStyles.body3.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
-            ),
+              );
+            },
+            loading: () => const CircularProgressIndicator(),
+            error: (e, _) => Text('Error: $e'),
+          ),
           const Gap(AppSpacing.spacing24),
         ],
       ),

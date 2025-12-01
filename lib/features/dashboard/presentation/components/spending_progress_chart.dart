@@ -49,7 +49,10 @@ class SpendingProgressChart extends ConsumerWidget {
         // Group expenses by category and sum amounts
         final Map<String, double> categorySpending = {};
         for (var expense in currentMonthExpenses) {
-          final categoryTitle = expense.category.title;
+          // Use localized category name if available
+          final categoryTitle = context.l10n.getCategoryName(expense.category.id) != 'Unknown Category'
+              ? context.l10n.getCategoryName(expense.category.id)
+              : expense.category.title;
           categorySpending[categoryTitle] =
               (categorySpending[categoryTitle] ?? 0) + expense.amount;
         }

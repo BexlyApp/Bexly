@@ -22,7 +22,7 @@ class ProfileCard extends ConsumerWidget {
     final currentLanguage = ref.watch(languageProvider);
     final countryCode = _getCountryCodeFromLanguage(currentLanguage.code);
 
-    // Get display name from Firebase Auth, fallback to local
+    // Get display name from Firebase Auth (synced from onboarding)
     final displayName = firebaseUser?.displayName ?? auth.name;
     final profilePicture = firebaseUser?.photoURL ?? auth.profilePicture;
 

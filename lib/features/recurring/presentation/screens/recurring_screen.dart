@@ -6,6 +6,7 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/recurring/presentation/riverpod/recurring_providers.dart';
 import 'package:bexly/features/recurring/presentation/components/recurring_card.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
@@ -20,7 +21,7 @@ class RecurringScreen extends HookConsumerWidget {
 
     return CustomScaffold(
       context: context,
-      title: 'Recurring Payments',
+      title: context.l10n.recurringPayments,
       showBackButton: false,
       showBalance: false,
       floatingActionButton: FloatingActionButton(
@@ -52,18 +53,18 @@ class RecurringScreen extends HookConsumerWidget {
               labelStyle: AppTextStyles.body2.copyWith(
                 fontWeight: FontWeight.w600,
               ),
-              tabs: const [
+              tabs: [
                 Tab(
-                  text: 'Active',
-                  icon: Icon(Icons.check_circle_outline),
+                  text: context.l10n.active,
+                  icon: const Icon(Icons.check_circle_outline),
                 ),
                 Tab(
-                  text: 'All',
-                  icon: Icon(Icons.list),
+                  text: context.l10n.all,
+                  icon: const Icon(Icons.list),
                 ),
                 Tab(
-                  text: 'Paused',
-                  icon: Icon(Icons.pause_circle_outline),
+                  text: context.l10n.paused,
+                  icon: const Icon(Icons.pause_circle_outline),
                 ),
               ],
             ),
@@ -94,10 +95,10 @@ class _ActiveRecurringsTab extends HookConsumerWidget {
     return recurringsAsync.when(
       data: (recurrings) {
         if (recurrings.isEmpty) {
-          return const _EmptyState(
+          return _EmptyState(
             icon: Icons.repeat,
-            title: 'No Active Recurring Payments',
-            subtitle: 'Add your first subscription or recurring bill',
+            title: context.l10n.noActiveRecurringPayments,
+            subtitle: context.l10n.addFirstSubscription,
           );
         }
 
@@ -127,7 +128,7 @@ class _ActiveRecurringsTab extends HookConsumerWidget {
       loading: () => const LoadingIndicator(),
       error: (error, stack) => _EmptyState(
         icon: Icons.error_outline,
-        title: 'Error loading recurrings',
+        title: context.l10n.errorLoadingRecurrings,
         subtitle: error.toString(),
       ),
     );
@@ -144,10 +145,10 @@ class _AllRecurringsTab extends HookConsumerWidget {
     return recurringsAsync.when(
       data: (recurrings) {
         if (recurrings.isEmpty) {
-          return const _EmptyState(
+          return _EmptyState(
             icon: Icons.repeat,
-            title: 'No Recurring Payments',
-            subtitle: 'Add your first subscription or recurring bill',
+            title: context.l10n.noRecurringPayments,
+            subtitle: context.l10n.addFirstSubscription,
           );
         }
 
@@ -177,7 +178,7 @@ class _AllRecurringsTab extends HookConsumerWidget {
       loading: () => const LoadingIndicator(),
       error: (error, stack) => _EmptyState(
         icon: Icons.error_outline,
-        title: 'Error loading recurrings',
+        title: context.l10n.errorLoadingRecurrings,
         subtitle: error.toString(),
       ),
     );
@@ -196,10 +197,10 @@ class _PausedRecurringsTab extends HookConsumerWidget {
     return recurringsAsync.when(
       data: (recurrings) {
         if (recurrings.isEmpty) {
-          return const _EmptyState(
+          return _EmptyState(
             icon: Icons.pause_circle_outline,
-            title: 'No Paused Recurring Payments',
-            subtitle: 'Paused subscriptions and bills will appear here',
+            title: context.l10n.noPausedRecurringPayments,
+            subtitle: context.l10n.pausedSubscriptionsWillAppear,
           );
         }
 
@@ -229,7 +230,7 @@ class _PausedRecurringsTab extends HookConsumerWidget {
       loading: () => const LoadingIndicator(),
       error: (error, stack) => _EmptyState(
         icon: Icons.error_outline,
-        title: 'Error loading recurrings',
+        title: context.l10n.errorLoadingRecurrings,
         subtitle: error.toString(),
       ),
     );

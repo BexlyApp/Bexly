@@ -27,6 +27,7 @@ import 'package:bexly/features/transaction/presentation/components/form/transact
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
+import 'package:bexly/core/services/notification_permission_service.dart';
 
 class RecurringFormScreen extends HookConsumerWidget {
   final int? recurringId;
@@ -257,7 +258,21 @@ class RecurringFormScreen extends HookConsumerWidget {
                       _getReminderText(formState.frequency, formState.reminderDaysBefore),
                     ),
                     value: formState.enableReminder,
-                    onChanged: formNotifier.setEnableReminder,
+                    onChanged: (value) async {
+                      if (value) {
+                        // User is enabling reminder - check notification permission
+                        final hasPermission = await NotificationPermissionService.isPermissionGranted();
+                        if (!hasPermission && context.mounted) {
+                          // Request permission with explanation
+                          final granted = await NotificationPermissionService.requestWithExplanation(context);
+                          if (!granted) {
+                            // Permission denied, don't enable reminder
+                            return;
+                          }
+                        }
+                      }
+                      formNotifier.setEnableReminder(value);
+                    },
                   ),
 
                   // Action buttons (Pause/Delete) - only show when editing

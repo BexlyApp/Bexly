@@ -44,8 +44,8 @@ Return response text ONLY in user's language. Then on a NEW LINE put "ACTION_JSO
 - RIGHT: One ACTION_JSON per distinct item
 
 SCHEMAS:
-1. create_expense: {"action":"create_expense","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>","wallet":"<str>"?}
-2. create_income: {"action":"create_income","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>","wallet":"<str>"?}
+1. create_expense: {"action":"create_expense","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>","wallet":"<str>"?,"date":"YYYY-MM-DD"?,"time":"HH:MM"?}
+2. create_income: {"action":"create_income","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>","wallet":"<str>"?,"date":"YYYY-MM-DD"?,"time":"HH:MM"?}
 3. create_budget: {"action":"create_budget","amount":<num>,"currency":"USD|VND","category":"<str>","period":"monthly|weekly|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?}
 4. create_goal: {"action":"create_goal","title":"<str>","targetAmount":<num>,"currency":"USD|VND","currentAmount":<num>?,"deadline":"YYYY-MM-DD"?}
 5. get_balance: {"action":"get_balance","wallet":"<str>"?}
@@ -97,30 +97,27 @@ Shorthand notation (CONTEXT-AWARE):
   - "tr" only applies to VND, never USD
 
 Determine currency for "k" notation (SMART INFERENCE):
-1. Vietnamese input + "k" → ALWAYS VND (high confidence, no confirmation needed)
-   - "ăn sáng 150k" → 150,000 VND
-   - "mua laptop 15tr" → 15,000,000 VND
-2. English input + "k" → CONTEXT-DEPENDENT (analyze before deciding)
-   a) Check if amount is REASONABLE for the item type:
-      - Food/drinks: under 50 USD or under 500,000 VND
-      - Groceries: under 200 USD or under 5,000,000 VND
-      - Electronics: 100-5000 USD or 2M-130M VND
-   b) Decision logic:
-      - If wallet is VND AND amount reasonable for VND → likely VND, but ASK TO CONFIRM
-        - "lunch 150k" + VND wallet → Could be 150,000 VND (about 5.70 USD) - CONFIRM first
-        - Response: "Bạn muốn ghi nhận lunch là 150,000 VND phải không?"
-        - "laptop 2k" + VND wallet → 2,000 VND is too low - CONFIRM with suggestion
-        - Response: "Ý bạn là 2,000,000 VND hay 2,000 USD?"
-      - If wallet is USD AND amount reasonable for USD → likely USD, but CONFIRM
-        - "laptop 2k" + USD wallet → 2,000 USD - reasonable, but confirm first
-        - Response: "Do you mean 2,000 USD for laptop?"
-        - "lunch 150k" + USD wallet → 150,000 USD - ABSURD! MUST CONFIRM
-        - Response: "Do you mean 150,000 VND (about 5.70 USD) or did you mean 150 USD? 150k USD for lunch seems unreasonable."
-   c) CRITICAL: English input + "k" → ALWAYS confirm, never assume!
-3. Explicit currency ALWAYS wins (no confirmation needed)
-   - "150k VND" → 150,000 VND
-   - "150k USD" → 150,000 USD
-   - Dollar sign with k → USD (e.g., dollar 150k = 150,000 USD)
+
+⚠️ CRITICAL CURRENCY CONFIRMATION RULES:
+1. Vietnamese input + "k" + VND wallet → VND (no confirmation needed)
+   - "ăn sáng 150k" + VND wallet → 150,000 VND ✅
+   - "mua laptop 15tr" + VND wallet → 15,000,000 VND ✅
+
+2. Vietnamese input + "k" + USD wallet → MUST CONFIRM! (wallet mismatch)
+   - "ăn tối 150k" + USD wallet → ❓ ASK: "Bạn đang dùng ví USD. 150k là 150,000 VND hay 150,000 USD?"
+   - Response must include options for user to choose
+   - DO NOT auto-create transaction without confirmation!
+
+3. English input + "k" → ALWAYS CONFIRM regardless of wallet!
+   - "lunch 50k" + ANY wallet → ❓ ASK: "Do you mean 50,000 VND or 50,000 USD?"
+   - "dinner 150k" → ❓ ASK: "Is that 150,000 VND or 150,000 USD?"
+   - NEVER assume currency for English input with "k" notation!
+
+4. Explicit currency ALWAYS wins (no confirmation needed)
+   - "150k VND" → 150,000 VND ✅
+   - "150k USD" → 150,000 USD ✅
+   - "\$50" → 50 USD ✅
+   - "50 đô" → 50 USD ✅
 
 Vietnamese-specific:
 - Numbers may use dots/spaces: 1.000.000 = 1,000,000
@@ -146,15 +143,30 @@ Always include "currency" field in JSON.''';
     final tomorrow = _formatDate(now.add(const Duration(days: 1)));
 
     return '''
-DATE PARSING:
+DATE & TIME PARSING:
 Today is $today (YYYY-MM-DD)
 
-Relative dates:
-- "hôm nay"|"today" → $today
-- "hôm qua"|"yesterday" → $yesterday
-- "ngày mai"|"tomorrow" → $tomorrow
-- "từ hôm nay" → nextDueDate=$today
-- "từ hôm qua" → nextDueDate=$yesterday''';
+DATE RULES - Include "date" field when user specifies a date:
+- "hôm nay"|"today" → omit date (defaults to now)
+- "hôm qua"|"yesterday" → date=$yesterday
+- "ngày mai"|"tomorrow" → date=$tomorrow
+- "tuần trước"|"last week" → calculate appropriate date
+- "từ hôm nay" → nextDueDate=$today (for recurring)
+
+TIME RULES - Include "time" field (HH:MM format, 24h) when:
+1. User specifies explicit time: "10AM", "2:30PM", "14:00" → time="10:00", "14:30", "14:00"
+2. User mentions meal/activity that implies time:
+   - "ăn sáng"|"breakfast" → time="07:00"
+   - "ăn trưa"|"lunch" → time="12:00"
+   - "ăn tối"|"dinner" → time="19:00"
+   - "cà phê sáng"|"morning coffee" → time="08:00"
+3. If no date/time mentioned → omit both (will use current datetime)
+
+EXAMPLES:
+- "ăn sáng hôm qua 50k" → date="$yesterday", time="07:00"
+- "lunch yesterday 50k" → date="$yesterday", time="12:00"
+- "ăn tối 10PM hôm qua" → date="$yesterday", time="22:00"
+- "coffee 50k" (no date) → omit date and time (use current datetime)''';
   }
 
   static String _formatDate(DateTime date) {
@@ -357,21 +369,57 @@ User: "265tr"
 OUT: ✅ Đã ghi nhận chi tiêu **265,000,000 VND** cho **card đồ họa** (**Electronics**)
 ACTION_JSON: {"action":"create_expense","amount":265000000,"currency":"VND","description":"Graphics card","category":"Electronics"}
 
-IN: "Ăn sáng 55k" (wallet uses USD, rate: 1 USD = 26,315 VND) [Vietnamese input]
-OUT: ✅ Đã ghi nhận chi tiêu **55,000 VND** (quy đổi thành **\$2.09 USD**) cho **bữa sáng** (**Food & Drinks**) vào ví **My Wallet**
+IN: "Ăn sáng 55k" (wallet uses USD) [Vietnamese input + USD wallet → MUST CONFIRM]
+OUT: ❓ Bạn đang dùng ví **USD**. 55k là **55,000 VND** hay **55,000 USD**?
+(no ACTION_JSON - waiting for currency confirmation)
+
+User: "VND"
+OUT: ✅ Đã ghi nhận chi tiêu **55,000 VND** (Quy đổi: 55,000 đ → \$2.09) cho **bữa sáng** (**Food & Drinks**) vào ví **My Wallet**
 ACTION_JSON: {"action":"create_expense","amount":55000,"currency":"VND","description":"Ăn sáng","category":"Food & Drinks"}
 
-IN: "breakfast 55k" (wallet uses USD, rate: 1 USD = 26,315 VND) [English input]
-OUT: ✅ Recorded expense **55,000 VND** (converts to **\$2.09 USD**) for **breakfast** (**Food & Drinks**) to wallet **My Wallet**
+IN: "breakfast 55k" (wallet uses USD) [English input + "k" → MUST CONFIRM]
+OUT: ❓ Do you mean **55,000 VND** or **55,000 USD** for breakfast?
+(no ACTION_JSON - waiting for currency confirmation)
+
+User: "VND"
+OUT: ✅ Recorded expense **55,000 VND** (Converted: 55,000 VND → \$2.09) for **breakfast** (**Food & Drinks**) to wallet **My Wallet**
 ACTION_JSON: {"action":"create_expense","amount":55000,"currency":"VND","description":"breakfast","category":"Food & Drinks"}
 
-IN: "Netflix 300k hàng tháng từ hôm nay" (wallet uses USD, rate: 1 USD = 26,315 VND) [Vietnamese input]
-OUT: ✅ Đã ghi nhận chi tiêu định kỳ **300,000 VND** (quy đổi thành **\$11.40 USD**) cho **Netflix** (**Streaming**) vào ví **My Wallet**. Sẽ tự động trừ tiền hàng tháng từ hôm nay
+IN: "Ăn sáng 55k" (wallet uses VND) [Vietnamese input + VND wallet → NO confirmation needed]
+OUT: ✅ Đã ghi nhận chi tiêu **55,000 VND** cho **bữa sáng** (**Food & Drinks**) vào ví **My Wallet**
+ACTION_JSON: {"action":"create_expense","amount":55000,"currency":"VND","description":"Ăn sáng","category":"Food & Drinks"}
+
+IN: "ăn tối hôm qua 150k" (wallet uses VND) [Vietnamese + VND wallet → no confirm needed, dinner implies 19:00]
+OUT: ✅ Đã ghi nhận chi tiêu **150,000 VND** cho **ăn tối** (**Food & Drinks**) vào ngày hôm qua
+ACTION_JSON: {"action":"create_expense","amount":150000,"currency":"VND","description":"Ăn tối","category":"Food & Drinks","date":"[YESTERDAY]","time":"19:00"}
+
+IN: "ăn sáng hôm qua 50k" (wallet uses VND) [breakfast implies 07:00]
+OUT: ✅ Đã ghi nhận chi tiêu **50,000 VND** cho **ăn sáng** (**Food & Drinks**) vào ngày hôm qua
+ACTION_JSON: {"action":"create_expense","amount":50000,"currency":"VND","description":"Ăn sáng","category":"Food & Drinks","date":"[YESTERDAY]","time":"07:00"}
+
+IN: "lunch 10AM yesterday 100k VND" [explicit time overrides meal default]
+OUT: ✅ Recorded expense **100,000 VND** for **lunch** (**Food & Drinks**) on yesterday at 10:00
+ACTION_JSON: {"action":"create_expense","amount":100000,"currency":"VND","description":"Lunch","category":"Food & Drinks","date":"[YESTERDAY]","time":"10:00"}
+
+IN: "ăn tối hôm qua 150k" (wallet uses USD) [Vietnamese + USD wallet → MUST CONFIRM]
+OUT: ❓ Bạn đang dùng ví **USD**. 150k là **150,000 VND** hay **150,000 USD**?
+(no ACTION_JSON - waiting for currency confirmation)
+
+IN: "dinner yesterday 50k" [English + "k" → MUST CONFIRM regardless of wallet]
+OUT: ❓ Do you mean **50,000 VND** or **50,000 USD** for dinner yesterday?
+(no ACTION_JSON - waiting for currency confirmation)
+
+IN: "Netflix 300k hàng tháng từ hôm nay" (wallet uses USD) [Vietnamese + USD wallet → MUST CONFIRM]
+OUT: ❓ Bạn đang dùng ví **USD**. 300k là **300,000 VND** hay **300,000 USD**?
+(no ACTION_JSON - waiting for currency confirmation)
+
+User: "VND"
+OUT: ✅ Đã ghi nhận chi tiêu định kỳ **300,000 VND** (Quy đổi: 300,000 đ → \$11.40) cho **Netflix** (**Streaming**) vào ví **My Wallet**. Sẽ tự động trừ tiền hàng tháng từ hôm nay
 ACTION_JSON: {"action":"create_recurring","name":"Netflix","amount":300000,"currency":"VND","category":"Streaming","frequency":"monthly","nextDueDate":"[TODAY]","autoCreate":true}
 
-IN: "Spotify 350k hàng tuần" (wallet uses USD, rate: 1 USD = 26,315 VND) [Vietnamese input - weekly recurring]
-OUT: ✅ Đã ghi nhận chi tiêu định kỳ **350,000 VND** (quy đổi thành **\$13.30 USD**) cho **Spotify** (**Music**) vào ví **USDT**. Sẽ tự động trừ tiền hàng tuần từ hôm nay
-ACTION_JSON: {"action":"create_recurring","name":"Spotify","amount":350000,"currency":"VND","category":"Music","frequency":"weekly","nextDueDate":"[TODAY]","autoCreate":true}
+IN: "Netflix 300k hàng tháng" (wallet uses VND) [Vietnamese + VND wallet → no confirm needed]
+OUT: ✅ Đã ghi nhận chi tiêu định kỳ **300,000 VND** cho **Netflix** (**Streaming**) vào ví **My Wallet**. Sẽ tự động trừ tiền hàng tháng từ hôm nay
+ACTION_JSON: {"action":"create_recurring","name":"Netflix","amount":300000,"currency":"VND","category":"Streaming","frequency":"monthly","nextDueDate":"[TODAY]","autoCreate":true}
 
 IN: "Spotify subscription 10 dollars weekly" [English input - weekly recurring]
 OUT: ✅ Recorded recurring expense **\$10.00 USD** for **Spotify** (**Music**) to wallet **My Wallet**. Will auto-charge weekly starting today
@@ -542,8 +590,10 @@ Always reference the exact budget by ID in your ACTION_JSON.''';
         : '';
 
     // Add exchange rate context if provided
-    final exchangeRateContext = (exchangeRateVndToUsd != null)
-        ? '\n\nEXCHANGE_RATE:\n1 USD = ${exchangeRateVndToUsd.toStringAsFixed(2)} VND\n1 VND = ${(1 / exchangeRateVndToUsd).toStringAsFixed(6)} USD'
+    // exchangeRateVndToUsd is VND→USD rate (e.g., 0.000038 means 1 VND = 0.000038 USD)
+    // So 1 USD = 1/exchangeRateVndToUsd VND (e.g., 1 USD = 26,315 VND)
+    final exchangeRateContext = (exchangeRateVndToUsd != null && exchangeRateVndToUsd > 0)
+        ? '\n\nEXCHANGE_RATE:\n1 USD = ${(1 / exchangeRateVndToUsd).toStringAsFixed(0)} VND\n1 VND = ${exchangeRateVndToUsd.toStringAsFixed(6)} USD'
         : '';
 
     // Build budgets section

@@ -17,7 +17,9 @@ import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/string_extension.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/currency_picker/presentation/components/currency_picker_field.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/features/wallet/presentation/components/wallet_type_selector_field.dart';
@@ -79,8 +81,24 @@ class WalletFormBottomSheet extends HookConsumerWidget {
           interestRateController.text = wallet!.interestRate.toString();
         }
       } else {
-        // For new wallets, pre-fill with currency-based placeholder
-        final placeholderName = 'My ${currency.isoCode} Wallet';
+        // For new wallets, initialize currency from base currency setting
+        final baseCurrency = ref.read(baseCurrencyProvider);
+        final currencies = ref.read(currenciesStaticProvider);
+
+        // Find currency object matching base currency
+        final matchingCurrency = currencies.cast<Currency?>().firstWhere(
+          (c) => c?.isoCode == baseCurrency,
+          orElse: () => null,
+        );
+
+        if (matchingCurrency != null) {
+          // Update currencyProvider with base currency
+          ref.read(currencyProvider.notifier).state = matchingCurrency;
+        }
+
+        // Pre-fill with currency-based placeholder using base currency
+        final currencyCode = matchingCurrency?.isoCode ?? baseCurrency;
+        final placeholderName = 'My $currencyCode Wallet';
         nameController.text = placeholderName;
         // Select all text so it's easy to replace
         nameController.selection = TextSelection(

@@ -190,7 +190,7 @@ class LoginScreen extends HookConsumerWidget {
           final code = e.code;
           String message = e.message ?? 'Google Sign-In failed';
           if (code == 'sign_in_failed' && (message.contains('10') || (e.details?.toString().contains('10') ?? false))) {
-            message = 'Configuration error (code 10). Kiểm tra SHA-1/SHA-256 và OAuth client.';
+            message = 'Configuration error (code 10). Please check SHA-1/SHA-256 and OAuth client settings.';
           }
           toastification.show(
             context: context,

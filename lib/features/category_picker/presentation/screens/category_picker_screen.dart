@@ -7,6 +7,7 @@ import 'package:bexly/core/components/buttons/button_state.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/features/category/presentation/riverpod/category_providers.dart';
 import 'package:bexly/features/category/presentation/screens/category_form_screen.dart';
@@ -48,7 +49,7 @@ class CategoryPickerScreen extends HookConsumerWidget {
 
     return CustomScaffold(
       context: context,
-      title: isManageCategories ? 'Manage Categories' : 'Picking Category',
+      title: isManageCategories ? context.l10n.manageCategories : context.l10n.pickingCategory,
       showBalance: false,
       body: Column(
         children: [
@@ -66,7 +67,7 @@ class CategoryPickerScreen extends HookConsumerWidget {
                 children: [
                   Expanded(
                     child: ButtonChip(
-                      label: 'Expense',
+                      label: context.l10n.expense,
                       active: selectedType.value == 'expense',
                       onTap: () {
                         selectedType.value = 'expense';
@@ -76,7 +77,7 @@ class CategoryPickerScreen extends HookConsumerWidget {
                   const Gap(AppSpacing.spacing12),
                   Expanded(
                     child: ButtonChip(
-                      label: 'Income',
+                      label: context.l10n.income,
                       active: selectedType.value == 'income',
                       onTap: () {
                         selectedType.value = 'income';
@@ -100,9 +101,7 @@ class CategoryPickerScreen extends HookConsumerWidget {
                       return Center(
                         child: Padding(
                           padding: const EdgeInsets.all(AppSpacing.spacing20),
-                          child: Text(
-                            'No ${selectedType.value} categories found. Add one!',
-                          ),
+                          child: Text(context.l10n.noCategoriesFound),
                         ),
                       );
                     }
@@ -132,7 +131,7 @@ class CategoryPickerScreen extends HookConsumerWidget {
           ),
           if (!isPickingParent)
             PrimaryButton(
-              label: 'Add New Category',
+              label: context.l10n.addNewCategory,
               state: ButtonState.outlinedActive,
               onPressed: () {
                 ref.read(selectedParentCategoryProvider.notifier).state = null;

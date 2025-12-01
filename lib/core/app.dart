@@ -177,6 +177,12 @@ class MyApp extends ConsumerWidget {
           supportedLocales: const [
             Locale('en', ''),
             Locale('vi', ''),
+            Locale('zh', ''),
+            Locale('fr', ''),
+            Locale('th', ''),
+            Locale('id', ''),
+            Locale('es', ''),
+            Locale('pt', ''),
           ],
           localizationsDelegates: const [
             AppLocalizationsDelegate(),

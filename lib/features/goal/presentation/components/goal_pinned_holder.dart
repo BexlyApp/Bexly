@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/goal/presentation/components/goal_card.dart';
 import 'package:bexly/features/goal/presentation/riverpod/goals_list_provider.dart';
 
@@ -24,14 +25,14 @@ class GoalPinnedHolder extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.spacing20,
             ),
-            child: const Text('Pinned Goals', style: AppTextStyles.heading6),
+            child: Text(context.l10n.pinnedGoals, style: AppTextStyles.heading6),
           ),
           const Gap(AppSpacing.spacing16),
           asyncGoals.when(
             data: (data) {
               if (data.isEmpty) {
-                return const Center(
-                  child: Text('No goals pinned.', style: AppTextStyles.body3),
+                return Center(
+                  child: Text(context.l10n.noGoalsPinned, style: AppTextStyles.body3),
                 );
               }
 

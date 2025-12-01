@@ -122,6 +122,12 @@ extension TransactionUIExtensions on TransactionModel {
   }
 
   String get formattedDate {
-    return date.toRelativeDayFormatted();
+    return date.toRelativeDayFormatted(showTime: true);
+  }
+
+  /// Returns only the time part for grouped views where date is in header.
+  /// Example: "10.22 AM" or "15.30"
+  String get formattedTime {
+    return date.toTimeFormatted();
   }
 }

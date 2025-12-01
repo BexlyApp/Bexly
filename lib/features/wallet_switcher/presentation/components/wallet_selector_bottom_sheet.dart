@@ -6,6 +6,7 @@ import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_filter_provider.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_type.dart';
@@ -30,7 +31,7 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
     final bool isFormContext = onWalletSelected != null;
 
     return CustomBottomSheet(
-      title: 'Select Wallet',
+      title: context.l10n.selectWallet,
       subtitle: filterByCurrency != null
           ? 'You can only switch to wallets with the same currency'
           : null,
@@ -56,11 +57,11 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
               // First item is "Total (All Wallets)" - only if NOT form context
               if (!isFormContext && index == 0) {
                 return ListTile(
-                  title: Text('Total Balance', style: AppTextStyles.body1),
+                  title: Text(context.l10n.totalBalance, style: AppTextStyles.body1),
                   dense: true,
                   leading: const Icon(HugeIcons.strokeRoundedWallet01),
                   subtitle: Text(
-                    'View combined balance from all wallets',
+                    context.l10n.viewCombinedBalance,
                     style: AppTextStyles.body3,
                   ),
                   trailing: Icon(

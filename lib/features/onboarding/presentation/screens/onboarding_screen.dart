@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -18,6 +19,8 @@ import 'package:bexly/features/onboarding/presentation/components/onboarding_sli
 import 'package:bexly/features/onboarding/presentation/components/onboarding_slide_2.dart';
 import 'package:bexly/features/onboarding/presentation/components/onboarding_slide_3.dart';
 import 'package:bexly/features/onboarding/presentation/components/avatar_picker.dart';
+import 'package:bexly/core/components/dialogs/privacy_consent_bottom_sheet.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
 
 class OnboardingScreen extends HookConsumerWidget {
   const OnboardingScreen({super.key});
@@ -135,6 +138,34 @@ class OnboardingScreen extends HookConsumerWidget {
       return;
     }
 
+    // Check if user has already accepted privacy policy
+    final hasAccepted = await PrivacyConsentBottomSheet.hasAcceptedPrivacy();
+
+    if (!hasAccepted && context.mounted) {
+      // Show privacy consent bottom sheet
+      context.openBottomSheet(
+        child: PrivacyConsentBottomSheet(
+          onAccept: () {
+            Navigator.of(context).pop(); // Close bottom sheet
+            _completeOnboarding(context, ref, displayName, avatarPath);
+          },
+        ),
+      );
+      return;
+    }
+
+    // Already accepted, complete onboarding
+    if (context.mounted) {
+      _completeOnboarding(context, ref, displayName, avatarPath);
+    }
+  }
+
+  Future<void> _completeOnboarding(
+    BuildContext context,
+    WidgetRef ref,
+    String displayName,
+    String? avatarPath,
+  ) async {
     try {
       // Get current user or create dummy
       final currentUser = ref.read(authStateProvider);
@@ -145,8 +176,20 @@ class OnboardingScreen extends HookConsumerWidget {
         profilePicture: avatarPath,
       );
 
-      // Save user profile
+      // Save user profile locally
       ref.read(authStateProvider.notifier).setUser(updatedUser);
+
+      // Sync display name to Firebase Auth if user is logged in
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null && displayName.isNotEmpty) {
+        try {
+          await firebaseUser.updateDisplayName(displayName);
+          await firebaseUser.reload(); // Refresh user data
+          Log.i('Synced displayName to Firebase: $displayName', label: 'onboarding');
+        } catch (e) {
+          Log.e('Failed to sync displayName to Firebase: $e', label: 'onboarding');
+        }
+      }
 
       Log.i('Profile setup complete: ${updatedUser.toJson()}', label: 'onboarding');
 

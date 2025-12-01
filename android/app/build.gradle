@@ -51,13 +51,13 @@ android {
     }
 
     signingConfigs {
-        debug {
-            storeFile file('bexly-debug.keystore')
-            storePassword 'android'
-            keyAlias 'bexlydebug'
-            keyPassword 'android'
-        }
         if (keystorePropertiesFile.exists()) {
+            debug {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
             release {
                 storeFile file(keystoreProperties['storeFile'])
                 storePassword keystoreProperties['storePassword']
@@ -69,7 +69,9 @@ android {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.debug
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.debug
+            }
         }
         release {
             // TODO: Add your own signing config for the release build.
