@@ -3,7 +3,7 @@
 ## Overview
 This document outlines the development roadmap for Pockaw, focusing on transforming it from a basic expense tracker to a comprehensive financial management platform with AI-powered features.
 
-## Current State (v0.0.7+359)
+## Current State (v0.0.7+360)
 - ✅ Core expense/income tracking
 - ✅ Multi-wallet support with real-time cloud sync
 - ✅ Budget management
@@ -32,6 +32,8 @@ This document outlines the development roadmap for Pockaw, focusing on transform
 - ✅ **WorkManager background scheduling for recurring payments (v358)**
 - ✅ **AI response format fix - no raw JSON display (v359)**
 - ✅ **AI transaction type detection (trả=expense, thu=income) (v359)**
+- ✅ **Privacy consent dialog with GDPR compliance (v360)**
+- ✅ **Contextual notification permission request (v360)**
 
 ---
 
@@ -148,19 +150,19 @@ Monitoring:
 ## Phase 1: Receipt & Document Management (Q1 2025)
 
 ### 1.1 Receipt Photo Capture
-**Priority: HIGH | Timeline: 2 weeks**
+**Priority: HIGH | Timeline: 2 weeks | Status: ✅ COMPLETED**
 
 Features:
-- Camera integration for receipt photos
-- Gallery picker for existing images
-- Auto-crop and enhance
-- Store locally with transactions
-- Thumbnail preview in transaction list
+- ✅ Camera integration for receipt photos
+- ✅ Gallery picker for existing images
+- ✅ Store locally with transactions
+- ✅ Thumbnail preview in transaction list
+- 🔜 Auto-crop and enhance
 
 Technical:
-- `image_picker` package
-- Image compression/optimization
-- Local file storage management
+- ✅ `image_picker` package
+- ✅ Image compression/optimization
+- ✅ Local file storage management
 
 ### 1.2 Invoice Scanner (Like Reference App)
 **Priority: HIGH | Timeline: 3 weeks**
@@ -200,9 +202,12 @@ Features:
 - ✅ Category and wallet selection
 - ✅ Enable reminder toggle
 - ✅ Auto charge toggle
-- 🔜 Auto-create transactions on schedule
-- 🔜 Notification before due date
-- 🔜 Track payment history
+- ✅ Auto-create transactions on schedule (v358)
+- ✅ Push notifications for recurring (v358)
+- ✅ Track payment history (lastChargedDate, totalPayments)
+- ✅ Duplicate prevention (v358)
+- ✅ Auto-expire when endDate reached (v358)
+- ✅ WorkManager background scheduling (v358)
 
 Database Schema:
 ```sql
@@ -226,9 +231,9 @@ recurring_transactions:
 ```
 
 Next Steps:
-- 🔜 Background job to auto-create transactions
+- ✅ Background job to auto-create transactions (v358 - WorkManager)
 - 🔜 Integration with Plaid Recurring Transactions API
-- 🔜 Push notifications for due dates
+- ✅ Push notifications for due dates (v358 - recurring_notification_service.dart)
 - 🔜 Smart detection of recurring patterns from transaction history
 
 ### 2.2 Subscription Analytics
@@ -475,6 +480,49 @@ Features:
 - Milestone celebrations
 - Social accountability
 - Goal templates
+
+---
+
+## Pre-Launch Requirements 🚀
+
+### Onboarding & User Consent (P0-P1)
+**Priority: CRITICAL | Status: ✅ COMPLETED (v360)**
+
+#### User Flow:
+```
+Mở app lần đầu
+    ↓
+Onboarding screens (3-4 slides giới thiệu features)
+    ↓
+Privacy consent (nhẹ): "Chúng tôi sử dụng data để cải thiện app.
+                        Xem Privacy Policy" [Đồng ý & Tiếp tục]
+    ↓
+Tạo wallet đầu tiên
+    ↓
+... dùng app bình thường ...
+    ↓
+Khi bật recurring/reminder lần đầu → Xin notification permission (contextual)
+```
+
+#### Tasks:
+- ✅ Onboarding screens (3 slides)
+  - Slide 1: Welcome + App intro
+  - Slide 2: Powerful Features (Multi-wallet, AI, Budgets, Cloud Sync)
+  - Slide 3: Setup Profile (Avatar, Name, Wallet)
+- ✅ Privacy consent dialog (GDPR/CCPA compliant)
+  - Simple notice với link Privacy Policy & Terms of Service
+  - Lưu consent vào SharedPreferences
+  - Shows before completing onboarding
+- ✅ Contextual notification permission
+  - Trigger khi user bật recurring reminder lần đầu
+  - Pre-permission explanation dialog với benefits
+  - Fallback to Settings nếu user đã từ chối trước đó
+
+#### Technical:
+- `shared_preferences` cho first launch check
+- `introduction_screen` hoặc custom PageView
+- `permission_handler` cho notification
+- Firebase Analytics consent mode
 
 ---
 
@@ -908,9 +956,9 @@ Features:
 
 3. **Mid-term** (2-3 months) - Feature Enhancement:
    - Auto-detect recurring payments (Plaid Recurring API)
-   - Receipt photo capture
-   - Push notifications for bills
-   - Invoice scanner
+   - ✅ Receipt photo capture (DONE)
+   - ✅ Push notifications for bills (DONE - v358)
+   - Invoice scanner with OCR
    - Budget vs actual tracking with bank data
 
 4. **Long-term** (Next quarter) - Scale & Optimize:

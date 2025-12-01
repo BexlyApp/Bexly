@@ -498,6 +498,7 @@ Please create a transaction based on this receipt data.''';
       print('🔧 [CHAT_DEBUG] Wallet names: ${walletNames.join(", ")}');
       final exchangeRateCache = _ref.read(exchangeRateCacheProvider);
       final cachedRate = exchangeRateCache['VND_USD'];
+      print('🔧 [CHAT_DEBUG] Exchange rate from cache: ${cachedRate?.rate} (key: VND_USD, cache size: ${exchangeRateCache.length})');
 
       // If no active wallet, use first wallet in list as fallback
       final fallbackWallet = activeWallet ?? (allWallets.isNotEmpty ? allWallets.first : null);
@@ -691,9 +692,95 @@ Please create a transaction based on this receipt data.''';
                 // AI service was built with potentially stale wallet info, so we fix it here
                 displayMessage = displayMessage.replaceAll('Active Wallet', wallet.name);
 
-                // Note: No need to add confirmation message here because AI already provides
-                // a natural language confirmation in its response (e.g., "Đã ghi nhận chi tiêu...")
-                // The AI response is in the user's language and includes all necessary details
+                // Add conversion info if currency was converted
+                // Show wallet currency amount first, with note about original amount
+                if (aiCurrency != wallet.currency && actualAmount != null) {
+                  // Format amounts with proper separators
+                  final convertedFormatted = _formatAmount(actualAmount, currency: wallet.currency);
+                  final originalFormatted = _formatAmount(amount, currency: aiCurrency);
+
+                  // Build conversion note: "(Quy đổi từ 333.000 đ)"
+                  String conversionNote;
+                  if (displayMessage.contains('已记录') || displayMessage.contains('记录')) {
+                    conversionNote = '(兑换自 $originalFormatted)';
+                  } else if (displayMessage.contains('Đã ghi nhận') || displayMessage.contains('đã ghi nhận')) {
+                    conversionNote = '(Quy đổi từ $originalFormatted)';
+                  } else {
+                    conversionNote = '(Converted from $originalFormatted)';
+                  }
+
+                  // AI response contains original amount in various formats:
+                  // - "500,000 VND" (AI format with comma separator)
+                  // We need to REPLACE it with wallet currency amount + conversion note
+                  bool replaced = false;
+
+                  // Build AI format for VND (AI uses comma separator)
+                  String aiFormatAmount = '';
+                  if (aiCurrency == 'VND') {
+                    final amountInt = amount.round();
+                    aiFormatAmount = '${amountInt.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} VND';
+                  }
+
+                  // Pattern 1: Try AI format with bold markdown (e.g., **500,000 VND**)
+                  // Replace with wallet currency: **$19** (Quy đổi từ 500.000 đ)
+                  if (aiFormatAmount.isNotEmpty) {
+                    final boldAiPattern = '**$aiFormatAmount**';
+                    if (displayMessage.contains(boldAiPattern)) {
+                      displayMessage = displayMessage.replaceFirst(
+                        boldAiPattern,
+                        '**$convertedFormatted** $conversionNote'
+                      );
+                      replaced = true;
+                      Log.d('Replaced bold AI pattern with wallet currency: $boldAiPattern → $convertedFormatted', label: 'Chat Provider');
+                    }
+                  }
+
+                  // Pattern 2: Try AI format plain (e.g., 500,000 VND)
+                  if (!replaced && aiFormatAmount.isNotEmpty && displayMessage.contains(aiFormatAmount)) {
+                    displayMessage = displayMessage.replaceFirst(
+                      aiFormatAmount,
+                      '$convertedFormatted $conversionNote'
+                    );
+                    replaced = true;
+                    Log.d('Replaced plain AI pattern with wallet currency: $aiFormatAmount → $convertedFormatted', label: 'Chat Provider');
+                  }
+
+                  // Pattern 3: Try our format with bold markdown (e.g., **500.000 đ**)
+                  if (!replaced) {
+                    final boldPattern = '**$originalFormatted**';
+                    if (displayMessage.contains(boldPattern)) {
+                      displayMessage = displayMessage.replaceFirst(
+                        boldPattern,
+                        '**$convertedFormatted** $conversionNote'
+                      );
+                      replaced = true;
+                      Log.d('Replaced bold pattern with wallet currency: $boldPattern → $convertedFormatted', label: 'Chat Provider');
+                    }
+                  }
+
+                  // Pattern 4: Try our format plain (e.g., 500.000 đ)
+                  if (!replaced && displayMessage.contains(originalFormatted)) {
+                    displayMessage = displayMessage.replaceFirst(
+                      originalFormatted,
+                      '$convertedFormatted $conversionNote'
+                    );
+                    replaced = true;
+                    Log.d('Replaced plain pattern with wallet currency: $originalFormatted → $convertedFormatted', label: 'Chat Provider');
+                  }
+
+                  // Pattern 5: If still not found, prepend wallet amount after emoji
+                  if (!replaced) {
+                    if (displayMessage.startsWith('✅')) {
+                      final afterEmoji = displayMessage.substring(1).trimLeft();
+                      displayMessage = '✅ $convertedFormatted $conversionNote - $afterEmoji';
+                    } else {
+                      displayMessage = '$convertedFormatted $conversionNote - $displayMessage';
+                    }
+                    Log.d('Prepended wallet currency at start', label: 'Chat Provider');
+                  }
+
+                  Log.d('Converted display: $originalFormatted → $convertedFormatted', label: 'Chat Provider');
+                }
 
                 break;
               }
@@ -820,7 +907,7 @@ Please create a transaction based on this receipt data.''';
                 if (hierarchicalCategories.isEmpty) {
                   Log.w('⚠️ Categories not loaded yet, skipping recurring creation. Action: $action', label: 'Chat Provider');
                   print('⚠️ [CREATE_RECURRING] Categories not ready, action skipped');
-                  displayMessage += '\n\n⚠️ Lỗi: Danh mục chưa tải xong. Vui lòng thử lại sau vài giây.';
+                  displayMessage += '\n\n⚠️ Error: Categories not loaded yet. Please try again in a few seconds.';
                   break;
                 }
 
@@ -941,8 +1028,8 @@ Please create a transaction based on this receipt data.''';
                   actionType: 'delete_budget',
                   actionData: action,
                   buttons: [
-                    ChatActionButton(label: 'Xoá', actionType: 'confirm', actionData: action),
-                    ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
+                    ChatActionButton(label: 'Delete', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
                   ],
                 );
                 break;
@@ -955,8 +1042,8 @@ Please create a transaction based on this receipt data.''';
                   actionType: 'delete_all_budgets',
                   actionData: action,
                   buttons: [
-                    ChatActionButton(label: 'Xoá tất cả', actionType: 'confirm', actionData: action),
-                    ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
+                    ChatActionButton(label: 'Delete All', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
                   ],
                 );
                 break;
@@ -969,8 +1056,8 @@ Please create a transaction based on this receipt data.''';
                   actionType: 'update_budget',
                   actionData: action,
                   buttons: [
-                    ChatActionButton(label: 'Cập nhật', actionType: 'confirm', actionData: action),
-                    ChatActionButton(label: 'Huỷ', actionType: 'cancel'),
+                    ChatActionButton(label: 'Update', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
                   ],
                 );
                 break;
@@ -1087,7 +1174,7 @@ Please create a transaction based on this receipt data.''';
     // Add typing message
     final typingMessage = ChatMessage(
       id: 'typing_indicator',
-      content: 'Đang nhập...',
+      content: 'Typing...',
       isFromUser: false,
       timestamp: DateTime.now(),
       isTyping: true,
@@ -1266,7 +1353,52 @@ Please create a transaction based on this receipt data.''';
       final title = rawTitle.isEmpty
           ? rawTitle
           : rawTitle[0].toUpperCase() + rawTitle.substring(1);
-      final date = DateTime.now();
+
+      // Parse date and time from action JSON
+      // - date: "YYYY-MM-DD" format (e.g., "2024-12-01")
+      // - time: "HH:MM" format (e.g., "19:00" for dinner, "07:00" for breakfast)
+      final now = DateTime.now();
+      DateTime date;
+      final String? actionDate = action['date'] as String?;
+      final String? actionTime = action['time'] as String?;
+
+      if (actionDate != null && actionDate.isNotEmpty) {
+        try {
+          final parsedDate = DateTime.parse(actionDate);
+
+          // Parse time if provided, otherwise use current time
+          int hour = now.hour;
+          int minute = now.minute;
+          int second = now.second;
+
+          if (actionTime != null && actionTime.isNotEmpty) {
+            // Parse "HH:MM" format
+            final timeParts = actionTime.split(':');
+            if (timeParts.length >= 2) {
+              hour = int.tryParse(timeParts[0]) ?? now.hour;
+              minute = int.tryParse(timeParts[1]) ?? now.minute;
+              second = 0; // Reset seconds when explicit time is given
+            }
+            Log.d('Parsed time from action: $actionTime → $hour:$minute', label: 'TRANSACTION_DEBUG');
+          }
+
+          date = DateTime(
+            parsedDate.year,
+            parsedDate.month,
+            parsedDate.day,
+            hour,
+            minute,
+            second,
+          );
+          Log.d('Parsed datetime from action: $actionDate $actionTime → $date', label: 'TRANSACTION_DEBUG');
+        } catch (e) {
+          Log.w('Failed to parse date "$actionDate", using now: $e', label: 'TRANSACTION_DEBUG');
+          date = now;
+        }
+      } else {
+        // No date specified - use current datetime
+        date = now;
+      }
 
       // Debug currency detection
       Log.d('Action currency: $actionCurrency, Wallet currency: $walletCurrency', label: 'TRANSACTION_DEBUG');
@@ -1754,13 +1886,13 @@ Please create a transaction based on this receipt data.''';
       final net = income - expense;
 
       String fmt(num v) => v.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
-      return 'Tóm tắt ${range} (${start.toIso8601String().substring(0,10)} → ${end.toIso8601String().substring(0,10)}):\n'
-          '• Thu: ${fmt(income)} ${wallet.currency}\n'
-          '• Chi: ${fmt(expense)} ${wallet.currency}\n'
-          '• Ròng: ${fmt(net)} ${wallet.currency}';
+      return 'Summary $range (${start.toIso8601String().substring(0,10)} → ${end.toIso8601String().substring(0,10)}):\n'
+          '• Income: ${fmt(income)} ${wallet.currency}\n'
+          '• Expense: ${fmt(expense)} ${wallet.currency}\n'
+          '• Net: ${fmt(net)} ${wallet.currency}';
     } catch (e) {
       Log.e('Summary error: $e', label: 'Chat Provider');
-      return 'Không tạo được tóm tắt.';
+      return 'Could not generate summary.';
     }
   }
 
@@ -1816,18 +1948,25 @@ Please create a transaction based on this receipt data.''';
   }
 
   String _formatAmount(num value, {String? currency}) {
-    final intPart = value.round();
-    final text = intPart.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => m.group(1)! + '.');
     if (currency != null && currency.isNotEmpty) {
       // Special formatting for currencies
       if (currency == 'VND' || currency == 'đ') {
-        return text + ' đ';
+        // VND: round to integer, use dot as thousand separator
+        final intPart = value.round();
+        final text = intPart.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+        return '$text đ';
       } else if (currency == 'USD') {
-        return '\$' + text;
+        // USD: show 2 decimal places
+        final formatted = value.toStringAsFixed(2);
+        return '\$$formatted';
       }
-      return text + ' ' + currency;
+      // Other currencies: show 2 decimal places
+      return '${value.toStringAsFixed(2)} $currency';
     }
-    return text + ' đ';
+    // Default: VND format
+    final intPart = value.round();
+    final text = intPart.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+    return '$text đ';
   }
 
   String _formatDatePhrase(DateTime date) {

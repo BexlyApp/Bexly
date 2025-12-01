@@ -126,7 +126,7 @@ class OpenAIService with AIServicePromptMixin implements AIService {
     if (wallets != null) this.wallets = wallets;
     if (exchangeRate != null) exchangeRateVndToUsd = exchangeRate;
 
-    Log.d('✅ Updated AI context: wallet="$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}', label: 'AI Service');
+    Log.d('✅ Updated AI context: wallet="$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}, exchangeRate: $exchangeRate → stored: $exchangeRateVndToUsd', label: 'AI Service');
     if (wallets != null && wallets.isNotEmpty) {
       Log.d('   Wallet list: ${wallets.join(", ")}', label: 'AI Service');
     }
@@ -336,7 +336,7 @@ class GeminiService with AIServicePromptMixin implements AIService {
     if (wallets != null) this.wallets = wallets;
     if (exchangeRate != null) exchangeRateVndToUsd = exchangeRate;
 
-    Log.d('✅ Updated AI context: wallet="$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}', label: 'AI Service');
+    Log.d('✅ Updated AI context: wallet="$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}, exchangeRate: $exchangeRate → stored: $exchangeRateVndToUsd', label: 'AI Service');
     if (wallets != null && wallets.isNotEmpty) {
       Log.d('   Wallet list: ${wallets.join(", ")}', label: 'AI Service');
     }

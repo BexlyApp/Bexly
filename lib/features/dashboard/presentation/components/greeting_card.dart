@@ -16,19 +16,31 @@ class GreetingCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
+    // Watch Firebase Auth state changes to auto-rebuild when user profile updates
+    final firebaseAuthState = ref.watch(firebase_auth.authStateProvider);
+    final firebaseUser = firebaseAuthState.valueOrNull;
+
+    // Fallback to local auth for profile picture (not stored in Firebase Auth)
     final auth = ref.watch(authStateProvider);
+
+    // Use Firebase as source of truth, fallback to local
+    final displayName = firebaseUser?.displayName ?? auth.name;
+    final photoUrl = firebaseUser?.photoURL ?? auth.profilePicture;
 
     return Row(
       children: [
-        auth.profilePicture == null
-            ? const CircleIconButton(
+        photoUrl != null
+            ? CircleAvatar(
+                backgroundImage: photoUrl.startsWith('http')
+                    ? NetworkImage(photoUrl) as ImageProvider
+                    : FileImage(File(photoUrl)),
+                radius: 25,
+              )
+            : const CircleIconButton(
                 icon: HugeIcons.strokeRoundedUser,
                 radius: 25,
                 backgroundColor: AppColors.secondary100,
                 foregroundColor: AppColors.secondary800,
-              )
-            : CircleAvatar(
-                backgroundImage: FileImage(File(auth.profilePicture!)),
               ),
         const Gap(AppSpacing.spacing12),
         Column(
@@ -36,7 +48,7 @@ class GreetingCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('${_getGreeting(context)},', style: AppTextStyles.body4),
-            Text(auth.name, style: AppTextStyles.body2),
+            Text(displayName, style: AppTextStyles.body2),
           ],
         ),
       ],

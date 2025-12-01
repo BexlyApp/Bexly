@@ -29,6 +29,20 @@ class CategoryTile extends StatelessWidget {
     this.isSelected = false,
   });
 
+  /// Get localized category name - use translation for default categories (ID <= 1005),
+  /// show original title for custom user-created categories
+  String _getLocalizedCategoryName(BuildContext context, CategoryModel category) {
+    // Default categories have IDs in specific ranges (1-10 for main, 101-1005 for sub)
+    if (category.id != null && category.id! <= 1005) {
+      final localizedName = context.l10n.getCategoryName(category.id);
+      // If localization returns "Unknown Category", fall back to original title
+      if (localizedName != 'Unknown Category') {
+        return localizedName;
+      }
+    }
+    return category.title;
+  }
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -61,7 +75,7 @@ class CategoryTile extends StatelessWidget {
             const Gap(AppSpacing.spacing8),
             Expanded(
               child: Text(
-                category.title,
+                _getLocalizedCategoryName(context, category),
                 style: AppTextStyles.body3,
               ),
             ),

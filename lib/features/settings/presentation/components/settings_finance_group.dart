@@ -13,7 +13,7 @@ class SettingsFinanceGroup extends ConsumerWidget {
       title: context.l10n.finance,
       settingTiles: [
         MenuTileButton(
-          label: 'Base Currency',
+          label: context.l10n.baseCurrency,
           subtitle: Text('${currency?.name ?? baseCurrency} (${currency?.symbol ?? baseCurrency})'),
           icon: HugeIcons.strokeRoundedMoney02,
           onTap: () => context.push(Routes.baseCurrencySetting),

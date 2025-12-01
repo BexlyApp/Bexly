@@ -23,6 +23,8 @@ import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/core/router/routes.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:bexly/core/riverpod/auth_providers.dart' as firebase_auth;
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
