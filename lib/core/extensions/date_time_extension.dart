@@ -1,5 +1,71 @@
 import 'package:intl/intl.dart';
 
+/// Helper to check if current locale is Vietnamese
+bool get _isVietnameseLocale {
+  final locale = Intl.getCurrentLocale();
+  return locale.startsWith('vi');
+}
+
+/// Localized "Today" string based on current locale
+String get _localizedToday {
+  final locale = Intl.getCurrentLocale();
+  return switch (locale) {
+    'vi' => 'Hôm nay',
+    'zh' => '今天',
+    'fr' => "Aujourd'hui",
+    'th' => 'วันนี้',
+    'id' => 'Hari ini',
+    'es' => 'Hoy',
+    'pt' => 'Hoje',
+    _ => 'Today',
+  };
+}
+
+/// Localized "Yesterday" string based on current locale
+String get _localizedYesterday {
+  final locale = Intl.getCurrentLocale();
+  return switch (locale) {
+    'vi' => 'Hôm qua',
+    'zh' => '昨天',
+    'fr' => 'Hier',
+    'th' => 'เมื่อวาน',
+    'id' => 'Kemarin',
+    'es' => 'Ayer',
+    'pt' => 'Ontem',
+    _ => 'Yesterday',
+  };
+}
+
+/// Localized "This Month" string based on current locale
+String get _localizedThisMonth {
+  final locale = Intl.getCurrentLocale();
+  return switch (locale) {
+    'vi' => 'Tháng này',
+    'zh' => '本月',
+    'fr' => 'Ce mois-ci',
+    'th' => 'เดือนนี้',
+    'id' => 'Bulan ini',
+    'es' => 'Este mes',
+    'pt' => 'Este mês',
+    _ => 'This Month',
+  };
+}
+
+/// Localized "Last Month" string based on current locale
+String get _localizedLastMonth {
+  final locale = Intl.getCurrentLocale();
+  return switch (locale) {
+    'vi' => 'Tháng trước',
+    'zh' => '上个月',
+    'fr' => 'Le mois dernier',
+    'th' => 'เดือนที่แล้ว',
+    'id' => 'Bulan lalu',
+    'es' => 'El mes pasado',
+    'pt' => 'Mês passado',
+    _ => 'Last Month',
+  };
+}
+
 extension DateTimeExtension on DateTime {
   /// Format: March
   String toMonthName() {
@@ -73,23 +139,25 @@ extension DateTimeExtension on DateTime {
 
     String baseText;
     if (differenceInDays == 0) {
-      baseText = "Today";
+      baseText = _localizedToday;
     } else if (differenceInDays == 1) {
-      baseText = "Yesterday";
+      baseText = _localizedYesterday;
     } else {
       baseText = toDayMonthYear();
     }
 
     if (showTime) {
-      final time = use24Hours
-          ? DateFormat("HH.mm").format(this)
-          : DateFormat("hh.mm a").format(this);
+      // Vietnamese uses 24h format, English uses 12h format
+      final shouldUse24h = use24Hours || _isVietnameseLocale;
+      final time = shouldUse24h
+          ? DateFormat("HH:mm").format(this)
+          : DateFormat("h:mm a").format(this);
       return "$baseText, $time";
     }
     return baseText;
   }
 
-  /// Returns "This Month", "Last Month", or "Oct 2024" for tab labels.
+  /// Returns localized "This Month", "Last Month", or "Oct 2024" for tab labels.
   /// Compares `this` month to the `currentDate` month.
   String toMonthTabLabel(DateTime currentDate) {
     final thisMonthStart = DateTime(year, month, 1);
@@ -98,11 +166,11 @@ extension DateTimeExtension on DateTime {
 
     if (thisMonthStart.year == currentMonthStart.year &&
         thisMonthStart.month == currentMonthStart.month) {
-      return "This Month";
+      return _localizedThisMonth;
     }
     if (thisMonthStart.year == lastMonthStart.year &&
         thisMonthStart.month == lastMonthStart.month) {
-      return "Last Month";
+      return _localizedLastMonth;
     }
     return DateFormat("MMM yyyy").format(this); // e.g., "Oct 2024"
   }
@@ -115,5 +183,16 @@ extension DateTimeExtension on DateTime {
   /// Format: 13 March 2025 17.44
   String toDayMonthYearTime24Hour() {
     return DateFormat("d MMMM yyyy HH.mm").format(this);
+  }
+
+  /// Returns only time formatted.
+  /// Vietnamese: 24h format (18:45), English: 12h format (6:45 PM)
+  String toTimeFormatted({bool? use24Hours}) {
+    // Auto-detect based on locale if not specified
+    final shouldUse24h = use24Hours ?? _isVietnameseLocale;
+    if (shouldUse24h) {
+      return DateFormat("HH:mm").format(this);
+    }
+    return DateFormat("h:mm a").format(this);
   }
 }

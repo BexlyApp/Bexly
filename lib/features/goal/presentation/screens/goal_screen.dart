@@ -6,6 +6,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/features/goal/presentation/components/goal_card.dart';
 import 'package:bexly/features/goal/presentation/riverpod/goals_list_provider.dart';
 import 'package:bexly/features/goal/presentation/screens/goal_form_dialog.dart';
@@ -15,6 +16,7 @@ class GoalScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final asyncGoals = ref.watch(goalsListProvider);
 
     return Scaffold(
@@ -27,7 +29,7 @@ class GoalScreen extends ConsumerWidget {
       body: asyncGoals.when(
         data: (goals) {
           if (goals.isEmpty) {
-            return Center(child: Text('No goals. Add one!'));
+            return Center(child: Text(l10n.noGoalsAddOne));
           }
 
           return ListView.separated(

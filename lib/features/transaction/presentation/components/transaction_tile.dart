@@ -29,7 +29,8 @@ class TransactionTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
-    final currency = transaction.wallet.currencyByIsoCode(ref).symbol ?? transaction.wallet.currency;
+    final walletCurrency = transaction.wallet.currencyByIsoCode(ref);
+    final currency = walletCurrency.symbol;
 
     return InkWell(
       onTap: () {
@@ -99,7 +100,7 @@ class TransactionTile extends ConsumerWidget {
                         ),
                         const Gap(AppSpacing.spacing2),
                         AutoSizeText(
-                          transaction.category.title,
+                          _getLocalizedCategoryName(context, transaction.category),
                           style: AppTextStyles.body4,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -112,14 +113,15 @@ class TransactionTile extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      if (showDate)
-                        Text(
-                          transaction.formattedDate,
-                          style: AppTextStyles.body5,
-                        ),
-                      if (showDate) const Gap(AppSpacing.spacing4),
                       Text(
-                        '${transaction.amountPrefix} $currency ${transaction.amount.toPriceFormat()}',
+                        showDate
+                            ? transaction.formattedDate
+                            : transaction.formattedTime,
+                        style: AppTextStyles.body5,
+                      ),
+                      const Gap(AppSpacing.spacing4),
+                      Text(
+                        '${transaction.amountPrefix} $currency ${transaction.amount.toPriceFormat(decimalDigits: walletCurrency.decimalDigits)}',
                         style: AppTextStyles.numericMedium.copyWith(
                           color: transaction.amountColor,
                           height: 1.12,
@@ -134,5 +136,17 @@ class TransactionTile extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Get localized category name - use translation for default categories,
+  /// show original title for custom user-created categories
+  String _getLocalizedCategoryName(BuildContext context, CategoryModel category) {
+    if (category.id != null && category.id! <= 1005) {
+      final localizedName = context.l10n.getCategoryName(category.id);
+      if (localizedName != 'Unknown Category') {
+        return localizedName;
+      }
+    }
+    return category.title;
   }
 }

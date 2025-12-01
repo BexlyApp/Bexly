@@ -19,6 +19,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/services/image_service/image_service.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart' as firebase_auth;
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:toastification/toastification.dart';
 
@@ -79,7 +80,7 @@ class PersonalDetailsScreen extends HookConsumerWidget {
 
     return CustomScaffold(
       context: context,
-      title: 'Personal Details',
+      title: context.l10n.personalDetails,
       showBalance: false,
       body: Stack(
         fit: StackFit.expand,
@@ -102,7 +103,7 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                       // Show bottom sheet with Camera + Gallery options
                       await context.openBottomSheet<void>(
                         child: CustomBottomSheet(
-                          title: 'Choose Photo',
+                          title: context.l10n.choosePhoto,
                           child: Row(
                             children: [
                               Expanded(
@@ -116,7 +117,7 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                                       Log.d('Profile picture taken: ${file.path}', label: 'PersonalDetails');
                                     }
                                   },
-                                  label: 'Camera',
+                                  label: context.l10n.camera,
                                   icon: HugeIcons.strokeRoundedCamera01,
                                 ),
                               ),
@@ -132,7 +133,7 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                                       Log.d('Profile picture selected: ${file.path}', label: 'PersonalDetails');
                                     }
                                   },
-                                  label: 'Gallery',
+                                  label: context.l10n.gallery,
                                   icon: HugeIcons.strokeRoundedImage01,
                                 ),
                               ),
@@ -189,14 +190,14 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                   ),
                   CustomTextField(
                     controller: nameField,
-                    label: 'Name',
+                    label: context.l10n.name,
                     hint: 'John Doe',
                     maxLength: 100,
                     customCounterText: '',
                   ),
                   CustomTextField(
                     controller: emailField,
-                    label: 'Email',
+                    label: context.l10n.email,
                     hint: 'john@example.com',
                     enabled: false,
                     customCounterText: '',
@@ -206,12 +207,12 @@ class PersonalDetailsScreen extends HookConsumerWidget {
             ),
           ),
           PrimaryButton(
-            label: 'Save',
+            label: context.l10n.save,
             onPressed: () async {
               final newName = nameField.text.trim();
               if (newName.isEmpty) {
                 Toast.show(
-                  'Name cannot be empty.',
+                  context.l10n.nameCannotBeEmpty,
                   type: ToastificationType.warning,
                 );
                 return;
@@ -234,10 +235,12 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                     Log.i('Profile photo URL updated: $photoURL', label: 'PersonalDetails');
                   } else {
                     Log.w('Failed to upload profile picture: $errorMessage', label: 'PersonalDetails');
-                    Toast.show(
-                      'Failed to upload avatar',
-                      type: ToastificationType.error,
-                    );
+                    if (context.mounted) {
+                      Toast.show(
+                        context.l10n.failedToUploadAvatar,
+                        type: ToastificationType.error,
+                      );
+                    }
                     return; // Don't continue if upload failed
                   }
                 }
@@ -248,17 +251,20 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                 // Invalidate auth provider to force refresh UI
                 ref.invalidate(firebase_auth.authStateProvider);
 
-                Toast.show(
-                  'Personal details updated!',
-                  type: ToastificationType.success,
-                );
-
-                if (context.mounted) context.pop();
+                if (context.mounted) {
+                  Toast.show(
+                    context.l10n.personalDetailsUpdated,
+                    type: ToastificationType.success,
+                  );
+                  context.pop();
+                }
               } catch (e) {
-                Toast.show(
-                  'Failed to update profile: ${e.toString()}',
-                  type: ToastificationType.error,
-                );
+                if (context.mounted) {
+                  Toast.show(
+                    '${context.l10n.failedToUpdateProfile}: ${e.toString()}',
+                    type: ToastificationType.error,
+                  );
+                }
               }
             },
           ).floatingBottomContained,

@@ -74,7 +74,7 @@ class MobileBottomAppBar extends ConsumerWidget {
               ),
               _NavItem(
                 icon: Icons.repeat,
-                label: 'Recurring',
+                label: l10n.recurring,
                 isActive: currentIndex == 3,
                 activeColor: activeColor,
                 inactiveColor: inactiveColor,

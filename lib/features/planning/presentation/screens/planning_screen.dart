@@ -42,7 +42,7 @@ class PlanningScreen extends HookConsumerWidget {
       context: context,
       showBackButton: false,
       showBalance: false,
-      title: 'Planning',
+      title: l10n.planning,
       actions: [
         // Only show filter when on Budget tab (index 0)
         if (currentTab.value == 0)

@@ -3,13 +3,29 @@ import 'package:intl/intl.dart';
 extension DoubleFormattingExtensions on double {
   /// Formats the double as a price string with thousand separators.
   ///
+  /// [decimalDigits] - Number of decimal places to show. If null, auto-detect:
+  ///   - 0 decimals if value is integer (e.g., 123.0)
+  ///   - 2 decimals otherwise
+  /// For currencies like VND, JPY, KRW that don't use decimals, pass decimalDigits: 0
+  ///
   /// Examples:
-  /// - `2340.2` becomes `"2,340.20"`
-  /// - `12340.33` becomes `"12,340.33"`
-  /// - `412340.0` becomes `"412,340"`
-  /// - `111762340.0` becomes `"111,762,340"`
-  String toPriceFormat({String locale = 'en_US'}) {
-    // Check if the double is effectively an integer (e.g., 123.0)
+  /// - `2340.2` becomes `"2,340.20"` (auto)
+  /// - `12340.33` becomes `"12,340.33"` (auto)
+  /// - `412340.0` becomes `"412,340"` (auto or decimalDigits: 0)
+  /// - `111762340.75` with decimalDigits: 0 becomes `"111,762,341"` (rounded)
+  String toPriceFormat({String locale = 'en_US', int? decimalDigits}) {
+    // If decimalDigits is explicitly provided, use it
+    if (decimalDigits != null) {
+      if (decimalDigits == 0) {
+        // Round to nearest integer and format without decimals
+        return NumberFormat("#,##0", locale).format(round());
+      } else {
+        // Format with specified decimal places
+        return NumberFormat("#,##0.${'0' * decimalDigits}", locale).format(this);
+      }
+    }
+
+    // Auto-detect: check if the double is effectively an integer (e.g., 123.0)
     if (this % 1 == 0) {
       // Format as an integer with thousand separators
       return NumberFormat("#,##0", locale).format(this);

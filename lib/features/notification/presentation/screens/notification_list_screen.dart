@@ -5,6 +5,7 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/features/notification/presentation/riverpod/notification_providers.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -15,11 +16,12 @@ class NotificationListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final notificationsAsync = ref.watch(allNotificationsProvider);
 
     return CustomScaffold(
       context: context,
-      title: 'Notifications',
+      title: l10n.notifications,
       showBalance: false,
       actions: notificationsAsync.maybeWhen(
         data: (notifications) => notifications.isNotEmpty
@@ -30,18 +32,16 @@ class NotificationListScreen extends ConsumerWidget {
                     final confirmed = await showDialog<bool>(
                       context: context,
                       builder: (context) => AlertDialog(
-                        title: const Text('Clear all notifications'),
-                        content: const Text(
-                          'Are you sure you want to delete all notifications?',
-                        ),
+                        title: Text(l10n.clearAllNotifications),
+                        content: Text(l10n.areYouSureDeleteAllNotifications),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
+                            child: Text(l10n.cancel),
                           ),
                           TextButton(
                             onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Clear all'),
+                            child: Text(l10n.clearAll),
                           ),
                         ],
                       ),
@@ -53,7 +53,7 @@ class NotificationListScreen extends ConsumerWidget {
                     }
                   },
                   icon: const Icon(HugeIcons.strokeRoundedDelete02, size: 18),
-                  label: const Text('Clear all'),
+                  label: Text(l10n.clearAll),
                 ),
               ]
             : null,
@@ -68,7 +68,7 @@ class NotificationListScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(
-          child: Text('Error loading notifications: $error'),
+          child: Text('${l10n.errorLoadingNotifications}: $error'),
         ),
       ),
     );
@@ -76,6 +76,7 @@ class NotificationListScreen extends ConsumerWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Center(
       child: Padding(
@@ -90,14 +91,14 @@ class NotificationListScreen extends ConsumerWidget {
             ),
             const Gap(AppSpacing.spacing24),
             Text(
-              'No notifications',
+              l10n.noNotifications,
               style: AppTextStyles.body1.copyWith(
                 color: theme.colorScheme.onSurface,
               ),
             ),
             const Gap(AppSpacing.spacing8),
             Text(
-              'You\'ll see notifications and reminders here',
+              l10n.notificationsSubtitle,
               style: AppTextStyles.body3.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
