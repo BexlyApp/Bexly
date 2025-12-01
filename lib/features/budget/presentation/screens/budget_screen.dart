@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/features/budget/presentation/components/budget_card_holder.dart';
 import 'package:bexly/features/budget/presentation/components/budget_summary_card.dart';
 import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
@@ -11,6 +12,7 @@ class BudgetScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
+    final l10n = AppLocalizations.of(context)!;
     final allBudgetsAsyncValue = ref.watch(budgetListProvider);
     final selectedPeriod = ref.watch(selectedBudgetPeriodProvider);
 
@@ -18,7 +20,7 @@ class BudgetScreen extends HookConsumerWidget {
       body: allBudgetsAsyncValue.when(
         data: (allBudgets) {
           if (allBudgets.isEmpty) {
-            return const Center(child: Text('No budgets recorded yet.'));
+            return Center(child: Text(l10n.noBudgetsRecordedYet));
           }
 
           // Filter budgets for the selected period
@@ -33,8 +35,8 @@ class BudgetScreen extends HookConsumerWidget {
           }).toList();
 
           if (budgetsForPeriod.isEmpty) {
-            return const Center(
-              child: Text('No budgets for this month.'),
+            return Center(
+              child: Text(l10n.noBudgetsForThisMonth),
             );
           }
 

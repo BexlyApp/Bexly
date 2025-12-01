@@ -9,13 +9,13 @@ class SettingsDataGroup extends ConsumerWidget {
       showDragHandle: true,
       builder: (context) => AlertBottomSheet(
         context: context,
-        title: 'Re-populate Categories',
-        confirmText: 'Re-populate',
+        title: context.l10n.repopulateCategories,
+        confirmText: context.l10n.repopulate,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'WARNING: This will DELETE all categories and restore defaults.',
+              context.l10n.repopulateCategoriesWarning,
               style: AppTextStyles.body2.copyWith(
                 color: AppColors.red,
                 fontWeight: FontWeight.bold,
@@ -24,13 +24,13 @@ class SettingsDataGroup extends ConsumerWidget {
             ),
             const Gap(AppSpacing.spacing12),
             Text(
-              'Your existing transactions may show "Unknown Category" and need manual re-assignment.',
+              context.l10n.repopulateCategoriesTransactions,
               style: AppTextStyles.body2,
               textAlign: TextAlign.center,
             ),
             const Gap(AppSpacing.spacing12),
             Text(
-              'RECOMMENDED: Use "Delete My Data" instead, then create a new wallet.',
+              context.l10n.repopulateCategoriesRecommended,
               style: AppTextStyles.body2.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -73,8 +73,8 @@ class SettingsDataGroup extends ConsumerWidget {
       if (context.mounted) {
         toastification.show(
           context: context,
-          title: Text('Categories re-populated successfully'),
-          description: Text('Default categories have been restored'),
+          title: Text(context.l10n.categoriesRepopulatedSuccess),
+          description: Text(context.l10n.defaultCategoriesRestored),
           autoCloseDuration: const Duration(seconds: 3),
         );
       }
@@ -89,7 +89,7 @@ class SettingsDataGroup extends ConsumerWidget {
       if (context.mounted) {
         toastification.show(
           context: context,
-          title: Text('Error re-populating categories'),
+          title: Text(context.l10n.errorRepopulatingCategories),
           description: Text(e.toString()),
           autoCloseDuration: const Duration(seconds: 5),
         );
@@ -114,7 +114,7 @@ class SettingsDataGroup extends ConsumerWidget {
           },
         ),
         MenuTileButton(
-          label: 'Re-populate Categories',
+          label: context.l10n.repopulateCategories,
           icon: HugeIcons.strokeRoundedDatabaseRestore,
           onTap: () => _showRepopulateCategoriesSheet(context, ref),
         ),
@@ -182,7 +182,7 @@ class SettingsDataGroup extends ConsumerWidget {
         else
           // Guest mode - show Bind Account button
           MenuTileButton(
-            label: 'Bind Account',
+            label: context.l10n.bindAccount,
             icon: HugeIcons.strokeRoundedUserAdd01,
             onTap: () {
               // Show bind account bottom sheet with auth options

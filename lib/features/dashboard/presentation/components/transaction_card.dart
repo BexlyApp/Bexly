@@ -33,12 +33,14 @@ class TransactionCard extends ConsumerWidget {
     final baseCurrency = ref.watch(baseCurrencyProvider);
     final currencies = ref.read(currenciesStaticProvider);
 
-    // Determine currency symbol based on selection
+    // Determine currency based on selection
     // If specific wallet selected, use wallet currency
     // If "All Wallets" (null), use base currency
-    final String currencySymbol = selectedWallet != null
-        ? selectedWallet.currencyByIsoCode(ref).symbol
-        : (currencies.fromIsoCode(baseCurrency)?.symbol ?? baseCurrency);
+    final currency = selectedWallet != null
+        ? selectedWallet.currencyByIsoCode(ref)
+        : currencies.fromIsoCode(baseCurrency);
+    final String currencySymbol = currency?.symbol ?? baseCurrency;
+    final int? decimalDigits = currency?.decimalDigits;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.spacing16),
@@ -99,7 +101,7 @@ class TransactionCard extends ConsumerWidget {
               ),
               Expanded(
                 child: AutoSizeText(
-                  amount.toPriceFormat(),
+                  amount.toPriceFormat(decimalDigits: decimalDigits),
                   style: AppTextStyles.numericTitle.copyWith(
                     color: amountColor,
                     height: 1,

@@ -140,7 +140,9 @@ class BalanceCard extends ConsumerWidget {
                               style: AppTextStyles.body3,
                             ),
                             Text(
-                              selectedWallet.balance.toPriceFormat(),
+                              selectedWallet.balance.toPriceFormat(
+                                decimalDigits: currency.decimalDigits,
+                              ),
                               style: AppTextStyles.numericHeading.copyWith(
                                 height: 1,
                               ),
@@ -163,7 +165,9 @@ class BalanceCard extends ConsumerWidget {
                               style: AppTextStyles.body3,
                             ),
                             Text(
-                              totalBalance.toPriceFormat(),
+                              totalBalance.toPriceFormat(
+                                decimalDigits: currency?.decimalDigits,
+                              ),
                               style: AppTextStyles.numericHeading.copyWith(
                                 height: 1,
                               ),
