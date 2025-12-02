@@ -318,6 +318,12 @@ class AppLocalizations {
       'areYouSureDeleteAllNotifications': 'Are you sure you want to delete all notifications?',
       'clearAll': 'Clear all',
       'errorLoadingNotifications': 'Error loading notifications',
+      // Default Wallet
+      'defaultWalletSetting': 'Default Wallet',
+      'notSetYet': 'Not set yet',
+      'noWalletsCreateOne': 'No wallets yet. Create one first.',
+      'setAsDefaultWallet': 'Set as default wallet',
+      'usedForAiAndConversion': 'Used for AI assistant and currency conversion',
     },
     'vi': {
       'appTitle': 'Bexly',
@@ -627,6 +633,12 @@ class AppLocalizations {
       'areYouSureDeleteAllNotifications': 'Bạn có chắc muốn xóa tất cả thông báo?',
       'clearAll': 'Xóa tất cả',
       'errorLoadingNotifications': 'Lỗi khi tải thông báo',
+      // Default Wallet
+      'defaultWalletSetting': 'Ví mặc định',
+      'notSetYet': 'Chưa thiết lập',
+      'noWalletsCreateOne': 'Chưa có ví. Tạo ví trước.',
+      'setAsDefaultWallet': 'Đặt làm ví mặc định',
+      'usedForAiAndConversion': 'Sử dụng cho AI và chuyển đổi tiền tệ',
     },
     'zh': {
       'appTitle': 'Bexly',
@@ -936,6 +948,12 @@ class AppLocalizations {
       'areYouSureDeleteAllNotifications': '确定要删除所有通知吗？',
       'clearAll': '全部清除',
       'errorLoadingNotifications': '加载通知出错',
+      // Default Wallet
+      'defaultWalletSetting': '默认钱包',
+      'notSetYet': '尚未设置',
+      'noWalletsCreateOne': '暂无钱包。请先创建。',
+      'setAsDefaultWallet': '设为默认钱包',
+      'usedForAiAndConversion': '用于AI助手和货币转换',
     },
     'fr': {
       'appTitle': 'Bexly',
@@ -1245,6 +1263,12 @@ class AppLocalizations {
       'areYouSureDeleteAllNotifications': 'Voulez-vous vraiment supprimer toutes les notifications ?',
       'clearAll': 'Tout effacer',
       'errorLoadingNotifications': 'Erreur de chargement des notifications',
+      // Default Wallet
+      'defaultWalletSetting': 'Portefeuille par défaut',
+      'notSetYet': 'Non défini',
+      'noWalletsCreateOne': 'Aucun portefeuille. Créez-en un.',
+      'setAsDefaultWallet': 'Définir comme portefeuille par défaut',
+      'usedForAiAndConversion': 'Utilisé pour l\'assistant IA et la conversion de devises',
     },
     'th': {
       'appTitle': 'Bexly',
@@ -1554,6 +1578,12 @@ class AppLocalizations {
       'areYouSureDeleteAllNotifications': 'คุณแน่ใจหรือไม่ว่าต้องการลบการแจ้งเตือนทั้งหมด?',
       'clearAll': 'ล้างทั้งหมด',
       'errorLoadingNotifications': 'เกิดข้อผิดพลาดในการโหลดการแจ้งเตือน',
+      // Default Wallet
+      'defaultWalletSetting': 'กระเป๋าเงินเริ่มต้น',
+      'notSetYet': 'ยังไม่ได้ตั้งค่า',
+      'noWalletsCreateOne': 'ยังไม่มีกระเป๋าเงิน สร้างก่อน',
+      'setAsDefaultWallet': 'ตั้งเป็นกระเป๋าเงินเริ่มต้น',
+      'usedForAiAndConversion': 'ใช้สำหรับผู้ช่วย AI และการแปลงสกุลเงิน',
     },
     'id': {
       'appTitle': 'Bexly',
@@ -1863,6 +1893,12 @@ class AppLocalizations {
       'areYouSureDeleteAllNotifications': 'Anda yakin ingin menghapus semua notifikasi?',
       'clearAll': 'Hapus semua',
       'errorLoadingNotifications': 'Error memuat notifikasi',
+      // Default Wallet
+      'defaultWalletSetting': 'Dompet Default',
+      'notSetYet': 'Belum diatur',
+      'noWalletsCreateOne': 'Belum ada dompet. Buat dulu.',
+      'setAsDefaultWallet': 'Jadikan dompet default',
+      'usedForAiAndConversion': 'Digunakan untuk asisten AI dan konversi mata uang',
     },
     'es': {
       'appTitle': 'Bexly',
@@ -2172,6 +2208,12 @@ class AppLocalizations {
       'areYouSureDeleteAllNotifications': '¿Estás seguro de que deseas eliminar todas las notificaciones?',
       'clearAll': 'Borrar todo',
       'errorLoadingNotifications': 'Error al cargar notificaciones',
+      // Default Wallet
+      'defaultWalletSetting': 'Cartera Predeterminada',
+      'notSetYet': 'No establecido',
+      'noWalletsCreateOne': 'No hay carteras. Crea una primero.',
+      'setAsDefaultWallet': 'Establecer como cartera predeterminada',
+      'usedForAiAndConversion': 'Utilizado para el asistente de IA y conversión de moneda',
     },
     'pt': {
       'appTitle': 'Bexly',
@@ -2481,6 +2523,12 @@ class AppLocalizations {
       'areYouSureDeleteAllNotifications': 'Tem certeza de que deseja excluir todas as notificações?',
       'clearAll': 'Limpar tudo',
       'errorLoadingNotifications': 'Erro ao carregar notificações',
+      // Default Wallet
+      'defaultWalletSetting': 'Carteira Padrão',
+      'notSetYet': 'Não definido',
+      'noWalletsCreateOne': 'Sem carteiras. Crie uma primeiro.',
+      'setAsDefaultWallet': 'Definir como carteira padrão',
+      'usedForAiAndConversion': 'Usado para assistente de IA e conversão de moeda',
     },
   };
 
@@ -2724,6 +2772,12 @@ class AppLocalizations {
   String get areYouSureDeleteAllNotifications => get('areYouSureDeleteAllNotifications');
   String get clearAll => get('clearAll');
   String get errorLoadingNotifications => get('errorLoadingNotifications');
+  // Default Wallet
+  String get defaultWalletSetting => get('defaultWalletSetting');
+  String get notSetYet => get('notSetYet');
+  String get noWalletsCreateOne => get('noWalletsCreateOne');
+  String get setAsDefaultWallet => get('setAsDefaultWallet');
+  String get usedForAiAndConversion => get('usedForAiAndConversion');
 
   String languageChanged(String language) {
     return '${get('languageChanged')} $language';

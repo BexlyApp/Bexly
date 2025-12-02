@@ -9,6 +9,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_type.dart';
@@ -43,6 +44,7 @@ class WalletsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final allWalletsAsync = ref.watch(allWalletsStreamProvider);
+    final defaultWalletId = ref.watch(defaultWalletIdProvider);
 
     return CustomScaffold(
       context: context,
@@ -70,6 +72,7 @@ class WalletsScreen extends ConsumerWidget {
             itemCount: wallets.length,
             itemBuilder: (context, index) {
               final wallet = wallets[index];
+              final isDefault = wallet.id == defaultWalletId;
               return MenuTileButton(
                 label: wallet.name,
                 subtitle: Text(
@@ -77,6 +80,13 @@ class WalletsScreen extends ConsumerWidget {
                   style: AppTextStyles.body3,
                 ),
                 icon: _getWalletIcon(wallet.walletType),
+                trailing: isDefault
+                    ? const Icon(
+                        HugeIcons.strokeRoundedCheckmarkCircle02,
+                        color: AppColors.primary600,
+                        size: 22,
+                      )
+                    : null,
                 onTap: () {
                   final bool isNotLastWallet = wallets.length > 1;
                   final defaultCurrencies = ref.read(currenciesStaticProvider);

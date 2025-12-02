@@ -188,8 +188,11 @@ final aiServiceProvider = Provider<AIService>((ref) {
   final allWalletsAsync = ref.read(allWalletsStreamProvider);
   final allWallets = allWalletsAsync.valueOrNull ?? [];
 
-  // If activeWallet is null (multi-wallet), use first wallet as default for AI context
-  final contextWallet = wallet ?? (allWallets.isNotEmpty ? allWallets.first : null);
+  // Get default wallet for fallback (when activeWallet is null in multi-wallet mode)
+  final defaultWallet = ref.read(defaultWalletProvider).valueOrNull;
+
+  // If activeWallet is null (multi-wallet), use default wallet for AI context
+  final contextWallet = wallet ?? defaultWallet ?? (allWallets.isNotEmpty ? allWallets.first : null);
   final walletCurrency = contextWallet?.currency ?? 'VND';
   final walletName = contextWallet?.name ?? 'Active Wallet';
 
@@ -500,8 +503,9 @@ Please create a transaction based on this receipt data.''';
       final cachedRate = exchangeRateCache['VND_USD'];
       print('🔧 [CHAT_DEBUG] Exchange rate from cache: ${cachedRate?.rate} (key: VND_USD, cache size: ${exchangeRateCache.length})');
 
-      // If no active wallet, use first wallet in list as fallback
-      final fallbackWallet = activeWallet ?? (allWallets.isNotEmpty ? allWallets.first : null);
+      // If no active wallet, use default wallet as fallback
+      final defaultWallet = _ref.read(defaultWalletProvider).valueOrNull;
+      final fallbackWallet = activeWallet ?? defaultWallet ?? (allWallets.isNotEmpty ? allWallets.first : null);
       print('🔧 [CHAT_DEBUG] Using wallet for context: ${fallbackWallet?.name} (${fallbackWallet?.currency})');
       print('🔧 [CHAT_DEBUG] Calling updateContext()...');
 
@@ -669,10 +673,11 @@ Please create a transaction based on this receipt data.''';
                   }
                 }
 
-                // Priority 3: Use first available wallet
+                // Priority 3: Use default wallet, then first available wallet
                 if (wallet == null && allWallets.isNotEmpty) {
-                  wallet = allWallets.first;
-                  Log.d('No wallet found for $aiCurrency, using first wallet: ${wallet.name} (${wallet.currency}) - will convert', label: 'AI_CURRENCY');
+                  final defaultWallet = _ref.read(defaultWalletProvider).valueOrNull;
+                  wallet = defaultWallet ?? allWallets.first;
+                  Log.d('No wallet found for $aiCurrency, using ${defaultWallet != null ? "default" : "first"} wallet: ${wallet.name} (${wallet.currency}) - will convert', label: 'AI_CURRENCY');
                 }
 
                 if (wallet == null) {
@@ -967,9 +972,10 @@ Please create a transaction based on this receipt data.''';
                   usedWallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
                 }
 
-                // Priority 3: Use first available wallet
+                // Priority 3: Use default wallet, then first available wallet
                 if (usedWallet == null && allWallets.isNotEmpty) {
-                  usedWallet = allWallets.first;
+                  final defaultWallet = _ref.read(defaultWalletProvider).valueOrNull;
+                  usedWallet = defaultWallet ?? allWallets.first;
                 }
 
                 Log.d('🔵 Calling _createRecurringFromAction...', label: 'Chat Provider');
@@ -1247,13 +1253,19 @@ Please create a transaction based on this receipt data.''';
       if (wallet == null) {
         wallet = _ref.read(activeWalletProvider).valueOrNull;
 
-        // If still no wallet, try to get first available wallet
+        // If still no wallet, try to get default wallet, then first available wallet
         if (wallet == null) {
-          final walletsAsync = _ref.read(allWalletsStreamProvider);
-          final allWallets = walletsAsync.valueOrNull ?? [];
-          if (allWallets.isNotEmpty) {
-            wallet = allWallets.first;
-            Log.d('No active wallet, using first available: ${wallet.name}', label: 'TRANSACTION_DEBUG');
+          final defaultWallet = _ref.read(defaultWalletProvider).valueOrNull;
+          if (defaultWallet != null) {
+            wallet = defaultWallet;
+            Log.d('No active wallet, using default wallet: ${wallet.name}', label: 'TRANSACTION_DEBUG');
+          } else {
+            final walletsAsync = _ref.read(allWalletsStreamProvider);
+            final allWallets = walletsAsync.valueOrNull ?? [];
+            if (allWallets.isNotEmpty) {
+              wallet = allWallets.first;
+              Log.d('No active wallet, using first available: ${wallet.name}', label: 'TRANSACTION_DEBUG');
+            }
           }
         }
       }
@@ -2274,10 +2286,16 @@ Please create a transaction based on this receipt data.''';
         wallet = _ref.read(activeWalletProvider).valueOrNull;
       }
 
-      // If still no wallet, try to get first available wallet
-      if (wallet == null && allWallets.isNotEmpty) {
-        wallet = allWallets.first;
-        Log.d('No active wallet, using first available wallet: ${wallet.name}', label: 'CREATE_RECURRING');
+      // If still no wallet, try to get default wallet, then first available wallet
+      if (wallet == null) {
+        final defaultWallet = _ref.read(defaultWalletProvider).valueOrNull;
+        if (defaultWallet != null) {
+          wallet = defaultWallet;
+          Log.d('No active wallet, using default wallet: ${wallet.name}', label: 'CREATE_RECURRING');
+        } else if (allWallets.isNotEmpty) {
+          wallet = allWallets.first;
+          Log.d('No active wallet, using first available wallet: ${wallet.name}', label: 'CREATE_RECURRING');
+        }
       }
 
       if (wallet == null) {

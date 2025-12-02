@@ -1,23 +1,13 @@
 part of '../screens/settings_screen.dart';
 
-class SettingsFinanceGroup extends ConsumerWidget {
+class SettingsFinanceGroup extends StatelessWidget {
   const SettingsFinanceGroup({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final baseCurrency = ref.watch(baseCurrencyProvider);
-    final currencies = ref.watch(currenciesStaticProvider);
-    final currency = currencies.fromIsoCode(baseCurrency);
-
+  Widget build(BuildContext context) {
     return SettingsGroupHolder(
       title: context.l10n.finance,
       settingTiles: [
-        MenuTileButton(
-          label: context.l10n.baseCurrency,
-          subtitle: Text('${currency?.name ?? baseCurrency} (${currency?.symbol ?? baseCurrency})'),
-          icon: HugeIcons.strokeRoundedMoney02,
-          onTap: () => context.push(Routes.baseCurrencySetting),
-        ),
         MenuTileButton(
           label: context.l10n.wallets,
           icon: HugeIcons.strokeRoundedWallet03,

@@ -4,37 +4,41 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/exchange_rate_service.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 
-/// Provider for the base currency setting (default: VND)
-final baseCurrencyProvider = StateNotifierProvider<BaseCurrencyNotifier, String>((ref) {
-  return BaseCurrencyNotifier(ref);
+/// Provider for the default wallet ID setting
+/// This wallet is used for:
+/// - AI context when viewing "All Wallets"
+/// - Base currency derivation for dashboard aggregation
+final defaultWalletIdProvider = StateNotifierProvider<DefaultWalletIdNotifier, int?>((ref) {
+  return DefaultWalletIdNotifier(ref);
 });
 
-class BaseCurrencyNotifier extends StateNotifier<String> {
-  static const _key = 'base_currency';
+class DefaultWalletIdNotifier extends StateNotifier<int?> {
+  static const _key = 'default_wallet_id';
   final Ref _ref;
 
-  BaseCurrencyNotifier(this._ref) : super('VND') {
+  DefaultWalletIdNotifier(this._ref) : super(null) {
     _loadFromPrefs();
   }
 
   Future<void> _loadFromPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString(_key);
-      if (saved != null && saved.isNotEmpty) {
+      final saved = prefs.getInt(_key);
+      if (saved != null) {
         state = saved;
-        Log.d('Loaded base currency: $saved', label: 'BaseCurrency');
+        Log.d('Loaded default wallet ID: $saved', label: 'DefaultWallet');
       } else {
-        // Initialize from first wallet currency
+        // Initialize from first wallet
         await _initializeFromFirstWallet();
       }
     } catch (e) {
-      Log.e('Error loading base currency: $e', label: 'BaseCurrency');
+      Log.e('Error loading default wallet ID: $e', label: 'DefaultWallet');
     }
   }
 
-  /// Public method to re-initialize base currency from first wallet
+  /// Public method to re-initialize default wallet from first wallet
   /// Call this after resetting data
   Future<void> initializeFromFirstWallet() async {
     await _initializeFromFirstWallet();
@@ -48,31 +52,65 @@ class BaseCurrencyNotifier extends StateNotifier<String> {
       if (wallets.isNotEmpty) {
         // Get first wallet (by ID order)
         final firstWallet = wallets.reduce((a, b) => (a.id ?? 0) < (b.id ?? 0) ? a : b);
-        final currency = firstWallet.currency;
-        await setBaseCurrency(currency);
-        Log.d('Initialized base currency from first wallet: $currency', label: 'BaseCurrency');
+        await setDefaultWalletId(firstWallet.id!);
+        Log.d('Initialized default wallet from first wallet: ${firstWallet.id}', label: 'DefaultWallet');
       } else {
-        // Fallback to VND if no wallets
-        state = 'VND';
-        Log.d('No wallets found, using VND as fallback', label: 'BaseCurrency');
+        state = null;
+        Log.d('No wallets found, default wallet is null', label: 'DefaultWallet');
       }
     } catch (e) {
-      Log.e('Error initializing base currency from wallet: $e', label: 'BaseCurrency');
-      state = 'VND'; // Fallback
+      Log.e('Error initializing default wallet: $e', label: 'DefaultWallet');
+      state = null;
     }
   }
 
-  Future<void> setBaseCurrency(String currency) async {
+  Future<void> setDefaultWalletId(int walletId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_key, currency);
-      state = currency;
-      Log.d('Set base currency: $currency', label: 'BaseCurrency');
+      await prefs.setInt(_key, walletId);
+      state = walletId;
+      Log.d('Set default wallet ID: $walletId', label: 'DefaultWallet');
     } catch (e) {
-      Log.e('Error saving base currency: $e', label: 'BaseCurrency');
+      Log.e('Error saving default wallet ID: $e', label: 'DefaultWallet');
+    }
+  }
+
+  Future<void> clearDefaultWallet() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_key);
+      state = null;
+      Log.d('Cleared default wallet ID', label: 'DefaultWallet');
+    } catch (e) {
+      Log.e('Error clearing default wallet ID: $e', label: 'DefaultWallet');
     }
   }
 }
+
+/// Provider for the default wallet model (resolved from ID)
+final defaultWalletProvider = FutureProvider<WalletModel?>((ref) async {
+  final defaultWalletId = ref.watch(defaultWalletIdProvider);
+  if (defaultWalletId == null) return null;
+
+  final db = ref.read(databaseProvider);
+  final wallets = await db.walletDao.watchAllWallets().first;
+
+  return wallets.cast<WalletModel?>().firstWhere(
+    (w) => w?.id == defaultWalletId,
+    orElse: () => wallets.isNotEmpty ? wallets.first : null,
+  );
+});
+
+/// Provider for the base currency setting
+/// Now derived from default wallet's currency
+final baseCurrencyProvider = Provider<String>((ref) {
+  final defaultWallet = ref.watch(defaultWalletProvider);
+  return defaultWallet.when(
+    data: (wallet) => wallet?.currency ?? 'VND',
+    loading: () => 'VND',
+    error: (_, _) => 'VND',
+  );
+});
 
 /// Provider for ExchangeRateService
 final exchangeRateServiceProvider = Provider<ExchangeRateService>((ref) {

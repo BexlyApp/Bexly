@@ -24,6 +24,7 @@ import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/features/wallet/presentation/components/wallet_type_selector_field.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:toastification/toastification.dart';
 
 class WalletFormBottomSheet extends HookConsumerWidget {
@@ -54,6 +55,12 @@ class WalletFormBottomSheet extends HookConsumerWidget {
 
     // Wallet type state
     final walletType = useState<WalletType>(wallet?.walletType ?? WalletType.cash);
+
+    // Default wallet checkbox state
+    final defaultWalletId = ref.watch(defaultWalletIdProvider);
+    final isDefaultWallet = useState<bool>(
+      wallet?.id != null && wallet!.id == defaultWalletId,
+    );
 
     // Credit card fields
     final creditLimitController = useTextEditingController();
@@ -91,9 +98,11 @@ class WalletFormBottomSheet extends HookConsumerWidget {
           orElse: () => null,
         );
 
+        // Use Future.microtask to avoid modifying provider during build
         if (matchingCurrency != null) {
-          // Update currencyProvider with base currency
-          ref.read(currencyProvider.notifier).state = matchingCurrency;
+          Future.microtask(() {
+            ref.read(currencyProvider.notifier).state = matchingCurrency;
+          });
         }
 
         // Pre-fill with currency-based placeholder using base currency
@@ -150,6 +159,25 @@ class WalletFormBottomSheet extends HookConsumerWidget {
               useSelectedCurrency: true,
               enabled: canEditCurrencyAndBalance, // Disable balance change unless allowFullEdit
               // autofocus: !isEditing, // Optional: autofocus if adding new
+            ),
+
+            // Set as default wallet checkbox
+            CheckboxListTile(
+              value: isDefaultWallet.value,
+              onChanged: (value) => isDefaultWallet.value = value ?? false,
+              title: Text(
+                context.l10n.setAsDefaultWallet,
+                style: AppTextStyles.body2,
+              ),
+              subtitle: Text(
+                context.l10n.usedForAiAndConversion,
+                style: AppTextStyles.body4.copyWith(
+                  color: AppColors.neutral500,
+                ),
+              ),
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+              dense: true,
             ),
 
             // Credit Card Specific Fields
@@ -235,11 +263,14 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                     return;
                   }
 
+                  int savedWalletId;
+
                   if (isEditing) {
                     Log.d(newWallet.toJson(), label: 'edit wallet');
                     // update the wallet
                     bool success = await walletDao.updateWallet(newWallet);
                     Log.d(success, label: 'edit wallet');
+                    savedWalletId = newWallet.id!;
 
                     // only update active wallet if condition is met
                     ref
@@ -249,10 +280,18 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                     Log.d(newWallet.toJson(), label: 'new wallet');
                     int id = await walletDao.addWallet(newWallet);
                     Log.d(id, label: 'new wallet');
+                    savedWalletId = id;
 
                     // Set newly created wallet as active
                     final createdWallet = newWallet.copyWith(id: id);
                     ref.read(activeWalletProvider.notifier).setActiveWallet(createdWallet);
+                  }
+
+                  // Handle default wallet setting
+                  // Auto-set as default if: checkbox is checked OR this is the first wallet
+                  final currentDefaultId = ref.read(defaultWalletIdProvider);
+                  if (isDefaultWallet.value || currentDefaultId == null) {
+                    await ref.read(defaultWalletIdProvider.notifier).setDefaultWalletId(savedWalletId);
                   }
 
                   onSave?.call(
