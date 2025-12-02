@@ -11,6 +11,7 @@ class MenuTileButton extends StatelessWidget {
   final Widget? subtitle;
   final IconData icon;
   final IconData? suffixIcon;
+  final Widget? trailing;
   final GestureTapCallback? onTap;
   const MenuTileButton({
     super.key,
@@ -18,6 +19,7 @@ class MenuTileButton extends StatelessWidget {
     required this.icon,
     this.subtitle,
     this.suffixIcon,
+    this.trailing,
     this.onTap,
   });
 
@@ -47,13 +49,14 @@ class MenuTileButton extends StatelessWidget {
         icon,
         color: context.purpleIcon,
       ), // Leading icon uses primary color
-      trailing: Icon(
-        suffixIcon ?? HugeIcons.strokeRoundedArrowRight01,
-        color: context.isDarkMode
-            ? context.colors.onSurfaceVariant
-            : AppColors.purpleAlpha50,
-        size: 20,
-      ),
+      trailing: trailing ??
+          Icon(
+            suffixIcon ?? HugeIcons.strokeRoundedArrowRight01,
+            color: context.isDarkMode
+                ? context.colors.onSurfaceVariant
+                : AppColors.purpleAlpha50,
+            size: 20,
+          ),
       contentPadding: const EdgeInsets.fromLTRB(
         AppSpacing.spacing16,
         AppSpacing.spacing4,

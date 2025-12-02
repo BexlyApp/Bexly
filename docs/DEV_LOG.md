@@ -1420,6 +1420,115 @@ service firebase.storage {
 
 ---
 
+## SESSION: DEFAULT WALLET FEATURE (v363)
+
+### Ngày: 2025-12-02
+### Developer: Claude Code
+
+---
+
+### 15.1. Problem: AI Using "First Wallet" as Fallback is Not Logical
+
+**Issue:** When user is in "All Wallets" mode, AI uses the first wallet in the list as fallback for currency/transactions. But users can't reorder wallets, so "first" is arbitrary.
+
+**User Request:** Add checkbox "Set as default wallet" in wallet create/edit form so users can explicitly choose which wallet AI uses as fallback.
+
+### 15.2. Solution: Default Wallet System
+
+**Implementation:**
+
+**1. Default Wallet Provider** (`exchange_rate_providers.dart`)
+```dart
+// StateNotifier to manage default wallet ID
+final defaultWalletIdProvider = StateNotifierProvider<DefaultWalletIdNotifier, int?>((ref) {
+  return DefaultWalletIdNotifier(ref);
+});
+
+// FutureProvider to resolve wallet model from ID
+final defaultWalletProvider = FutureProvider<WalletModel?>((ref) async {
+  final defaultWalletId = ref.watch(defaultWalletIdProvider);
+  if (defaultWalletId == null) return null;
+  // ... fetch wallet from database
+});
+
+// Base currency now derives from default wallet
+final baseCurrencyProvider = Provider<String>((ref) {
+  final defaultWallet = ref.watch(defaultWalletProvider);
+  return defaultWallet.when(
+    data: (wallet) => wallet?.currency ?? 'VND',
+    loading: () => 'VND',
+    error: (_, _) => 'VND',
+  );
+});
+```
+
+**2. Checkbox in Wallet Form** (`wallet_form_bottom_sheet.dart`)
+```dart
+CheckboxListTile(
+  value: isDefaultWallet.value,
+  onChanged: (value) => isDefaultWallet.value = value ?? false,
+  title: Text(context.l10n.setAsDefaultWallet),
+  subtitle: Text(context.l10n.usedForAiAndConversion),
+  controlAffinity: ListTileControlAffinity.leading,
+)
+```
+
+**3. Default Wallet Indicator in List** (`wallets_screen.dart`)
+- Added `trailing` parameter to `MenuTileButton` component
+- Shows checkmark icon for default wallet in Manage Wallets screen
+
+**4. AI Chat Integration** (`chat_provider.dart`)
+- Updated fallback logic: `activeWallet ?? defaultWallet ?? firstWallet`
+- Default wallet used for currency conversion when in "All Wallets" mode
+
+### 15.3. UI Changes
+
+- **Wallet Form:** New checkbox "Set as default wallet" with subtitle "Used for AI assistant and currency conversion"
+- **Manage Wallets:** Checkmark icon shows which wallet is default
+- **Settings:** Removed Base Currency setting (now auto-derived from default wallet)
+
+### 15.4. Code Changes Summary
+
+**Files Modified:**
+1. `lib/core/services/riverpod/exchange_rate_providers.dart` - Added defaultWalletIdProvider, defaultWalletProvider
+2. `lib/features/wallet/screens/wallet_form_bottom_sheet.dart` - Added default wallet checkbox
+3. `lib/features/wallet/screens/wallets_screen.dart` - Added default indicator icon
+4. `lib/core/components/buttons/menu_tile_button.dart` - Added trailing widget parameter
+5. `lib/features/ai_chat/presentation/riverpod/chat_provider.dart` - Use default wallet as fallback
+6. `lib/features/settings/presentation/components/settings_finance_group.dart` - Simplified (removed Base Currency)
+7. `lib/core/localization/app_localizations.dart` - Added localization strings
+8. `lib/core/database/daos/wallet_dao.dart` - Updated to use defaultWalletIdProvider
+9. `lib/core/router/routes.dart` - Removed baseCurrencySetting route
+10. `lib/core/router/settings_router.dart` - Removed base currency route
+
+**Files Deleted:**
+- `lib/features/settings/presentation/screens/base_currency_setting_screen.dart`
+
+### 15.5. Bug Fix: Riverpod State Modification During Build
+
+**Issue:** `Tried to modify a provider while the widget tree was building`
+
+**Root Cause:** Setting `currencyProvider.notifier.state` during widget build phase
+
+**Fix:** Wrapped state modification in `Future.microtask()`:
+```dart
+if (matchingCurrency != null) {
+  Future.microtask(() {
+    ref.read(currencyProvider.notifier).state = matchingCurrency;
+  });
+}
+```
+
+### 15.6. Localization
+
+Added strings for 8 languages (en, vi, zh, fr, th, id, es, pt):
+- `setAsDefaultWallet`: "Set as default wallet"
+- `usedForAiAndConversion`: "Used for AI assistant and currency conversion"
+
+**STATUS: ✅ COMPLETED**
+
+---
+
 ## SESSION: AI CHAT IMPROVEMENTS & RECURRING AUTO-CREATE (v358-359)
 
 ### Ngày: 2025-11-30

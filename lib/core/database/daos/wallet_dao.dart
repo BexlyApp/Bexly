@@ -71,13 +71,13 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     final companion = walletModel.toCompanion(isInsert: true);
     final id = await into(wallets).insert(companion);
 
-    // 2. Set base currency if this is the first wallet
+    // 2. Set default wallet if this is the first wallet
     if (isFirstWallet && _ref != null) {
       try {
-        await _ref.read(baseCurrencyProvider.notifier).setBaseCurrency(walletModel.currency);
-        Log.d('Set base currency to ${walletModel.currency} (first wallet)', label: 'wallet');
+        await _ref.read(defaultWalletIdProvider.notifier).setDefaultWalletId(id);
+        Log.d('Set default wallet to $id (first wallet)', label: 'wallet');
       } catch (e) {
-        Log.e('Failed to set base currency: $e', label: 'wallet');
+        Log.e('Failed to set default wallet: $e', label: 'wallet');
       }
     }
 
