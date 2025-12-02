@@ -17,7 +17,7 @@ class RecurringScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tabController = useTabController(initialLength: 3);
+    final tabController = useTabController(initialLength: 2);
 
     return CustomScaffold(
       context: context,
@@ -50,21 +50,29 @@ class RecurringScreen extends HookConsumerWidget {
               indicatorWeight: 3,
               labelColor: AppColors.primary600,
               unselectedLabelColor: AppColors.neutral400,
-              labelStyle: AppTextStyles.body2.copyWith(
+              labelStyle: AppTextStyles.body3.copyWith(
                 fontWeight: FontWeight.w600,
               ),
               tabs: [
                 Tab(
-                  text: context.l10n.active,
-                  icon: const Icon(Icons.check_circle_outline),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle_outline, size: 18),
+                      const SizedBox(width: 6),
+                      Text(context.l10n.active),
+                    ],
+                  ),
                 ),
                 Tab(
-                  text: context.l10n.all,
-                  icon: const Icon(Icons.list),
-                ),
-                Tab(
-                  text: context.l10n.paused,
-                  icon: const Icon(Icons.pause_circle_outline),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.pause_circle_outline, size: 18),
+                      const SizedBox(width: 6),
+                      Text(context.l10n.paused),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -74,7 +82,6 @@ class RecurringScreen extends HookConsumerWidget {
               controller: tabController,
               children: const [
                 _ActiveRecurringsTab(),
-                _AllRecurringsTab(),
                 _PausedRecurringsTab(),
               ],
             ),
@@ -98,56 +105,6 @@ class _ActiveRecurringsTab extends HookConsumerWidget {
           return _EmptyState(
             icon: Icons.repeat,
             title: context.l10n.noActiveRecurringPayments,
-            subtitle: context.l10n.addFirstSubscription,
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: recurrings.length,
-          itemBuilder: (context, index) {
-            final recurring = recurrings[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: RecurringCard(
-                recurring: recurring,
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    showDragHandle: true,
-                    useSafeArea: true,
-                    builder: (context) => RecurringFormScreen(recurringId: recurring.id),
-                  );
-                },
-              ),
-            );
-          },
-        );
-      },
-      loading: () => const LoadingIndicator(),
-      error: (error, stack) => _EmptyState(
-        icon: Icons.error_outline,
-        title: context.l10n.errorLoadingRecurrings,
-        subtitle: error.toString(),
-      ),
-    );
-  }
-}
-
-class _AllRecurringsTab extends HookConsumerWidget {
-  const _AllRecurringsTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final recurringsAsync = ref.watch(allRecurringsProvider);
-
-    return recurringsAsync.when(
-      data: (recurrings) {
-        if (recurrings.isEmpty) {
-          return _EmptyState(
-            icon: Icons.repeat,
-            title: context.l10n.noRecurringPayments,
             subtitle: context.l10n.addFirstSubscription,
           );
         }

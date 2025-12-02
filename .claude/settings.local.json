@@ -68,7 +68,10 @@
       "Bash(dir:*)",
       "Bash(del /q *.bat *.js *.html *.py *.log input.txt reload.txt app-from-device.apk)",
       "Bash(\"C:/Program Files/Android/Android Studio/jbr/bin/keytool\" -list -v -keystore \"C:\\Users\\JOY\\.android\\DOS-key.jks\" -alias dos -storepass DOSLabs)",
-      "Bash(D:/Dev/flutter/bin/flutter clean:*)"
+      "Bash(D:/Dev/flutter/bin/flutter clean:*)",
+      "Bash(claude --version:*)",
+      "Bash(npm update:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
