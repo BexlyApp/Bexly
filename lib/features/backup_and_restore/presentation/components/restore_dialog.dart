@@ -72,7 +72,7 @@ class RestoreDialog extends HookConsumerWidget {
         ),
         Gap(AppSpacing.spacing8),
         Text(
-          '"Pockaw_Backup_[DateTime]"',
+          '"Bexly_Backup_[DateTime]"',
           style: AppTextStyles.body3.bold,
           textAlign: TextAlign.center,
         ),

@@ -71,7 +71,8 @@
       "Bash(D:/Dev/flutter/bin/flutter clean:*)",
       "Bash(claude --version:*)",
       "Bash(npm update:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(del \"d:\\Projects\\Bexly\\lib\\features\\settings\\presentation\\screens\\base_currency_setting_screen.dart\")"
     ],
     "deny": [],
     "ask": []

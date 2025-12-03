@@ -17,7 +17,7 @@ Complete development guide covering:
 ### [FIREBASE_SETUP.md](./FIREBASE_SETUP.md)
 Firebase integration documentation:
 - Firebase project configuration
-- Package ID migration (com.layground.pockaw → com.joy.bexly)
+- Package ID migration history
 - FlutterFire setup process
 - Enabled services (Analytics, Crashlytics, Performance)
 - Security considerations
@@ -97,7 +97,7 @@ The app follows a feature-based clean architecture:
 
 ## 📄 License
 
-This project is based on the open-source Pockaw project and has been customized for the JOY brand ecosystem.
+This project is developed under the JOY brand ecosystem.
 
 ## 🤝 Contributing
 

@@ -61,7 +61,7 @@ keystore.properties
 # - App Check
 # - API restrictions (bundle ID, package name, HTTP referrers)
 
-.github/instructions/pockaw-instruction.instructions.md
+.github/instructions/bexly-instruction.instructions.md
 ref
 
 # Test and temporary files

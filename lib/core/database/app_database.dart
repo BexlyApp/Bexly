@@ -250,7 +250,7 @@ class AppDatabase extends _$AppDatabase {
 
   /* static QueryExecutor _openConnection() {
     return driftDatabase(
-      name: 'pockaw',
+      name: 'bexly',
       native: const DriftNativeOptions(
         databaseDirectory: getApplicationSupportDirectory,
       ),
