@@ -556,339 +556,223 @@ Khi bật recurring/reminder lần đầu → Xin notification permission (conte
 ## Monetization Strategy & Pricing Plans 💰
 
 ### Philosophy
-- **Freemium model** with generous free tier to attract users
-- **Value-based pricing** - Premium features justify $6.99/month price point
-- **Bot integration upsell** - Chatbots drive conversion to paid tiers
-- **Platform costs covered** - Plaid costs (~$0.40/user/month) covered by Premium tier
-- **Target**: 5% free-to-premium conversion = 1,000 paid users at 20K MAU
+- **Freemium model** - Core features free, premium for power users
+- **AI as USP** - AI Chat là unique selling point (competitors không có)
+- **Low barrier** - Giá thấp ($2.99-$5.99) để maximize conversion
+- **Cost-conscious** - Free tier chỉ tốn ~$0.03/user/month (30 AI messages)
+- **Target**: 10% free-to-premium conversion
+
+### Cost Analysis (Per User/Month)
+| Item | Free | Premium | Pro |
+|------|------|---------|-----|
+| AI Chat (Gemini) | $0.03 (30 msgs) | $0.05 (50 msgs) | $0.50 (unlimited) |
+| Google Drive | $0 (user storage) | - | - |
+| Firebase Sync | - | $0.01 | $0.01 |
+| Firebase Storage | - | $0.10 (1GB) | $0.50 (unlimited) |
+| **Total Cost** | **~$0.03** | **~$0.16** | **~$1.01** |
 
 ---
 
 ### 🆓 Free Tier (Forever Free)
 **Target Audience:** Casual users, students, individuals starting financial tracking
 
+**Limits:**
+- 2 wallets max
+- 2 budgets max
+- 2 goals max
+- 2 recurring transactions max
+- 1 currency only (all wallets use same currency)
+
 **Core Features:**
 - ✅ Basic expense/income tracking (unlimited transactions)
-- ✅ 3 wallets (e.g., Cash, Bank, Credit Card)
 - ✅ Manual transaction entry
 - ✅ 15 built-in categories + subcategories
-- ✅ Basic monthly reports (pie charts)
-- ✅ Manual backups (export to JSON)
-- ✅ Budget tracking (3 budgets max)
-- ✅ Goal tracking (3 goals max)
-- ✅ Multi-currency support
 - ✅ Dark/light mode
+- ✅ Offline-first (all data stored locally)
 
-**AI Chat Limitations:**
-- 20 AI messages per month
-- Basic natural language expense logging
-- No advanced insights or recommendations
-
-**Bot Access:**
-- ❌ No Telegram/Discord/Messenger/Slack bot integration
+**AI Chat:**
+- ✅ 30 messages per month
+- ✅ Natural language expense logging
+- ✅ Basic spending insights
 
 **Analytics:**
-- Basic pie charts (spending by category)
-- Current month overview only
-- No trend analysis
+- ✅ Last month + Current month data
+- ✅ Basic pie charts (spending by category)
+- ❌ No trend analysis
 
-**Sync & Backup:**
-- Manual backup/restore only
-- No cloud sync across devices
+**Backup:**
+- ✅ **Google Drive auto-backup** (weekly)
+- ✅ Manual JSON export/import
+- ❌ No real-time sync across devices
 
-**Expected User Behavior:**
-- 60% of users stay on Free tier
-- Average 50 transactions/month
-- 3-month median retention
+**Not Included:**
+- ❌ Multi-currency
+- ❌ Receipt photos
+- ❌ Firebase real-time sync
+- ❌ Bot integration
 
 ---
 
-### 💎 Premium ($6.99/month or $69.99/year - Save 16%)
-**Target Audience:** Active users needing cloud sync and automation
+### 💎 Premium ($2.99/month or $29.99/year - Save 17%)
+**Target Audience:** Active users needing more flexibility and sync
 
 **Everything in Free, PLUS:**
 
-**Wallets & Sync:**
+**Unlimited:**
 - ✅ Unlimited wallets
-- ✅ **Real-time cloud sync** across all devices
-- ✅ Automatic backup to Firebase
-- ✅ Multi-device support (phone, tablet, web)
+- ✅ Unlimited budgets
+- ✅ Unlimited goals
+- ✅ Unlimited recurring transactions
 
-**Bank Integration (Phase 0):**
-- ✅ **Plaid bank account sync** (US banks)
-- ✅ Auto-import transactions (24-month history)
-- ✅ Real-time balance updates
-- ✅ Connect up to 5 bank accounts
-- ✅ Transaction deduplication & matching
+**Multi-Currency:**
+- ✅ Different currency per wallet
+- ✅ Auto exchange rate updates
+- ✅ Currency conversion in reports
 
-**Automation:**
-- ✅ Recurring transactions (unlimited)
-- ✅ Auto-create scheduled transactions
-- ✅ Bill reminders with push notifications
-- ✅ Payment due date tracking
-
-**AI Features:**
-- ✅ **100 AI messages per month**
-- ✅ Advanced natural language processing
+**AI Chat:**
+- ✅ **50 messages per month**
 - ✅ Smart category suggestions
 - ✅ Spending pattern detection
-- ✅ **Basic bot access (1 platform)** - Telegram OR Discord OR Messenger
 
 **Analytics:**
-- ✅ 6-month trend charts (income vs expense)
-- ✅ Weekly spending breakdown
-- ✅ Category comparison over time
+- ✅ **6-month trend charts**
+- ✅ Income vs expense comparison
+- ✅ Category trends over time
 - ✅ Budget vs actual tracking
 
+**Cloud Sync:**
+- ✅ **Firebase real-time sync** across devices
+- ✅ Multi-device support (phone, tablet, web)
+- ✅ Automatic backup
+
 **Document Management:**
-- ✅ Receipt photo attachments (5GB cloud storage)
-- ✅ Document categorization
-- ✅ Receipt search by merchant/amount
+- ✅ Receipt photo attachments
+- ✅ **1GB cloud storage** for receipts
+- ✅ Photo gallery view
 
 **Export:**
 - ✅ CSV export for transactions
 - ✅ PDF monthly reports
 
-**Expected User Behavior:**
-- 30% of free users convert to Premium within 6 months
-- Average 150 transactions/month
-- 12-month median retention
-- Churn rate: <5% monthly
-
-**Value Proposition:**
-- Bank sync alone worth $6.99/month (replaces manual entry)
-- Saves 30 minutes/week on transaction logging
-- Bot integration increases engagement by 2x
-
 ---
 
-### 🚀 Pro ($14.99/month or $149.99/year - Save 17%)
-**Target Audience:** Power users, freelancers, small business owners
+### 🚀 Pro ($5.99/month or $59.99/year - Save 17%)
+**Target Audience:** Power users, freelancers needing full features
 
 **Everything in Premium, PLUS:**
 
 **AI Superpowers:**
 - ✅ **Unlimited AI messages**
-- ✅ **OCR receipt scanning** (extract data from photos)
 - ✅ AI-powered financial insights & recommendations
-- ✅ Predictive analytics (cash flow forecasts)
 - ✅ Smart budget recommendations
 - ✅ Spending anomaly detection
-- ✅ **All bot platforms** - Telegram + Discord + Messenger + Slack
 
 **Advanced Analytics:**
-- ✅ Custom report builder
-- ✅ 12-month+ historical data
-- ✅ Predictive spending forecasts
+- ✅ **All historical data** (không giới hạn thời gian)
+- ✅ Custom date range reports
 - ✅ Financial health score
-- ✅ Peer comparison (anonymous benchmarking)
-- ✅ Tax report preparation
-
-**Bank Integration Pro:**
-- ✅ Connect unlimited bank accounts
-- ✅ **Plaid Recurring Transactions API** (auto-detect subscriptions)
-- ✅ Auto-categorize recurring payments
-- ✅ Subscription cost tracking & alerts
+- ✅ Predictive spending forecasts
 
 **Document Management Pro:**
-- ✅ Unlimited cloud storage for receipts
-- ✅ Invoice scanner (multi-page PDF)
-- ✅ Document templates
-- ✅ Batch scanning mode
-
-**Export & Integrations:**
-- ✅ Excel export with formatting
-- ✅ PDF reports with charts
-- ✅ API access (read-only)
-- ✅ Zapier integration
-- ✅ Scheduled report emails (weekly/monthly)
+- ✅ **Unlimited cloud storage** for receipts
+- ✅ **Receipt OCR** (future) - extract data from photos
+- ✅ Batch photo upload
 
 **Priority Support:**
 - ✅ Email support with 24h response time
-- ✅ Chat support (business hours)
 - ✅ Feature request priority
-
-**Expected User Behavior:**
-- 10% of Premium users upgrade to Pro
-- Average 300+ transactions/month
-- 18-month median retention
-- Churn rate: <3% monthly
-
-**Value Proposition:**
-- OCR saves 1 hour/week on manual entry
-- AI insights help save $200+/month on average
-- Bot access on all platforms = manage finances anywhere
-
----
-
-### 🏢 Business ($24.99/month per user or $249.99/year - Save 17%)
-**Target Audience:** Teams, families, small businesses (5+ users)
-
-**Everything in Pro, PLUS:**
-
-**Team Collaboration:**
-- ✅ Shared wallets with role-based permissions
-- ✅ Team budgets with approval workflows
-- ✅ Expense submission & approval
-- ✅ Multi-level approval chains
-- ✅ Audit logs for all transactions
-
-**Family Features:**
-- ✅ Family expense tracking
-- ✅ Child accounts with spending limits
-- ✅ Allowance automation
-- ✅ Shared goals (e.g., vacation fund)
-- ✅ Parental controls
-
-**Business Tools:**
-- ✅ Invoice generation & tracking
-- ✅ Client/project expense tracking
-- ✅ Mileage tracking with GPS
-- ✅ Tax category mapping
-- ✅ Multi-currency transactions
-- ✅ Reimbursement workflows
-
-**Advanced Integrations:**
-- ✅ QuickBooks integration
-- ✅ Xero integration
-- ✅ API access (full CRUD)
-- ✅ Webhook notifications
-- ✅ Custom integrations
-
-**Support & Customization:**
-- ✅ Dedicated account manager
-- ✅ Priority phone support
-- ✅ Custom onboarding
-- ✅ White-label options (Enterprise)
-- ✅ SLA guarantee (99.9% uptime)
-
-**Pricing Structure:**
-- Minimum 5 users
-- Volume discounts: 10+ users = 15% off, 25+ users = 25% off
-- Annual billing only
-
-**Expected User Behavior:**
-- 5% of Pro users upgrade to Business
-- Average 500+ transactions/user/month
-- 24-month median retention (B2B stickiness)
-- Churn rate: <2% monthly
-- $500+ LTV per user
-
-**Value Proposition:**
-- Replaces multiple tools (Expensify, FreshBooks, Splitwise)
-- Saves 10+ hours/month on expense management
-- Team collaboration increases financial transparency
+- ✅ Early access to new features
 
 ---
 
 ### 📊 Pricing Comparison Table
 
-| Feature | Free | Premium | Pro | Business |
-|---------|------|---------|-----|----------|
-| **Price** | $0 | $6.99/mo | $14.99/mo | $24.99/user/mo |
-| **Wallets** | 3 | Unlimited | Unlimited | Unlimited |
-| **Cloud Sync** | ❌ | ✅ | ✅ | ✅ |
-| **Bank Sync (Plaid)** | ❌ | ✅ (5 accounts) | ✅ (Unlimited) | ✅ (Unlimited) |
-| **AI Messages** | 20/month | 100/month | Unlimited | Unlimited |
-| **Bot Platforms** | ❌ | 1 platform | All platforms | All platforms |
-| **OCR Receipt Scan** | ❌ | ❌ | ✅ | ✅ |
-| **Cloud Storage** | ❌ | 5GB | Unlimited | Unlimited |
-| **Recurring Detection** | ❌ | Manual | Auto (Plaid API) | Auto + Custom |
-| **Team Collaboration** | ❌ | ❌ | ❌ | ✅ |
-| **API Access** | ❌ | ❌ | Read-only | Full CRUD |
-| **Support** | Community | Email | Priority Email + Chat | Dedicated Manager |
+| Feature | Free | Premium | Pro |
+|---------|------|---------|-----|
+| **Price** | $0 | $2.99/mo | $5.99/mo |
+| **Wallets** | 2 | Unlimited | Unlimited |
+| **Budgets** | 2 | Unlimited | Unlimited |
+| **Goals** | 2 | Unlimited | Unlimited |
+| **Recurring** | 2 | Unlimited | Unlimited |
+| **Currency** | 1 only | Multi-currency | Multi-currency |
+| **AI Messages** | 30/month | 50/month | Unlimited |
+| **Analytics** | 2 months | 6 months | All history |
+| **Backup** | Google Drive | Firebase Sync | Firebase Sync |
+| **Receipt Storage** | ❌ | 1GB | Unlimited |
+| **Receipt OCR** | ❌ | ❌ | ✅ (future) |
+| **Support** | Community | Email | Priority |
 
 ---
 
-### 💡 Monetization Strategy Deep Dive
+### 💡 Implementation Strategy
 
-**Phase 1 (Q1 2025): Launch Premium with Plaid**
-- Goal: 1,000 Premium subscribers = $7K MRR
-- Covers Plaid costs (~$400/month) + infrastructure
-- Break-even at 500 subscribers
+**Phase 1: RevenueCat Integration**
+- Setup RevenueCat for subscription management
+- Create products in App Store Connect & Google Play Console
+- Implement paywall UI
+- Handle subscription states (active, expired, grace period)
 
-**Phase 2 (Q2 2025): Bot Integration Upsell**
-- Telegram bot free trial (14 days) → Premium conversion
-- Bot users have 3x higher conversion rate
-- Goal: 500 new Premium users from bot funnel
+**Phase 2: Feature Gating**
+- Create `SubscriptionService` to check user tier
+- Gate features based on subscription:
+  - Wallet count limit
+  - AI message counter (reset monthly)
+  - Analytics date range
+  - Storage quota check
+- Show upgrade prompts when limits reached
 
-**Phase 3 (Q2 2025): Launch Pro Tier with OCR**
-- Goal: 300 Pro subscribers = $4.5K MRR
-- Targets power users and freelancers
-- OCR feature is main differentiator
+**Phase 3: Google Drive Backup (Free tier)**
+- Integrate `googleapis` package
+- Request Google Drive scope during auth
+- Implement weekly auto-backup with WorkManager
+- Export all data to JSON → Upload to Drive
 
-**Phase 4 (Q3 2025): Business Tier Launch**
-- Goal: 50 business accounts (250 users) = $6.25K MRR
-- B2B sales motion (direct outreach, partnerships)
-- Higher LTV offsets higher CAC
-
-**Total Revenue Target (End of 2025):**
-- Free: 18,000 users (90%)
-- Premium: 1,500 users (7.5%) = $10.5K MRR
-- Pro: 400 users (2%) = $6K MRR
-- Business: 100 accounts (500 users, 0.5%) = $12.5K MRR
-- **Total MRR: $29K** = $348K ARR
-
-**Cost Structure:**
-- Plaid: $600/month (1,500 Premium users @ $0.40)
-- Firebase/Cloud: $1,500/month (storage, functions, hosting)
-- Gemini AI: $800/month (API calls, bot usage)
-- Infrastructure: $500/month (monitoring, CDN, etc.)
-- **Total Costs: ~$3,400/month**
-- **Gross Margin: 88%** ($29K - $3.4K = $25.6K profit)
-
-**CAC & LTV:**
-- Free user CAC: $2 (organic, ASO, content marketing)
-- Premium CAC: $15 (in-app upsell, email campaigns)
-- Pro CAC: $40 (targeted ads, bot integration)
-- Business CAC: $200 (direct sales, partnerships)
-
-- Premium LTV: $84 (12-month retention @ $6.99/mo)
-- Pro LTV: $270 (18-month retention @ $14.99/mo)
-- Business LTV: $600+ (24-month retention @ $24.99/user/mo)
-
-**Payback Period:**
-- Premium: 2 months (CAC $15 / $6.99 MRR)
-- Pro: 3 months (CAC $40 / $14.99 MRR)
-- Business: 8 months (CAC $200 / $24.99 MRR)
+**Phase 4: Usage Tracking**
+- Track AI message usage per month
+- Track storage usage for receipts
+- Show usage in Settings screen
+- Reset counters on subscription renewal
 
 ---
 
 ### 🎯 Conversion Funnels
 
-**Bot-to-Premium Funnel:**
-1. User discovers Telegram bot via friend/community
-2. Links Bexly account (free tier)
-3. Uses bot for 1 week (20 free messages)
-4. Hits message limit → Prompt to upgrade
-5. **14-day Premium trial** with all bot platforms
-6. After trial: 25% convert to Premium ($6.99/mo)
-
 **Free-to-Premium Funnel:**
-1. User downloads app, creates account
-2. Uses free tier for 2-4 weeks
-3. Reaches wallet limit (3 wallets) OR sync needs
-4. In-app prompts: "Upgrade for unlimited wallets + cloud sync"
-5. **7-day Premium trial**
-6. After trial: 15% convert to Premium
+1. User downloads app, uses free tier
+2. Hits limit (3rd wallet, 31st AI message, etc.)
+3. Soft paywall: "Upgrade for more"
+4. **7-day free trial** of Premium
+5. Target: 10% conversion rate
 
 **Premium-to-Pro Funnel:**
-1. Premium user active for 3+ months
-2. Uses AI chat heavily (hits 100 message limit)
-3. Takes many receipt photos
-4. In-app prompt: "Upgrade for unlimited AI + OCR"
-5. Showcase OCR demo (scan receipt → auto-fill transaction)
-6. **30-day Pro trial** (upgrade path, not separate trial)
-7. After trial: 10% convert to Pro
+1. Premium user hits 50 AI messages
+2. Wants to see older analytics
+3. Needs more receipt storage
+4. In-app prompt: "Upgrade for unlimited"
+5. Target: 15% of Premium users
 
-**Pro-to-Business Funnel:**
-1. Pro user adds family members (manual workaround)
-2. Shares wallets via manual coordination
-3. Pain point: "Need proper multi-user support"
-4. In-app prompt: "Upgrade to Business for team collaboration"
-5. Sales call with dedicated account manager
-6. Custom demo with business features
-7. After evaluation: 20% convert to Business
+---
+
+### 📈 Revenue Projections
+
+**Conservative Estimate (Year 1):**
+- 10,000 free users
+- 5% convert to Premium (500 users) = $1,495/month
+- 10% of Premium upgrade to Pro (50 users) = $299/month
+- **Total MRR: ~$1,800** = $21,600 ARR
+
+**Optimistic Estimate (Year 1):**
+- 50,000 free users
+- 10% convert to Premium (5,000 users) = $14,950/month
+- 15% of Premium upgrade to Pro (750 users) = $4,492/month
+- **Total MRR: ~$19,400** = $233,000 ARR
+
+**Cost Structure (at 50K users):**
+- Free tier costs: 45K × $0.03 = $1,350/month
+- Premium costs: 5K × $0.16 = $800/month
+- Pro costs: 750 × $1.01 = $757/month
+- **Total Costs: ~$2,900/month**
+- **Gross Margin: 85%**
 
 ---
 
@@ -900,10 +784,11 @@ Khi bật recurring/reminder lần đầu → Xin notification permission (conte
 - Year 1: 50,000 registered users
 
 ### Monetization
-- 5% free-to-premium conversion
-- <3% monthly churn
-- $70+ LTV per premium user (increased due to Plaid value-add)
-- Target: 1,000 paid users to cover Plaid costs (~$400/mo at $0.40/user)
+- 10% free-to-premium conversion
+- <5% monthly churn
+- Premium LTV: $36 (12-month retention @ $2.99/mo)
+- Pro LTV: $72 (12-month retention @ $5.99/mo)
+- Target: Break-even at ~$0.03/free user/month (AI costs)
 
 ### Engagement
 - 60% weekly active users
