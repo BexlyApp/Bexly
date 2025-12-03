@@ -7,8 +7,8 @@ import 'package:bexly/core/utils/logger.dart';
 class ZitadelConfig {
   static const String domain = 'your-instance.zitadel.cloud'; // TODO: Replace with your Zitadel domain
   static const String clientId = 'your-client-id'; // TODO: Replace with your client ID
-  static const String redirectUrl = 'com.pockaw.app://callback';
-  static const String postLogoutRedirectUrl = 'com.pockaw.app://logout';
+  static const String redirectUrl = 'com.joy.bexly://callback';
+  static const String postLogoutRedirectUrl = 'com.joy.bexly://logout';
 
   static Uri get issuer => Uri.https(domain, '');
   static List<String> get scopes => ['openid', 'profile', 'email', 'offline_access'];

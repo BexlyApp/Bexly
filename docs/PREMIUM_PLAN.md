@@ -1,7 +1,7 @@
-# Pockaw Premium Plan
+# Bexly Premium Plan
 
 ## Overview
-Pockaw operates on a freemium model with local-first approach. Free users get full functionality with local storage only. Premium users get cloud sync, backup, and advanced features.
+Bexly operates on a freemium model with local-first approach. Free users get full functionality with local storage only. Premium users get cloud sync, backup, and advanced features.
 
 ## Tier Structure
 

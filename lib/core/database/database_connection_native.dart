@@ -9,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 LazyDatabase openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationSupportDirectory();
-    final file = File(join(dbFolder.path, 'pockaw.sqlite'));
+    final file = File(join(dbFolder.path, 'bexly.sqlite'));
     if (kDebugMode) {
       // await file.delete(); // Uncomment for fresh DB on every run in debug
     }

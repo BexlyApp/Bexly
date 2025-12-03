@@ -5,7 +5,7 @@ import 'package:drift/web.dart';
 LazyDatabase openConnection() {
   return LazyDatabase(() async {
     return WebDatabase.withStorage(
-      DriftWebStorage.indexedDb('pockaw_db',
+      DriftWebStorage.indexedDb('bexly_db',
         migrateFromLocalStorage: false,
         inWebWorker: false,
       ),

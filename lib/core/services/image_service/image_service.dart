@@ -106,7 +106,7 @@ class ImageService {
   /// Save image to app documents directory with a unique name
   Future<String?> saveImage(
     File imageFile, {
-    String directory = 'pockaw_images',
+    String directory = 'bexly_images',
   }) async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
@@ -155,6 +155,6 @@ class ImageService {
   /// Returns the application's internal directory where images are stored.
   Future<String> getAppImagesDirectory() async {
     final appDir = await getApplicationDocumentsDirectory();
-    return path.join(appDir.path, 'pockaw_images');
+    return path.join(appDir.path, 'bexly_images');
   }
 }

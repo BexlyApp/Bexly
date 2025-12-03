@@ -66,7 +66,7 @@ class Log {
   static Future<File?> getLogFile() async {
     final dir = await TemporaryStorageDirectory.getDirectory();
     if (dir == null) return null;
-    final file = File('${dir.path}/pockaw_log.txt');
+    final file = File('${dir.path}/bexly_log.txt');
     return file;
   }
 }

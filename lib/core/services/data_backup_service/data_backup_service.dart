@@ -80,7 +80,7 @@ class DataBackupService {
 
     // Let user pick a directory
     String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Select a folder to save your Pockaw backup',
+      dialogTitle: 'Select a folder to save your Bexly backup',
       lockParentWindow: true,
     );
 
@@ -96,7 +96,7 @@ class DataBackupService {
           .replaceAll(':', '-')
           .split('.')
           .first;
-      final backupFolderName = 'Pockaw_Backup_$timestamp';
+      final backupFolderName = 'Bexly_Backup_$timestamp';
       final backupFolderPath = p.join(selectedDirectory, backupFolderName);
       final backupDir = Directory(backupFolderPath);
       if (!await backupDir.exists()) {
@@ -162,7 +162,7 @@ class DataBackupService {
     Log.i('Starting restore process...');
 
     String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Select your Pockaw backup folder (containing data.json)',
+      dialogTitle: 'Select your Bexly backup folder (containing data.json)',
       lockParentWindow: true,
     );
 

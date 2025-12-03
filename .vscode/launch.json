@@ -5,18 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "pockaw",
+            "name": "Bexly",
             "request": "launch",
             "type": "dart"
         },
         {
-            "name": "pockaw (profile mode)",
+            "name": "Bexly (profile mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
         },
         {
-            "name": "pockaw (release mode)",
+            "name": "Bexly (release mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"

@@ -1,7 +1,7 @@
-# Pockaw Development Roadmap
+# Bexly Development Roadmap
 
 ## Overview
-This document outlines the development roadmap for Pockaw, focusing on transforming it from a basic expense tracker to a comprehensive financial management platform with AI-powered features.
+This document outlines the development roadmap for Bexly, focusing on transforming it from a basic expense tracker to a comprehensive financial management platform with AI-powered features.
 
 ## Current State (v0.0.7+363)
 - ✅ Core expense/income tracking
