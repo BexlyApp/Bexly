@@ -29,4 +29,7 @@ class Routes {
 
   /// Basic monthly reports
   static const String basicMonthlyReports = '/basic-monthly-reports';
+
+  /// Subscription
+  static const String subscription = '/subscription';
 }

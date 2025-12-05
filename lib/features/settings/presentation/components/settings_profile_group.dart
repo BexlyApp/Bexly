@@ -16,6 +16,11 @@ class SettingsProfileGroup extends ConsumerWidget {
           icon: HugeIcons.strokeRoundedUser,
           onTap: () => context.push(Routes.personalDetails),
         ),
+        MenuTileButton(
+          label: 'Subscription',
+          icon: HugeIcons.strokeRoundedCrown,
+          onTap: () => context.push(Routes.subscription),
+        ),
       ],
     );
   }
