@@ -8,50 +8,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Unsigned build for testing
-  build-ios-unsigned:
-    runs-on: macos-15
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'master'
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Precache iOS artifacts
-        run: flutter precache --ios
-
-      - name: Setup Ruby (for CocoaPods)
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2'
-          bundler-cache: true
-
-      - name: Install CocoaPods
-        run: |
-          cd ios
-          pod install --repo-update
-
-      - name: Build iOS (no codesign)
-        run: flutter build ios --release --no-codesign
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-build-unsigned
-          path: build/ios/iphoneos/Runner.app
-          retention-days: 7
-
   # Signed build using manual certificate (.p12)
   build-ios-signed:
     runs-on: macos-15
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
