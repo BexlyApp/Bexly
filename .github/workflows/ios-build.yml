@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Precache iOS artifacts
+        run: flutter precache --ios
+
       - name: Setup Ruby (for CocoaPods)
         uses: ruby/setup-ruby@v1
         with:
@@ -129,6 +132,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Precache iOS artifacts
+        run: flutter precache --ios
 
       - name: Setup Ruby (for CocoaPods)
         uses: ruby/setup-ruby@v1
