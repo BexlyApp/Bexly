@@ -367,9 +367,9 @@ class LoginScreen extends HookConsumerWidget {
             AppleIDAuthorizationScopes.fullName,
           ],
           webAuthenticationOptions: WebAuthenticationOptions(
-            clientId: 'com.DOS.Service', // Service ID from Apple Developer
+            clientId: 'com.joy.bexly.service', // Service ID from Apple Developer
             redirectUri: Uri.parse(
-              'https://dos-me.firebaseapp.com/__/auth/handler', // Firebase auth handler URL
+              'https://bexly-app.firebaseapp.com/__/auth/handler', // Firebase auth handler URL
             ),
           ),
         );
