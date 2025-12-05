@@ -7,6 +7,7 @@ import 'package:bexly/features/settings/presentation/screens/backup_restore_scre
 import 'package:bexly/features/settings/presentation/screens/notification_settings_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/personal_details_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/settings_screen.dart';
+import 'package:bexly/features/subscription/presentation/screens/subscription_screen.dart';
 
 class SettingsRouter {
   static final routes = <GoRoute>[
@@ -29,6 +30,10 @@ class SettingsRouter {
     GoRoute(
       path: Routes.accountDeletion,
       builder: (context, state) => const AccountDeletionScreen(),
+    ),
+    GoRoute(
+      path: Routes.subscription,
+      builder: (context, state) => const SubscriptionScreen(),
     ),
     if (kDebugMode)
       GoRoute(

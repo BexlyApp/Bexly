@@ -324,6 +324,30 @@ class AppLocalizations {
       'noWalletsCreateOne': 'No wallets yet. Create one first.',
       'setAsDefaultWallet': 'Set as default wallet',
       'usedForAiAndConversion': 'Used for AI assistant and currency conversion',
+      // Subscription
+      'subscription': 'Subscription',
+      'currentPlan': 'Current Plan',
+      'restorePurchases': 'Restore Purchases',
+      'purchaseSuccessful': 'Purchase successful!',
+      'purchasesRestored': 'Purchases restored',
+      'bestValue': 'BEST VALUE',
+      'current': 'CURRENT',
+      'perMonth': '/month',
+      'perYear': '/year',
+      'unlimitedWallets': 'Unlimited wallets',
+      'unlimitedBudgetsGoals': 'Unlimited budgets & goals',
+      'unlimitedRecurring': 'Unlimited recurring transactions',
+      'aiMessagesPerMonth': '50 AI messages/month',
+      'sixMonthsAnalytics': '6 months analytics history',
+      'multiCurrencySupport': 'Multi-currency support',
+      'cloudSync': 'Cloud sync',
+      'receiptPhotos1GB': 'Receipt photos (1GB)',
+      'everythingInPlus': 'Everything in Plus',
+      'unlimitedAiMessages': 'Unlimited AI messages',
+      'fullAnalyticsHistory': 'Full analytics history',
+      'unlimitedReceiptStorage': 'Unlimited receipt storage',
+      'ocrReceiptScanning': 'OCR receipt scanning',
+      'prioritySupport': 'Priority support',
     },
     'vi': {
       'appTitle': 'Bexly',
@@ -639,6 +663,30 @@ class AppLocalizations {
       'noWalletsCreateOne': 'Chưa có ví. Tạo ví trước.',
       'setAsDefaultWallet': 'Đặt làm ví mặc định',
       'usedForAiAndConversion': 'Sử dụng cho AI và chuyển đổi tiền tệ',
+      // Subscription
+      'subscription': 'Gói đăng ký',
+      'currentPlan': 'Gói hiện tại',
+      'restorePurchases': 'Khôi phục mua hàng',
+      'purchaseSuccessful': 'Mua thành công!',
+      'purchasesRestored': 'Đã khôi phục mua hàng',
+      'bestValue': 'TIẾT KIỆM',
+      'current': 'HIỆN TẠI',
+      'perMonth': '/tháng',
+      'perYear': '/năm',
+      'unlimitedWallets': 'Không giới hạn ví',
+      'unlimitedBudgetsGoals': 'Không giới hạn ngân sách & mục tiêu',
+      'unlimitedRecurring': 'Không giới hạn giao dịch định kỳ',
+      'aiMessagesPerMonth': '50 tin nhắn AI/tháng',
+      'sixMonthsAnalytics': 'Lịch sử phân tích 6 tháng',
+      'multiCurrencySupport': 'Hỗ trợ đa tiền tệ',
+      'cloudSync': 'Đồng bộ đám mây',
+      'receiptPhotos1GB': 'Ảnh hóa đơn (1GB)',
+      'everythingInPlus': 'Tất cả tính năng Plus',
+      'unlimitedAiMessages': 'Không giới hạn tin nhắn AI',
+      'fullAnalyticsHistory': 'Toàn bộ lịch sử phân tích',
+      'unlimitedReceiptStorage': 'Không giới hạn lưu trữ hóa đơn',
+      'ocrReceiptScanning': 'Quét hóa đơn OCR',
+      'prioritySupport': 'Hỗ trợ ưu tiên',
     },
     'zh': {
       'appTitle': 'Bexly',
@@ -2778,6 +2826,30 @@ class AppLocalizations {
   String get noWalletsCreateOne => get('noWalletsCreateOne');
   String get setAsDefaultWallet => get('setAsDefaultWallet');
   String get usedForAiAndConversion => get('usedForAiAndConversion');
+  // Subscription
+  String get subscription => get('subscription');
+  String get currentPlan => get('currentPlan');
+  String get restorePurchases => get('restorePurchases');
+  String get purchaseSuccessful => get('purchaseSuccessful');
+  String get purchasesRestored => get('purchasesRestored');
+  String get bestValue => get('bestValue');
+  String get current => get('current');
+  String get perMonth => get('perMonth');
+  String get perYear => get('perYear');
+  String get unlimitedWallets => get('unlimitedWallets');
+  String get unlimitedBudgetsGoals => get('unlimitedBudgetsGoals');
+  String get unlimitedRecurring => get('unlimitedRecurring');
+  String get aiMessagesPerMonth => get('aiMessagesPerMonth');
+  String get sixMonthsAnalytics => get('sixMonthsAnalytics');
+  String get multiCurrencySupport => get('multiCurrencySupport');
+  String get cloudSync => get('cloudSync');
+  String get receiptPhotos1GB => get('receiptPhotos1GB');
+  String get everythingInPlus => get('everythingInPlus');
+  String get unlimitedAiMessages => get('unlimitedAiMessages');
+  String get fullAnalyticsHistory => get('fullAnalyticsHistory');
+  String get unlimitedReceiptStorage => get('unlimitedReceiptStorage');
+  String get ocrReceiptScanning => get('ocrReceiptScanning');
+  String get prioritySupport => get('prioritySupport');
 
   String languageChanged(String language) {
     return '${get('languageChanged')} $language';
