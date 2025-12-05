@@ -45,13 +45,10 @@ jobs:
           path: build/ios/iphoneos/Runner.app
           retention-days: 7
 
-  # Signed build with Codemagic CLI (automatic certificate management)
-  # TODO: Enable when iOS Distribution Certificate is available
-  # Requires: Someone with Mac to create certificate and export .p12 file
+  # Signed build using manual certificate (.p12)
   build-ios-signed:
     runs-on: macos-14
-    if: false # Disabled until certificate is available
-    # if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -64,9 +61,35 @@ jobs:
 
       - name: Install Codemagic CLI Tools
         run: |
-          brew install pipx
-          pipx ensurepath
-          pipx install codemagic-cli-tools
+          pip3 install codemagic-cli-tools
+
+      - name: Setup keychain and certificate
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+        run: |
+          # Decode certificate
+          echo "$IOS_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate to keychain
+          security import certificate.p12 -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # Save keychain path for later cleanup
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
+          echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> $GITHUB_ENV
+
+          # Cleanup certificate file
+          rm certificate.p12
 
       - name: Setup App Store Connect API Key
         env:
@@ -74,21 +97,16 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
-          # Create API key file
           mkdir -p ~/.appstoreconnect/private_keys
           echo "$APP_STORE_CONNECT_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
 
-      - name: Fetch signing certificates
+      - name: Fetch provisioning profiles
         env:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           BUNDLE_ID: com.joy.bexly
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          # Initialize keychain
-          keychain initialize
-
-          # Fetch or create distribution certificate
+          # Fetch provisioning profiles from App Store Connect
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
@@ -96,8 +114,12 @@ jobs:
             --private-key @file:~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
             --create
 
-          # Add certificates to keychain
-          keychain add-certificates
+          # Install provisioning profiles
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          for profile in $(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision 2>/dev/null || find . -name "*.mobileprovision"); do
+            uuid=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< $(security cms -D -i "$profile"))
+            cp "$profile" ~/Library/MobileDevice/Provisioning\ Profiles/${uuid}.mobileprovision
+          done
 
           # Set up Xcode project signing
           xcode-project use-profiles
@@ -118,8 +140,6 @@ jobs:
 
       - name: Build IPA
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          # Generate ExportOptions.plist from provisioning profiles
           xcode-project use-profiles --export-options-plist=ios/ExportOptions.plist
           flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
@@ -135,7 +155,6 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           app-store-connect publish \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_ID" \
@@ -145,5 +164,4 @@ jobs:
       - name: Cleanup keychain
         if: always()
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          keychain delete || true
+          security delete-keychain $KEYCHAIN_PATH || true
