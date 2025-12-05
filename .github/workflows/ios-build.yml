@@ -18,8 +18,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.27.1'
-          channel: 'stable'
+          channel: 'master'
           cache: true
 
       - name: Install dependencies
@@ -57,12 +56,14 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.27.1'
-          channel: 'stable'
+          channel: 'master'
           cache: true
 
       - name: Install Codemagic CLI Tools
-        run: pip3 install codemagic-cli-tools
+        run: |
+          brew install pipx
+          pipx ensurepath
+          pipx install codemagic-cli-tools
 
       - name: Setup App Store Connect API Key
         env:
@@ -80,6 +81,7 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           BUNDLE_ID: com.joy.bexly
         run: |
+          export PATH="$HOME/.local/bin:$PATH"
           # Initialize keychain
           keychain initialize
 
@@ -113,6 +115,7 @@ jobs:
 
       - name: Build IPA
         run: |
+          export PATH="$HOME/.local/bin:$PATH"
           # Generate ExportOptions.plist from provisioning profiles
           xcode-project use-profiles --export-options-plist=ios/ExportOptions.plist
           flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
@@ -129,6 +132,7 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
         run: |
+          export PATH="$HOME/.local/bin:$PATH"
           app-store-connect publish \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_ID" \
@@ -137,4 +141,6 @@ jobs:
 
       - name: Cleanup keychain
         if: always()
-        run: keychain delete
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          keychain delete || true
