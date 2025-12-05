@@ -622,8 +622,8 @@ class _ChatInput extends HookWidget {
       padding: const EdgeInsets.only(
         left: AppSpacing.spacing16,
         right: AppSpacing.spacing16,
-        top: AppSpacing.spacing12,
-        bottom: AppSpacing.spacing16,
+        top: AppSpacing.spacing8,
+        bottom: AppSpacing.spacing8,
       ),
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
@@ -705,7 +705,7 @@ class _ChatInput extends HookWidget {
                     ),
                   ),
 
-                  // Text input
+                  // Text input with voice/send button inside
                   Expanded(
                     child: TextField(
                       controller: controller,
@@ -714,17 +714,19 @@ class _ChatInput extends HookWidget {
                       minLines: 1,
                       enabled: !isLoading,
                       textCapitalization: TextCapitalization.sentences,
-                      style: AppTextStyles.body2.copyWith(
+                      style: AppTextStyles.body3.copyWith(
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                       decoration: InputDecoration(
                         hintText: AppLocalizations.of(context)?.typeYourMessage ?? 'Type your message...',
-                        hintStyle: AppTextStyles.body2.copyWith(
+                        hintStyle: AppTextStyles.body3.copyWith(
                           color: AppColors.neutral400,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.spacing16,
-                          vertical: AppSpacing.spacing8,
+                        contentPadding: const EdgeInsets.only(
+                          left: AppSpacing.spacing16,
+                          right: AppSpacing.spacing4,
+                          top: AppSpacing.spacing8,
+                          bottom: AppSpacing.spacing8,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
@@ -747,6 +749,54 @@ class _ChatInput extends HookWidget {
                         ),
                         filled: true,
                         fillColor: Theme.of(context).colorScheme.surface,
+                        // Voice/Send button inside the input field (right side)
+                        suffixIcon: Padding(
+                          padding: const EdgeInsets.only(right: AppSpacing.spacing4),
+                          child: canSend && !isLoading
+                              // Send button when has text/image
+                              ? GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    onSend(controller.text, selectedImage.value);
+                                    selectedImage.value = null;
+                                  },
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [AppColors.primary500, AppColors.primary700],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.arrow_upward_rounded,
+                                      color: AppColors.light,
+                                      size: 20,
+                                    ),
+                                  ),
+                                )
+                              // Voice button when empty
+                              : GestureDetector(
+                                  onTap: isLoading
+                                      ? null
+                                      : () {
+                                          HapticFeedback.lightImpact();
+                                          // TODO: Implement voice input
+                                        },
+                                  child: Icon(
+                                    Icons.mic_none_rounded,
+                                    color: isLoading ? AppColors.neutral300 : AppColors.neutral500,
+                                    size: 24,
+                                  ),
+                                ),
+                        ),
+                        suffixIconConstraints: const BoxConstraints(
+                          minWidth: 40,
+                          minHeight: 40,
+                        ),
                       ),
                       onSubmitted: (value) {
                         if ((value.trim().isNotEmpty || selectedImage.value != null) && !isLoading) {
@@ -754,44 +804,6 @@ class _ChatInput extends HookWidget {
                           selectedImage.value = null;
                         }
                       },
-                    ),
-                  ),
-
-                  // Send button (right side)
-                  Container(
-                    width: 40,
-                    height: 40,
-                    margin: const EdgeInsets.only(left: AppSpacing.spacing8),
-                    decoration: BoxDecoration(
-                      gradient: canSend && !isLoading
-                          ? const LinearGradient(
-                              colors: [AppColors.primary500, AppColors.primary700],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : null,
-                      color: !canSend || isLoading ? AppColors.neutral200 : null,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(20),
-                        onTap: isLoading || !canSend
-                            ? null
-                            : () {
-                                HapticFeedback.lightImpact();
-                                onSend(controller.text, selectedImage.value);
-                                selectedImage.value = null;
-                              },
-                        child: Center(
-                          child: Icon(
-                            Icons.send_rounded,
-                            color: canSend && !isLoading ? AppColors.light : AppColors.neutral400,
-                            size: 20,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                 ],

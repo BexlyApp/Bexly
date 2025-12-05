@@ -22,6 +22,40 @@ class RecurringCard extends StatelessWidget {
     this.onTap,
   });
 
+  /// Get short currency symbol (e.g., VND -> đ, USD -> $)
+  String _getCurrencySymbol(String currency) {
+    switch (currency) {
+      case 'VND':
+        return 'đ';
+      case 'USD':
+        return '\$';
+      case 'EUR':
+        return '€';
+      case 'GBP':
+        return '£';
+      case 'JPY':
+        return '¥';
+      case 'CNY':
+        return '¥';
+      case 'KRW':
+        return '₩';
+      case 'THB':
+        return '฿';
+      case 'IDR':
+        return 'Rp';
+      case 'MYR':
+        return 'RM';
+      case 'SGD':
+        return 'S\$';
+      case 'PHP':
+        return '₱';
+      case 'INR':
+        return '₹';
+      default:
+        return currency;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final daysUntilDue = recurring.nextDueDate.difference(DateTime.now()).inDays;
@@ -47,23 +81,12 @@ class RecurringCard extends StatelessWidget {
             ? AppColors.red400.withAlpha(25)
             : AppColors.purple.withAlpha(20);
 
-    final iconBorderColor = isOverdue
-        ? AppColors.red.withAlpha(60)
-        : isDueToday
-            ? AppColors.red400.withAlpha(60)
-            : AppColors.purple.withAlpha(40);
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.radius12),
       child: Container(
         height: 72,
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.spacing8,
-          AppSpacing.spacing8,
-          AppSpacing.spacing16,
-          AppSpacing.spacing8,
-        ),
+        padding: const EdgeInsets.only(right: AppSpacing.spacing12),
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(AppRadius.radius12),
@@ -71,23 +94,30 @@ class RecurringCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Category Icon
+            // Category Icon - flush with left/top/bottom border
             Container(
-              width: 54,
-              height: 54,
-              padding: const EdgeInsets.all(AppSpacing.spacing8),
+              width: 70,
+              height: 70,
               decoration: BoxDecoration(
                 color: iconBgColor,
-                borderRadius: BorderRadius.circular(AppRadius.radius12),
-                border: Border.all(color: iconBorderColor),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppRadius.radius12 - 1),
+                  bottomLeft: Radius.circular(AppRadius.radius12 - 1),
+                ),
               ),
-              child: CategoryIcon(
-                iconType: recurring.category.iconType,
-                icon: recurring.category.icon,
-                iconBackground: recurring.category.iconBackground,
+              child: Center(
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: CategoryIcon(
+                    iconType: recurring.category.iconType,
+                    icon: recurring.category.icon,
+                    iconBackground: recurring.category.iconBackground,
+                  ),
+                ),
               ),
             ),
-            const Gap(AppSpacing.spacing12),
+            const Gap(AppSpacing.spacing8),
 
             // Title, Category
             Expanded(
@@ -178,14 +208,16 @@ class RecurringCard extends StatelessWidget {
                       const Gap(AppSpacing.spacing4),
 
                       // Amount with +/- sign based on transaction type
-                      Text(
-                        '${recurring.category.transactionType == 'income' ? '+' : '-'}${recurring.amount.toPriceFormat()} ${recurring.currency}',
-                        style: AppTextStyles.numericMedium.copyWith(
+                      AutoSizeText(
+                        '${recurring.category.transactionType == 'income' ? '+' : '-'}${recurring.amount.toPriceFormat()} ${_getCurrencySymbol(recurring.currency)}',
+                        style: AppTextStyles.numericRegular.copyWith(
                           color: recurring.category.transactionType == 'income'
                               ? AppColors.green200
                               : AppColors.red700,
                           height: 1.12,
+                          fontSize: 14,
                         ),
+                        maxLines: 1,
                       ),
                     ],
                   ),

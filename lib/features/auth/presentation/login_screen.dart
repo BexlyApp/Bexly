@@ -19,6 +19,10 @@ import 'package:bexly/core/utils/logger.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart' as local_auth;
+import 'package:bexly/core/components/form_fields/custom_input_border.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
 
 class LoginScreen extends HookConsumerWidget {
   const LoginScreen({super.key});
@@ -44,8 +48,37 @@ class LoginScreen extends HookConsumerWidget {
           password: passwordController.text,
         );
 
+        // Sync user profile from Firebase Auth to local database
+        final bexlyApp = FirebaseInitService.bexlyApp;
+        if (bexlyApp != null) {
+          final firebaseAuth = FirebaseAuth.instanceFor(app: bexlyApp);
+          final firebaseUser = firebaseAuth.currentUser;
+          if (firebaseUser != null) {
+            final authProvider = ref.read(local_auth.authStateProvider.notifier);
+            final currentUser = authProvider.getUser();
+
+            authProvider.setUser(currentUser.copyWith(
+              name: firebaseUser.displayName ?? currentUser.name,
+              email: firebaseUser.email ?? currentUser.email,
+              profilePicture: firebaseUser.photoURL ?? currentUser.profilePicture,
+            ));
+
+            Log.i('✅ Synced profile from Firebase Auth (Email)', label: 'auth');
+          }
+        }
+
         if (context.mounted) {
-          context.go('/');
+          // Check if user has wallet - redirect to onboarding if not
+          final db = ref.read(databaseProvider);
+          final wallets = await db.walletDao.getAllWallets();
+
+          if (wallets.isEmpty) {
+            // No wallet - go to onboarding to setup first wallet
+            context.go('/onboarding');
+          } else {
+            // Has wallet - go straight to main
+            context.go('/');
+          }
         }
       } catch (e) {
         if (context.mounted) {
@@ -177,10 +210,18 @@ class LoginScreen extends HookConsumerWidget {
           }
         }
 
-        Log.i('Navigating to main screen', label: 'auth');
-        print('🧭 Navigating to main screen');
+        Log.i('Navigating to appropriate screen', label: 'auth');
+        print('🧭 Navigating to appropriate screen');
         if (context.mounted) {
-          context.go('/');
+          // Check if user has wallet - redirect to onboarding if not
+          final db = ref.read(databaseProvider);
+          final wallets = await db.walletDao.getAllWallets();
+
+          if (wallets.isEmpty) {
+            context.go('/onboarding');
+          } else {
+            context.go('/');
+          }
         }
         Log.i('Navigation completed', label: 'auth');
         print('✅ Navigation completed');
@@ -282,7 +323,15 @@ class LoginScreen extends HookConsumerWidget {
             }
 
             if (context.mounted) {
-              context.go('/');
+              // Check if user has wallet - redirect to onboarding if not
+              final db = ref.read(databaseProvider);
+              final wallets = await db.walletDao.getAllWallets();
+
+              if (wallets.isEmpty) {
+                context.go('/onboarding');
+              } else {
+                context.go('/');
+              }
             }
           }
         } else if (result.status == LoginStatus.cancelled) {
@@ -391,9 +440,17 @@ class LoginScreen extends HookConsumerWidget {
           }
         }
 
-        debugPrint('Auth successful, navigating to main screen');
+        debugPrint('Auth successful, navigating to appropriate screen');
         if (context.mounted) {
-          context.go('/');
+          // Check if user has wallet - redirect to onboarding if not
+          final db = ref.read(databaseProvider);
+          final wallets = await db.walletDao.getAllWallets();
+
+          if (wallets.isEmpty) {
+            context.go('/onboarding');
+          } else {
+            context.go('/');
+          }
         }
         debugPrint('Navigation completed');
       } catch (e) {
@@ -455,11 +512,38 @@ class LoginScreen extends HookConsumerWidget {
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
+                    style: AppTextStyles.body3,
+                    decoration: InputDecoration(
                       labelText: 'Email',
                       hintText: 'Enter your email',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.fromLTRB(
+                        0,
+                        AppSpacing.spacing16,
+                        0,
+                        AppSpacing.spacing16,
+                      ),
+                      border: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.neutral600),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      enabledBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.neutral600),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      focusedBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.purple),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      errorBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.red),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      focusedErrorBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.red),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -477,6 +561,7 @@ class LoginScreen extends HookConsumerWidget {
                     obscureText: obscurePassword.value,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => handleLogin(),
+                    style: AppTextStyles.body3,
                     decoration: InputDecoration(
                       labelText: 'Password',
                       hintText: 'Enter your password',
@@ -491,7 +576,33 @@ class LoginScreen extends HookConsumerWidget {
                           obscurePassword.value = !obscurePassword.value;
                         },
                       ),
-                      border: const OutlineInputBorder(),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.fromLTRB(
+                        0,
+                        AppSpacing.spacing16,
+                        0,
+                        AppSpacing.spacing16,
+                      ),
+                      border: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.neutral600),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      enabledBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.neutral600),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      focusedBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.purple),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      errorBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.red),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      focusedErrorBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.red),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -562,11 +673,13 @@ class LoginScreen extends HookConsumerWidget {
                     children: [
                       Text(
                         'Or continue with',
-                        style: Theme.of(context).textTheme.labelMedium,
+                        style: AppTextStyles.body4,
                       ),
                       const Gap(16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 12,
+                        runSpacing: 12,
                         children: [
                           // Google Sign In
                           FilledButton.tonalIcon(
@@ -577,10 +690,9 @@ class LoginScreen extends HookConsumerWidget {
                             ),
                             label: const Text('Google'),
                             style: FilledButton.styleFrom(
-                              minimumSize: const Size(100, 48),
+                              minimumSize: const Size(100, 44),
                             ),
                           ),
-                          const Gap(12),
                           // Facebook Sign In
                           FilledButton.tonalIcon(
                             onPressed: isLoading.value ? null : handleFacebookSignIn,
@@ -591,10 +703,9 @@ class LoginScreen extends HookConsumerWidget {
                             ),
                             label: const Text('Facebook'),
                             style: FilledButton.styleFrom(
-                              minimumSize: const Size(100, 48),
+                              minimumSize: const Size(100, 44),
                             ),
                           ),
-                          const Gap(12),
                           // Apple Sign In
                           FilledButton.tonalIcon(
                             onPressed: isLoading.value ? null : handleAppleSignIn,
@@ -607,7 +718,7 @@ class LoginScreen extends HookConsumerWidget {
                             ),
                             label: const Text('Apple'),
                             style: FilledButton.styleFrom(
-                              minimumSize: const Size(100, 48),
+                              minimumSize: const Size(100, 44),
                             ),
                           ),
                         ],

@@ -5,6 +5,10 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
+import 'package:bexly/core/components/form_fields/custom_input_border.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/constants/app_text_styles.dart';
 
 class SignUpScreen extends HookConsumerWidget {
   const SignUpScreen({super.key});
@@ -131,11 +135,38 @@ class SignUpScreen extends HookConsumerWidget {
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
+                    style: AppTextStyles.body3,
+                    decoration: InputDecoration(
                       labelText: 'Email',
                       hintText: 'Enter your email',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.fromLTRB(
+                        0,
+                        AppSpacing.spacing16,
+                        0,
+                        AppSpacing.spacing16,
+                      ),
+                      border: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.neutral600),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      enabledBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.neutral600),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      focusedBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.purple),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      errorBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.red),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      focusedErrorBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.red),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -153,6 +184,7 @@ class SignUpScreen extends HookConsumerWidget {
                     obscureText: obscurePassword.value,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => handleSignUp(),
+                    style: AppTextStyles.body3,
                     decoration: InputDecoration(
                       labelText: 'Password',
                       hintText: 'Create a password',
@@ -167,7 +199,33 @@ class SignUpScreen extends HookConsumerWidget {
                           obscurePassword.value = !obscurePassword.value;
                         },
                       ),
-                      border: const OutlineInputBorder(),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.fromLTRB(
+                        0,
+                        AppSpacing.spacing16,
+                        0,
+                        AppSpacing.spacing16,
+                      ),
+                      border: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.neutral600),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      enabledBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.neutral600),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      focusedBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.purple),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      errorBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.red),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
+                      focusedErrorBorder: CustomInputBorder(
+                        borderSide: const BorderSide(color: AppColors.red),
+                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {

@@ -372,7 +372,7 @@ class AppLocalizations {
       'aiAssistantTitle': 'Trợ lý AI Bexly',
       'aiAssistantReady': 'Sẵn sàng hỗ trợ',
       'aiAssistantTyping': 'Đang nhập...',
-      'typeYourMessage': 'Nhập tin nhắn của bạn...',
+      'typeYourMessage': 'Nhập tin nhắn...',
       'clearChat': 'Xóa cuộc trò chuyện',
       'clearChatConfirm': 'Bạn có chắc chắn muốn xóa toàn bộ lịch sử trò chuyện?',
       'cancel': 'Hủy',
