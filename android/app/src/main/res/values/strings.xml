@@ -4,8 +4,8 @@
     <!-- Web Client ID from Firebase Console (Bexly project) -->
     <string name="default_web_client_id">657555385291-gao6kfsqni6su6qrmebrh9h2vt1tk39b.apps.googleusercontent.com</string>
 
-    <!-- Facebook Configuration -->
-    <string name="facebook_app_id">1348391745185182</string>
-    <string name="facebook_client_token">YOUR_FACEBOOK_CLIENT_TOKEN</string>
-    <string name="fb_login_protocol_scheme">fb1348391745185182</string>
+    <!-- Facebook Configuration (Bexly app) -->
+    <string name="facebook_app_id">1583820202985076</string>
+    <string name="facebook_client_token">25c0f66e64750e8a7945c4e0bcae522e</string>
+    <string name="fb_login_protocol_scheme">fb1583820202985076</string>
 </resources>
