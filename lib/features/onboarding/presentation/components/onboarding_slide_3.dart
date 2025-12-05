@@ -132,23 +132,23 @@ class OnboardingSlide3 extends HookConsumerWidget {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.spacing24,
-        vertical: AppSpacing.spacing40,
+        vertical: AppSpacing.spacing16,
       ),
       child: Column(
         children: [
           // Title
           const Text(
             'Setup Your Profile',
-            style: AppTextStyles.heading2,
+            style: AppTextStyles.heading6,
             textAlign: TextAlign.center,
           ),
-          const Gap(AppSpacing.spacing40),
+          const Gap(AppSpacing.spacing12),
 
           // Avatar Picker (will use Firebase photo URL if available)
           AvatarPicker(
             initialImageUrl: firebasePhotoUrl,
           ),
-          const Gap(AppSpacing.spacing32),
+          const Gap(AppSpacing.spacing12),
 
           // Display Name
           CustomTextField(
@@ -162,19 +162,19 @@ class OnboardingSlide3 extends HookConsumerWidget {
               ref.read(displayNameProvider.notifier).state = value;
             },
           ),
-          const Gap(AppSpacing.spacing32),
+          const Gap(AppSpacing.spacing12),
 
           // Divider
           const Divider(),
-          const Gap(AppSpacing.spacing24),
+          const Gap(AppSpacing.spacing8),
 
           // Wallet setup section
           Text(
             wallet == null ? 'Setup Your First Wallet' : 'Your Wallets',
-            style: AppTextStyles.heading4,
+            style: AppTextStyles.heading6,
             textAlign: TextAlign.center,
           ),
-          const Gap(AppSpacing.spacing16),
+          const Gap(AppSpacing.spacing8),
 
           // Show all wallets list
           allWalletsAsync.when(
@@ -261,7 +261,7 @@ class OnboardingSlide3 extends HookConsumerWidget {
             loading: () => const CircularProgressIndicator(),
             error: (e, _) => Text('Error: $e'),
           ),
-          const Gap(AppSpacing.spacing24),
+          const Gap(AppSpacing.spacing12),
         ],
       ),
     );

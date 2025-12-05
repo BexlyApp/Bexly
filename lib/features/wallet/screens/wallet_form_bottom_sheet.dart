@@ -18,6 +18,7 @@ import 'package:bexly/core/extensions/string_extension.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/currency_picker/presentation/components/currency_picker_field.dart';
 import 'package:bexly/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/features/currency_picker/data/sources/currency_local_source.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
@@ -58,8 +59,15 @@ class WalletFormBottomSheet extends HookConsumerWidget {
 
     // Default wallet checkbox state
     final defaultWalletId = ref.watch(defaultWalletIdProvider);
+    final allWallets = ref.watch(allWalletsStreamProvider).valueOrNull ?? [];
+    final isFirstWallet = !isEditing && allWallets.isEmpty;
+    final isOnlyWallet = isEditing && allWallets.length == 1;
+
+    // Force checked if: creating first wallet OR editing the only wallet
+    final forceDefaultWallet = isFirstWallet || isOnlyWallet;
+
     final isDefaultWallet = useState<bool>(
-      wallet?.id != null && wallet!.id == defaultWalletId,
+      forceDefaultWallet || (wallet?.id != null && wallet!.id == defaultWalletId),
     );
 
     // Credit card fields
@@ -88,24 +96,37 @@ class WalletFormBottomSheet extends HookConsumerWidget {
           interestRateController.text = wallet!.interestRate.toString();
         }
       } else {
-        // For new wallets, initialize currency from base currency setting
+        // For new wallets, initialize currency from base currency setting or device locale
         final baseCurrency = ref.read(baseCurrencyProvider);
         final currencies = ref.read(currenciesStaticProvider);
 
         // Find currency object matching base currency
-        final matchingCurrency = currencies.cast<Currency?>().firstWhere(
+        Currency? matchingCurrency = currencies.cast<Currency?>().firstWhere(
           (c) => c?.isoCode == baseCurrency,
           orElse: () => null,
         );
 
+        // Fallback to device locale if base currency not found
+        if (matchingCurrency == null && currencies.isNotEmpty) {
+          final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
+          final localeCurrencyCode = CurrencyLocalDataSource.getCurrencyCodeFromLocale(
+            deviceLocale.countryCode,
+            deviceLocale.languageCode,
+          );
+          matchingCurrency = currencies.cast<Currency?>().firstWhere(
+            (c) => c?.isoCode == localeCurrencyCode,
+            orElse: () => null,
+          );
+        }
+
         // Use Future.microtask to avoid modifying provider during build
         if (matchingCurrency != null) {
           Future.microtask(() {
-            ref.read(currencyProvider.notifier).state = matchingCurrency;
+            ref.read(currencyProvider.notifier).state = matchingCurrency!;
           });
         }
 
-        // Pre-fill with currency-based placeholder using base currency
+        // Pre-fill with currency-based placeholder using detected currency
         final currencyCode = matchingCurrency?.isoCode ?? baseCurrency;
         final placeholderName = 'My $currencyCode Wallet';
         nameController.text = placeholderName;
@@ -162,9 +183,12 @@ class WalletFormBottomSheet extends HookConsumerWidget {
             ),
 
             // Set as default wallet checkbox
+            // Disabled when: creating first wallet or editing the only wallet (must be default)
             CheckboxListTile(
-              value: isDefaultWallet.value,
-              onChanged: (value) => isDefaultWallet.value = value ?? false,
+              value: forceDefaultWallet ? true : isDefaultWallet.value,
+              onChanged: forceDefaultWallet
+                  ? null // Disable checkbox if this must be default wallet
+                  : (value) => isDefaultWallet.value = value ?? false,
               title: Text(
                 context.l10n.setAsDefaultWallet,
                 style: AppTextStyles.body2,

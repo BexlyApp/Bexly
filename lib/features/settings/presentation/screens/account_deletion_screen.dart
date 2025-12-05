@@ -20,6 +20,7 @@ import 'package:bexly/core/services/data_population_service/category_population_
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:toastification/toastification.dart';
 
 final accountDeletionLoadingProvider = StateProvider.autoDispose<bool>(
@@ -109,15 +110,18 @@ class AccountDeletionScreen extends HookConsumerWidget {
       await _clearAllSharedPreferences();
       Log.i('SharedPreferences cleared.');
 
-      // STEP 6: Invalidate all providers and wait for them to rebuild
+      // STEP 6: Reset and invalidate all providers
+      // IMPORTANT: Call reset() before invalidate to clear cached state
+      ref.read(activeWalletProvider.notifier).reset();
       ref.invalidate(activeWalletProvider);
       ref.invalidate(allWalletsStreamProvider);
+      ref.invalidate(defaultWalletIdProvider);
 
       // Force rebuild providers by reading them
       // This ensures they query fresh data from the cleared database
       await Future.delayed(const Duration(milliseconds: 100));
       final wallets = await ref.read(allWalletsStreamProvider.future);
-      Log.i('All providers invalidated and refreshed. Current wallets: ${wallets.length}');
+      Log.i('All providers reset and refreshed. Current wallets: ${wallets.length}');
 
       // Dismiss loading dialog
       if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
