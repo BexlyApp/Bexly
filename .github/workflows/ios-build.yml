@@ -61,7 +61,10 @@ jobs:
 
       - name: Install Codemagic CLI Tools
         run: |
-          pip3 install codemagic-cli-tools
+          brew install pipx
+          pipx ensurepath
+          pipx install codemagic-cli-tools
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Setup keychain and certificate
         env:
