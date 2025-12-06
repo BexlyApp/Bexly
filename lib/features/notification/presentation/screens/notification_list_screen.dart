@@ -26,34 +26,57 @@ class NotificationListScreen extends ConsumerWidget {
       actions: notificationsAsync.maybeWhen(
         data: (notifications) => notifications.isNotEmpty
             ? [
-                TextButton.icon(
-                  onPressed: () async {
-                    // Show confirmation dialog
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text(l10n.clearAllNotifications),
-                        content: Text(l10n.areYouSureDeleteAllNotifications),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: Text(l10n.cancel),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: Text(l10n.clearAll),
-                          ),
-                        ],
-                      ),
-                    );
-
-                    if (confirmed == true) {
-                      final db = ref.read(databaseProvider);
-                      await db.notificationDao.deleteAllNotifications();
+                PopupMenuButton<String>(
+                  icon: const Icon(HugeIcons.strokeRoundedMoreVertical),
+                  onSelected: (value) async {
+                    final db = ref.read(databaseProvider);
+                    if (value == 'mark_all_read') {
+                      await db.notificationDao.markAllAsRead();
+                    } else if (value == 'delete_all') {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(l10n.clearAllNotifications),
+                          content: Text(l10n.areYouSureDeleteAllNotifications),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: Text(l10n.cancel),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: Text(l10n.clearAll),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true) {
+                        await db.notificationDao.deleteAllNotifications();
+                      }
                     }
                   },
-                  icon: const Icon(HugeIcons.strokeRoundedDelete02, size: 18),
-                  label: Text(l10n.clearAll),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'mark_all_read',
+                      child: Row(
+                        children: [
+                          const Icon(HugeIcons.strokeRoundedCheckmarkCircle01, size: 18),
+                          const Gap(8),
+                          Text(l10n.markAllAsRead),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete_all',
+                      child: Row(
+                        children: [
+                          Icon(HugeIcons.strokeRoundedDelete02, size: 18, color: AppColors.red),
+                          const Gap(8),
+                          Text(l10n.clearAll, style: TextStyle(color: AppColors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ]
             : null,
@@ -163,12 +186,15 @@ class NotificationListScreen extends ConsumerWidget {
           // TODO: Navigate to related screen based on notification type
         },
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.spacing16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.spacing12,
+            vertical: 10,
+          ),
           decoration: BoxDecoration(
             color: isRead
                 ? theme.colorScheme.surface
                 : theme.colorScheme.primaryContainer.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: isRead
                   ? theme.colorScheme.outlineVariant
@@ -177,78 +203,58 @@ class NotificationListScreen extends ConsumerWidget {
             ),
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(AppSpacing.spacing8),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: _getNotificationTypeColor(notification.type as String)
                       .withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(
                   _getNotificationTypeIcon(notification.type as String),
                   color: _getNotificationTypeColor(notification.type as String),
-                  size: 20,
+                  size: 16,
                 ),
               ),
-              const Gap(AppSpacing.spacing12),
+              const Gap(10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      notification.title as String,
-                      style: AppTextStyles.body1.copyWith(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: isRead ? FontWeight.normal : FontWeight.w600,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            notification.title as String,
+                            style: AppTextStyles.body3.copyWith(
+                              color: theme.colorScheme.onSurface,
+                              fontWeight: isRead ? FontWeight.normal : FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Gap(8),
+                        Text(
+                          _formatNotificationDate(notification.scheduledFor as DateTime?),
+                          style: AppTextStyles.body5.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                      ],
                     ),
-                    const Gap(AppSpacing.spacing4),
+                    const Gap(2),
                     Text(
                       notification.body as String,
-                      style: AppTextStyles.body3.copyWith(
+                      style: AppTextStyles.body4.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                    ),
-                    const Gap(AppSpacing.spacing8),
-                    Text(
-                      _formatNotificationDate(notification.scheduledFor as DateTime?),
-                      style: AppTextStyles.body4.copyWith(
-                        color: theme.colorScheme.outline,
-                      ),
                     ),
                   ],
                 ),
-              ),
-              Column(
-                children: [
-                  if (!isRead)
-                    IconButton(
-                      icon: Icon(
-                        HugeIcons.strokeRoundedCheckmarkCircle01,
-                        color: theme.colorScheme.primary,
-                        size: 20,
-                      ),
-                      onPressed: () async {
-                        final db = ref.read(databaseProvider);
-                        await db.notificationDao.markAsRead(notification.id as int);
-                      },
-                    ),
-                  IconButton(
-                    icon: Icon(
-                      HugeIcons.strokeRoundedDelete02,
-                      color: AppColors.red,
-                      size: 20,
-                    ),
-                    onPressed: () async {
-                      final db = ref.read(databaseProvider);
-                      await db.notificationDao.deleteNotification(notification.id as int);
-                    },
-                  ),
-                ],
               ),
             ],
           ),
@@ -293,7 +299,7 @@ class NotificationListScreen extends ConsumerWidget {
 
   String _formatNotificationDate(DateTime? date) {
     if (date == null) {
-      return 'No date';
+      return '';
     }
 
     final now = DateTime.now();
@@ -302,25 +308,27 @@ class NotificationListScreen extends ConsumerWidget {
     // If in the past
     if (difference.isNegative) {
       final absDifference = difference.abs();
-      if (absDifference.inMinutes < 60) {
-        return '${absDifference.inMinutes} minutes ago';
+      if (absDifference.inMinutes < 1) {
+        return 'Now';
+      } else if (absDifference.inMinutes < 60) {
+        return '${absDifference.inMinutes}m ago';
       } else if (absDifference.inHours < 24) {
-        return '${absDifference.inHours} hours ago';
+        return '${absDifference.inHours}h ago';
       } else if (absDifference.inDays < 7) {
-        return '${absDifference.inDays} days ago';
+        return '${absDifference.inDays}d ago';
       } else {
-        return DateFormat('MMM d, y').format(date);
+        return DateFormat('MMM d').format(date);
       }
     } else {
       // If in the future
       if (difference.inMinutes < 60) {
-        return 'In ${difference.inMinutes} minutes';
+        return 'In ${difference.inMinutes}m';
       } else if (difference.inHours < 24) {
-        return 'In ${difference.inHours} hours';
+        return 'In ${difference.inHours}h';
       } else if (difference.inDays < 7) {
-        return 'In ${difference.inDays} days';
+        return 'In ${difference.inDays}d';
       } else {
-        return 'Scheduled for ${DateFormat('MMM d, y').format(date)}';
+        return DateFormat('MMM d').format(date);
       }
     }
   }
