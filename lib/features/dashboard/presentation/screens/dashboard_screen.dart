@@ -81,28 +81,34 @@ class DashboardScreen extends StatelessWidget {
           color: Theme.of(context).colorScheme.onPrimary,
         ),
       ),
-      body: ListView(
-        padding: EdgeInsets.only(bottom: 100),
+      body: Column(
         children: [
-          Container(
-            margin: const EdgeInsets.fromLTRB(
-              AppSpacing.spacing20,
-              0,
-              AppSpacing.spacing20,
-              AppSpacing.spacing20,
-            ),
-            child: const Column(
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.only(bottom: 100),
               children: [
-                BalanceCard(),
-                Gap(AppSpacing.spacing12),
-                CashFlowCards(),
-                Gap(AppSpacing.spacing12),
-                SpendingProgressChart(),
+                Container(
+                  margin: const EdgeInsets.fromLTRB(
+                    AppSpacing.spacing20,
+                    0,
+                    AppSpacing.spacing20,
+                    AppSpacing.spacing20,
+                  ),
+                  child: const Column(
+                    children: [
+                      BalanceCard(),
+                      Gap(AppSpacing.spacing12),
+                      CashFlowCards(),
+                      Gap(AppSpacing.spacing12),
+                      SpendingProgressChart(),
+                    ],
+                  ),
+                ),
+                const GoalPinnedHolder(),
+                const RecentTransactionList(),
               ],
             ),
           ),
-          const GoalPinnedHolder(),
-          const RecentTransactionList(),
         ],
       ),
     );
