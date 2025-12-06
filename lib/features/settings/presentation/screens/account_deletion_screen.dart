@@ -22,6 +22,7 @@ import 'package:bexly/features/authentication/presentation/riverpod/auth_provide
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:toastification/toastification.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 
 final accountDeletionLoadingProvider = StateProvider.autoDispose<bool>(
   (ref) => false,
@@ -40,8 +41,8 @@ class AccountDeletionScreen extends HookConsumerWidget {
       showDragHandle: true,
       builder: (_) => AlertBottomSheet(
         context: context,
-        title: 'Confirm Data Deletion',
-        confirmText: 'Delete',
+        title: context.l10n.deleteAccount,
+        confirmText: context.l10n.delete,
         content: Text(
           'All your data, including goals, transactions, budgets, and personal settings, will be permanently erased. Your account will remain active and you can start fresh.',
           style: AppTextStyles.body2,
@@ -187,7 +188,7 @@ class AccountDeletionScreen extends HookConsumerWidget {
       children: [
         CustomScaffold(
           context: context,
-          title: 'Delete Account',
+          title: context.l10n.deleteAccount,
           showBalance: false,
           body: Padding(
             padding: const EdgeInsets.all(AppSpacing.spacing20),
@@ -222,7 +223,7 @@ class AccountDeletionScreen extends HookConsumerWidget {
                 ),
                 const Spacer(),
                 PrimaryButton(
-                  label: 'Delete My Account',
+                  label: context.l10n.deleteMyAccount,
                   onPressed: isChallengeMet.value
                       ? () => _showConfirmationSheet(context, ref)
                       : null,

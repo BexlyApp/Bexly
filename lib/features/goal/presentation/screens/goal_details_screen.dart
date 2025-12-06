@@ -28,6 +28,7 @@ import 'package:bexly/features/goal/presentation/riverpod/goal_details_provider.
 import 'package:bexly/features/goal/presentation/screens/goal_checklist_form_dialog.dart';
 import 'package:bexly/features/goal/presentation/screens/goal_form_dialog.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:toastification/toastification.dart';
 
@@ -92,12 +93,12 @@ class GoalDetailsScreen extends ConsumerWidget {
               context.openBottomSheet(
                 child: AlertBottomSheet(
                   context: context,
-                  title: 'Delete Goal',
+                  title: context.l10n.deleteGoal,
                   content: Text(
-                    'Are you sure want to delete this goal?',
+                    context.l10n.deleteGoalConfirm,
                     style: AppTextStyles.body2,
                   ),
-                  confirmText: 'Delete',
+                  confirmText: context.l10n.delete,
                   onConfirm: () {
                     final db = ref.read(databaseProvider);
                     db.goalDao.deleteGoal(goalId);

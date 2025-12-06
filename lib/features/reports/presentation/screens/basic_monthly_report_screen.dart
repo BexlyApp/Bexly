@@ -25,6 +25,7 @@ import 'package:bexly/core/services/exchange_rate_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/reports/presentation/components/weekly_income_vs_expense_chart.dart';
 import 'package:bexly/features/reports/presentation/components/six_months_income_vs_expense_chart.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 
 part '../components/spending_by_category_chart.dart';
 part '../components/income_by_category_chart.dart';
@@ -44,7 +45,7 @@ class BasicMonthlyReportScreen extends ConsumerWidget {
 
     return CustomScaffold(
       context: context,
-      title: '${date.toMonthName()} Report',
+      title: '${date.toMonthName()} ${context.l10n.monthlyReport}',
       showBalance: false,
       body: Column(
         children: [
@@ -101,7 +102,7 @@ class BasicMonthlyReportScreen extends ConsumerWidget {
             (w) => w?.id == selectedWalletId,
             orElse: () => null,
           );
-    final displayText = selectedWallet?.name ?? 'All Wallets';
+    final displayText = selectedWallet?.name ?? context.l10n.allWallets;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -113,8 +114,8 @@ class BasicMonthlyReportScreen extends ConsumerWidget {
       child: CustomSelectField(
         context: context,
         controller: TextEditingController(text: displayText),
-        label: 'Filter by Wallet',
-        hint: 'Select wallet',
+        label: context.l10n.filterByWallet,
+        hint: context.l10n.selectWallet,
         prefixIcon: HugeIcons.strokeRoundedWallet01,
         isRequired: false,
         onTap: () async {

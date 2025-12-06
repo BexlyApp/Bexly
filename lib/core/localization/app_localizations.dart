@@ -306,6 +306,11 @@ class AppLocalizations {
       'failedToUpdateProfile': 'Failed to update profile',
       // Recurring tab
       'recurring': 'Recurring',
+      'enableReminder': 'Enable Reminder',
+      'editRecurringPayment': 'Edit Recurring Payment',
+      'deleteRecurringPayment': 'Delete Recurring Payment',
+      'pause': 'Pause',
+      'resume': 'Resume',
       // Budget empty states
       'noBudgetsRecordedYet': 'No budgets recorded yet.',
       'noBudgetsForThisMonth': 'No budgets for this month.',
@@ -348,6 +353,40 @@ class AppLocalizations {
       'unlimitedReceiptStorage': 'Unlimited receipt storage',
       'ocrReceiptScanning': 'OCR receipt scanning',
       'prioritySupport': 'Priority support',
+      // Reports
+      'weeklyOverview': 'Weekly Overview',
+      'currentMonthBreakdown': 'Current Month Breakdown',
+      'noTransactionsThisMonth': 'No transactions this month yet.',
+      'noTransactionDataYet': 'No transaction data available yet.',
+      'incomeVsExpense': 'Income vs. Expense',
+      'lastSixMonths': 'Last 6 Months',
+      'net': 'Net',
+      'filterByWallet': 'Filter by Wallet',
+      'allWallets': 'All Wallets',
+      'monthlyReport': 'Report',
+      'week': 'Week',
+      // Notification Settings
+      'paymentsAndBills': 'Payments & Bills',
+      'recurringPaymentReminders': 'Recurring Payment Reminders',
+      'dailyAndWeekly': 'Daily & Weekly',
+      'dailyReminder': 'Daily Reminder',
+      'weeklyReport': 'Weekly Report',
+      'monthlyAndGoals': 'Monthly & Goals',
+      'goalMilestones': 'Goal Milestones',
+      'testNotification': 'Test Notification',
+      'notificationPermissionDenied': 'Notification permission denied. Please enable in system settings.',
+      'testNotificationBody': 'If you see this, notifications are working! 🎉',
+      // Dialog strings
+      'deleteBudget': 'Delete Budget',
+      'deleteBudgetConfirm': 'Are you sure you want to delete this budget?',
+      'deleteGoal': 'Delete Goal',
+      'deleteGoalConfirm': 'Are you sure you want to delete this goal?',
+      'deleteCategory': 'Delete Category',
+      'deleteChecklist': 'Delete Checklist',
+      'deleteImage': 'Delete Image',
+      'deleteImageConfirm': 'Are you sure you want to delete this image?',
+      'deleteAccount': 'Delete Account',
+      'deleteMyAccount': 'Delete My Account',
     },
     'vi': {
       'appTitle': 'Bexly',
@@ -645,6 +684,11 @@ class AppLocalizations {
       'failedToUpdateProfile': 'Không thể cập nhật hồ sơ',
       // Recurring tab
       'recurring': 'Định kỳ',
+      'enableReminder': 'Bật nhắc nhở',
+      'editRecurringPayment': 'Sửa thanh toán định kỳ',
+      'deleteRecurringPayment': 'Xóa thanh toán định kỳ',
+      'pause': 'Tạm dừng',
+      'resume': 'Tiếp tục',
       // Budget empty states
       'noBudgetsRecordedYet': 'Chưa có ngân sách nào.',
       'noBudgetsForThisMonth': 'Không có ngân sách cho tháng này.',
@@ -687,6 +731,40 @@ class AppLocalizations {
       'unlimitedReceiptStorage': 'Không giới hạn lưu trữ hóa đơn',
       'ocrReceiptScanning': 'Quét hóa đơn OCR',
       'prioritySupport': 'Hỗ trợ ưu tiên',
+      // Reports
+      'weeklyOverview': 'Tổng quan hàng tuần',
+      'currentMonthBreakdown': 'Chi tiết tháng hiện tại',
+      'noTransactionsThisMonth': 'Chưa có giao dịch nào trong tháng này.',
+      'noTransactionDataYet': 'Chưa có dữ liệu giao dịch.',
+      'incomeVsExpense': 'Thu nhập vs Chi tiêu',
+      'lastSixMonths': '6 tháng gần đây',
+      'net': 'Ròng',
+      'filterByWallet': 'Lọc theo ví',
+      'allWallets': 'Tất cả ví',
+      'monthlyReport': 'Báo cáo',
+      'week': 'Tuần',
+      // Notification Settings
+      'paymentsAndBills': 'Thanh toán & Hóa đơn',
+      'recurringPaymentReminders': 'Nhắc nhở thanh toán định kỳ',
+      'dailyAndWeekly': 'Hàng ngày & Hàng tuần',
+      'dailyReminder': 'Nhắc nhở hàng ngày',
+      'weeklyReport': 'Báo cáo tuần',
+      'monthlyAndGoals': 'Hàng tháng & Mục tiêu',
+      'goalMilestones': 'Cột mốc mục tiêu',
+      'testNotification': 'Thử thông báo',
+      'notificationPermissionDenied': 'Quyền thông báo bị từ chối. Vui lòng bật trong cài đặt hệ thống.',
+      'testNotificationBody': 'Nếu bạn thấy thông báo này, thông báo đang hoạt động! 🎉',
+      // Dialog strings
+      'deleteBudget': 'Xóa ngân sách',
+      'deleteBudgetConfirm': 'Bạn có chắc chắn muốn xóa ngân sách này không?',
+      'deleteGoal': 'Xóa mục tiêu',
+      'deleteGoalConfirm': 'Bạn có chắc chắn muốn xóa mục tiêu này không?',
+      'deleteCategory': 'Xóa danh mục',
+      'deleteChecklist': 'Xóa checklist',
+      'deleteImage': 'Xóa hình ảnh',
+      'deleteImageConfirm': 'Bạn có chắc chắn muốn xóa hình ảnh này không?',
+      'deleteAccount': 'Xóa tài khoản',
+      'deleteMyAccount': 'Xóa tài khoản của tôi',
     },
     'zh': {
       'appTitle': 'Bexly',
@@ -984,6 +1062,11 @@ class AppLocalizations {
       'failedToUpdateProfile': '更新个人资料失败',
       // Recurring tab
       'recurring': '定期',
+      'enableReminder': '启用提醒',
+      'editRecurringPayment': '编辑定期付款',
+      'deleteRecurringPayment': '删除定期付款',
+      'pause': '暂停',
+      'resume': '继续',
       // Budget empty states
       'noBudgetsRecordedYet': '暂无预算记录。',
       'noBudgetsForThisMonth': '本月无预算。',
@@ -1002,6 +1085,40 @@ class AppLocalizations {
       'noWalletsCreateOne': '暂无钱包。请先创建。',
       'setAsDefaultWallet': '设为默认钱包',
       'usedForAiAndConversion': '用于AI助手和货币转换',
+      // Reports
+      'weeklyOverview': '每周概览',
+      'currentMonthBreakdown': '本月明细',
+      'noTransactionsThisMonth': '本月暂无交易。',
+      'noTransactionDataYet': '暂无交易数据。',
+      'incomeVsExpense': '收入 vs 支出',
+      'lastSixMonths': '最近6个月',
+      'net': '净值',
+      'filterByWallet': '按钱包筛选',
+      'allWallets': '所有钱包',
+      'monthlyReport': '报告',
+      'week': '周',
+      // Notification Settings
+      'paymentsAndBills': '付款与账单',
+      'recurringPaymentReminders': '定期付款提醒',
+      'dailyAndWeekly': '每日与每周',
+      'dailyReminder': '每日提醒',
+      'weeklyReport': '周报',
+      'monthlyAndGoals': '每月与目标',
+      'goalMilestones': '目标里程碑',
+      'testNotification': '测试通知',
+      'notificationPermissionDenied': '通知权限被拒绝。请在系统设置中启用。',
+      'testNotificationBody': '如果您看到此通知，说明通知功能正常！🎉',
+      // Dialog strings
+      'deleteBudget': '删除预算',
+      'deleteBudgetConfirm': '您确定要删除此预算吗？',
+      'deleteGoal': '删除目标',
+      'deleteGoalConfirm': '您确定要删除此目标吗？',
+      'deleteCategory': '删除分类',
+      'deleteChecklist': '删除清单',
+      'deleteImage': '删除图片',
+      'deleteImageConfirm': '您确定要删除此图片吗？',
+      'deleteAccount': '删除账户',
+      'deleteMyAccount': '删除我的账户',
     },
     'fr': {
       'appTitle': 'Bexly',
@@ -1299,6 +1416,11 @@ class AppLocalizations {
       'failedToUpdateProfile': 'Échec de la mise à jour du profil',
       // Recurring tab
       'recurring': 'Récurrent',
+      'enableReminder': 'Activer le rappel',
+      'editRecurringPayment': 'Modifier le paiement récurrent',
+      'deleteRecurringPayment': 'Supprimer le paiement récurrent',
+      'pause': 'Pause',
+      'resume': 'Reprendre',
       // Budget empty states
       'noBudgetsRecordedYet': 'Aucun budget enregistré.',
       'noBudgetsForThisMonth': 'Aucun budget pour ce mois.',
@@ -1317,6 +1439,40 @@ class AppLocalizations {
       'noWalletsCreateOne': 'Aucun portefeuille. Créez-en un.',
       'setAsDefaultWallet': 'Définir comme portefeuille par défaut',
       'usedForAiAndConversion': 'Utilisé pour l\'assistant IA et la conversion de devises',
+      // Reports
+      'weeklyOverview': 'Aperçu hebdomadaire',
+      'currentMonthBreakdown': 'Détail du mois en cours',
+      'noTransactionsThisMonth': 'Aucune transaction ce mois-ci.',
+      'noTransactionDataYet': 'Aucune donnée de transaction disponible.',
+      'incomeVsExpense': 'Revenus vs Dépenses',
+      'lastSixMonths': '6 derniers mois',
+      'net': 'Net',
+      'filterByWallet': 'Filtrer par portefeuille',
+      'allWallets': 'Tous les portefeuilles',
+      'monthlyReport': 'Rapport',
+      'week': 'Semaine',
+      // Notification Settings
+      'paymentsAndBills': 'Paiements & Factures',
+      'recurringPaymentReminders': 'Rappels de paiements récurrents',
+      'dailyAndWeekly': 'Quotidien & Hebdomadaire',
+      'dailyReminder': 'Rappel quotidien',
+      'weeklyReport': 'Rapport hebdomadaire',
+      'monthlyAndGoals': 'Mensuel & Objectifs',
+      'goalMilestones': 'Étapes des objectifs',
+      'testNotification': 'Test de notification',
+      'notificationPermissionDenied': 'Permission de notification refusée. Veuillez activer dans les paramètres système.',
+      'testNotificationBody': 'Si vous voyez ceci, les notifications fonctionnent ! 🎉',
+      // Dialog strings
+      'deleteBudget': 'Supprimer le budget',
+      'deleteBudgetConfirm': 'Êtes-vous sûr de vouloir supprimer ce budget ?',
+      'deleteGoal': 'Supprimer l\'objectif',
+      'deleteGoalConfirm': 'Êtes-vous sûr de vouloir supprimer cet objectif ?',
+      'deleteCategory': 'Supprimer la catégorie',
+      'deleteChecklist': 'Supprimer la checklist',
+      'deleteImage': 'Supprimer l\'image',
+      'deleteImageConfirm': 'Êtes-vous sûr de vouloir supprimer cette image ?',
+      'deleteAccount': 'Supprimer le compte',
+      'deleteMyAccount': 'Supprimer mon compte',
     },
     'th': {
       'appTitle': 'Bexly',
@@ -1614,6 +1770,11 @@ class AppLocalizations {
       'failedToUpdateProfile': 'อัปเดตโปรไฟล์ไม่สำเร็จ',
       // Recurring tab
       'recurring': 'ประจำ',
+      'enableReminder': 'เปิดการแจ้งเตือน',
+      'editRecurringPayment': 'แก้ไขการชำระเงินประจำ',
+      'deleteRecurringPayment': 'ลบการชำระเงินประจำ',
+      'pause': 'หยุดชั่วคราว',
+      'resume': 'ดำเนินต่อ',
       // Budget empty states
       'noBudgetsRecordedYet': 'ยังไม่มีงบประมาณ',
       'noBudgetsForThisMonth': 'ไม่มีงบประมาณสำหรับเดือนนี้',
@@ -1632,6 +1793,40 @@ class AppLocalizations {
       'noWalletsCreateOne': 'ยังไม่มีกระเป๋าเงิน สร้างก่อน',
       'setAsDefaultWallet': 'ตั้งเป็นกระเป๋าเงินเริ่มต้น',
       'usedForAiAndConversion': 'ใช้สำหรับผู้ช่วย AI และการแปลงสกุลเงิน',
+      // Reports
+      'weeklyOverview': 'ภาพรวมรายสัปดาห์',
+      'currentMonthBreakdown': 'รายละเอียดเดือนนี้',
+      'noTransactionsThisMonth': 'ยังไม่มีธุรกรรมในเดือนนี้',
+      'noTransactionDataYet': 'ยังไม่มีข้อมูลธุรกรรม',
+      'incomeVsExpense': 'รายได้ vs รายจ่าย',
+      'lastSixMonths': '6 เดือนที่ผ่านมา',
+      'net': 'สุทธิ',
+      'filterByWallet': 'กรองตามกระเป๋าเงิน',
+      'allWallets': 'กระเป๋าเงินทั้งหมด',
+      'monthlyReport': 'รายงาน',
+      'week': 'สัปดาห์',
+      // Notification Settings
+      'paymentsAndBills': 'การชำระเงินและบิล',
+      'recurringPaymentReminders': 'การแจ้งเตือนการชำระเงินประจำ',
+      'dailyAndWeekly': 'รายวันและรายสัปดาห์',
+      'dailyReminder': 'การเตือนรายวัน',
+      'weeklyReport': 'รายงานประจำสัปดาห์',
+      'monthlyAndGoals': 'รายเดือนและเป้าหมาย',
+      'goalMilestones': 'เป้าหมายสำคัญ',
+      'testNotification': 'ทดสอบการแจ้งเตือน',
+      'notificationPermissionDenied': 'สิทธิ์การแจ้งเตือนถูกปฏิเสธ กรุณาเปิดในการตั้งค่าระบบ',
+      'testNotificationBody': 'หากคุณเห็นสิ่งนี้ การแจ้งเตือนทำงานได้! 🎉',
+      // Dialog strings
+      'deleteBudget': 'ลบงบประมาณ',
+      'deleteBudgetConfirm': 'คุณแน่ใจหรือไม่ว่าต้องการลบงบประมาณนี้?',
+      'deleteGoal': 'ลบเป้าหมาย',
+      'deleteGoalConfirm': 'คุณแน่ใจหรือไม่ว่าต้องการลบเป้าหมายนี้?',
+      'deleteCategory': 'ลบหมวดหมู่',
+      'deleteChecklist': 'ลบรายการตรวจสอบ',
+      'deleteImage': 'ลบรูปภาพ',
+      'deleteImageConfirm': 'คุณแน่ใจหรือไม่ว่าต้องการลบรูปภาพนี้?',
+      'deleteAccount': 'ลบบัญชี',
+      'deleteMyAccount': 'ลบบัญชีของฉัน',
     },
     'id': {
       'appTitle': 'Bexly',
@@ -1929,6 +2124,11 @@ class AppLocalizations {
       'failedToUpdateProfile': 'Gagal memperbarui profil',
       // Recurring tab
       'recurring': 'Berulang',
+      'enableReminder': 'Aktifkan Pengingat',
+      'editRecurringPayment': 'Edit Pembayaran Berulang',
+      'deleteRecurringPayment': 'Hapus Pembayaran Berulang',
+      'pause': 'Jeda',
+      'resume': 'Lanjutkan',
       // Budget empty states
       'noBudgetsRecordedYet': 'Belum ada anggaran.',
       'noBudgetsForThisMonth': 'Tidak ada anggaran untuk bulan ini.',
@@ -1947,6 +2147,40 @@ class AppLocalizations {
       'noWalletsCreateOne': 'Belum ada dompet. Buat dulu.',
       'setAsDefaultWallet': 'Jadikan dompet default',
       'usedForAiAndConversion': 'Digunakan untuk asisten AI dan konversi mata uang',
+      // Reports
+      'weeklyOverview': 'Ikhtisar Mingguan',
+      'currentMonthBreakdown': 'Rincian Bulan Ini',
+      'noTransactionsThisMonth': 'Belum ada transaksi bulan ini.',
+      'noTransactionDataYet': 'Belum ada data transaksi.',
+      'incomeVsExpense': 'Pendapatan vs Pengeluaran',
+      'lastSixMonths': '6 Bulan Terakhir',
+      'net': 'Bersih',
+      'filterByWallet': 'Filter berdasarkan Dompet',
+      'allWallets': 'Semua Dompet',
+      'monthlyReport': 'Laporan',
+      'week': 'Minggu',
+      // Notification Settings
+      'paymentsAndBills': 'Pembayaran & Tagihan',
+      'recurringPaymentReminders': 'Pengingat pembayaran berulang',
+      'dailyAndWeekly': 'Harian & Mingguan',
+      'dailyReminder': 'Pengingat harian',
+      'weeklyReport': 'Laporan mingguan',
+      'monthlyAndGoals': 'Bulanan & Target',
+      'goalMilestones': 'Pencapaian target',
+      'testNotification': 'Tes Notifikasi',
+      'notificationPermissionDenied': 'Izin notifikasi ditolak. Harap aktifkan di pengaturan sistem.',
+      'testNotificationBody': 'Jika Anda melihat ini, notifikasi berfungsi! 🎉',
+      // Dialog strings
+      'deleteBudget': 'Hapus Anggaran',
+      'deleteBudgetConfirm': 'Anda yakin ingin menghapus anggaran ini?',
+      'deleteGoal': 'Hapus Target',
+      'deleteGoalConfirm': 'Anda yakin ingin menghapus target ini?',
+      'deleteCategory': 'Hapus Kategori',
+      'deleteChecklist': 'Hapus Checklist',
+      'deleteImage': 'Hapus Gambar',
+      'deleteImageConfirm': 'Anda yakin ingin menghapus gambar ini?',
+      'deleteAccount': 'Hapus Akun',
+      'deleteMyAccount': 'Hapus Akun Saya',
     },
     'es': {
       'appTitle': 'Bexly',
@@ -2244,6 +2478,11 @@ class AppLocalizations {
       'failedToUpdateProfile': 'Error al actualizar perfil',
       // Recurring tab
       'recurring': 'Recurrente',
+      'enableReminder': 'Activar recordatorio',
+      'editRecurringPayment': 'Editar pago recurrente',
+      'deleteRecurringPayment': 'Eliminar pago recurrente',
+      'pause': 'Pausar',
+      'resume': 'Reanudar',
       // Budget empty states
       'noBudgetsRecordedYet': 'No hay presupuestos registrados.',
       'noBudgetsForThisMonth': 'No hay presupuestos para este mes.',
@@ -2262,6 +2501,40 @@ class AppLocalizations {
       'noWalletsCreateOne': 'No hay carteras. Crea una primero.',
       'setAsDefaultWallet': 'Establecer como cartera predeterminada',
       'usedForAiAndConversion': 'Utilizado para el asistente de IA y conversión de moneda',
+      // Reports
+      'weeklyOverview': 'Resumen Semanal',
+      'currentMonthBreakdown': 'Desglose del Mes Actual',
+      'noTransactionsThisMonth': 'No hay transacciones este mes.',
+      'noTransactionDataYet': 'No hay datos de transacciones disponibles.',
+      'incomeVsExpense': 'Ingresos vs Gastos',
+      'lastSixMonths': 'Últimos 6 Meses',
+      'net': 'Neto',
+      'filterByWallet': 'Filtrar por Cartera',
+      'allWallets': 'Todas las Carteras',
+      'monthlyReport': 'Informe',
+      'week': 'Semana',
+      // Notification Settings
+      'paymentsAndBills': 'Pagos y Facturas',
+      'recurringPaymentReminders': 'Recordatorios de pagos recurrentes',
+      'dailyAndWeekly': 'Diario y Semanal',
+      'dailyReminder': 'Recordatorio diario',
+      'weeklyReport': 'Informe semanal',
+      'monthlyAndGoals': 'Mensual y Metas',
+      'goalMilestones': 'Hitos de metas',
+      'testNotification': 'Notificación de prueba',
+      'notificationPermissionDenied': 'Permiso de notificación denegado. Por favor activa en la configuración del sistema.',
+      'testNotificationBody': '¡Si ves esto, las notificaciones funcionan! 🎉',
+      // Dialog strings
+      'deleteBudget': 'Eliminar Presupuesto',
+      'deleteBudgetConfirm': '¿Estás seguro de que deseas eliminar este presupuesto?',
+      'deleteGoal': 'Eliminar Meta',
+      'deleteGoalConfirm': '¿Estás seguro de que deseas eliminar esta meta?',
+      'deleteCategory': 'Eliminar Categoría',
+      'deleteChecklist': 'Eliminar Lista',
+      'deleteImage': 'Eliminar Imagen',
+      'deleteImageConfirm': '¿Estás seguro de que deseas eliminar esta imagen?',
+      'deleteAccount': 'Eliminar Cuenta',
+      'deleteMyAccount': 'Eliminar Mi Cuenta',
     },
     'pt': {
       'appTitle': 'Bexly',
@@ -2559,6 +2832,11 @@ class AppLocalizations {
       'failedToUpdateProfile': 'Falha ao atualizar perfil',
       // Recurring tab
       'recurring': 'Recorrente',
+      'enableReminder': 'Ativar lembrete',
+      'editRecurringPayment': 'Editar pagamento recorrente',
+      'deleteRecurringPayment': 'Excluir pagamento recorrente',
+      'pause': 'Pausar',
+      'resume': 'Retomar',
       // Budget empty states
       'noBudgetsRecordedYet': 'Nenhum orçamento registrado.',
       'noBudgetsForThisMonth': 'Nenhum orçamento para este mês.',
@@ -2577,6 +2855,40 @@ class AppLocalizations {
       'noWalletsCreateOne': 'Sem carteiras. Crie uma primeiro.',
       'setAsDefaultWallet': 'Definir como carteira padrão',
       'usedForAiAndConversion': 'Usado para assistente de IA e conversão de moeda',
+      // Reports
+      'weeklyOverview': 'Visão Geral Semanal',
+      'currentMonthBreakdown': 'Detalhamento do Mês Atual',
+      'noTransactionsThisMonth': 'Nenhuma transação neste mês.',
+      'noTransactionDataYet': 'Nenhum dado de transação disponível.',
+      'incomeVsExpense': 'Receita vs Despesa',
+      'lastSixMonths': 'Últimos 6 Meses',
+      'net': 'Líquido',
+      'filterByWallet': 'Filtrar por Carteira',
+      'allWallets': 'Todas as Carteiras',
+      'monthlyReport': 'Relatório',
+      'week': 'Semana',
+      // Notification Settings
+      'paymentsAndBills': 'Pagamentos e Faturas',
+      'recurringPaymentReminders': 'Lembretes de pagamentos recorrentes',
+      'dailyAndWeekly': 'Diário e Semanal',
+      'dailyReminder': 'Lembrete diário',
+      'weeklyReport': 'Relatório semanal',
+      'monthlyAndGoals': 'Mensal e Metas',
+      'goalMilestones': 'Marcos de metas',
+      'testNotification': 'Testar Notificação',
+      'notificationPermissionDenied': 'Permissão de notificação negada. Por favor, ative nas configurações do sistema.',
+      'testNotificationBody': 'Se você vê isso, as notificações estão funcionando! 🎉',
+      // Dialog strings
+      'deleteBudget': 'Excluir Orçamento',
+      'deleteBudgetConfirm': 'Tem certeza de que deseja excluir este orçamento?',
+      'deleteGoal': 'Excluir Meta',
+      'deleteGoalConfirm': 'Tem certeza de que deseja excluir esta meta?',
+      'deleteCategory': 'Excluir Categoria',
+      'deleteChecklist': 'Excluir Lista',
+      'deleteImage': 'Excluir Imagem',
+      'deleteImageConfirm': 'Tem certeza de que deseja excluir esta imagem?',
+      'deleteAccount': 'Excluir Conta',
+      'deleteMyAccount': 'Excluir Minha Conta',
     },
   };
 
@@ -2808,6 +3120,11 @@ class AppLocalizations {
   String get failedToUpdateProfile => get('failedToUpdateProfile');
   // Recurring tab
   String get recurring => get('recurring');
+  String get enableReminder => get('enableReminder');
+  String get editRecurringPayment => get('editRecurringPayment');
+  String get deleteRecurringPayment => get('deleteRecurringPayment');
+  String get pause => get('pause');
+  String get resume => get('resume');
   // Budget empty states
   String get noBudgetsRecordedYet => get('noBudgetsRecordedYet');
   String get noBudgetsForThisMonth => get('noBudgetsForThisMonth');
@@ -2850,6 +3167,40 @@ class AppLocalizations {
   String get unlimitedReceiptStorage => get('unlimitedReceiptStorage');
   String get ocrReceiptScanning => get('ocrReceiptScanning');
   String get prioritySupport => get('prioritySupport');
+  // Reports
+  String get weeklyOverview => get('weeklyOverview');
+  String get currentMonthBreakdown => get('currentMonthBreakdown');
+  String get noTransactionsThisMonth => get('noTransactionsThisMonth');
+  String get noTransactionDataYet => get('noTransactionDataYet');
+  String get incomeVsExpense => get('incomeVsExpense');
+  String get lastSixMonths => get('lastSixMonths');
+  String get net => get('net');
+  String get filterByWallet => get('filterByWallet');
+  String get allWallets => get('allWallets');
+  String get monthlyReport => get('monthlyReport');
+  String get week => get('week');
+  // Notification Settings
+  String get paymentsAndBills => get('paymentsAndBills');
+  String get recurringPaymentReminders => get('recurringPaymentReminders');
+  String get dailyAndWeekly => get('dailyAndWeekly');
+  String get dailyReminder => get('dailyReminder');
+  String get weeklyReport => get('weeklyReport');
+  String get monthlyAndGoals => get('monthlyAndGoals');
+  String get goalMilestones => get('goalMilestones');
+  String get testNotification => get('testNotification');
+  String get notificationPermissionDenied => get('notificationPermissionDenied');
+  String get testNotificationBody => get('testNotificationBody');
+  // Dialog strings
+  String get deleteBudget => get('deleteBudget');
+  String get deleteBudgetConfirm => get('deleteBudgetConfirm');
+  String get deleteGoal => get('deleteGoal');
+  String get deleteGoalConfirm => get('deleteGoalConfirm');
+  String get deleteCategory => get('deleteCategory');
+  String get deleteChecklist => get('deleteChecklist');
+  String get deleteImage => get('deleteImage');
+  String get deleteImageConfirm => get('deleteImageConfirm');
+  String get deleteAccount => get('deleteAccount');
+  String get deleteMyAccount => get('deleteMyAccount');
 
   String languageChanged(String language) {
     return '${get('languageChanged')} $language';

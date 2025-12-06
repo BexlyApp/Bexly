@@ -8,6 +8,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/services/notification_service.dart';
 import 'package:bexly/core/services/scheduled_notifications_service.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 
 /// Notification settings providers
 final notificationRecurringPaymentsProvider = StateProvider<bool>((ref) => true);
@@ -75,11 +76,9 @@ class _NotificationSettingsScreenState
         // Permission denied, show message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Notification permission denied. Please enable in system settings.',
-              ),
-              duration: Duration(seconds: 3),
+            SnackBar(
+              content: Text(context.l10n.notificationPermissionDenied),
+              duration: const Duration(seconds: 3),
             ),
           );
         }
@@ -106,7 +105,7 @@ class _NotificationSettingsScreenState
     if (_isLoading) {
       return CustomScaffold(
         context: context,
-        title: 'Notifications',
+        title: context.l10n.notifications,
         showBalance: false,
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -120,17 +119,17 @@ class _NotificationSettingsScreenState
 
     return CustomScaffold(
       context: context,
-      title: 'Notifications',
+      title: context.l10n.notifications,
       showBalance: false,
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.spacing20),
         children: [
           // Payments & Bills
-          _buildSectionTitle('Payments & Bills'),
+          _buildSectionTitle(context.l10n.paymentsAndBills),
           const SizedBox(height: AppSpacing.spacing12),
 
           _buildNotificationCard(
-            title: 'Recurring Payment Reminders',
+            title: context.l10n.recurringPaymentReminders,
             subtitle: '',
             icon: Icons.event_repeat,
             value: recurringPayments,
@@ -144,11 +143,11 @@ class _NotificationSettingsScreenState
           const SizedBox(height: AppSpacing.spacing24),
 
           // Daily & Weekly
-          _buildSectionTitle('Daily & Weekly'),
+          _buildSectionTitle(context.l10n.dailyAndWeekly),
           const SizedBox(height: AppSpacing.spacing12),
 
           _buildNotificationCard(
-            title: 'Daily Reminder',
+            title: context.l10n.dailyReminder,
             subtitle: '',
             icon: Icons.today,
             value: dailyReminder,
@@ -162,7 +161,7 @@ class _NotificationSettingsScreenState
           const SizedBox(height: AppSpacing.spacing12),
 
           _buildNotificationCard(
-            title: 'Weekly Report',
+            title: context.l10n.weeklyReport,
             subtitle: '',
             icon: Icons.assessment,
             value: weeklyReport,
@@ -176,11 +175,11 @@ class _NotificationSettingsScreenState
           const SizedBox(height: AppSpacing.spacing24),
 
           // Monthly & Goals
-          _buildSectionTitle('Monthly & Goals'),
+          _buildSectionTitle(context.l10n.monthlyAndGoals),
           const SizedBox(height: AppSpacing.spacing12),
 
           _buildNotificationCard(
-            title: 'Monthly Report',
+            title: context.l10n.monthlyReport,
             subtitle: '',
             icon: Icons.calendar_month,
             value: monthlyReport,
@@ -194,7 +193,7 @@ class _NotificationSettingsScreenState
           const SizedBox(height: AppSpacing.spacing12),
 
           _buildNotificationCard(
-            title: 'Goal Milestones',
+            title: context.l10n.goalMilestones,
             subtitle: '',
             icon: Icons.emoji_events,
             value: goalMilestones,
@@ -212,12 +211,12 @@ class _NotificationSettingsScreenState
             onPressed: () async {
               await NotificationService.showInstantNotification(
                 id: 99999,
-                title: 'Test Notification',
-                body: 'If you see this, notifications are working! 🎉',
+                title: context.l10n.testNotification,
+                body: context.l10n.testNotificationBody,
               );
             },
             icon: const Icon(Icons.notifications_active),
-            label: const Text('Test Notification'),
+            label: Text(context.l10n.testNotification),
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 48),
             ),
