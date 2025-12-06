@@ -47,6 +47,7 @@ import 'package:toastification/toastification.dart';
 import 'package:bexly/features/category/data/repositories/category_repo.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:drift/drift.dart' hide Column;
+import 'package:bexly/core/components/ads/native_ad_widget.dart';
 
 part '../components/app_version_info.dart';
 part '../components/profile_card.dart';
@@ -67,13 +68,14 @@ class SettingsScreen extends ConsumerWidget {
       showBackButton: true,
       showBalance: false,
       actions: [ThemeModeSwitcher()],
-      body: const SingleChildScrollView(
-        padding: EdgeInsets.all(AppSpacing.spacing20),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.spacing20),
         child: Column(
-          children: [
+          children: const [
             ProfileCard(),
             SettingsProfileGroup(),
             SettingsPreferencesGroup(),
+            NativeAdWidget(),
             SettingsFinanceGroup(),
             SettingsDataGroup(),
             SettingsAppInfoGroup(),
