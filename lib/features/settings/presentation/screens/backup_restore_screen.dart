@@ -8,6 +8,7 @@ import 'package:bexly/core/components/buttons/menu_tile_button.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/backup_and_restore/presentation/components/backup_dialog.dart';
 import 'package:bexly/features/backup_and_restore/presentation/components/restore_dialog.dart';
@@ -21,7 +22,7 @@ class BackupRestoreScreen extends HookConsumerWidget {
   Widget build(BuildContext context, ref) {
     return CustomScaffold(
       context: context,
-      title: 'Backup & Restore',
+      title: context.l10n.backupAndRestore,
       showBalance: false,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.spacing20),
@@ -29,7 +30,7 @@ class BackupRestoreScreen extends HookConsumerWidget {
           spacing: AppSpacing.spacing8,
           children: [
             MenuTileButton(
-              label: 'Backup Manually',
+              label: context.l10n.backupData,
               icon: HugeIcons.strokeRoundedDatabaseExport,
               suffixIcon: null,
               onTap: () {
@@ -40,14 +41,14 @@ class BackupRestoreScreen extends HookConsumerWidget {
               },
             ),
             MenuTileButton(
-              label: 'Restore Data',
+              label: context.l10n.restoreData,
               icon: HugeIcons.strokeRoundedDatabaseImport,
               onTap: () {
                 context.openBottomSheet(
                   isScrollControlled: false,
                   child: Container(),
                   builder: (dialogContext) => CustomBottomSheet(
-                    title: 'Restore Data',
+                    title: context.l10n.restoreData,
                     child: RestoreDialog(
                       onSuccess: () async {
                         await Future.delayed(

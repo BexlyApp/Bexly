@@ -3,11 +3,15 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/database/app_database.dart';
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/goal/data/model/checklist_item_model.dart';
 import 'package:bexly/features/goal/data/model/goal_model.dart';
 import 'package:bexly/features/goal/presentation/riverpod/checklist_actions_provider.dart';
 import 'package:bexly/features/goal/presentation/riverpod/goals_actions_provider.dart';
+import 'package:bexly/core/components/dialogs/toast.dart';
+import 'package:toastification/toastification.dart';
 
 class GoalFormService {
   Future<void> save(
@@ -21,6 +25,18 @@ class GoalFormService {
     // return;
 
     if (!isEditing) {
+      // Check subscription limit before creating new goal
+      final limits = ref.read(subscriptionLimitsProvider);
+      final db = ref.read(databaseProvider);
+      final allGoals = await db.goalDao.getAllGoals();
+      if (!limits.isWithinLimit(allGoals.length, limits.maxGoals)) {
+        Toast.show(
+          'You have reached the maximum of ${limits.maxGoals} goals. Upgrade to Plus for unlimited goals.',
+          type: ToastificationType.warning,
+        );
+        return;
+      }
+
       await actions.add(
         GoalsCompanion(
           title: Value(goal.title),

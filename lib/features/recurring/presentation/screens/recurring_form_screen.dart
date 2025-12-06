@@ -10,6 +10,7 @@ import 'package:bexly/core/components/form_fields/custom_numeric_field.dart';
 import 'package:bexly/core/components/bottom_sheets/alert_bottom_sheet.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
@@ -253,7 +254,7 @@ class RecurringFormScreen extends HookConsumerWidget {
 
                   // Enable Reminder switch
                   SwitchListTile(
-                    title: const Text('Enable Reminder'),
+                    title: Text(context.l10n.enableReminder),
                     subtitle: Text(
                       _getReminderText(formState.frequency, formState.reminderDaysBefore),
                     ),
@@ -562,7 +563,7 @@ class _ActionButtons extends HookConsumerWidget {
                 isPaused ? Icons.play_arrow : Icons.pause,
                 size: 20,
               ),
-              label: Text(isPaused ? 'Resume' : 'Pause'),
+              label: Text(isPaused ? context.l10n.resume : context.l10n.pause),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -634,7 +635,7 @@ class _ActionButtons extends HookConsumerWidget {
                 Icons.delete_outline,
                 size: 20,
               ),
-              label: const Text('Delete'),
+              label: Text(context.l10n.delete),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Theme.of(context).colorScheme.error,
                 padding: const EdgeInsets.symmetric(vertical: 12),
