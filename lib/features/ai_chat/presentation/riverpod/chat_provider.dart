@@ -30,6 +30,7 @@ import 'package:bexly/core/utils/category_translation_map.dart';
 import 'package:bexly/features/receipt_scanner/presentation/riverpod/receipt_scanner_provider.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
+import 'package:bexly/core/services/subscription/subscription.dart';
 
 // Simple category info for AI
 class CategoryInfo {
@@ -411,6 +412,18 @@ class ChatNotifier extends StateNotifier<ChatState> {
   Future<void> sendMessage(String content, {Uint8List? imageBytes}) async {
     print('🚀 [DEBUG] sendMessage() CALLED with content: ${content.substring(0, content.length > 30 ? 30 : content.length)}... imageBytes: ${imageBytes != null ? "${imageBytes.length} bytes" : "null"}');
     if ((content.trim().isEmpty && imageBytes == null) || state.isLoading) return;
+
+    // Check AI message limit
+    final aiUsageService = _ref.read(aiUsageServiceProvider);
+    final limits = _ref.read(subscriptionLimitsProvider);
+    if (!aiUsageService.canSendMessage(limits)) {
+      final remaining = aiUsageService.getRemainingMessages(limits);
+      state = state.copyWith(
+        error: 'You have used all ${ limits.maxAiMessagesPerMonth} AI messages this month. Upgrade to Plus for more messages.',
+      );
+      Log.w('AI message limit reached: $remaining remaining', label: 'Chat');
+      return;
+    }
 
     // NOTE: DO NOT invalidate aiServiceProvider here!
     // Invalidating destroys the service instance and loses conversation history
@@ -1125,6 +1138,9 @@ Please create a transaction based on this receipt data.''';
 
       // Save AI message to database
       await _saveMessageToDatabase(aiMessage);
+
+      // Increment AI message usage count
+      await _ref.read(aiUsageServiceProvider).incrementMessageCount();
 
       Log.d('Message sent and response received successfully', label: 'Chat Provider');
     } catch (error) {
