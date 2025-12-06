@@ -3,7 +3,7 @@
 ## Overview
 This document outlines the development roadmap for Bexly, focusing on transforming it from a basic expense tracker to a comprehensive financial management platform with AI-powered features.
 
-## Current State (v0.0.7+363)
+## Current State (v0.0.8+368)
 - ✅ Core expense/income tracking
 - ✅ Multi-wallet support with real-time cloud sync
 - ✅ Budget management
@@ -36,6 +36,10 @@ This document outlines the development roadmap for Bexly, focusing on transformi
 - ✅ **Contextual notification permission request (v360)**
 - ✅ **Default wallet selection for AI fallback (v363)**
 - ✅ **Default wallet indicator in Manage Wallets screen (v363)**
+- ✅ **Google Sign In working (v368)**
+- ✅ **Apple Sign In configured for Android (v368)**
+- ⏳ **Facebook Sign In** - pending Facebook App Review
+- 🚧 **iOS Build Workflow** - needs Distribution certificate with private key
 
 ---
 
