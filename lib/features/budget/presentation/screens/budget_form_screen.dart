@@ -28,6 +28,8 @@ import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/wallet_switcher/presentation/components/wallet_selector_bottom_sheet.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
+import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:toastification/toastification.dart';
 
 class BudgetFormScreen extends HookConsumerWidget {
@@ -183,6 +185,16 @@ class BudgetFormScreen extends HookConsumerWidget {
           await budgetDao.updateBudget(budgetToSave);
           Toast.show('Budget updated!', type: ToastificationType.success);
         } else {
+          // Check subscription limit before creating new budget
+          final limits = ref.read(subscriptionLimitsProvider);
+          if (!limits.isWithinLimit(allBudgets.length, limits.maxBudgets)) {
+            Toast.show(
+              'You have reached the maximum of ${limits.maxBudgets} budgets. Upgrade to Plus for unlimited budgets.',
+              type: ToastificationType.warning,
+            );
+            return;
+          }
+
           await budgetDao.addBudget(budgetToSave);
           Toast.show('Budget created!', type: ToastificationType.success);
         }
@@ -207,10 +219,10 @@ class BudgetFormScreen extends HookConsumerWidget {
               showModalBottomSheet(
                 context: context,
                 showDragHandle: true,
-                builder: (context) => AlertBottomSheet(
-                  title: 'Delete Budget',
+                builder: (dialogContext) => AlertBottomSheet(
+                  title: context.l10n.deleteBudget,
                   content: Text(
-                    'Are you sure you want to delete this budget?',
+                    context.l10n.deleteBudgetConfirm,
                     style: AppTextStyles.body2,
                   ),
                   onConfirm: () async {

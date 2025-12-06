@@ -11,6 +11,7 @@ import 'package:bexly/core/extensions/text_style_extensions.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/reports/data/models/weekly_financial_summary_model.dart';
 import 'package:bexly/features/reports/presentation/riverpod/financial_health_provider.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 
 class WeeklyIncomeExpenseChart extends ConsumerWidget {
   const WeeklyIncomeExpenseChart({super.key});
@@ -20,8 +21,8 @@ class WeeklyIncomeExpenseChart extends ConsumerWidget {
     final summaryAsync = ref.watch(weeklySummaryProvider);
 
     return ChartContainer(
-      title: 'Weekly Overview',
-      subtitle: 'Current Month Breakdown',
+      title: context.l10n.weeklyOverview,
+      subtitle: context.l10n.currentMonthBreakdown,
       height: 300,
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.spacing16),
       chart: summaryAsync.when(
@@ -39,7 +40,7 @@ class WeeklyIncomeExpenseChart extends ConsumerWidget {
   ) {
     // Check if we have any data to show
     if (data.every((e) => e.income == 0 && e.expense == 0)) {
-      return const Center(child: Text('No transactions this month yet.'));
+      return Center(child: Text(context.l10n.noTransactionsThisMonth));
     }
 
     // Calculate max Y to give some headroom
@@ -67,7 +68,7 @@ class WeeklyIncomeExpenseChart extends ConsumerWidget {
               return touchedBarSpots.map((barSpot) {
                 final flSpot = barSpot;
 
-                String label = barSpot.barIndex == 0 ? 'Income' : 'Expense';
+                String label = barSpot.barIndex == 0 ? context.l10n.income : context.l10n.expense;
                 Color color = barSpot.barIndex == 0
                     ? AppColors.green200
                     : AppColors.red700;
@@ -118,7 +119,7 @@ class WeeklyIncomeExpenseChart extends ConsumerWidget {
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
-                    'Week ${data[index].weekNumber}',
+                    '${context.l10n.week} ${data[index].weekNumber}',
                     style: AppTextStyles.body4.bold,
                   ),
                 );

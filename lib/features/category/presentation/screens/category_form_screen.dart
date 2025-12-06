@@ -30,6 +30,7 @@ import 'package:bexly/features/category/presentation/riverpod/category_providers
 import 'package:bexly/features/category/presentation/screens/category_icon_emoji_picker.dart';
 import 'package:bexly/features/category/presentation/screens/category_icon_initial_picker.dart';
 import 'package:bexly/features/category_picker/presentation/components/category_icon.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 
 part 'category_icon_dialog.dart';
 part '../components/form/category_title_field.dart';

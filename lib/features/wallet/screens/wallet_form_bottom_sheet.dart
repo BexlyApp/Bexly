@@ -26,6 +26,7 @@ import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/features/wallet/presentation/components/wallet_type_selector_field.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
+import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:toastification/toastification.dart';
 
 class WalletFormBottomSheet extends HookConsumerWidget {
@@ -301,6 +302,16 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                         .read(activeWalletProvider.notifier)
                         .updateActiveWallet(newWallet);
                   } else {
+                    // Check subscription limit before creating new wallet
+                    final limits = ref.read(subscriptionLimitsProvider);
+                    if (!limits.isWithinLimit(allWallets.length, limits.maxWallets)) {
+                      toastification.show(
+                        description: Text('You have reached the maximum of ${limits.maxWallets} wallets. Upgrade to Plus for unlimited wallets.'),
+                        type: ToastificationType.warning,
+                      );
+                      return;
+                    }
+
                     Log.d(newWallet.toJson(), label: 'new wallet');
                     int id = await walletDao.addWallet(newWallet);
                     Log.d(id, label: 'new wallet');
@@ -333,21 +344,21 @@ class WalletFormBottomSheet extends HookConsumerWidget {
             if (isEditing && showDeleteButton)
               TextButton(
                 child: Text(
-                  'Delete',
+                  context.l10n.delete,
                   style: AppTextStyles.body2.copyWith(color: AppColors.red),
                 ),
                 onPressed: () {
                   showModalBottomSheet(
                     context: context,
                     showDragHandle: true,
-                    builder: (context) => AlertBottomSheet(
+                    builder: (dialogContext) => AlertBottomSheet(
                       context: context,
-                      title: 'Delete Wallet',
+                      title: context.l10n.deleteWallet,
                       content: Text(
-                        'All transactions, budgets, and goals will also be deleted. This action cannot be undone.',
+                        context.l10n.confirmDelete,
                         style: AppTextStyles.body2,
                       ),
-                      confirmText: 'Delete',
+                      confirmText: context.l10n.delete,
                       onConfirm: () async {
                         final walletDao = ref.read(walletDaoProvider);
                         try {

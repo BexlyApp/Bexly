@@ -14,15 +14,15 @@ class CategoryDeleteButton extends ConsumerWidget {
   Widget build(BuildContext context, ref) {
     return TextButton(
       child: Text(
-        'Delete',
+        context.l10n.delete,
         style: AppTextStyles.body2.copyWith(color: AppColors.red),
       ),
       onPressed: () {
         showModalBottomSheet(
           context: context,
           showDragHandle: true,
-          builder: (context) => AlertBottomSheet(
-            title: 'Delete Category',
+          builder: (dialogContext) => AlertBottomSheet(
+            title: context.l10n.deleteCategory,
             content: Text(
               'Deleting this category will also remove all sub-categories as well as transactions related to it. '
               'Continue?\n\nThis action cannot be undone.',
