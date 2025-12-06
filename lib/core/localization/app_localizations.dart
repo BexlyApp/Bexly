@@ -322,6 +322,7 @@ class AppLocalizations {
       'clearAllNotifications': 'Clear all notifications',
       'areYouSureDeleteAllNotifications': 'Are you sure you want to delete all notifications?',
       'clearAll': 'Clear all',
+      'markAllAsRead': 'Mark all as read',
       'errorLoadingNotifications': 'Error loading notifications',
       // Default Wallet
       'defaultWalletSetting': 'Default Wallet',
@@ -700,6 +701,7 @@ class AppLocalizations {
       'clearAllNotifications': 'Xóa tất cả thông báo',
       'areYouSureDeleteAllNotifications': 'Bạn có chắc muốn xóa tất cả thông báo?',
       'clearAll': 'Xóa tất cả',
+      'markAllAsRead': 'Đánh dấu đã đọc tất cả',
       'errorLoadingNotifications': 'Lỗi khi tải thông báo',
       // Default Wallet
       'defaultWalletSetting': 'Ví mặc định',
@@ -1078,6 +1080,7 @@ class AppLocalizations {
       'clearAllNotifications': '清除所有通知',
       'areYouSureDeleteAllNotifications': '确定要删除所有通知吗？',
       'clearAll': '全部清除',
+      'markAllAsRead': '全部标为已读',
       'errorLoadingNotifications': '加载通知出错',
       // Default Wallet
       'defaultWalletSetting': '默认钱包',
@@ -1432,6 +1435,7 @@ class AppLocalizations {
       'clearAllNotifications': 'Effacer toutes les notifications',
       'areYouSureDeleteAllNotifications': 'Voulez-vous vraiment supprimer toutes les notifications ?',
       'clearAll': 'Tout effacer',
+      'markAllAsRead': 'Tout marquer comme lu',
       'errorLoadingNotifications': 'Erreur de chargement des notifications',
       // Default Wallet
       'defaultWalletSetting': 'Portefeuille par défaut',
@@ -1786,6 +1790,7 @@ class AppLocalizations {
       'clearAllNotifications': 'ล้างการแจ้งเตือนทั้งหมด',
       'areYouSureDeleteAllNotifications': 'คุณแน่ใจหรือไม่ว่าต้องการลบการแจ้งเตือนทั้งหมด?',
       'clearAll': 'ล้างทั้งหมด',
+      'markAllAsRead': 'ทำเครื่องหมายว่าอ่านแล้วทั้งหมด',
       'errorLoadingNotifications': 'เกิดข้อผิดพลาดในการโหลดการแจ้งเตือน',
       // Default Wallet
       'defaultWalletSetting': 'กระเป๋าเงินเริ่มต้น',
@@ -2140,6 +2145,7 @@ class AppLocalizations {
       'clearAllNotifications': 'Hapus semua notifikasi',
       'areYouSureDeleteAllNotifications': 'Anda yakin ingin menghapus semua notifikasi?',
       'clearAll': 'Hapus semua',
+      'markAllAsRead': 'Tandai semua sudah dibaca',
       'errorLoadingNotifications': 'Error memuat notifikasi',
       // Default Wallet
       'defaultWalletSetting': 'Dompet Default',
@@ -2494,6 +2500,7 @@ class AppLocalizations {
       'clearAllNotifications': 'Borrar todas las notificaciones',
       'areYouSureDeleteAllNotifications': '¿Estás seguro de que deseas eliminar todas las notificaciones?',
       'clearAll': 'Borrar todo',
+      'markAllAsRead': 'Marcar todo como leído',
       'errorLoadingNotifications': 'Error al cargar notificaciones',
       // Default Wallet
       'defaultWalletSetting': 'Cartera Predeterminada',
@@ -2848,6 +2855,7 @@ class AppLocalizations {
       'clearAllNotifications': 'Limpar todas as notificações',
       'areYouSureDeleteAllNotifications': 'Tem certeza de que deseja excluir todas as notificações?',
       'clearAll': 'Limpar tudo',
+      'markAllAsRead': 'Marcar tudo como lido',
       'errorLoadingNotifications': 'Erro ao carregar notificações',
       // Default Wallet
       'defaultWalletSetting': 'Carteira Padrão',
@@ -3136,6 +3144,7 @@ class AppLocalizations {
   String get clearAllNotifications => get('clearAllNotifications');
   String get areYouSureDeleteAllNotifications => get('areYouSureDeleteAllNotifications');
   String get clearAll => get('clearAll');
+  String get markAllAsRead => get('markAllAsRead');
   String get errorLoadingNotifications => get('errorLoadingNotifications');
   // Default Wallet
   String get defaultWalletSetting => get('defaultWalletSetting');
