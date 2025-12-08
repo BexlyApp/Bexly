@@ -1,15 +1,49 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
+import 'package:flutter/material.dart';
 import 'package:bexly/core/database/app_database.dart';
+import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/category/data/repositories/category_repo.dart';
 
 class CategoryPopulationService {
+  /// Supported languages in the app
+  static const List<String> supportedLanguages = ['en', 'vi', 'zh', 'fr', 'th', 'id', 'es', 'pt', 'ja', 'ko', 'de', 'hi', 'ru', 'ar'];
+
+  /// Generate localized titles JSON for a category
+  /// Returns JSON string like: {"en": "Food & Drinks", "vi": "Ăn uống", ...}
+  static String? _generateLocalizedTitles(int? categoryId) {
+    if (categoryId == null) return null;
+
+    final localizedTitles = <String, String>{};
+
+    for (final langCode in supportedLanguages) {
+      final locale = Locale(langCode);
+      final l10n = AppLocalizations(locale);
+      final localizedName = l10n.getCategoryName(categoryId);
+
+      // Only include if we have a valid translation (not "Unknown Category")
+      if (localizedName != 'Unknown Category') {
+        localizedTitles[langCode] = localizedName;
+      }
+    }
+
+    // Return null if no translations found
+    if (localizedTitles.isEmpty) return null;
+
+    return jsonEncode(localizedTitles);
+  }
+
   static Future<void> populate(AppDatabase db) async {
     Log.i('Initializing default categories...', label: 'category');
     final allDefaultCategories = categories.getAllCategories();
     final categoryDao = db.categoryDao;
 
     for (final categoryModel in allDefaultCategories) {
+      // Generate localized titles for this category
+      final localizedTitlesJson = _generateLocalizedTitles(categoryModel.id);
+
       final companion = CategoriesCompanion(
         id: Value(
           categoryModel.id!,
@@ -26,6 +60,9 @@ class CategoryPopulationService {
                 categoryModel.description!.isEmpty
             ? const Value.absent()
             : Value(categoryModel.description!),
+        localizedTitles: localizedTitlesJson == null
+            ? const Value.absent()
+            : Value(localizedTitlesJson),
         isSystemDefault: const Value(true), // Mark as system default
         transactionType: Value(categoryModel.transactionType),
       );
@@ -65,6 +102,9 @@ class CategoryPopulationService {
       // STEP 3: Insert default categories with correct IDs
       Log.i('Inserting ${allDefaultCategories.length} default categories...', label: 'category');
       for (final categoryModel in allDefaultCategories) {
+        // Generate localized titles for this category
+        final localizedTitlesJson = _generateLocalizedTitles(categoryModel.id);
+
         final companion = CategoriesCompanion(
           id: Value(categoryModel.id!),
           title: Value(categoryModel.title),
@@ -79,6 +119,9 @@ class CategoryPopulationService {
                   categoryModel.description!.isEmpty
               ? const Value.absent()
               : Value(categoryModel.description!),
+          localizedTitles: localizedTitlesJson == null
+              ? const Value.absent()
+              : Value(localizedTitlesJson),
           isSystemDefault: const Value(true),
           transactionType: Value(categoryModel.transactionType),
         );

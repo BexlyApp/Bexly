@@ -57,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 17; // Add notifications table for notification history
+  int get schemaVersion => 18; // Add localizedTitles column to categories for multi-language support
 
   @override
   MigrationStrategy get migration {
@@ -222,6 +222,16 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Created notifications table for notification history', label: 'database');
           } catch (e) {
             Log.e('Failed to create notifications table: $e', label: 'database');
+          }
+        }
+
+        // For version 18, add localizedTitles column to categories for multi-language support
+        if (from < 18) {
+          try {
+            await m.addColumn(categories, categories.localizedTitles);
+            Log.i('Added localizedTitles column to categories table', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add localizedTitles column: $e', label: 'database');
           }
         }
 

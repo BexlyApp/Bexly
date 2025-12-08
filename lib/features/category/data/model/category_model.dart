@@ -37,6 +37,11 @@ abstract class CategoryModel with _$CategoryModel {
     /// An optional description for the category.
     @Default('') String? description,
 
+    /// Localized titles stored as JSON string: {"en": "Food & Drinks", "vi": "Ăn uống"}
+    /// This allows the Telegram bot and other services to display category names
+    /// in the user's preferred language
+    String? localizedTitles,
+
     /// A list of sub-categories. Null or empty if this category has no sub-categories.
     List<CategoryModel>? subCategories,
 

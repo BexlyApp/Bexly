@@ -25,7 +25,10 @@ mixin _$CategoryModel {
  String get iconTypeValue;/// The identifier of the parent category, if this is a sub-category.
 /// Null if this is a top-level category.
  int? get parentId;/// An optional description for the category.
- String? get description;/// A list of sub-categories. Null or empty if this category has no sub-categories.
+ String? get description;/// Localized titles stored as JSON string: {"en": "Food & Drinks", "vi": "Ăn uống"}
+/// This allows the Telegram bot and other services to display category names
+/// in the user's preferred language
+ String? get localizedTitles;/// A list of sub-categories. Null or empty if this category has no sub-categories.
  List<CategoryModel>? get subCategories;/// System default categories cannot be deleted by cloud sync
 /// These are the initial categories created on first app launch
  bool get isSystemDefault;/// Transaction type: 'income' or 'expense'
@@ -45,16 +48,16 @@ $CategoryModelCopyWith<CategoryModel> get copyWith => _$CategoryModelCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CategoryModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.iconBackground, iconBackground) || other.iconBackground == iconBackground)&&(identical(other.iconTypeValue, iconTypeValue) || other.iconTypeValue == iconTypeValue)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.subCategories, subCategories)&&(identical(other.isSystemDefault, isSystemDefault) || other.isSystemDefault == isSystemDefault)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CategoryModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.iconBackground, iconBackground) || other.iconBackground == iconBackground)&&(identical(other.iconTypeValue, iconTypeValue) || other.iconTypeValue == iconTypeValue)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.description, description) || other.description == description)&&(identical(other.localizedTitles, localizedTitles) || other.localizedTitles == localizedTitles)&&const DeepCollectionEquality().equals(other.subCategories, subCategories)&&(identical(other.isSystemDefault, isSystemDefault) || other.isSystemDefault == isSystemDefault)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,title,icon,iconBackground,iconTypeValue,parentId,description,const DeepCollectionEquality().hash(subCategories),isSystemDefault,transactionType,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,title,icon,iconBackground,iconTypeValue,parentId,description,localizedTitles,const DeepCollectionEquality().hash(subCategories),isSystemDefault,transactionType,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'CategoryModel(id: $id, cloudId: $cloudId, title: $title, icon: $icon, iconBackground: $iconBackground, iconTypeValue: $iconTypeValue, parentId: $parentId, description: $description, subCategories: $subCategories, isSystemDefault: $isSystemDefault, transactionType: $transactionType, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'CategoryModel(id: $id, cloudId: $cloudId, title: $title, icon: $icon, iconBackground: $iconBackground, iconTypeValue: $iconTypeValue, parentId: $parentId, description: $description, localizedTitles: $localizedTitles, subCategories: $subCategories, isSystemDefault: $isSystemDefault, transactionType: $transactionType, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -65,7 +68,7 @@ abstract mixin class $CategoryModelCopyWith<$Res>  {
   factory $CategoryModelCopyWith(CategoryModel value, $Res Function(CategoryModel) _then) = _$CategoryModelCopyWithImpl;
 @useResult
 $Res call({
- int? id, String? cloudId, String title, String icon, String iconBackground, String iconTypeValue, int? parentId, String? description, List<CategoryModel>? subCategories, bool isSystemDefault, String transactionType, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, String title, String icon, String iconBackground, String iconTypeValue, int? parentId, String? description, String? localizedTitles, List<CategoryModel>? subCategories, bool isSystemDefault, String transactionType, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -82,7 +85,7 @@ class _$CategoryModelCopyWithImpl<$Res>
 
 /// Create a copy of CategoryModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? icon = null,Object? iconBackground = null,Object? iconTypeValue = null,Object? parentId = freezed,Object? description = freezed,Object? subCategories = freezed,Object? isSystemDefault = null,Object? transactionType = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? icon = null,Object? iconBackground = null,Object? iconTypeValue = null,Object? parentId = freezed,Object? description = freezed,Object? localizedTitles = freezed,Object? subCategories = freezed,Object? isSystemDefault = null,Object? transactionType = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -92,6 +95,7 @@ as String,iconBackground: null == iconBackground ? _self.iconBackground : iconBa
 as String,iconTypeValue: null == iconTypeValue ? _self.iconTypeValue : iconTypeValue // ignore: cast_nullable_to_non_nullable
 as String,parentId: freezed == parentId ? _self.parentId : parentId // ignore: cast_nullable_to_non_nullable
 as int?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,localizedTitles: freezed == localizedTitles ? _self.localizedTitles : localizedTitles // ignore: cast_nullable_to_non_nullable
 as String?,subCategories: freezed == subCategories ? _self.subCategories : subCategories // ignore: cast_nullable_to_non_nullable
 as List<CategoryModel>?,isSystemDefault: null == isSystemDefault ? _self.isSystemDefault : isSystemDefault // ignore: cast_nullable_to_non_nullable
 as bool,transactionType: null == transactionType ? _self.transactionType : transactionType // ignore: cast_nullable_to_non_nullable
@@ -182,10 +186,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  String? localizedTitles,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CategoryModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.subCategories,_that.isSystemDefault,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.localizedTitles,_that.subCategories,_that.isSystemDefault,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -203,10 +207,10 @@ return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackgrou
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  String? localizedTitles,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _CategoryModel():
-return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.subCategories,_that.isSystemDefault,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.localizedTitles,_that.subCategories,_that.isSystemDefault,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -223,10 +227,10 @@ return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackgrou
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  String? localizedTitles,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _CategoryModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.subCategories,_that.isSystemDefault,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.localizedTitles,_that.subCategories,_that.isSystemDefault,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -238,7 +242,7 @@ return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackgrou
 @JsonSerializable()
 
 class _CategoryModel implements CategoryModel {
-  const _CategoryModel({this.id, this.cloudId, required this.title, this.icon = '', this.iconBackground = '', this.iconTypeValue = '', this.parentId, this.description = '', final  List<CategoryModel>? subCategories, this.isSystemDefault = false, this.transactionType = 'expense', this.createdAt, this.updatedAt}): _subCategories = subCategories;
+  const _CategoryModel({this.id, this.cloudId, required this.title, this.icon = '', this.iconBackground = '', this.iconTypeValue = '', this.parentId, this.description = '', this.localizedTitles, final  List<CategoryModel>? subCategories, this.isSystemDefault = false, this.transactionType = 'expense', this.createdAt, this.updatedAt}): _subCategories = subCategories;
   factory _CategoryModel.fromJson(Map<String, dynamic> json) => _$CategoryModelFromJson(json);
 
 /// The unique identifier for the category. Null if the category is new and not yet saved.
@@ -259,6 +263,10 @@ class _CategoryModel implements CategoryModel {
 @override final  int? parentId;
 /// An optional description for the category.
 @override@JsonKey() final  String? description;
+/// Localized titles stored as JSON string: {"en": "Food & Drinks", "vi": "Ăn uống"}
+/// This allows the Telegram bot and other services to display category names
+/// in the user's preferred language
+@override final  String? localizedTitles;
 /// A list of sub-categories. Null or empty if this category has no sub-categories.
  final  List<CategoryModel>? _subCategories;
 /// A list of sub-categories. Null or empty if this category has no sub-categories.
@@ -294,16 +302,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CategoryModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.iconBackground, iconBackground) || other.iconBackground == iconBackground)&&(identical(other.iconTypeValue, iconTypeValue) || other.iconTypeValue == iconTypeValue)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other._subCategories, _subCategories)&&(identical(other.isSystemDefault, isSystemDefault) || other.isSystemDefault == isSystemDefault)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CategoryModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.iconBackground, iconBackground) || other.iconBackground == iconBackground)&&(identical(other.iconTypeValue, iconTypeValue) || other.iconTypeValue == iconTypeValue)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.description, description) || other.description == description)&&(identical(other.localizedTitles, localizedTitles) || other.localizedTitles == localizedTitles)&&const DeepCollectionEquality().equals(other._subCategories, _subCategories)&&(identical(other.isSystemDefault, isSystemDefault) || other.isSystemDefault == isSystemDefault)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,title,icon,iconBackground,iconTypeValue,parentId,description,const DeepCollectionEquality().hash(_subCategories),isSystemDefault,transactionType,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,title,icon,iconBackground,iconTypeValue,parentId,description,localizedTitles,const DeepCollectionEquality().hash(_subCategories),isSystemDefault,transactionType,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'CategoryModel(id: $id, cloudId: $cloudId, title: $title, icon: $icon, iconBackground: $iconBackground, iconTypeValue: $iconTypeValue, parentId: $parentId, description: $description, subCategories: $subCategories, isSystemDefault: $isSystemDefault, transactionType: $transactionType, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'CategoryModel(id: $id, cloudId: $cloudId, title: $title, icon: $icon, iconBackground: $iconBackground, iconTypeValue: $iconTypeValue, parentId: $parentId, description: $description, localizedTitles: $localizedTitles, subCategories: $subCategories, isSystemDefault: $isSystemDefault, transactionType: $transactionType, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -314,7 +322,7 @@ abstract mixin class _$CategoryModelCopyWith<$Res> implements $CategoryModelCopy
   factory _$CategoryModelCopyWith(_CategoryModel value, $Res Function(_CategoryModel) _then) = __$CategoryModelCopyWithImpl;
 @override @useResult
 $Res call({
- int? id, String? cloudId, String title, String icon, String iconBackground, String iconTypeValue, int? parentId, String? description, List<CategoryModel>? subCategories, bool isSystemDefault, String transactionType, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, String title, String icon, String iconBackground, String iconTypeValue, int? parentId, String? description, String? localizedTitles, List<CategoryModel>? subCategories, bool isSystemDefault, String transactionType, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -331,7 +339,7 @@ class __$CategoryModelCopyWithImpl<$Res>
 
 /// Create a copy of CategoryModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? icon = null,Object? iconBackground = null,Object? iconTypeValue = null,Object? parentId = freezed,Object? description = freezed,Object? subCategories = freezed,Object? isSystemDefault = null,Object? transactionType = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? icon = null,Object? iconBackground = null,Object? iconTypeValue = null,Object? parentId = freezed,Object? description = freezed,Object? localizedTitles = freezed,Object? subCategories = freezed,Object? isSystemDefault = null,Object? transactionType = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_CategoryModel(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -341,6 +349,7 @@ as String,iconBackground: null == iconBackground ? _self.iconBackground : iconBa
 as String,iconTypeValue: null == iconTypeValue ? _self.iconTypeValue : iconTypeValue // ignore: cast_nullable_to_non_nullable
 as String,parentId: freezed == parentId ? _self.parentId : parentId // ignore: cast_nullable_to_non_nullable
 as int?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,localizedTitles: freezed == localizedTitles ? _self.localizedTitles : localizedTitles // ignore: cast_nullable_to_non_nullable
 as String?,subCategories: freezed == subCategories ? _self._subCategories : subCategories // ignore: cast_nullable_to_non_nullable
 as List<CategoryModel>?,isSystemDefault: null == isSystemDefault ? _self.isSystemDefault : isSystemDefault // ignore: cast_nullable_to_non_nullable
 as bool,transactionType: null == transactionType ? _self.transactionType : transactionType // ignore: cast_nullable_to_non_nullable

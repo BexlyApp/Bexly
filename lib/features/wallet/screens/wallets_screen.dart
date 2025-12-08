@@ -81,13 +81,25 @@ class WalletsScreen extends ConsumerWidget {
                   style: AppTextStyles.body3,
                 ),
                 icon: _getWalletIcon(wallet.walletType),
-                trailing: isDefault
-                    ? const Icon(
-                        HugeIcons.strokeRoundedCheckmarkCircle02,
-                        color: AppColors.primary600,
-                        size: 22,
-                      )
-                    : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isDefault)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: Icon(
+                          HugeIcons.strokeRoundedCheckmarkCircle02,
+                          color: AppColors.primary600,
+                          size: 22,
+                        ),
+                      ),
+                    Icon(
+                      HugeIcons.strokeRoundedArrowRight01,
+                      color: AppColors.purpleAlpha50,
+                      size: 20,
+                    ),
+                  ],
+                ),
                 onTap: () {
                   final bool isNotLastWallet = wallets.length > 1;
                   final defaultCurrencies = ref.read(currenciesStaticProvider);

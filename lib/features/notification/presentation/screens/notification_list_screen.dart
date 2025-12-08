@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:bexly/core/components/bottom_sheets/alert_bottom_sheet.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
@@ -33,26 +34,26 @@ class NotificationListScreen extends ConsumerWidget {
                     if (value == 'mark_all_read') {
                       await db.notificationDao.markAllAsRead();
                     } else if (value == 'delete_all') {
-                      final confirmed = await showDialog<bool>(
+                      showModalBottomSheet(
                         context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text(l10n.clearAllNotifications),
-                          content: Text(l10n.areYouSureDeleteAllNotifications),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: Text(l10n.cancel),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: Text(l10n.clearAll),
-                            ),
-                          ],
+                        showDragHandle: true,
+                        builder: (dialogContext) => AlertBottomSheet(
+                          context: dialogContext,
+                          title: l10n.clearAllNotifications,
+                          content: Text(
+                            l10n.areYouSureDeleteAllNotifications,
+                            style: AppTextStyles.body2,
+                            textAlign: TextAlign.center,
+                          ),
+                          cancelText: l10n.cancel,
+                          confirmText: l10n.clearAll,
+                          onConfirm: () async {
+                            final navigator = Navigator.of(dialogContext);
+                            await db.notificationDao.deleteAllNotifications();
+                            navigator.pop();
+                          },
                         ),
                       );
-                      if (confirmed == true) {
-                        await db.notificationDao.deleteAllNotifications();
-                      }
                     }
                   },
                   itemBuilder: (context) => [
@@ -317,7 +318,7 @@ class NotificationListScreen extends ConsumerWidget {
       } else if (absDifference.inDays < 7) {
         return '${absDifference.inDays}d ago';
       } else {
-        return DateFormat('MMM d').format(date);
+        return _capitalizeDate(DateFormat('MMM d').format(date));
       }
     } else {
       // If in the future
@@ -328,8 +329,14 @@ class NotificationListScreen extends ConsumerWidget {
       } else if (difference.inDays < 7) {
         return 'In ${difference.inDays}d';
       } else {
-        return DateFormat('MMM d').format(date);
+        return _capitalizeDate(DateFormat('MMM d').format(date));
       }
     }
+  }
+
+  /// Capitalize the first letter of date string (fixes "thg" -> "Thg" for Vietnamese)
+  String _capitalizeDate(String date) {
+    if (date.isEmpty) return date;
+    return date[0].toUpperCase() + date.substring(1);
   }
 }
