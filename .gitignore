@@ -75,3 +75,25 @@ analyze_*.js
 input.txt
 reload.txt
 docs/REF_ANALYSIS.md
+
+# Firebase
+.firebase/
+firestore.rules
+firestore.indexes.json
+public/
+
+# Certificates and keys
+*.key
+*.pem
+*.p12
+cert_base64.txt
+upload_cert.ps1
+
+# VS Code
+.vscode/
+
+# Java heap dumps
+*.hprof
+
+# Windows temp
+nul
