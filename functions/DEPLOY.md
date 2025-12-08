@@ -19,9 +19,11 @@ npm install
 npm run build
 ```
 
-### 3. Set bot token in Firebase config
+### 3. Set bot token using Google Cloud Secret Manager
 ```bash
-firebase functions:config:set telegram.bot_token="8038733197:AAHjX1c05dLS3ibivcnikkarxbpr29Jpq7Q"
+# Use gcloud to set the secret (do NOT hardcode token in files!)
+gcloud secrets versions add TELEGRAM_BOT_TOKEN --data-file=-
+# Then paste your token and press Ctrl+D
 ```
 
 ### 4. Deploy to Firebase
@@ -32,7 +34,8 @@ firebase deploy --only functions
 ### 5. Set Telegram Webhook
 After deploy, get the function URL (will be shown in output), then:
 ```bash
-curl "https://api.telegram.org/bot8038733197:AAHjX1c05dLS3ibivcnikkarxbpr29Jpq7Q/setWebhook?url=https://asia-southeast1-bexly-app.cloudfunctions.net/telegramWebhook"
+# Replace YOUR_BOT_TOKEN with your actual token (do NOT commit this!)
+curl "https://api.telegram.org/botYOUR_BOT_TOKEN/setWebhook?url=https://asia-southeast1-bexly-app.cloudfunctions.net/telegramWebhook"
 ```
 
 ## Test the Bot
@@ -46,7 +49,7 @@ curl "https://api.telegram.org/bot8038733197:AAHjX1c05dLS3ibivcnikkarxbpr29Jpq7Q
 
 ### Check webhook status
 ```bash
-curl "https://api.telegram.org/bot8038733197:AAHjX1c05dLS3ibivcnikkarxbpr29Jpq7Q/getWebhookInfo"
+curl "https://api.telegram.org/botYOUR_BOT_TOKEN/getWebhookInfo"
 ```
 
 ### View function logs
@@ -56,5 +59,11 @@ firebase functions:log
 
 ### Delete webhook (for testing)
 ```bash
-curl "https://api.telegram.org/bot8038733197:AAHjX1c05dLS3ibivcnikkarxbpr29Jpq7Q/deleteWebhook"
+curl "https://api.telegram.org/botYOUR_BOT_TOKEN/deleteWebhook"
 ```
+
+## Security Notes
+
+- NEVER commit bot tokens to git
+- Always use Secret Manager for sensitive credentials
+- If token is exposed, immediately revoke it via @BotFather `/revoke` command
