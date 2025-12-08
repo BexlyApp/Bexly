@@ -1,3 +1,4 @@
+import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/services/notification_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/database/app_database.dart';
@@ -11,6 +12,12 @@ class ScheduledNotificationsService {
   static const int _dailyReminderId = 9000;
   static const int _weeklyReportId = 9001;
   static const int _monthlyReportId = 9002;
+
+  /// Get current language code from SharedPreferences
+  static Future<String> _getLanguageCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('language_code') ?? 'en';
+  }
 
   /// Helper to create notification record in database
   static Future<void> _createNotificationRecord({
@@ -48,6 +55,11 @@ class ScheduledNotificationsService {
         return;
       }
 
+      // Get localized strings
+      final langCode = await _getLanguageCode();
+      final title = AppLocalizations.getByLocale(langCode, 'notifDailyReminderTitle');
+      final body = AppLocalizations.getByLocale(langCode, 'notifDailyReminderBody');
+
       // Schedule for 9 PM today (or tomorrow if past 9 PM)
       final now = tz.TZDateTime.now(tz.local);
       var scheduledDate = tz.TZDateTime(
@@ -66,15 +78,15 @@ class ScheduledNotificationsService {
 
       await NotificationService.scheduleNotification(
         id: _dailyReminderId,
-        title: 'Log Your Expenses',
-        body: 'Don\'t forget to record today\'s spending!',
+        title: title,
+        body: body,
         scheduledDate: scheduledDate,
       );
 
       // Create notification record in database
       await _createNotificationRecord(
-        title: 'Log Your Expenses',
-        body: 'Don\'t forget to record today\'s spending!',
+        title: title,
+        body: body,
         type: 'daily_reminder',
         scheduledFor: scheduledDate,
       );
@@ -100,6 +112,11 @@ class ScheduledNotificationsService {
         return;
       }
 
+      // Get localized strings
+      final langCode = await _getLanguageCode();
+      final title = AppLocalizations.getByLocale(langCode, 'notifWeeklyReportTitle');
+      final body = AppLocalizations.getByLocale(langCode, 'notifWeeklyReportBody');
+
       // Schedule for next Monday at 9 AM
       final now = tz.TZDateTime.now(tz.local);
       var scheduledDate = tz.TZDateTime(
@@ -120,15 +137,15 @@ class ScheduledNotificationsService {
 
       await NotificationService.scheduleNotification(
         id: _weeklyReportId,
-        title: 'Weekly Spending Report',
-        body: 'Check out your spending summary from last week',
+        title: title,
+        body: body,
         scheduledDate: scheduledDate,
       );
 
       // Create notification record in database
       await _createNotificationRecord(
-        title: 'Weekly Spending Report',
-        body: 'Check out your spending summary from last week',
+        title: title,
+        body: body,
         type: 'weekly_report',
         scheduledFor: scheduledDate,
       );
@@ -151,6 +168,11 @@ class ScheduledNotificationsService {
         return;
       }
 
+      // Get localized strings
+      final langCode = await _getLanguageCode();
+      final title = AppLocalizations.getByLocale(langCode, 'notifMonthlyReportTitle');
+      final body = AppLocalizations.getByLocale(langCode, 'notifMonthlyReportBody');
+
       // Schedule for 1st day of next month at 9 AM
       final now = tz.TZDateTime.now(tz.local);
       var scheduledDate = tz.TZDateTime(
@@ -164,15 +186,15 @@ class ScheduledNotificationsService {
 
       await NotificationService.scheduleNotification(
         id: _monthlyReportId,
-        title: 'Monthly Financial Report',
-        body: 'Your complete financial summary for last month is ready',
+        title: title,
+        body: body,
         scheduledDate: scheduledDate,
       );
 
       // Create notification record in database
       await _createNotificationRecord(
-        title: 'Monthly Financial Report',
-        body: 'Your complete financial summary for last month is ready',
+        title: title,
+        body: body,
         type: 'monthly_report',
         scheduledFor: scheduledDate,
       );

@@ -20,6 +20,7 @@ import 'package:bexly/features/goal/data/model/checklist_item_model.dart';
 import 'package:bexly/features/goal/presentation/services/goal_form_service.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 
 class GoalChecklistFormDialog extends HookConsumerWidget {
   final int goalId;
@@ -119,21 +120,21 @@ class GoalChecklistFormDialog extends HookConsumerWidget {
             if (isEditing)
               TextButton(
                 child: Text(
-                  'Delete',
+                  context.l10n.delete,
                   style: AppTextStyles.body2.copyWith(color: AppColors.red),
                 ),
                 onPressed: () {
                   showModalBottomSheet(
                     context: context,
                     showDragHandle: true,
-                    builder: (context) => AlertBottomSheet(
+                    builder: (dialogContext) => AlertBottomSheet(
                       context: context,
-                      title: 'Delete Checklist',
+                      title: context.l10n.deleteChecklist,
                       content: Text(
-                        'Continue to delete this item?',
+                        context.l10n.confirmDelete,
                         style: AppTextStyles.body2,
                       ),
-                      confirmText: 'Delete',
+                      confirmText: context.l10n.delete,
                       onConfirm: () {
                         GoalFormService().deleteChecklist(
                           context,

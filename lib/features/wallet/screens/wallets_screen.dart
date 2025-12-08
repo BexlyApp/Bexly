@@ -9,6 +9,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
@@ -48,7 +49,7 @@ class WalletsScreen extends ConsumerWidget {
 
     return CustomScaffold(
       context: context,
-      title: 'Manage Wallets',
+      title: context.l10n.wallets,
       showBalance: false,
       actions: [
         CustomIconButton(
@@ -63,8 +64,8 @@ class WalletsScreen extends ConsumerWidget {
       body: allWalletsAsync.when(
         data: (wallets) {
           if (wallets.isEmpty) {
-            return const Center(
-              child: Text('No wallets found. Add one to get started!'),
+            return Center(
+              child: Text(context.l10n.noWalletsCreateOne),
             );
           }
           return ListView.separated(
@@ -80,13 +81,25 @@ class WalletsScreen extends ConsumerWidget {
                   style: AppTextStyles.body3,
                 ),
                 icon: _getWalletIcon(wallet.walletType),
-                trailing: isDefault
-                    ? const Icon(
-                        HugeIcons.strokeRoundedCheckmarkCircle02,
-                        color: AppColors.primary600,
-                        size: 22,
-                      )
-                    : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isDefault)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: Icon(
+                          HugeIcons.strokeRoundedCheckmarkCircle02,
+                          color: AppColors.primary600,
+                          size: 22,
+                        ),
+                      ),
+                    Icon(
+                      HugeIcons.strokeRoundedArrowRight01,
+                      color: AppColors.purpleAlpha50,
+                      size: 20,
+                    ),
+                  ],
+                ),
                 onTap: () {
                   final bool isNotLastWallet = wallets.length > 1;
                   final defaultCurrencies = ref.read(currenciesStaticProvider);

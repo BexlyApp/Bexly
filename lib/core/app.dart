@@ -175,14 +175,20 @@ class MyApp extends ConsumerWidget {
           themeMode: themeMode, // Set the theme mode from the provider
           locale: Locale(currentLanguage.code),
           supportedLocales: const [
-            Locale('en', ''),
-            Locale('vi', ''),
-            Locale('zh', ''),
-            Locale('fr', ''),
-            Locale('th', ''),
-            Locale('id', ''),
-            Locale('es', ''),
-            Locale('pt', ''),
+            Locale('en', ''), // English
+            Locale('vi', ''), // Vietnamese
+            Locale('zh', ''), // Chinese
+            Locale('fr', ''), // French
+            Locale('th', ''), // Thai
+            Locale('id', ''), // Indonesian
+            Locale('es', ''), // Spanish
+            Locale('pt', ''), // Portuguese
+            Locale('ja', ''), // Japanese
+            Locale('ko', ''), // Korean
+            Locale('de', ''), // German
+            Locale('hi', ''), // Hindi
+            Locale('ru', ''), // Russian
+            Locale('ar', ''), // Arabic (RTL)
           ],
           localizationsDelegates: const [
             AppLocalizationsDelegate(),

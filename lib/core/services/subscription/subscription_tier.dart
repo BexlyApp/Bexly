@@ -45,7 +45,7 @@ class SubscriptionLimits {
   int get maxWallets {
     switch (tier) {
       case SubscriptionTier.free:
-        return 2;
+        return 3;
       case SubscriptionTier.plus:
       case SubscriptionTier.pro:
         return -1; // Unlimited
@@ -78,7 +78,7 @@ class SubscriptionLimits {
   int get maxRecurring {
     switch (tier) {
       case SubscriptionTier.free:
-        return 2;
+        return 5;
       case SubscriptionTier.plus:
       case SubscriptionTier.pro:
         return -1; // Unlimited
@@ -89,19 +89,31 @@ class SubscriptionLimits {
   int get maxAiMessagesPerMonth {
     switch (tier) {
       case SubscriptionTier.free:
-        return 30;
+        return 20;
       case SubscriptionTier.plus:
-        return 50;
+        return 60;
       case SubscriptionTier.pro:
         return -1; // Unlimited
     }
   }
 
-  /// Analytics history in months (0 = current month only)
+  /// AI model tier name
+  String get aiModelTier {
+    switch (tier) {
+      case SubscriptionTier.free:
+        return 'standard';
+      case SubscriptionTier.plus:
+        return 'premium';
+      case SubscriptionTier.pro:
+        return 'flagship';
+    }
+  }
+
+  /// Analytics history in months (-1 = unlimited)
   int get analyticsHistoryMonths {
     switch (tier) {
       case SubscriptionTier.free:
-        return 1; // Last month + current month
+        return 3;
       case SubscriptionTier.plus:
         return 6;
       case SubscriptionTier.pro:
@@ -111,24 +123,14 @@ class SubscriptionLimits {
 
   /// Whether multi-currency is allowed
   bool get allowMultiCurrency {
-    switch (tier) {
-      case SubscriptionTier.free:
-        return false;
-      case SubscriptionTier.plus:
-      case SubscriptionTier.pro:
-        return true;
-    }
+    // All tiers can use multi-currency now
+    return true;
   }
 
   /// Whether Firebase real-time sync is allowed
   bool get allowFirebaseSync {
-    switch (tier) {
-      case SubscriptionTier.free:
-        return false;
-      case SubscriptionTier.plus:
-      case SubscriptionTier.pro:
-        return true;
-    }
+    // All tiers have basic cloud sync
+    return true;
   }
 
   /// Whether receipt photos are allowed
@@ -150,7 +152,7 @@ class SubscriptionLimits {
       case SubscriptionTier.plus:
         return 1024; // 1GB
       case SubscriptionTier.pro:
-        return -1; // Unlimited
+        return 5120; // 5GB
     }
   }
 
@@ -163,6 +165,21 @@ class SubscriptionLimits {
       case SubscriptionTier.pro:
         return true;
     }
+  }
+
+  /// Whether ads should be shown
+  bool get showAds {
+    return tier == SubscriptionTier.free;
+  }
+
+  /// Whether AI insights/predictions are available
+  bool get allowAiInsights {
+    return tier == SubscriptionTier.pro;
+  }
+
+  /// Whether priority support is available
+  bool get hasPrioritySupport {
+    return tier == SubscriptionTier.pro;
   }
 
   /// Check if a count exceeds the limit (-1 means unlimited)

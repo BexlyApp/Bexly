@@ -8,4 +8,7 @@
     <string name="facebook_app_id">1583820202985076</string>
     <string name="facebook_client_token">25c0f66e64750e8a7945c4e0bcae522e</string>
     <string name="fb_login_protocol_scheme">fb1583820202985076</string>
+
+    <!-- AdMob App ID -->
+    <string name="admob_app_id">ca-app-pub-7528798617302619~2461324992</string>
 </resources>

@@ -17,6 +17,7 @@ import 'package:bexly/features/transaction/presentation/components/transaction_s
 import 'package:bexly/features/transaction/presentation/components/transaction_tab_bar.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
 import 'package:bexly/features/transaction/presentation/screens/transaction_filter_form_dialog.dart';
+import 'package:bexly/core/components/ads/banner_ad_widget.dart';
 
 class TransactionScreen extends ConsumerWidget {
   const TransactionScreen({super.key});
@@ -59,120 +60,127 @@ class TransactionScreen extends ConsumerWidget {
           color: Theme.of(context).colorScheme.onPrimary,
         ),
       ),
-      body: allTransactionsAsyncValue.when(
-        data: (allTransactions) {
-          if (allTransactions.isEmpty) {
-            return Center(child: Text(context.l10n.noTransactionsRecorded));
-          }
+      body: Column(
+        children: [
+          Expanded(
+            child: allTransactionsAsyncValue.when(
+              data: (allTransactions) {
+                if (allTransactions.isEmpty) {
+                  return Center(child: Text(context.l10n.noTransactionsRecorded));
+                }
 
-          // 1. Extract unique months from transactions
-          final uniqueMonthYears = allTransactions
-              .map((t) => DateTime(t.date.year, t.date.month, 1))
-              .toSet()
-              .toList();
+                // 1. Extract unique months from transactions
+                final uniqueMonthYears = allTransactions
+                    .map((t) => DateTime(t.date.year, t.date.month, 1))
+                    .toSet()
+                    .toList();
 
-          // 2. Sort months in descending order (most recent first)
-          uniqueMonthYears.sort((a, b) => b.compareTo(a));
+                // 2. Sort months in descending order (most recent first)
+                uniqueMonthYears.sort((a, b) => b.compareTo(a));
 
-          if (uniqueMonthYears.isEmpty) {
-            // This case should ideally be covered by allTransactions.isEmpty,
-            // but as a fallback.
-            return Center(
-              child: Text(context.l10n.noTransactionsWithValidDates),
-            );
-          }
+                if (uniqueMonthYears.isEmpty) {
+                  // This case should ideally be covered by allTransactions.isEmpty,
+                  // but as a fallback.
+                  return Center(
+                    child: Text(context.l10n.noTransactionsWithValidDates),
+                  );
+                }
 
-          // Determine initial index - try to set to current month if available, else most recent
-          final now = DateTime.now();
-          final currentMonthDate = DateTime(now.year, now.month, 1);
-          int initialTabIndex = uniqueMonthYears.indexOf(currentMonthDate);
-          if (initialTabIndex == -1) {
-            initialTabIndex =
-                0; // Default to the most recent month if current is not in the list
-          }
+                // Determine initial index - try to set to current month if available, else most recent
+                final now = DateTime.now();
+                final currentMonthDate = DateTime(now.year, now.month, 1);
+                int initialTabIndex = uniqueMonthYears.indexOf(currentMonthDate);
+                if (initialTabIndex == -1) {
+                  initialTabIndex =
+                      0; // Default to the most recent month if current is not in the list
+                }
 
-          return DefaultTabController(
-            length: uniqueMonthYears.length,
-            initialIndex: initialTabIndex,
-            child: Column(
-              children: [
-                const Gap(AppSpacing.spacing20),
-                TransactionTabBar(
-                  // TabController is now implicitly handled by DefaultTabController
-                  monthsForTabs: uniqueMonthYears,
-                ),
-                const Gap(AppSpacing.spacing20),
-                Expanded(
-                  child: TabBarView(
-                    children: uniqueMonthYears.map((tabMonthDate) {
-                      // Filter transactions for the current tab's month
-                      final transactionsForMonth = allTransactions.where((t) {
-                        return t.date.year == tabMonthDate.year &&
-                            t.date.month == tabMonthDate.month;
-                      }).toList();
+                return DefaultTabController(
+                  length: uniqueMonthYears.length,
+                  initialIndex: initialTabIndex,
+                  child: Column(
+                    children: [
+                      const Gap(AppSpacing.spacing20),
+                      TransactionTabBar(
+                        // TabController is now implicitly handled by DefaultTabController
+                        monthsForTabs: uniqueMonthYears,
+                      ),
+                      const Gap(AppSpacing.spacing20),
+                      Expanded(
+                        child: TabBarView(
+                          children: uniqueMonthYears.map((tabMonthDate) {
+                            // Filter transactions for the current tab's month
+                            final transactionsForMonth = allTransactions.where((t) {
+                              return t.date.year == tabMonthDate.year &&
+                                  t.date.month == tabMonthDate.month;
+                            }).toList();
 
-                      // CRITICAL FIX: Deduplicate transactions by unique key
-                      // This prevents duplicate display when same transaction exists multiple times
-                      // (can happen due to sync issues or database conflicts)
-                      print('🔍 [DEDUP] Total transactions for month: ${transactionsForMonth.length}');
+                            // CRITICAL FIX: Deduplicate transactions by unique key
+                            // This prevents duplicate display when same transaction exists multiple times
+                            // (can happen due to sync issues or database conflicts)
+                            print('🔍 [DEDUP] Total transactions for month: ${transactionsForMonth.length}');
 
-                      final seenKeys = <String>{};
-                      final uniqueTransactions = <TransactionModel>[];
-                      for (final transaction in transactionsForMonth) {
-                        // CRITICAL FIX: Use cloudId as primary key to detect sync duplicates
-                        // cloudId is unique across local and cloud, while local id may differ
-                        final key = transaction.cloudId != null
-                            ? 'cloud_${transaction.cloudId}'
-                            : (transaction.id != null
-                                ? 'id_${transaction.id}'
-                                : '${transaction.title}_${transaction.amount}_${transaction.date.millisecondsSinceEpoch}_${transaction.wallet.id}');
+                            final seenKeys = <String>{};
+                            final uniqueTransactions = <TransactionModel>[];
+                            for (final transaction in transactionsForMonth) {
+                              // CRITICAL FIX: Use cloudId as primary key to detect sync duplicates
+                              // cloudId is unique across local and cloud, while local id may differ
+                              final key = transaction.cloudId != null
+                                  ? 'cloud_${transaction.cloudId}'
+                                  : (transaction.id != null
+                                      ? 'id_${transaction.id}'
+                                      : '${transaction.title}_${transaction.amount}_${transaction.date.millisecondsSinceEpoch}_${transaction.wallet.id}');
 
-                        print('🔍 [DEDUP] Checking transaction: ${transaction.title} (ID: ${transaction.id}, CloudID: ${transaction.cloudId}) - Key: $key - Seen: ${seenKeys.contains(key)}');
+                              print('🔍 [DEDUP] Checking transaction: ${transaction.title} (ID: ${transaction.id}, CloudID: ${transaction.cloudId}) - Key: $key - Seen: ${seenKeys.contains(key)}');
 
-                        if (!seenKeys.contains(key)) {
-                          seenKeys.add(key);
-                          uniqueTransactions.add(transaction);
-                          print('✅ [DEDUP] Added transaction: ${transaction.title}');
-                        } else {
-                          print('❌ [DEDUP] DUPLICATE SKIPPED: ${transaction.title}');
-                        }
-                      }
+                              if (!seenKeys.contains(key)) {
+                                seenKeys.add(key);
+                                uniqueTransactions.add(transaction);
+                                print('✅ [DEDUP] Added transaction: ${transaction.title}');
+                              } else {
+                                print('❌ [DEDUP] DUPLICATE SKIPPED: ${transaction.title}');
+                              }
+                            }
 
-                      print('🔍 [DEDUP] After dedup: ${uniqueTransactions.length} transactions');
+                            print('🔍 [DEDUP] After dedup: ${uniqueTransactions.length} transactions');
 
-                      final transactionsToDisplay = uniqueTransactions;
+                            final transactionsToDisplay = uniqueTransactions;
 
-                      if (transactionsToDisplay.isEmpty) {
-                        // This should ideally not happen if tabs are generated from existing transaction months,
-                        // but good for robustness.
-                        return Center(
-                          child: Text(
-                            context.l10n.noTransactionsForMonth,
-                          ),
-                        );
-                      }
+                            if (transactionsToDisplay.isEmpty) {
+                              // This should ideally not happen if tabs are generated from existing transaction months,
+                              // but good for robustness.
+                              return Center(
+                                child: Text(
+                                  context.l10n.noTransactionsForMonth,
+                                ),
+                              );
+                            }
 
-                      return ListView(
-                        padding: const EdgeInsets.only(bottom: 120),
-                        children: [
-                          TransactionSummaryCard(
-                            transactions: transactionsToDisplay,
-                          ),
-                          const Gap(AppSpacing.spacing20),
-                          TransactionGroupedCard(
-                            transactions: transactionsToDisplay,
-                          ),
-                        ],
-                      );
-                    }).toList(),
+                            return ListView(
+                              padding: const EdgeInsets.only(bottom: 120),
+                              children: [
+                                TransactionSummaryCard(
+                                  transactions: transactionsToDisplay,
+                                ),
+                                const Gap(AppSpacing.spacing20),
+                                TransactionGroupedCard(
+                                  transactions: transactionsToDisplay,
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stackTrace) => Center(child: Text('Error: $error')),
             ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(child: Text('Error: $error')),
+          ),
+          const BannerAdWidget(),
+        ],
       ),
     );
   }

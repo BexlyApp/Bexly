@@ -16,6 +16,7 @@ _CategoryModel _$CategoryModelFromJson(Map<String, dynamic> json) =>
       iconTypeValue: json['iconTypeValue'] as String? ?? '',
       parentId: (json['parentId'] as num?)?.toInt(),
       description: json['description'] as String? ?? '',
+      localizedTitles: json['localizedTitles'] as String?,
       subCategories: (json['subCategories'] as List<dynamic>?)
           ?.map((e) => CategoryModel.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -39,6 +40,7 @@ Map<String, dynamic> _$CategoryModelToJson(_CategoryModel instance) =>
       'iconTypeValue': instance.iconTypeValue,
       'parentId': instance.parentId,
       'description': instance.description,
+      'localizedTitles': instance.localizedTitles,
       'subCategories': instance.subCategories,
       'isSystemDefault': instance.isSystemDefault,
       'transactionType': instance.transactionType,

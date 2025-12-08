@@ -23,6 +23,11 @@ class Categories extends Table {
   )();
   TextColumn get description => text().nullable()();
 
+  /// Localized titles stored as JSON: {"en": "Food & Drinks", "vi": "Ăn uống"}
+  /// This allows the Telegram bot and other services to display category names
+  /// in the user's preferred language
+  TextColumn get localizedTitles => text().nullable()();
+
   /// System default categories cannot be deleted by cloud sync
   /// These are the initial categories created on first app launch
   BoolColumn get isSystemDefault => boolean().withDefault(const Constant(false))();
@@ -47,6 +52,7 @@ extension CategoryExtension on Category {
       iconType: json['iconType'] as String?,
       parentId: json['parentId'] as int?,
       description: json['description'] as String?,
+      localizedTitles: json['localizedTitles'] as String?,
       isSystemDefault: json['isSystemDefault'] as bool? ?? false,
       transactionType: json['transactionType'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
@@ -73,6 +79,7 @@ extension CategoryTableExtensions on Category {
       iconTypeValue: iconType ?? '',
       parentId: parentId,
       description: description,
+      localizedTitles: localizedTitles,
       // subCategories are not directly available on the Drift Category object.
       // This needs to be populated by querying children if needed.
       subCategories: null,
@@ -98,6 +105,9 @@ extension CategoryModelExtensions on CategoryModel {
       iconType: Value(iconTypeValue),
       parentId: Value(parentId),
       description: Value(description),
+      localizedTitles: localizedTitles == null
+          ? const Value.absent()
+          : Value(localizedTitles),
       isSystemDefault: Value(isSystemDefault),
       transactionType: Value(transactionType),
       createdAt: createdAt != null

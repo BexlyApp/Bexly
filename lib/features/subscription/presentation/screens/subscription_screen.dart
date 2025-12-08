@@ -34,6 +34,12 @@ class SubscriptionScreen extends ConsumerWidget {
                   _CurrentPlanBanner(tier: subscriptionState.tier),
                   const Gap(AppSpacing.spacing24),
 
+                  // Free tier info (always show)
+                  _FreeTierCard(
+                    isCurrentPlan: subscriptionState.tier == SubscriptionTier.free,
+                  ),
+                  const Gap(AppSpacing.spacing16),
+
                   // Plan cards
                   _PlanCard(
                     title: 'Plus',
@@ -418,6 +424,177 @@ class _PriceButton extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FreeTierCard extends StatelessWidget {
+  final bool isCurrentPlan;
+
+  const _FreeTierCard({required this.isCurrentPlan});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = context.l10n;
+    const accentColor = AppColors.neutral500;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.neutral950 : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isCurrentPlan ? accentColor : (isDark ? AppColors.neutral800 : AppColors.neutral200),
+          width: isCurrentPlan ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.spacing16),
+            decoration: BoxDecoration(
+              color: accentColor.withAlpha(isDark ? 40 : 20),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      HugeIcons.strokeRoundedUser,
+                      color: accentColor,
+                      size: 20,
+                    ),
+                    const Gap(AppSpacing.spacing8),
+                    Text(
+                      'Free',
+                      style: AppTextStyles.heading6.copyWith(
+                        color: accentColor,
+                      ),
+                    ),
+                  ],
+                ),
+                if (isCurrentPlan)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.spacing8,
+                      vertical: AppSpacing.spacing4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accentColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      l10n.current,
+                      style: AppTextStyles.body5.copyWith(
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Features
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.spacing16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _FreeTierFeatureRow(
+                  icon: HugeIcons.strokeRoundedWallet01,
+                  text: '3 wallets',
+                ),
+                const _FreeTierFeatureRow(
+                  icon: HugeIcons.strokeRoundedChartRose,
+                  text: '2 budgets & 2 goals',
+                ),
+                const _FreeTierFeatureRow(
+                  icon: HugeIcons.strokeRoundedRepeat,
+                  text: '5 recurring transactions',
+                ),
+                const _FreeTierFeatureRow(
+                  icon: HugeIcons.strokeRoundedAiBrain01,
+                  text: '20 AI messages/month (Standard)',
+                ),
+                const _FreeTierFeatureRow(
+                  icon: HugeIcons.strokeRoundedAnalytics01,
+                  text: '3 months analytics history',
+                ),
+                const _FreeTierFeatureRow(
+                  icon: HugeIcons.strokeRoundedCloud,
+                  text: 'Basic cloud sync',
+                ),
+                const Gap(AppSpacing.spacing8),
+                // Ads notice
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.spacing12),
+                  decoration: BoxDecoration(
+                    color: AppColors.tertiaryAlpha10,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        HugeIcons.strokeRoundedNotification03,
+                        color: AppColors.tertiary700,
+                        size: 18,
+                      ),
+                      const Gap(AppSpacing.spacing8),
+                      Expanded(
+                        child: Text(
+                          'Contains ads',
+                          style: AppTextStyles.body4.copyWith(
+                            color: AppColors.tertiary700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FreeTierFeatureRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _FreeTierFeatureRow({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.spacing8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            color: AppColors.neutral500,
+            size: 18,
+          ),
+          const Gap(AppSpacing.spacing8),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTextStyles.body3,
+            ),
+          ),
+        ],
       ),
     );
   }

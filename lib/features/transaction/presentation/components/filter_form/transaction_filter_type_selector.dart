@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/components/buttons/button_chip.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 
 class TransactionFilterTypeSelector extends ConsumerWidget {
@@ -23,13 +24,13 @@ class TransactionFilterTypeSelector extends ConsumerWidget {
         String label;
         switch (type) {
           case TransactionType.income:
-            label = 'Income';
+            label = context.l10n.income;
             break;
           case TransactionType.expense:
-            label = 'Expense';
+            label = context.l10n.expense;
             break;
           case TransactionType.transfer:
-            label = 'Transfer';
+            label = context.l10n.transfer;
             break;
         }
         return Expanded(

@@ -8,6 +8,7 @@ import 'package:bexly/features/recurring/services/recurring_notification_service
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/services/recurring_charge_service.dart';
+import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/database/database_provider.dart';
 
@@ -315,6 +316,18 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
           return false;
         }
       } else {
+        // Check subscription limit before creating new recurring
+        final limits = _ref.read(subscriptionLimitsProvider);
+        final db = _ref.read(databaseProvider);
+        final allRecurrings = await db.recurringDao.getAllRecurrings();
+        if (!limits.isWithinLimit(allRecurrings.length, limits.maxRecurring)) {
+          state = state.copyWith(
+            isLoading: false,
+            errorMessage: 'You have reached the maximum of ${limits.maxRecurring} recurring transactions. Upgrade to Plus for unlimited.',
+          );
+          return false;
+        }
+
         // Add new
         final id = await actions.addRecurring(recurring);
         if (id > 0) {
