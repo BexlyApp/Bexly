@@ -13,7 +13,7 @@ class SettingsPreferencesGroup extends ConsumerWidget {
       title: l10n.preferences,
       settingTiles: [
         ListTile(
-          onTap: () => _showLanguageDialog(context, ref),
+          onTap: () => context.push(Routes.languageSettings),
           tileColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
@@ -60,82 +60,6 @@ class SettingsPreferencesGroup extends ConsumerWidget {
           onTap: () => context.push(Routes.notificationSettings),
         ),
       ],
-    );
-  }
-
-  void _showLanguageDialog(BuildContext context, WidgetRef ref) {
-    final currentLanguage = ref.read(languageProvider);
-
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.spacing20,
-          AppSpacing.spacing12,
-          AppSpacing.spacing20,
-          AppSpacing.spacing32,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title
-            Text(
-              AppLocalizations.of(context)!.selectLanguage,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const Gap(AppSpacing.spacing20),
-
-            // Language options
-            ...availableLanguages.map((language) {
-              return RadioListTile<Language>(
-                title: Row(
-                  children: [
-                    Text(
-                      language.flag,
-                      style: const TextStyle(fontSize: 24),
-                    ),
-                    const Gap(12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(language.name),
-                        if (language.nativeName != language.name)
-                          Text(
-                            language.nativeName,
-                            style: AppTextStyles.body4.copyWith(
-                              color: AppColors.neutral500,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-                value: language,
-                groupValue: currentLanguage,
-                onChanged: (Language? value) {
-                  if (value != null) {
-                    ref.read(languageProvider.notifier).setLanguage(value);
-                    Navigator.of(context).pop();
-
-                    // Show confirmation snackbar
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(AppLocalizations.of(context)!.languageChanged(value.name)),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                },
-              );
-            }).toList(),
-          ],
-        ),
-      ),
     );
   }
 }
