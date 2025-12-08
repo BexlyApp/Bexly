@@ -561,6 +561,17 @@ class $CategoriesTable extends Categories
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _localizedTitlesMeta = const VerificationMeta(
+    'localizedTitles',
+  );
+  @override
+  late final GeneratedColumn<String> localizedTitles = GeneratedColumn<String>(
+    'localized_titles',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isSystemDefaultMeta = const VerificationMeta(
     'isSystemDefault',
   );
@@ -625,6 +636,7 @@ class $CategoriesTable extends Categories
     iconType,
     parentId,
     description,
+    localizedTitles,
     isSystemDefault,
     transactionType,
     createdAt,
@@ -692,6 +704,15 @@ class $CategoriesTable extends Categories
         description.isAcceptableOrUnknown(
           data['description']!,
           _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('localized_titles')) {
+      context.handle(
+        _localizedTitlesMeta,
+        localizedTitles.isAcceptableOrUnknown(
+          data['localized_titles']!,
+          _localizedTitlesMeta,
         ),
       );
     }
@@ -768,6 +789,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      localizedTitles: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}localized_titles'],
+      ),
       isSystemDefault: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_system_default'],
@@ -806,6 +831,11 @@ class Category extends DataClass implements Insertable<Category> {
   final int? parentId;
   final String? description;
 
+  /// Localized titles stored as JSON: {"en": "Food & Drinks", "vi": "Ăn uống"}
+  /// This allows the Telegram bot and other services to display category names
+  /// in the user's preferred language
+  final String? localizedTitles;
+
   /// System default categories cannot be deleted by cloud sync
   /// These are the initial categories created on first app launch
   final bool isSystemDefault;
@@ -824,6 +854,7 @@ class Category extends DataClass implements Insertable<Category> {
     this.iconType,
     this.parentId,
     this.description,
+    this.localizedTitles,
     required this.isSystemDefault,
     required this.transactionType,
     required this.createdAt,
@@ -852,6 +883,9 @@ class Category extends DataClass implements Insertable<Category> {
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
+    if (!nullToAbsent || localizedTitles != null) {
+      map['localized_titles'] = Variable<String>(localizedTitles);
+    }
     map['is_system_default'] = Variable<bool>(isSystemDefault);
     map['transaction_type'] = Variable<String>(transactionType);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -879,6 +913,9 @@ class Category extends DataClass implements Insertable<Category> {
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      localizedTitles: localizedTitles == null && nullToAbsent
+          ? const Value.absent()
+          : Value(localizedTitles),
       isSystemDefault: Value(isSystemDefault),
       transactionType: Value(transactionType),
       createdAt: Value(createdAt),
@@ -900,6 +937,7 @@ class Category extends DataClass implements Insertable<Category> {
       iconType: serializer.fromJson<String?>(json['iconType']),
       parentId: serializer.fromJson<int?>(json['parentId']),
       description: serializer.fromJson<String?>(json['description']),
+      localizedTitles: serializer.fromJson<String?>(json['localizedTitles']),
       isSystemDefault: serializer.fromJson<bool>(json['isSystemDefault']),
       transactionType: serializer.fromJson<String>(json['transactionType']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -918,6 +956,7 @@ class Category extends DataClass implements Insertable<Category> {
       'iconType': serializer.toJson<String?>(iconType),
       'parentId': serializer.toJson<int?>(parentId),
       'description': serializer.toJson<String?>(description),
+      'localizedTitles': serializer.toJson<String?>(localizedTitles),
       'isSystemDefault': serializer.toJson<bool>(isSystemDefault),
       'transactionType': serializer.toJson<String>(transactionType),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -934,6 +973,7 @@ class Category extends DataClass implements Insertable<Category> {
     Value<String?> iconType = const Value.absent(),
     Value<int?> parentId = const Value.absent(),
     Value<String?> description = const Value.absent(),
+    Value<String?> localizedTitles = const Value.absent(),
     bool? isSystemDefault,
     String? transactionType,
     DateTime? createdAt,
@@ -949,6 +989,9 @@ class Category extends DataClass implements Insertable<Category> {
     iconType: iconType.present ? iconType.value : this.iconType,
     parentId: parentId.present ? parentId.value : this.parentId,
     description: description.present ? description.value : this.description,
+    localizedTitles: localizedTitles.present
+        ? localizedTitles.value
+        : this.localizedTitles,
     isSystemDefault: isSystemDefault ?? this.isSystemDefault,
     transactionType: transactionType ?? this.transactionType,
     createdAt: createdAt ?? this.createdAt,
@@ -968,6 +1011,9 @@ class Category extends DataClass implements Insertable<Category> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      localizedTitles: data.localizedTitles.present
+          ? data.localizedTitles.value
+          : this.localizedTitles,
       isSystemDefault: data.isSystemDefault.present
           ? data.isSystemDefault.value
           : this.isSystemDefault,
@@ -990,6 +1036,7 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('iconType: $iconType, ')
           ..write('parentId: $parentId, ')
           ..write('description: $description, ')
+          ..write('localizedTitles: $localizedTitles, ')
           ..write('isSystemDefault: $isSystemDefault, ')
           ..write('transactionType: $transactionType, ')
           ..write('createdAt: $createdAt, ')
@@ -1008,6 +1055,7 @@ class Category extends DataClass implements Insertable<Category> {
     iconType,
     parentId,
     description,
+    localizedTitles,
     isSystemDefault,
     transactionType,
     createdAt,
@@ -1025,6 +1073,7 @@ class Category extends DataClass implements Insertable<Category> {
           other.iconType == this.iconType &&
           other.parentId == this.parentId &&
           other.description == this.description &&
+          other.localizedTitles == this.localizedTitles &&
           other.isSystemDefault == this.isSystemDefault &&
           other.transactionType == this.transactionType &&
           other.createdAt == this.createdAt &&
@@ -1040,6 +1089,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String?> iconType;
   final Value<int?> parentId;
   final Value<String?> description;
+  final Value<String?> localizedTitles;
   final Value<bool> isSystemDefault;
   final Value<String> transactionType;
   final Value<DateTime> createdAt;
@@ -1053,6 +1103,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.iconType = const Value.absent(),
     this.parentId = const Value.absent(),
     this.description = const Value.absent(),
+    this.localizedTitles = const Value.absent(),
     this.isSystemDefault = const Value.absent(),
     this.transactionType = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1067,6 +1118,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.iconType = const Value.absent(),
     this.parentId = const Value.absent(),
     this.description = const Value.absent(),
+    this.localizedTitles = const Value.absent(),
     this.isSystemDefault = const Value.absent(),
     required String transactionType,
     this.createdAt = const Value.absent(),
@@ -1082,6 +1134,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? iconType,
     Expression<int>? parentId,
     Expression<String>? description,
+    Expression<String>? localizedTitles,
     Expression<bool>? isSystemDefault,
     Expression<String>? transactionType,
     Expression<DateTime>? createdAt,
@@ -1096,6 +1149,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (iconType != null) 'icon_type': iconType,
       if (parentId != null) 'parent_id': parentId,
       if (description != null) 'description': description,
+      if (localizedTitles != null) 'localized_titles': localizedTitles,
       if (isSystemDefault != null) 'is_system_default': isSystemDefault,
       if (transactionType != null) 'transaction_type': transactionType,
       if (createdAt != null) 'created_at': createdAt,
@@ -1112,6 +1166,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<String?>? iconType,
     Value<int?>? parentId,
     Value<String?>? description,
+    Value<String?>? localizedTitles,
     Value<bool>? isSystemDefault,
     Value<String>? transactionType,
     Value<DateTime>? createdAt,
@@ -1126,6 +1181,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       iconType: iconType ?? this.iconType,
       parentId: parentId ?? this.parentId,
       description: description ?? this.description,
+      localizedTitles: localizedTitles ?? this.localizedTitles,
       isSystemDefault: isSystemDefault ?? this.isSystemDefault,
       transactionType: transactionType ?? this.transactionType,
       createdAt: createdAt ?? this.createdAt,
@@ -1160,6 +1216,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
+    if (localizedTitles.present) {
+      map['localized_titles'] = Variable<String>(localizedTitles.value);
+    }
     if (isSystemDefault.present) {
       map['is_system_default'] = Variable<bool>(isSystemDefault.value);
     }
@@ -1186,6 +1245,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('iconType: $iconType, ')
           ..write('parentId: $parentId, ')
           ..write('description: $description, ')
+          ..write('localizedTitles: $localizedTitles, ')
           ..write('isSystemDefault: $isSystemDefault, ')
           ..write('transactionType: $transactionType, ')
           ..write('createdAt: $createdAt, ')
@@ -7447,6 +7507,7 @@ typedef $$CategoriesTableCreateCompanionBuilder =
       Value<String?> iconType,
       Value<int?> parentId,
       Value<String?> description,
+      Value<String?> localizedTitles,
       Value<bool> isSystemDefault,
       required String transactionType,
       Value<DateTime> createdAt,
@@ -7462,6 +7523,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<String?> iconType,
       Value<int?> parentId,
       Value<String?> description,
+      Value<String?> localizedTitles,
       Value<bool> isSystemDefault,
       Value<String> transactionType,
       Value<DateTime> createdAt,
@@ -7591,6 +7653,11 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localizedTitles => $composableBuilder(
+    column: $table.localizedTitles,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7757,6 +7824,11 @@ class $$CategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get localizedTitles => $composableBuilder(
+    column: $table.localizedTitles,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isSystemDefault => $composableBuilder(
     column: $table.isSystemDefault,
     builder: (column) => ColumnOrderings(column),
@@ -7832,6 +7904,11 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get localizedTitles => $composableBuilder(
+    column: $table.localizedTitles,
     builder: (column) => column,
   );
 
@@ -7991,6 +8068,7 @@ class $$CategoriesTableTableManager
                 Value<String?> iconType = const Value.absent(),
                 Value<int?> parentId = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<String?> localizedTitles = const Value.absent(),
                 Value<bool> isSystemDefault = const Value.absent(),
                 Value<String> transactionType = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -8004,6 +8082,7 @@ class $$CategoriesTableTableManager
                 iconType: iconType,
                 parentId: parentId,
                 description: description,
+                localizedTitles: localizedTitles,
                 isSystemDefault: isSystemDefault,
                 transactionType: transactionType,
                 createdAt: createdAt,
@@ -8019,6 +8098,7 @@ class $$CategoriesTableTableManager
                 Value<String?> iconType = const Value.absent(),
                 Value<int?> parentId = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<String?> localizedTitles = const Value.absent(),
                 Value<bool> isSystemDefault = const Value.absent(),
                 required String transactionType,
                 Value<DateTime> createdAt = const Value.absent(),
@@ -8032,6 +8112,7 @@ class $$CategoriesTableTableManager
                 iconType: iconType,
                 parentId: parentId,
                 description: description,
+                localizedTitles: localizedTitles,
                 isSystemDefault: isSystemDefault,
                 transactionType: transactionType,
                 createdAt: createdAt,
