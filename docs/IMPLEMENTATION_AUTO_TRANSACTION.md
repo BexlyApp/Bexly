@@ -44,24 +44,25 @@
 │                               │                                      │
 │                               ▼                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐│
-│  │              PENDING TRANSACTION QUEUE                          ││
-│  │   - Store parsed transactions with status: pending              ││
-│  │   - Deduplication by hash (amount + datetime + merchant)        ││
-│  │   - Auto-approve after X hours (optional)                       ││
+│  │              DEDUPLICATION CHECK                                ││
+│  │   - Hash: MD5(amount + datetime + merchant)                     ││
+│  │   - Time window: ±2 hours for same amount                       ││
+│  │   - Auto sources skip silently if duplicate                     ││
+│  │   - User sources ask confirmation if similar exists             ││
 │  └─────────────────────────────────────────────────────────────────┘│
 │                               │                                      │
 │                               ▼                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐│
-│  │              USER CONFIRMATION UI                               ││
-│  │   - Badge on transaction tab showing pending count              ││
-│  │   - Swipe to approve/reject                                     ││
-│  │   - Edit before confirm                                         ││
+│  │              AUTO-CREATE TRANSACTION                            ││
+│  │   - Create directly in transactions table                       ││
+│  │   - Push notification: "Đã tạo -500k tại Shopee"                ││
+│  │   - User can edit/delete from history if wrong                  ││
 │  └─────────────────────────────────────────────────────────────────┘│
 │                               │                                      │
 │                               ▼                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐│
-│  │              TRANSACTION DATABASE                               ││
-│  │   - Move approved pending → transactions table                  ││
+│  │              TRANSACTION DATABASE + SYNC                        ││
+│  │   - Store with source metadata (sms/notification/manual)        ││
 │  │   - Sync to cloud (Firestore)                                   ││
 │  └─────────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────────┘
@@ -69,47 +70,130 @@
 
 ---
 
+## Deduplication & Conflict Resolution
+
+### Source Priority (Accuracy)
+
+```
+SMS/Notification (Bank data) > AI Chat > Manual Entry
+         ↑
+   Source of truth - highest accuracy
+```
+
+### Deduplication Logic
+
+```dart
+// Hash-based detection
+String generateHash(double amount, DateTime date, String? merchant) {
+  final normalized = '${amount.toInt()}|${date.toIso8601String().substring(0, 13)}|${merchant?.toLowerCase() ?? ''}';
+  return md5.convert(utf8.encode(normalized)).toString();
+}
+
+// Fuzzy match for similar transactions
+bool isSimilar(Transaction a, Transaction b) {
+  return a.amount == b.amount &&
+         a.type == b.type &&
+         a.date.difference(b.date).abs() < Duration(hours: 2);
+}
+```
+
+### Conflict Resolution Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    AUTO SOURCES (SMS/Notification)          │
+├─────────────────────────────────────────────────────────────┤
+│  New auto transaction → Check duplicate?                    │
+│                              │                              │
+│                    ┌─────────┴─────────┐                    │
+│                   YES                  NO                   │
+│                    ↓                    ↓                   │
+│              Skip silently      Create transaction          │
+│           (already exists)                                  │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                    USER SOURCES (AI Chat/Manual)            │
+├─────────────────────────────────────────────────────────────┤
+│  New user transaction → Check duplicate?                    │
+│                              │                              │
+│                    ┌─────────┴─────────┐                    │
+│                   YES                  NO                   │
+│                    ↓                    ↓                   │
+│  ┌──────────────────────────────┐  Create transaction       │
+│  │ "Bexly đã tự động ghi nhận   │                           │
+│  │  một expense tương tự:       │                           │
+│  │  • Số tiền: 500,000đ         │                           │
+│  │  • Thời gian: 14:30 08/12    │                           │
+│  │  • Category: Shopping        │                           │
+│  │                              │                           │
+│  │  Tạo thêm transaction này?"  │                           │
+│  │                              │                           │
+│  │  [Không]  [Có, tạo thêm]     │                           │
+│  └──────────────────────────────┘                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Transfer Detection (Bank A → Bank B)
+
+When user transfers money between their own accounts:
+- Bank A sends SMS: "Chuyển 1,000,000 VND đến TK ****5678"
+- Bank B sends SMS: "Nhận 1,000,000 VND từ TK ****1234"
+
+```dart
+class TransferDetector {
+  Future<bool> isTransferPair(Transaction tx1, Transaction tx2) async {
+    // Must be opposite types (expense + income)
+    if (tx1.type == tx2.type) return false;
+
+    // Must be same amount
+    if (tx1.amount != tx2.amount) return false;
+
+    // Must be within 5 minutes
+    if (tx1.date.difference(tx2.date).abs() > Duration(minutes: 5)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  // Link as internal transfer instead of 2 separate transactions
+  Future<void> linkAsTransfer(Transaction from, Transaction to) async {
+    await db.transactions.delete([from.id, to.id]);
+    await db.transactions.insert(Transaction(
+      type: TransactionType.transfer,
+      amount: from.amount,
+      fromWalletId: from.walletId,
+      toWalletId: to.walletId,
+      date: from.date,
+      source: TransactionSource.smsAuto,
+      note: 'Auto-linked internal transfer',
+    ));
+  }
+}
+```
+
+---
+
 ## Database Schema
 
-### New Table: `pending_transactions`
+### Update: `transactions` Table
+
+Add new columns for source tracking:
 
 ```sql
-CREATE TABLE pending_transactions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  cloud_id TEXT,                           -- UUID v7 for cloud sync
+-- Add to existing transactions table
+ALTER TABLE transactions ADD COLUMN source TEXT DEFAULT 'manual';
+-- Values: 'manual' | 'ai_chat' | 'sms_auto' | 'notification_auto'
 
-  -- Parsed data from AI
-  amount REAL NOT NULL,
-  transaction_type TEXT NOT NULL,          -- 'expense' | 'income' | 'transfer'
-  merchant TEXT,                           -- Extracted merchant name
-  description TEXT,                        -- Original SMS/notification text (sanitized)
+ALTER TABLE transactions ADD COLUMN source_hash TEXT;
+-- MD5 hash for deduplication
 
-  -- References
-  wallet_id INTEGER NOT NULL,
-  category_id INTEGER,
+ALTER TABLE transactions ADD COLUMN source_sender TEXT;
+-- SMS sender ID or app package name (for debugging)
 
-  -- Metadata
-  source_type TEXT NOT NULL,               -- 'sms' | 'notification' | 'email'
-  source_sender TEXT,                      -- SMS sender ID or app package name
-  source_raw_hash TEXT NOT NULL,           -- MD5 hash for deduplication
-  transaction_datetime DATETIME NOT NULL,  -- Extracted transaction time
-
-  -- Status
-  status TEXT NOT NULL DEFAULT 'pending',  -- 'pending' | 'approved' | 'rejected' | 'auto_approved'
-  confidence_score REAL,                   -- AI confidence 0.0 - 1.0
-
-  -- Timestamps
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  processed_at DATETIME,                   -- When user approved/rejected
-
-  FOREIGN KEY (wallet_id) REFERENCES wallets(id),
-  FOREIGN KEY (category_id) REFERENCES categories(id)
-);
-
--- Index for quick lookup
-CREATE INDEX idx_pending_status ON pending_transactions(status);
-CREATE INDEX idx_pending_hash ON pending_transactions(source_raw_hash);
-CREATE INDEX idx_pending_created ON pending_transactions(created_at);
+-- Index for deduplication
+CREATE INDEX idx_transactions_source_hash ON transactions(source_hash);
 ```
 
 ### New Table: `auto_transaction_settings`
@@ -140,43 +224,25 @@ CREATE TABLE auto_transaction_settings (
 ### Drift Implementation
 
 ```dart
-// lib/core/database/tables/pending_transactions_table.dart
+// lib/core/database/tables/transactions_table.dart - Add columns
 
-import 'package:drift/drift.dart';
+enum TransactionSource { manual, aiChat, smsAuto, notificationAuto }
 
-enum PendingTransactionSource { sms, notification, email }
-enum PendingTransactionStatus { pending, approved, rejected, autoApproved }
+// Add to existing Transactions table:
+TextColumn get source => textEnum<TransactionSource>().withDefault(
+  Constant(TransactionSource.manual.name)
+)();
+TextColumn get sourceHash => text().nullable()();
+TextColumn get sourceSender => text().nullable()();
+```
 
-@DataClassName('PendingTransactionEntry')
-class PendingTransactions extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get cloudId => text().nullable()();
-
-  // Parsed data
-  RealColumn get amount => real()();
-  TextColumn get transactionType => text()(); // expense, income, transfer
-  TextColumn get merchant => text().nullable()();
-  TextColumn get description => text().nullable()();
-
-  // References
-  IntColumn get walletId => integer().references(Wallets, #id)();
-  IntColumn get categoryId => integer().nullable().references(Categories, #id)();
-
-  // Metadata
-  TextColumn get sourceType => textEnum<PendingTransactionSource>()();
-  TextColumn get sourceSender => text().nullable()();
-  TextColumn get sourceRawHash => text()();
-  DateTimeColumn get transactionDatetime => dateTime()();
-
-  // Status
-  TextColumn get status => textEnum<PendingTransactionStatus>().withDefault(
-    Constant(PendingTransactionStatus.pending.name)
-  )();
-  RealColumn get confidenceScore => real().nullable()();
-
-  // Timestamps
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get processedAt => dateTime().nullable()();
+```dart
+// Extension for source checking
+extension TransactionSourceX on TransactionSource {
+  bool get isAuto => this == TransactionSource.smsAuto ||
+                     this == TransactionSource.notificationAuto;
+  bool get isUser => this == TransactionSource.manual ||
+                     this == TransactionSource.aiChat;
 }
 ```
 
@@ -931,176 +997,95 @@ class AutoTransactionSettingsScreen extends HookConsumerWidget {
 }
 ```
 
-### Pending Transactions UI
+### Auto-Created Transaction Notification
 
 ```dart
-// lib/features/transaction/presentation/screens/pending_transactions_screen.dart
+// lib/core/services/auto_transaction/auto_transaction_notifier.dart
 
-class PendingTransactionsScreen extends HookConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final pendingTransactions = ref.watch(pendingTransactionsProvider);
+class AutoTransactionNotifier {
+  final FlutterLocalNotificationsPlugin _notifications;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Pending Transactions'),
-        actions: [
-          // Bulk actions
-          IconButton(
-            icon: Icon(Icons.check_circle_outline),
-            tooltip: 'Approve All',
-            onPressed: () => _approveAll(ref),
-          ),
-        ],
-      ),
-      body: pendingTransactions.when(
-        data: (transactions) {
-          if (transactions.isEmpty) {
-            return _buildEmptyState();
-          }
+  /// Show notification when transaction is auto-created
+  Future<void> showTransactionCreated(Transaction tx) async {
+    final isExpense = tx.type == TransactionType.expense;
+    final sign = isExpense ? '-' : '+';
+    final title = 'Giao dịch tự động';
+    final body = '$sign${formatCurrency(tx.amount)} ${tx.merchant ?? tx.category?.name ?? ''}';
 
-          return ListView.builder(
-            itemCount: transactions.length,
-            itemBuilder: (context, index) {
-              final tx = transactions[index];
-              return _PendingTransactionCard(
-                transaction: tx,
-                onApprove: () => _approveSingle(ref, tx),
-                onReject: () => _rejectSingle(ref, tx),
-                onEdit: () => _editTransaction(context, tx),
-              );
-            },
-          );
-        },
-        loading: () => Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('No pending transactions'),
-          SizedBox(height: 8),
-          Text(
-            'Bank transactions detected from SMS\nwill appear here for confirmation',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PendingTransactionCard extends StatelessWidget {
-  final PendingTransactionEntry transaction;
-  final VoidCallback onApprove;
-  final VoidCallback onReject;
-  final VoidCallback onEdit;
-
-  const _PendingTransactionCard({
-    required this.transaction,
-    required this.onApprove,
-    required this.onReject,
-    required this.onEdit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isExpense = transaction.transactionType == 'expense';
-
-    return Dismissible(
-      key: Key('pending_${transaction.id}'),
-      background: _buildSwipeBackground(Colors.green, Icons.check, Alignment.centerLeft),
-      secondaryBackground: _buildSwipeBackground(Colors.red, Icons.close, Alignment.centerRight),
-      confirmDismiss: (direction) async {
-        if (direction == DismissDirection.startToEnd) {
-          onApprove();
-          return true;
-        } else {
-          onReject();
-          return true;
-        }
-      },
-      child: Card(
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: isExpense ? Colors.red[100] : Colors.green[100],
-            child: Icon(
-              isExpense ? Icons.arrow_upward : Icons.arrow_downward,
-              color: isExpense ? Colors.red : Colors.green,
-            ),
-          ),
-          title: Text(
-            '${isExpense ? "-" : "+"}${_formatAmount(transaction.amount)}',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isExpense ? Colors.red : Colors.green,
-            ),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (transaction.merchant != null)
-                Text(transaction.merchant!),
-              Row(
-                children: [
-                  Icon(
-                    transaction.sourceType == PendingTransactionSource.sms
-                        ? Icons.sms
-                        : Icons.notifications,
-                    size: 14,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    _formatDate(transaction.transactionDatetime),
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  if (transaction.confidenceScore != null) ...[
-                    SizedBox(width: 8),
-                    _buildConfidenceBadge(transaction.confidenceScore!),
-                  ],
-                ],
-              ),
-            ],
-          ),
-          trailing: IconButton(
-            icon: Icon(Icons.edit_outlined),
-            onPressed: onEdit,
-          ),
-          onTap: onEdit,
+    await _notifications.show(
+      tx.id,
+      title,
+      body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'auto_transaction',
+          'Giao dịch tự động',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          actions: [
+            AndroidNotificationAction('edit', 'Sửa'),
+            AndroidNotificationAction('undo', 'Hoàn tác'),
+          ],
         ),
       ),
+      payload: 'transaction:${tx.id}',
     );
   }
 
-  Widget _buildConfidenceBadge(double confidence) {
-    final color = confidence >= 0.9
-        ? Colors.green
-        : confidence >= 0.7
-            ? Colors.orange
-            : Colors.red;
+  /// Handle notification action
+  void handleAction(String actionId, String? payload) {
+    if (payload?.startsWith('transaction:') != true) return;
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        '${(confidence * 100).toInt()}%',
-        style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold),
-      ),
-    );
+    final txId = int.tryParse(payload!.split(':')[1]);
+    if (txId == null) return;
+
+    switch (actionId) {
+      case 'edit':
+        // Navigate to edit transaction screen
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (_) => TransactionFormScreen(transactionId: txId),
+          ),
+        );
+        break;
+      case 'undo':
+        // Delete the transaction
+        ref.read(transactionRepositoryProvider).delete(txId);
+        break;
+    }
   }
+}
+```
+
+### Transaction History - Source Indicator
+
+```dart
+// Show source badge in transaction list
+Widget _buildSourceBadge(TransactionSource source) {
+  if (source == TransactionSource.manual) return SizedBox.shrink();
+
+  final (icon, label, color) = switch (source) {
+    TransactionSource.smsAuto => (Icons.sms, 'SMS', Colors.blue),
+    TransactionSource.notificationAuto => (Icons.notifications, 'Auto', Colors.purple),
+    TransactionSource.aiChat => (Icons.smart_toy, 'AI', Colors.orange),
+    _ => (Icons.edit, 'Manual', Colors.grey),
+  };
+
+  return Container(
+    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color),
+        SizedBox(width: 2),
+        Text(label, style: TextStyle(fontSize: 10, color: color)),
+      ],
+    ),
+  );
 }
 ```
 
