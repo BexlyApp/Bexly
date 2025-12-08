@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/components/form_fields/custom_select_field.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
@@ -26,8 +27,8 @@ class TransactionFilterCategorySelector extends HookConsumerWidget {
             child: CustomSelectField(
               context: context,
               controller: controller,
-              label: 'Category',
-              hint: 'Select Category',
+              label: context.l10n.category,
+              hint: context.l10n.selectCategory,
               onTap: () async {
                 final category = await context.push<CategoryModel>(
                   Routes.categoryList,

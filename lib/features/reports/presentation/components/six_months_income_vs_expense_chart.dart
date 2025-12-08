@@ -10,6 +10,7 @@ import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/text_style_extensions.dart';
 import 'package:bexly/features/reports/data/models/monthly_financial_summary_model.dart';
 import 'package:bexly/features/reports/presentation/riverpod/financial_health_provider.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 
 class SixMonthsIncomeExpenseChart extends ConsumerWidget {
   const SixMonthsIncomeExpenseChart({super.key});
@@ -19,8 +20,8 @@ class SixMonthsIncomeExpenseChart extends ConsumerWidget {
     final summaryAsync = ref.watch(sixMonthSummaryProvider);
 
     return ChartContainer(
-      title: 'Income vs. Expense',
-      subtitle: 'Last 6 Months',
+      title: context.l10n.incomeVsExpense,
+      subtitle: context.l10n.lastSixMonths,
       height: 300,
       chart: summaryAsync.when(
         data: (data) => _buildChart(context, data, ref),
@@ -36,7 +37,7 @@ class SixMonthsIncomeExpenseChart extends ConsumerWidget {
     WidgetRef ref,
   ) {
     if (data.isEmpty || data.every((e) => e.income == 0 && e.expense == 0)) {
-      return const Center(child: Text('No transaction data available yet.'));
+      return Center(child: Text(context.l10n.noTransactionDataYet));
     }
 
     // Calculate max Y to give some headroom
@@ -70,7 +71,7 @@ class SixMonthsIncomeExpenseChart extends ConsumerWidget {
               return touchedBarSpots.map((barSpot) {
                 final flSpot = barSpot;
 
-                String label = barSpot.barIndex == 0 ? 'Income' : 'Expense';
+                String label = barSpot.barIndex == 0 ? context.l10n.income : context.l10n.expense;
                 Color color = barSpot.barIndex == 0
                     ? AppColors.green200
                     : AppColors.red700;

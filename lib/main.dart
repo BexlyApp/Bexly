@@ -4,12 +4,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/app.dart';
 import 'package:bexly/core/services/background_service.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/services/notification_service.dart';
 import 'package:bexly/core/services/firebase_messaging_service.dart';
 import 'package:bexly/core/services/package_info/package_info_provider.dart';
+import 'package:bexly/core/services/subscription/subscription.dart';
+import 'package:bexly/core/services/ads/ad_service.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 Future<void> main() async {
@@ -70,10 +73,22 @@ Future<void> main() async {
     // Continue without background service if init fails
   }
 
+  // Initialize SharedPreferences for AI usage tracking
+  final sharedPrefs = await SharedPreferences.getInstance();
+
+  // Initialize AdMob
+  try {
+    await AdService().initialize();
+  } catch (e) {
+    debugPrint('AdMob init error: $e');
+    // Continue without ads if init fails
+  }
+
   runApp(
     ProviderScope(
       overrides: [
         packageInfoServiceProvider.overrideWithValue(packageInfoService),
+        sharedPreferencesProvider.overrideWithValue(sharedPrefs),
       ],
       child: const MyApp(),
     ),

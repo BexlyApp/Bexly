@@ -3,7 +3,7 @@
 ## Overview
 This document outlines the development roadmap for Bexly, focusing on transforming it from a basic expense tracker to a comprehensive financial management platform with AI-powered features.
 
-## Current State (v0.0.7+363)
+## Current State (v0.0.8+368)
 - ✅ Core expense/income tracking
 - ✅ Multi-wallet support with real-time cloud sync
 - ✅ Budget management
@@ -36,6 +36,160 @@ This document outlines the development roadmap for Bexly, focusing on transformi
 - ✅ **Contextual notification permission request (v360)**
 - ✅ **Default wallet selection for AI fallback (v363)**
 - ✅ **Default wallet indicator in Manage Wallets screen (v363)**
+- ✅ **Google Sign In working (v368)**
+- ✅ **Apple Sign In configured for Android (v368)**
+- ✅ **Telegram Bot: Default Wallet Sync** - Bot now uses user's default wallet instead of first wallet
+- ✅ **Filter Form Localization** - All 14 languages supported for filter UI
+- ⏳ **Facebook Sign In** - pending Facebook App Review
+- 🚧 **iOS Build Workflow** - needs Distribution certificate with private key
+
+---
+
+## Phase 0A: Automated Transaction Input (Q1 2025) 🔥 NEW
+
+> **Goal:** Tự động nhập liệu giao dịch cho user thông qua nhiều kênh: SMS, Notification, và Open Banking API.
+
+### Research Summary
+
+**Các phương pháp tự động nhập liệu:**
+
+| Method | Pros | Cons | Effort |
+|--------|------|------|--------|
+| **SMS Parsing** | Hoạt động offline, không cần API của ngân hàng | Cần permission, mỗi bank format khác | Medium |
+| **Notification Listener** | Đọc push notification từ banking apps | Android only, cần permission đặc biệt | Medium |
+| **Open Banking API** | Chuẩn hóa, reliable, history data | Phí cao, không có ở VN | High |
+| **Email Parsing** | Cross-platform, nhiều bank gửi email | User phải grant Gmail access | Medium |
+
+### 0A.1 SMS Transaction Parsing (Priority 1)
+**Timeline: 2 weeks | Platform: Android**
+
+**How it works:**
+- App xin permission `READ_SMS` và `RECEIVE_SMS`
+- Background service lắng nghe SMS mới từ các số ngân hàng (VD: Vietcombank, TPBank, Techcombank...)
+- AI (Gemini) parse SMS content → extract: amount, type (debit/credit), balance, merchant
+- Auto-create pending transaction → User confirm hoặc app tự approve
+
+**Technical Implementation:**
+```dart
+// SMS Receiver Service
+flutter_sms_inbox + telephony package
+- Foreground service for listening
+- AI parsing với Gemini (cost: ~$0.001/SMS)
+- Bank sender ID whitelist
+- Template-based fallback parsing
+```
+
+**Challenges:**
+- Mỗi ngân hàng format SMS khác nhau
+- Một số bank dùng mã OTP chung với thông báo
+- iOS không cho phép đọc SMS
+
+**Reference Apps:**
+- [Finout](https://iauro.com/finout-case-study/) - Smart SMS parsing
+- [FinArt](https://play.google.com/store/apps/details?id=com.finart) - SMS + Notification
+
+### 0A.2 Notification Listener Service (Priority 2)
+**Timeline: 1 week | Platform: Android**
+
+**How it works:**
+- App yêu cầu NotificationListenerService permission
+- Lắng nghe notification từ banking apps (VD: `com.vietcombank.banking`)
+- Parse notification content với AI
+- Auto-create transaction
+
+**Technical Implementation:**
+```dart
+// NotificationListener
+flutter_notification_listener package
+- Filter by package name (whitelist banking apps)
+- Extract notification text
+- AI parse → transaction data
+```
+
+**Pros over SMS:**
+- Không cần SMS permission (nhiều user ngại)
+- Có thể đọc notification từ e-wallet (Momo, ZaloPay)
+- Notification thường có format dễ parse hơn
+
+**Cons:**
+- User phải vào Settings grant permission
+- Chỉ hoạt động trên Android
+
+### 0A.3 Open Banking API Integration (Priority 3)
+**Timeline: 4 weeks | Platform: All**
+
+**For US/Canada Market:**
+- **Plaid** - Market leader, $0.30-$0.50/account/month
+- Coverage: 12,000+ banks in US/Canada/UK
+
+**For Southeast Asia Market:**
+- **[Brick](https://techcrunch.com/2021/03/17/financial-api-provider-brick-is-building-the-infrastructure-for-open-banking-in-southeast-asia/)** - Indonesia focus, 90% bank coverage
+- **[Brankas](https://techcrunch.com/2019/05/07/brankas/)** - Philippines, Indonesia, Vietnam, Thailand
+- **[Ayoconnect](https://www.ayoconnect.com/blog/looking-for-plaid-alternative-indonesia)** - Indonesia's largest open finance platform
+
+**Note:** Vietnam chưa có open banking regulation, nên SMS parsing là phương pháp khả thi nhất cho VN market.
+
+### 0A.4 Email Transaction Sync (Priority 4)
+**Timeline: 2 weeks | Platform: All**
+
+**How it works:**
+- User authorize Gmail access (OAuth)
+- Cloud Function scan inbox cho banking emails
+- AI parse email → extract transactions
+- Sync to app
+
+**Banks that send email notifications:**
+- Most international banks (Chase, Citi, HSBC)
+- Some VN banks (Vietcombank, BIDV - if user enabled)
+
+**Technical:**
+```typescript
+// Cloud Function
+googleapis/gmail.users.messages.list
+- Filter by sender (banking domains)
+- Parse HTML email body
+- Gemini extract transaction data
+```
+
+### Implementation Roadmap
+
+**Phase 1 (Week 1-2): SMS Parsing MVP**
+- [ ] Implement SMS permission request flow
+- [ ] Build SMS listener background service
+- [ ] Create bank sender ID whitelist (VN banks)
+- [ ] AI prompt engineering for SMS parsing
+- [ ] Pending transaction queue UI
+- [ ] User confirmation flow
+
+**Phase 2 (Week 3): Notification Listener**
+- [ ] NotificationListenerService setup
+- [ ] Banking app package whitelist
+- [ ] Notification parsing with AI
+- [ ] Merge with SMS transactions (dedup)
+
+**Phase 3 (Week 4+): Open Banking**
+- [ ] Evaluate Brick/Brankas for SEA
+- [ ] Plaid integration for US/Canada
+- [ ] Transaction sync engine
+- [ ] Historical import
+
+### Privacy & Security Considerations
+
+**User Consent:**
+- Explicit opt-in for each method
+- Clear explanation of what data is collected
+- Easy toggle on/off in settings
+
+**Data Handling:**
+- SMS content NOT stored permanently
+- Only extracted transaction data saved
+- Notification content processed locally
+- Bank credentials NEVER stored
+
+**Compliance:**
+- GDPR/PDPA compliant
+- Data minimization principle
+- Right to delete all automation data
 
 ---
 

@@ -71,23 +71,27 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           BUNDLE_ID: com.joy.bexly
         run: |
-          # Fetch provisioning profiles from App Store Connect
+          # Fetch signing files but provide certificate key so it can save
+          # The certificate private key from our .p12 is already in the keychain
+          # We just need the provisioning profile
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_ID" \
             --private-key @file:~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
-            --create
+            --create || true
 
-          # Install provisioning profiles
+          # If profiles exist, install them
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          for profile in $(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision 2>/dev/null || find . -name "*.mobileprovision"); do
-            uuid=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< $(security cms -D -i "$profile"))
-            cp "$profile" ~/Library/MobileDevice/Provisioning\ Profiles/${uuid}.mobileprovision
-          done
+          if ls *.mobileprovision 1> /dev/null 2>&1; then
+            for profile in *.mobileprovision; do
+              uuid=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< $(security cms -D -i "$profile"))
+              cp "$profile" ~/Library/MobileDevice/Provisioning\ Profiles/${uuid}.mobileprovision
+            done
+          fi
 
           # Set up Xcode project signing
-          xcode-project use-profiles
+          xcode-project use-profiles || true
 
       - name: Install dependencies
         run: flutter pub get

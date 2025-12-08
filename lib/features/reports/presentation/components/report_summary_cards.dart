@@ -58,7 +58,7 @@ class ReportSummaryCards extends ConsumerWidget {
                       // Total Income
                       Expanded(
                         child: _SummaryCard(
-                          title: 'Income',
+                          title: context.l10n.income,
                           amount: totalIncome,
                           currency: baseCurrency,
                           color: AppColors.green200,
@@ -71,7 +71,7 @@ class ReportSummaryCards extends ConsumerWidget {
                       // Total Expense
                       Expanded(
                         child: _SummaryCard(
-                          title: 'Expense',
+                          title: context.l10n.expense,
                           amount: totalExpense,
                           currency: baseCurrency,
                           color: AppColors.red700,
@@ -85,7 +85,7 @@ class ReportSummaryCards extends ConsumerWidget {
                       // Net Savings
                       Expanded(
                         child: _SummaryCard(
-                          title: 'Net',
+                          title: context.l10n.net,
                           amount: netSavings,
                           currency: baseCurrency,
                           color: netSavings >= 0 ? AppColors.green200 : AppColors.red700,

@@ -11,6 +11,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 
 class TransactionImagePreview extends ConsumerWidget {
   const TransactionImagePreview({super.key});
@@ -65,10 +66,10 @@ class TransactionImagePreview extends ConsumerWidget {
               showModalBottomSheet(
                 context: context,
                 showDragHandle: true,
-                builder: (context) => AlertBottomSheet(
-                  title: 'Delete Image',
+                builder: (dialogContext) => AlertBottomSheet(
+                  title: context.l10n.deleteImage,
                   content: Text(
-                    'Are you sure you want to delete this image?',
+                    context.l10n.deleteImageConfirm,
                     style: AppTextStyles.body2,
                   ),
                   onConfirm: () {

@@ -1,216 +1,160 @@
 # Bexly Premium Plan
 
 ## Overview
-Bexly operates on a freemium model with local-first approach. Free users get full functionality with local storage only. Premium users get cloud sync, backup, and advanced features.
+Bexly operates on a freemium model with cloud sync support. Free users get core functionality with ads. Premium users get more features, better AI, and ad-free experience.
 
 ## Tier Structure
 
-### Free Tier (Default)
+### Free Tier
 **Price:** $0 forever
 
 **Features:**
-- ✅ Unlimited wallets and transactions
-- ✅ All basic expense tracking features
-- ✅ Budget management
-- ✅ Basic analytics and reports
-- ✅ Categories and tags
-- ✅ 100% offline - works without internet
-- ✅ Manual export/import (JSON/CSV)
-- ✅ No ads, no tracking
+- 3 wallets
+- 2 budgets & 2 goals
+- 5 recurring transactions
+- 3 months analytics history
+- 20 AI messages/month (Standard model)
+- Cloud sync (basic)
+- Manual export/import (JSON/CSV)
 
 **Limitations:**
-- ❌ No cloud backup
-- ❌ No multi-device sync
-- ❌ No receipt image storage
-- ❌ Manual backup only
-- ❌ Lost data if device fails
+- Contains ads
+- No receipt photo storage
+- Limited AI capabilities
 
-### Premium Tier
+---
+
+### Plus Tier
 **Price:** $2.99/month or $29.99/year (2 months free)
 
 **Everything in Free, plus:**
-- ✅ Automatic cloud backup
-- ✅ Real-time sync across devices
-- ✅ Receipt photo storage (up to 5GB)
-- ✅ Restore data from any device
-- ✅ Web access (coming soon)
-- ✅ Priority support
-- ✅ Early access to new features
+- Unlimited wallets
+- Unlimited budgets & goals
+- Unlimited recurring transactions
+- 6 months analytics history
+- 60 AI messages/month (Premium model)
+- Receipt photo storage (1GB)
+- **No ads**
 
-### Pro Tier (Future)
-**Price:** $5.99/month or $59.99/year
+---
 
-**Everything in Premium, plus:**
-- ✅ AI-powered insights
-- ✅ Receipt OCR scanning
-- ✅ Advanced analytics
-- ✅ Custom categories with AI suggestions
-- ✅ Spending predictions
-- ✅ Financial health score
-- ✅ Export to accounting software
-- ✅ Family sharing (up to 5 accounts)
+### Pro Tier
+**Price:** $5.99/month or $59.99/year (2 months free)
+
+**Everything in Plus, plus:**
+- Full analytics history (unlimited)
+- Unlimited AI messages (Flagship model)
+- Receipt photo storage (5GB)
+- AI insights & predictions
+- Priority support
+- Early access to new features
+
+---
+
+## AI Model Tiers
+
+| Tier | Model Name | Description |
+|------|------------|-------------|
+| Standard | TBD | Basic AI for simple tasks |
+| Premium | TBD | Better AI with improved accuracy |
+| Flagship | TBD | Best AI with advanced capabilities |
+
+*Specific models will be defined based on cost/performance analysis.*
+
+---
+
+## Feature Comparison
+
+| Feature | Free | Plus | Pro |
+|---------|------|------|-----|
+| Wallets | 3 | Unlimited | Unlimited |
+| Budgets & Goals | 2 each | Unlimited | Unlimited |
+| Recurring transactions | 5 | Unlimited | Unlimited |
+| Analytics history | 3 months | 6 months | Unlimited |
+| AI messages/month | 20 | 60 | Unlimited |
+| AI model | Standard | Premium | Flagship |
+| Receipt photos | - | 1GB | 5GB |
+| Cloud sync | Basic | Full | Full |
+| Ads | Yes | No | No |
+| Priority support | - | - | Yes |
+
+---
 
 ## Technical Implementation
 
-### Authentication Flow
-```
-App Launch
-    ↓
-Check Auth State
-    ↓
-No Auth → Local Mode (SQLite only)
-    ↓
-Auth → Check Subscription
-    ↓
-Active → Enable Cloud Sync
-```
-
-### Data Storage Strategy
-
-**Free Users:**
-- SQLite local database only
-- No Firebase usage = $0 cost
-- Manual backup via file export
-
-**Premium Users:**
-- SQLite local (primary, instant)
-- Firestore cloud (backup, sync)
-- Firebase Storage (receipts)
-- Bidirectional sync
-
 ### Subscription Management
-
 **Payment Processing:**
 - Google Play Billing (Android)
 - StoreKit (iOS)
-- Stripe (Web - future)
+- RevenueCat for cross-platform management (optional)
 
 **Verification:**
 - Server-side validation via Firebase Functions
-- RevenueCat or native implementation
-- Grace period for expired payments
+- Grace period for expired payments (7 days)
 
-### Firebase Cost Analysis
+### Feature Gating
+```dart
+// Check feature access
+bool canCreateWallet() {
+  if (subscription.isPro || subscription.isPlus) return true;
+  return currentWalletCount < 3;
+}
 
-**Per Premium User/Month:**
+bool canUseAI() {
+  if (subscription.isPro) return true;
+  return aiMessagesUsed < subscription.aiLimit;
+}
+
+String getAIModel() {
+  switch (subscription.tier) {
+    case Tier.pro: return 'flagship';
+    case Tier.plus: return 'premium';
+    default: return 'standard';
+  }
+}
 ```
-Firestore:
-- Reads: ~10K = $0.036
-- Writes: ~5K = $0.018
-- Storage: ~10MB = $0.0026
 
-Firebase Storage:
-- Storage: 100MB = $0.0026
-- Bandwidth: 500MB = $0.012
+### Ad Implementation (Free Tier)
+- Banner ads on Home/History screens
+- Interstitial ads after every 5th transaction (non-intrusive)
+- No ads during onboarding or critical flows
 
-Total: ~$0.07/user
-Profit: $2.99 - $0.07 = $2.92/user
-```
+---
 
-**Break-even Analysis:**
-- Firebase free tier supports ~50 active premium users
-- At 100 premium users: $299/month revenue, ~$7 Firebase cost
-- Profit margin: ~97%
+## Pricing Strategy
 
-## Migration Strategy
-
-### Free → Premium Upgrade
-1. User subscribes in-app
-2. Prompt to create account (Google/Email)
-3. Automatic upload local data to cloud
-4. Enable sync for future changes
-5. Show success with cloud backup status
-
-### Premium → Free Downgrade
-1. Notify 7 days before expiration
-2. On expiration: disable cloud sync
-3. Keep local data intact
-4. Offer one-time cloud export
-5. Data remains in cloud for 30 days
-
-## Marketing Strategy
-
-### Value Proposition
-**Free Users:**
-- "Your finances, your device, your control"
-- "No account required - start immediately"
-- "Works 100% offline"
-- "Privacy-first: data never leaves your device"
-
-**Premium Users:**
-- "Never lose your financial data"
-- "Access from any device"
-- "Automatic backup for peace of mind"
-- "Secure cloud storage with encryption"
+### Regional Pricing (VND)
+| Plan | Monthly | Yearly |
+|------|---------|--------|
+| Plus | 79,000đ | 790,000đ |
+| Pro | 149,000đ | 1,490,000đ |
 
 ### Conversion Tactics
-1. **Gentle Reminders:**
-   - After 30 days of use
-   - When switching devices
-   - After creating 100+ transactions
+1. **Soft limits**: Show upgrade prompt when hitting limits
+2. **Trial period**: 7-day free trial for Plus
+3. **Upgrade prompts**: After 30 days of active use
+4. **Value highlight**: "Unlock Premium AI" when using Standard
 
-2. **Fear of Loss:**
-   - "Backup your 500 transactions to cloud"
-   - "Device lost = data lost. Protect now"
-
-3. **Convenience:**
-   - "Access on phone, tablet, and web"
-   - "Switching phones? Take your data with you"
-
-4. **Trial Period:**
-   - 14-day free trial for premium
-   - No credit card required initially
-
-## Development Priorities
-
-### Phase 1 (Current)
-- [x] Local SQLite implementation
-- [x] Core expense tracking features
-- [ ] Firebase integration structure
-- [ ] Authentication system
-
-### Phase 2 (Q1 2025)
-- [ ] Payment integration
-- [ ] Cloud sync implementation
-- [ ] Subscription management UI
-- [ ] Server-side validation
-
-### Phase 3 (Q2 2025)
-- [ ] Receipt photo storage
-- [ ] Web app for premium users
-- [ ] Advanced analytics
-- [ ] Family sharing
-
-### Phase 4 (Q3 2025)
-- [ ] AI features for Pro tier
-- [ ] OCR receipt scanning
-- [ ] Predictive analytics
-- [ ] Third-party integrations
+---
 
 ## Success Metrics
 
 ### Target KPIs
-- Free to Premium conversion: 3-5%
+- Free to Plus conversion: 3-5%
+- Plus to Pro conversion: 10-15%
 - Monthly churn rate: <5%
-- LTV: $50+ per premium user
-- CAC: <$10 per premium user
 
 ### Milestones
-- 100 premium users: Cover development costs
-- 500 premium users: Part-time income
-- 2000 premium users: Full-time sustainable
+- 100 paid users: Cover development costs
+- 500 paid users: Part-time sustainable
+- 2000 paid users: Full-time sustainable
+
+---
 
 ## Privacy & Security
 
-### Data Protection
-- End-to-end encryption for cloud data
+- Cloud data encrypted at rest and in transit
 - GDPR/CCPA compliant
 - User owns and controls their data
 - Export/delete at any time
-- No data selling or ads
-
-### Trust Building
-- Open source core functionality
-- Transparent privacy policy
-- Regular security audits
-- SOC 2 compliance (future)
+- Ad tracking can be disabled (limited ads still shown)
