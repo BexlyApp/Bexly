@@ -59,6 +59,12 @@ class SettingsPreferencesGroup extends ConsumerWidget {
           icon: HugeIcons.strokeRoundedNotification01,
           onTap: () => context.push(Routes.notificationSettings),
         ),
+        if (Platform.isAndroid)
+          MenuTileButton(
+            label: l10n.autoTransaction,
+            icon: HugeIcons.strokeRoundedMessage01,
+            onTap: () => context.push(Routes.autoTransactionSettings),
+          ),
       ],
     );
   }

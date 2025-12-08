@@ -5,6 +5,7 @@ import 'package:bexly/features/developer_portal/presentation/screens/developer_p
 import 'package:bexly/features/settings/presentation/screens/account_deletion_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/backup_restore_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/language_settings_screen.dart';
+import 'package:bexly/features/settings/presentation/screens/auto_transaction_settings_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/notification_settings_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/personal_details_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/settings_screen.dart';
@@ -23,6 +24,10 @@ class SettingsRouter {
     GoRoute(
       path: Routes.notificationSettings,
       builder: (context, state) => const NotificationSettingsScreen(),
+    ),
+    GoRoute(
+      path: Routes.autoTransactionSettings,
+      builder: (context, state) => const AutoTransactionSettingsScreen(),
     ),
     GoRoute(
       path: Routes.languageSettings,
