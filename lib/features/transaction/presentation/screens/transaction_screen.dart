@@ -17,7 +17,6 @@ import 'package:bexly/features/transaction/presentation/components/transaction_s
 import 'package:bexly/features/transaction/presentation/components/transaction_tab_bar.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
 import 'package:bexly/features/transaction/presentation/screens/transaction_filter_form_dialog.dart';
-import 'package:bexly/core/components/ads/banner_ad_widget.dart';
 
 class TransactionScreen extends ConsumerWidget {
   const TransactionScreen({super.key});
@@ -60,10 +59,7 @@ class TransactionScreen extends ConsumerWidget {
           color: Theme.of(context).colorScheme.onPrimary,
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: allTransactionsAsyncValue.when(
+      body: allTransactionsAsyncValue.when(
               data: (allTransactions) {
                 if (allTransactions.isEmpty) {
                   return Center(child: Text(context.l10n.noTransactionsRecorded));
@@ -175,12 +171,8 @@ class TransactionScreen extends ConsumerWidget {
                   ),
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stackTrace) => Center(child: Text('Error: $error')),
-            ),
-          ),
-          const BannerAdWidget(),
-        ],
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) => Center(child: Text('Error: $error')),
       ),
     );
   }

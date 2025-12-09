@@ -16,6 +16,8 @@ import 'package:bexly/core/services/auto_transaction/parsed_transaction.dart';
 import 'package:bexly/core/services/auto_transaction/sms_service.dart';
 import 'package:bexly/core/services/auto_transaction/notification_service.dart';
 import 'package:bexly/core/services/auto_transaction/transaction_parser_service.dart';
+import 'package:bexly/core/services/auto_transaction/pending_notification.dart';
+import 'package:bexly/core/services/auto_transaction/account_identifier.dart';
 
 /// Provider for auto transaction service
 final autoTransactionServiceProvider = Provider<AutoTransactionService>((ref) {
@@ -353,15 +355,24 @@ class AutoTransactionService {
   /// Scan SMS inbox for bank senders
   Future<List<SmsScanResult>> scanSmsForBankSenders({
     int limit = 500,
+    DateTime? startDate,
     Duration? maxAge,
     void Function(int current, int total)? onProgress,
   }) async {
     await initialize();
     if (_smsService == null) return [];
 
+    // Calculate maxAge from startDate if provided
+    Duration effectiveMaxAge;
+    if (startDate != null) {
+      effectiveMaxAge = DateTime.now().difference(startDate);
+    } else {
+      effectiveMaxAge = maxAge ?? const Duration(days: 90);
+    }
+
     return await _smsService!.scanForBankSenders(
       limit: limit,
-      maxAge: maxAge ?? const Duration(days: 90),
+      maxAge: effectiveMaxAge,
       onProgress: onProgress,
     );
   }
@@ -543,6 +554,249 @@ class AutoTransactionService {
   Future<void> removeMapping(String senderId) async {
     await _mappingService.removeMapping(senderId);
   }
+
+  // ============================================================
+  // Pending Notification Methods
+  // ============================================================
+
+  /// Check if there are pending notifications to process
+  Future<bool> hasPendingNotifications() async {
+    if (_notificationService == null) return false;
+    return await _notificationService!.hasPendingNotifications();
+  }
+
+  /// Get pending notification count
+  Future<int> getPendingNotificationCount() async {
+    if (_notificationService == null) return 0;
+    return await _notificationService!.getPendingCount();
+  }
+
+  /// Get all unprocessed pending notifications
+  Future<List<PendingNotification>> getUnprocessedNotifications() async {
+    if (_notificationService == null) return [];
+    return await _notificationService!.getUnprocessedNotifications();
+  }
+
+  /// Get pending notifications grouped by bank
+  Future<Map<String, List<PendingNotification>>> getPendingNotificationsByBank() async {
+    if (_notificationService == null) return {};
+    return await _notificationService!.getPendingByBank();
+  }
+
+  /// Get pending notifications grouped by bank and account
+  Future<Map<String, List<PendingNotification>>> getPendingNotificationsByBankAndAccount() async {
+    if (_notificationService == null) return {};
+    return await _notificationService!.getPendingByBankAndAccount();
+  }
+
+  /// Enable pending mode for notifications (store instead of process)
+  void setNotificationPendingMode(bool enabled) {
+    _notificationService?.setStorePendingMode(enabled);
+  }
+
+  /// Process pending notifications and create transactions
+  ///
+  /// This method should be called when the user opens the app and
+  /// there are pending notifications that need wallet mapping.
+  Future<PendingProcessResult> processPendingNotifications({
+    required Map<String, int> bankAccountToWalletMap, // "bankCode_accountId" -> walletId
+  }) async {
+    await initialize();
+    if (_notificationService == null) {
+      return PendingProcessResult(processed: 0, skipped: 0, errors: 0);
+    }
+
+    final pending = await _notificationService!.getUnprocessedNotifications();
+    int processed = 0;
+    int skipped = 0;
+    int errors = 0;
+
+    for (final notification in pending) {
+      try {
+        // Build the mapping key
+        final bankKey = notification.bankCode ?? 'unknown';
+        final accountKey = notification.accountId ?? 'default';
+        final mappingKey = '${bankKey}_$accountKey';
+
+        // Check if we have a wallet mapping for this bank/account
+        final walletId = bankAccountToWalletMap[mappingKey] ??
+            bankAccountToWalletMap[bankKey]; // Fallback to bank-only mapping
+
+        if (walletId == null) {
+          Log.d('No wallet mapping for $mappingKey, skipping', label: 'AutoTransaction');
+          skipped++;
+          continue;
+        }
+
+        // Get wallet
+        final db = _ref.read(databaseProvider);
+        final walletData = await db.walletDao.getWalletById(walletId);
+        if (walletData == null) {
+          Log.e('Wallet $walletId not found', label: 'AutoTransaction');
+          errors++;
+          continue;
+        }
+        final wallet = walletData.toModel();
+
+        // Parse the notification
+        final parsed = await _notificationService!.processPendingNotification(notification);
+        if (parsed == null) {
+          Log.d('Could not parse notification ${notification.id}', label: 'AutoTransaction');
+          errors++;
+          continue;
+        }
+
+        // Check for duplicate in database
+        final isDuplicate = await _checkDuplicateInDb(parsed, walletId);
+        if (isDuplicate) {
+          Log.d('Duplicate transaction from notification, skipping', label: 'AutoTransaction');
+          skipped++;
+          continue;
+        }
+
+        // Get category
+        final category = await _findBestCategory(parsed);
+
+        // Create transaction
+        final transaction = TransactionModel(
+          transactionType: parsed.type,
+          amount: parsed.amount,
+          date: parsed.dateTime,
+          title: parsed.title,
+          category: category,
+          wallet: wallet,
+          notes: '${parsed.notes}\n\n[Auto-created from notification]',
+        );
+
+        await db.transactionDao.addTransaction(transaction);
+        processed++;
+
+        Log.d('Created transaction from pending notification ${notification.id}', label: 'AutoTransaction');
+      } catch (e) {
+        Log.e('Error processing pending notification: $e', label: 'AutoTransaction');
+        errors++;
+      }
+    }
+
+    Log.d('Processed pending notifications: $processed processed, $skipped skipped, $errors errors',
+        label: 'AutoTransaction');
+
+    return PendingProcessResult(processed: processed, skipped: skipped, errors: errors);
+  }
+
+  /// Create wallet for a bank/account from pending notifications
+  ///
+  /// This creates a wallet and mapping for notifications that don't have
+  /// a wallet assigned yet.
+  Future<WalletModel?> createWalletForPendingNotifications({
+    required String bankCode,
+    required String? accountId,
+    required String bankName,
+    required String currency,
+    String? accountType,
+  }) async {
+    try {
+      final db = _ref.read(databaseProvider);
+
+      // Generate wallet name with account info
+      final walletName = AccountIdentifier.generateDisplayName(
+        bankName,
+        accountId,
+        accountType,
+      );
+
+      // Create wallet
+      final walletModel = WalletModel(
+        name: walletName,
+        balance: 0,
+        currency: currency,
+        iconName: 'bank',
+        colorHex: _getBankColorHex(bankCode),
+        walletType: accountType == 'credit' ? WalletType.creditCard : WalletType.bankAccount,
+      );
+
+      final walletId = await db.walletDao.addWallet(walletModel);
+      Log.d('Created wallet $walletName with ID: $walletId', label: 'AutoTransaction');
+
+      // Add mapping with account ID
+      await _mappingService.addMapping(BankWalletMapping(
+        senderId: bankCode, // Use bank code as sender ID for notifications
+        bankName: bankName,
+        bankCode: bankCode,
+        walletId: walletId,
+        accountId: accountId,
+        accountType: accountType,
+      ));
+
+      // Get and return the wallet
+      final wallet = await db.walletDao.getWalletById(walletId);
+      return wallet?.toModel();
+    } catch (e) {
+      Log.e('Failed to create wallet for pending notifications: $e', label: 'AutoTransaction');
+      return null;
+    }
+  }
+
+  /// Mark pending notifications as processed without creating transactions
+  Future<void> dismissPendingNotifications(List<String> notificationIds) async {
+    if (_notificationService == null) return;
+    await _notificationService!.markMultiplePendingAsProcessed(notificationIds);
+  }
+
+  /// Clear all processed pending notifications
+  Future<void> clearProcessedNotifications() async {
+    if (_notificationService == null) return;
+    await _notificationService!.clearProcessedNotifications();
+  }
+
+  /// Check for pending notifications on app startup
+  ///
+  /// Returns a summary of pending notifications grouped by bank and account.
+  /// The UI should use this to show a dialog asking the user to create wallets
+  /// or assign existing wallets to the pending notifications.
+  Future<PendingNotificationSummary> checkPendingOnStartup() async {
+    await initialize();
+
+    if (_notificationService == null || !_notificationEnabled) {
+      return PendingNotificationSummary.empty();
+    }
+
+    final hasPending = await _notificationService!.hasPendingNotifications();
+    if (!hasPending) {
+      return PendingNotificationSummary.empty();
+    }
+
+    final grouped = await _notificationService!.getPendingByBankAndAccount();
+    final entries = <PendingNotificationGroup>[];
+
+    for (final entry in grouped.entries) {
+      final notifications = entry.value;
+      if (notifications.isEmpty) continue;
+
+      final first = notifications.first;
+      final bankCode = first.bankCode ?? 'unknown';
+      final accountId = first.accountId;
+      final accountType = first.accountType;
+
+      // Check if we already have a mapping for this bank/account
+      final existingWalletId = await _mappingService.getWalletIdForSender(
+        bankCode,
+        accountId: accountId,
+      );
+
+      entries.add(PendingNotificationGroup(
+        bankCode: bankCode,
+        bankName: first.appName ?? bankCode,
+        accountId: accountId,
+        accountType: accountType,
+        notificationCount: notifications.length,
+        notifications: notifications,
+        existingWalletId: existingWalletId,
+      ));
+    }
+
+    return PendingNotificationSummary(groups: entries);
+  }
 }
 
 /// Result of importing transactions
@@ -558,4 +812,80 @@ class ImportResult {
   });
 
   int get total => imported + duplicates + errors;
+}
+
+/// Result of processing pending notifications
+class PendingProcessResult {
+  final int processed;
+  final int skipped;
+  final int errors;
+
+  PendingProcessResult({
+    required this.processed,
+    required this.skipped,
+    required this.errors,
+  });
+
+  int get total => processed + skipped + errors;
+}
+
+/// Summary of pending notifications for startup check
+class PendingNotificationSummary {
+  final List<PendingNotificationGroup> groups;
+
+  PendingNotificationSummary({required this.groups});
+
+  factory PendingNotificationSummary.empty() {
+    return PendingNotificationSummary(groups: []);
+  }
+
+  bool get isEmpty => groups.isEmpty;
+  bool get isNotEmpty => groups.isNotEmpty;
+
+  int get totalNotifications =>
+      groups.fold(0, (sum, g) => sum + g.notificationCount);
+
+  /// Groups that don't have a wallet assigned yet
+  List<PendingNotificationGroup> get unmappedGroups =>
+      groups.where((g) => g.existingWalletId == null).toList();
+
+  /// Groups that already have a wallet assigned
+  List<PendingNotificationGroup> get mappedGroups =>
+      groups.where((g) => g.existingWalletId != null).toList();
+}
+
+/// A group of pending notifications from the same bank/account
+class PendingNotificationGroup {
+  final String bankCode;
+  final String bankName;
+  final String? accountId;
+  final String? accountType;
+  final int notificationCount;
+  final List<PendingNotification> notifications;
+  final int? existingWalletId;
+
+  PendingNotificationGroup({
+    required this.bankCode,
+    required this.bankName,
+    this.accountId,
+    this.accountType,
+    required this.notificationCount,
+    required this.notifications,
+    this.existingWalletId,
+  });
+
+  /// Display name for this group
+  String get displayName => AccountIdentifier.generateDisplayName(
+        bankName,
+        accountId,
+        accountType,
+      );
+
+  /// Mapping key for this group
+  String get mappingKey => accountId != null
+      ? '${bankCode}_$accountId'
+      : bankCode;
+
+  /// Whether this group has a wallet assigned
+  bool get hasWallet => existingWalletId != null;
 }

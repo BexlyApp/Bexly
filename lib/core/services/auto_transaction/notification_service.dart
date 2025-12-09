@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:io';
 import 'package:notification_listener_service/notification_event.dart';
 import 'package:notification_listener_service/notification_listener_service.dart';
+import 'package:uuid/uuid.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/auto_transaction/parsed_transaction.dart';
 import 'package:bexly/core/services/auto_transaction/transaction_parser_service.dart';
+import 'package:bexly/core/services/auto_transaction/pending_notification.dart';
+import 'package:bexly/core/services/auto_transaction/account_identifier.dart';
 
 /// Callback type for when a new transaction is parsed from notification
 typedef OnNotificationTransactionParsed = void Function(ParsedTransaction transaction);
@@ -100,17 +103,23 @@ class BankingAppPackages {
 class NotificationListenerServiceWrapper {
   final TransactionParserService _parserService;
   final TransactionDeduplicationService _deduplicationService;
+  final PendingNotificationStorage _pendingStorage = PendingNotificationStorage();
+  final _uuid = const Uuid();
 
   StreamSubscription<ServiceNotificationEvent>? _subscription;
   OnNotificationTransactionParsed? _onTransactionParsed;
 
   bool _isListening = false;
+  bool _storePendingMode = false; // When true, store notifications instead of processing
 
   NotificationListenerServiceWrapper({
     required TransactionParserService parserService,
     TransactionDeduplicationService? deduplicationService,
   })  : _parserService = parserService,
         _deduplicationService = deduplicationService ?? TransactionDeduplicationService();
+
+  /// Get the pending storage instance
+  PendingNotificationStorage get pendingStorage => _pendingStorage;
 
   /// Check if notification listener is available on this platform
   bool get isAvailable => Platform.isAndroid;
@@ -194,6 +203,42 @@ class NotificationListenerServiceWrapper {
     Log.d('Stopped listening for notifications', label: 'NotificationService');
   }
 
+  /// Enable/disable pending mode
+  ///
+  /// When pending mode is enabled, notifications are stored locally
+  /// instead of being processed immediately. Use this when:
+  /// - No wallet mapping exists for the sender
+  /// - User hasn't configured auto-create yet
+  void setStorePendingMode(bool enabled) {
+    _storePendingMode = enabled;
+    Log.d('Store pending mode: $enabled', label: 'NotificationService');
+  }
+
+  /// Check if there are pending notifications
+  Future<bool> hasPendingNotifications() async {
+    return await _pendingStorage.hasPendingNotifications();
+  }
+
+  /// Get pending notification count
+  Future<int> getPendingCount() async {
+    return await _pendingStorage.getPendingCount();
+  }
+
+  /// Get all unprocessed pending notifications
+  Future<List<PendingNotification>> getUnprocessedNotifications() async {
+    return await _pendingStorage.getUnprocessedNotifications();
+  }
+
+  /// Get pending notifications grouped by bank
+  Future<Map<String, List<PendingNotification>>> getPendingByBank() async {
+    return await _pendingStorage.groupNotificationsByBank();
+  }
+
+  /// Get pending notifications grouped by bank and account
+  Future<Map<String, List<PendingNotification>>> getPendingByBankAndAccount() async {
+    return await _pendingStorage.groupNotificationsByBankAndAccount();
+  }
+
   /// Handle incoming notification
   void _handleNotification(ServiceNotificationEvent event) async {
     final packageName = event.packageName ?? '';
@@ -214,6 +259,27 @@ class NotificationListenerServiceWrapper {
     // Combine title and content for parsing
     final message = '$title\n$content';
 
+    // Extract account identifier from message
+    final accountId = AccountIdentifier.extractFromMessage(message);
+    final accountType = AccountIdentifier.detectAccountType(message);
+
+    // Get bank code from package
+    final bankCode = _getBankCodeFromPackage(packageName);
+
+    // If in pending mode or no callback, store the notification
+    if (_storePendingMode || _onTransactionParsed == null) {
+      await _storePendingNotification(
+        packageName: packageName,
+        appName: bankName,
+        title: title,
+        content: content,
+        bankCode: bankCode,
+        accountId: accountId,
+        accountType: accountType,
+      );
+      return;
+    }
+
     // Parse the notification
     final parsed = await _parserService.parseMessage(
       message: message,
@@ -225,6 +291,16 @@ class NotificationListenerServiceWrapper {
 
     if (parsed == null) {
       Log.d('Could not parse transaction from notification', label: 'NotificationService');
+      // Store as pending for later processing
+      await _storePendingNotification(
+        packageName: packageName,
+        appName: bankName,
+        title: title,
+        content: content,
+        bankCode: bankCode,
+        accountId: accountId,
+        accountType: accountType,
+      );
       return;
     }
 
@@ -241,5 +317,91 @@ class NotificationListenerServiceWrapper {
     // Notify callback
     Log.d('New transaction parsed from notification: $parsed', label: 'NotificationService');
     _onTransactionParsed?.call(parsed);
+  }
+
+  /// Store notification as pending for later processing
+  Future<void> _storePendingNotification({
+    required String packageName,
+    String? appName,
+    required String title,
+    required String content,
+    String? bankCode,
+    String? accountId,
+    String? accountType,
+  }) async {
+    final notification = PendingNotification(
+      id: _uuid.v4(),
+      packageName: packageName,
+      appName: appName,
+      title: title,
+      body: content,
+      receivedAt: DateTime.now(),
+      bankCode: bankCode,
+      accountId: accountId,
+      accountType: accountType,
+    );
+
+    await _pendingStorage.addNotification(notification);
+    Log.d('Stored pending notification: ${notification.id}', label: 'NotificationService');
+  }
+
+  /// Get bank code from package name
+  String? _getBankCodeFromPackage(String packageName) {
+    final mapping = {
+      BankingAppPackages.vietcombank: 'VCB',
+      BankingAppPackages.techcombank: 'TCB',
+      BankingAppPackages.tpbank: 'TPB',
+      BankingAppPackages.bidv: 'BIDV',
+      BankingAppPackages.vietinbank: 'CTG',
+      BankingAppPackages.agribank: 'AGR',
+      BankingAppPackages.mbbank: 'MB',
+      BankingAppPackages.acb: 'ACB',
+      BankingAppPackages.vpbank: 'VPB',
+      BankingAppPackages.sacombank: 'STB',
+      BankingAppPackages.hdbank: 'HDB',
+      BankingAppPackages.momo: 'MOMO',
+      BankingAppPackages.zalopay: 'ZALO',
+      BankingAppPackages.vnpay: 'VNPAY',
+      BankingAppPackages.shopeepay: 'SPAY',
+    };
+    return mapping[packageName];
+  }
+
+  /// Process a pending notification and convert to transaction
+  Future<ParsedTransaction?> processPendingNotification(
+    PendingNotification notification,
+  ) async {
+    final bankName = notification.appName ??
+        BankingAppPackages.getBankName(notification.packageName) ??
+        notification.packageName;
+
+    final parsed = await _parserService.parseMessage(
+      message: notification.fullMessage,
+      source: 'notification',
+      senderId: notification.packageName,
+      bankName: bankName,
+      messageTime: notification.receivedAt,
+    );
+
+    if (parsed != null) {
+      await _pendingStorage.markAsProcessed(notification.id);
+    }
+
+    return parsed;
+  }
+
+  /// Mark a pending notification as processed
+  Future<void> markPendingAsProcessed(String notificationId) async {
+    await _pendingStorage.markAsProcessed(notificationId);
+  }
+
+  /// Mark multiple pending notifications as processed
+  Future<void> markMultiplePendingAsProcessed(List<String> notificationIds) async {
+    await _pendingStorage.markMultipleAsProcessed(notificationIds);
+  }
+
+  /// Clear all processed notifications
+  Future<void> clearProcessedNotifications() async {
+    await _pendingStorage.clearProcessedNotifications();
   }
 }

@@ -694,6 +694,93 @@ function setupBotHandlers(bot: Bot) {
     await ctx.reply(message, { parse_mode: "Markdown" });
   });
 
+  // /today command
+  bot.command("today", async (ctx) => {
+    const telegramId = ctx.from?.id.toString();
+    if (!telegramId) return;
+
+    const user = await getUserByTelegramId(telegramId);
+    if (!user) {
+      await ctx.reply("❌ Please link your Bexly account first. Use /start");
+      return;
+    }
+
+    // Get today's transactions
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    const transactionsSnapshot = await bexlyDb
+      .collection("users")
+      .doc(user.bexlyUserId)
+      .collection("data")
+      .doc("transactions")
+      .collection("items")
+      .where("date", ">=", startOfDay)
+      .where("date", "<=", endOfDay)
+      .get();
+
+    // Get user's default currency from first wallet
+    let defaultCurrency = "USD";
+    const walletsSnapshot = await bexlyDb
+      .collection("users")
+      .doc(user.bexlyUserId)
+      .collection("data")
+      .doc("wallets")
+      .collection("items")
+      .limit(1)
+      .get();
+
+    if (!walletsSnapshot.empty) {
+      defaultCurrency = walletsSnapshot.docs[0].data().currency || "USD";
+    }
+
+    let totalExpense = 0;
+    let totalIncome = 0;
+    const transactions: { title: string; amount: number; type: number }[] = [];
+
+    transactionsSnapshot.forEach(doc => {
+      const tx = doc.data();
+      // transactionType: 0 = income, 1 = expense
+      if (tx.transactionType === 1) {
+        totalExpense += tx.amount;
+      } else {
+        totalIncome += tx.amount;
+      }
+      transactions.push({
+        title: tx.title || "Unknown",
+        amount: tx.amount,
+        type: tx.transactionType
+      });
+    });
+
+    const dateStr = now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+    let message = `📅 *Today - ${dateStr}*\n\n`;
+
+    if (transactions.length === 0) {
+      message += "No transactions recorded today.\n\nStart by sending a message like:\n• \"$25 for lunch\"\n• \"Received $100 payment\"";
+    } else {
+      message += `📈 Income: ${formatCurrency(totalIncome, defaultCurrency)}\n`;
+      message += `📉 Expense: ${formatCurrency(totalExpense, defaultCurrency)}\n`;
+      message += `💵 Net: ${formatCurrency(totalIncome - totalExpense, defaultCurrency)}\n\n`;
+
+      message += "*Transactions:*\n";
+      // Show last 10 transactions
+      const recentTxs = transactions.slice(-10);
+      for (const tx of recentTxs) {
+        const emoji = tx.type === 1 ? "🔴" : "🟢";
+        const sign = tx.type === 1 ? "-" : "+";
+        message += `${emoji} ${tx.title}: ${sign}${formatCurrency(tx.amount, defaultCurrency)}\n`;
+      }
+
+      if (transactions.length > 10) {
+        message += `\n_... and ${transactions.length - 10} more_`;
+      }
+    }
+
+    await ctx.reply(message, { parse_mode: "Markdown" });
+  });
+
   // /week command
   bot.command("week", async (ctx) => {
     const telegramId = ctx.from?.id.toString();
@@ -720,31 +807,131 @@ function setupBotHandlers(bot: Bot) {
       .where("date", ">=", startOfWeek)
       .get();
 
+    // Get user's default currency from first wallet
+    let defaultCurrency = "USD";
+    const walletsSnapshot = await bexlyDb
+      .collection("users")
+      .doc(user.bexlyUserId)
+      .collection("data")
+      .doc("wallets")
+      .collection("items")
+      .limit(1)
+      .get();
+
+    if (!walletsSnapshot.empty) {
+      defaultCurrency = walletsSnapshot.docs[0].data().currency || "USD";
+    }
+
     let totalExpense = 0;
     let totalIncome = 0;
     const categoryTotals: Record<string, number> = {};
 
     transactionsSnapshot.forEach(doc => {
       const tx = doc.data();
-      if (tx.type === "expense") {
+      // transactionType: 0 = income, 1 = expense
+      if (tx.transactionType === 1) {
         totalExpense += tx.amount;
-        categoryTotals[tx.category] = (categoryTotals[tx.category] || 0) + tx.amount;
+        const category = tx.title || "Other";
+        categoryTotals[category] = (categoryTotals[category] || 0) + tx.amount;
       } else {
         totalIncome += tx.amount;
       }
     });
 
     let message = "📊 *This Week's Summary*\n\n";
-    message += `📈 Income: ${formatCurrency(totalIncome, "USD")}\n`;
-    message += `📉 Expense: ${formatCurrency(totalExpense, "USD")}\n`;
-    message += `💵 Net: ${formatCurrency(totalIncome - totalExpense, "USD")}\n\n`;
+    message += `📈 Income: ${formatCurrency(totalIncome, defaultCurrency)}\n`;
+    message += `📉 Expense: ${formatCurrency(totalExpense, defaultCurrency)}\n`;
+    message += `💵 Net: ${formatCurrency(totalIncome - totalExpense, defaultCurrency)}\n\n`;
 
     if (Object.keys(categoryTotals).length > 0) {
-      message += "*By Category:*\n";
+      message += "*Top Expenses:*\n";
       const sorted = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
-      for (const [cat, amount] of sorted.slice(0, 5)) {
-        const emoji = getCategoryEmoji(cat);
-        message += `${emoji} ${cat}: ${formatCurrency(amount, "USD")}\n`;
+      for (const [title, amount] of sorted.slice(0, 5)) {
+        message += `• ${title}: ${formatCurrency(amount, defaultCurrency)}\n`;
+      }
+    }
+
+    await ctx.reply(message, { parse_mode: "Markdown" });
+  });
+
+  // /month command
+  bot.command("month", async (ctx) => {
+    const telegramId = ctx.from?.id.toString();
+    if (!telegramId) return;
+
+    const user = await getUserByTelegramId(telegramId);
+    if (!user) {
+      await ctx.reply("❌ Please link your Bexly account first. Use /start");
+      return;
+    }
+
+    // Get this month's transactions
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+
+    const transactionsSnapshot = await bexlyDb
+      .collection("users")
+      .doc(user.bexlyUserId)
+      .collection("data")
+      .doc("transactions")
+      .collection("items")
+      .where("date", ">=", startOfMonth)
+      .get();
+
+    // Get user's default currency from first wallet
+    let defaultCurrency = "USD";
+    const walletsSnapshot = await bexlyDb
+      .collection("users")
+      .doc(user.bexlyUserId)
+      .collection("data")
+      .doc("wallets")
+      .collection("items")
+      .limit(1)
+      .get();
+
+    if (!walletsSnapshot.empty) {
+      defaultCurrency = walletsSnapshot.docs[0].data().currency || "USD";
+    }
+
+    let totalExpense = 0;
+    let totalIncome = 0;
+    const categoryTotals: Record<string, number> = {};
+    const dailyExpenses: Record<number, number> = {};
+
+    transactionsSnapshot.forEach(doc => {
+      const tx = doc.data();
+      const txDate = tx.date.toDate ? tx.date.toDate() : new Date(tx.date);
+      const day = txDate.getDate();
+
+      // transactionType: 0 = income, 1 = expense
+      if (tx.transactionType === 1) {
+        totalExpense += tx.amount;
+        const category = tx.title || "Other";
+        categoryTotals[category] = (categoryTotals[category] || 0) + tx.amount;
+        dailyExpenses[day] = (dailyExpenses[day] || 0) + tx.amount;
+      } else {
+        totalIncome += tx.amount;
+      }
+    });
+
+    const monthName = now.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    let message = `📅 *${monthName}*\n\n`;
+
+    message += `📈 Total Income: ${formatCurrency(totalIncome, defaultCurrency)}\n`;
+    message += `📉 Total Expense: ${formatCurrency(totalExpense, defaultCurrency)}\n`;
+    message += `💵 Net: ${formatCurrency(totalIncome - totalExpense, defaultCurrency)}\n\n`;
+
+    // Calculate daily average
+    const daysElapsed = now.getDate();
+    const dailyAvg = totalExpense / daysElapsed;
+    message += `📊 Daily Avg Expense: ${formatCurrency(dailyAvg, defaultCurrency)}\n\n`;
+
+    if (Object.keys(categoryTotals).length > 0) {
+      message += "*Top Expenses:*\n";
+      const sorted = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+      for (const [title, amount] of sorted.slice(0, 7)) {
+        const percent = ((amount / totalExpense) * 100).toFixed(1);
+        message += `• ${title}: ${formatCurrency(amount, defaultCurrency)} (${percent}%)\n`;
       }
     }
 

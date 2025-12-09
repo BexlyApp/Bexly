@@ -62,6 +62,13 @@ flutter build web              # Web version
 flutter build windows          # Windows desktop
 ```
 
+**IMPORTANT: Android Bundle Build Warning**
+- Lệnh `flutter build appbundle` có thể hiện lỗi "failed to strip debug symbols from native libraries"
+- **ĐÂY CHỈ LÀ WARNING, KHÔNG PHẢI LỖI** - Bundle vẫn được tạo thành công
+- File output: `build/app/outputs/bundle/release/app-release.aab`
+- KHÔNG cần build lại nhiều lần khi thấy warning này
+- Kiểm tra file đã tồn tại bằng: `dir build\app\outputs\bundle\release`
+
 ### App Icons
 ```bash
 # Regenerate app icons after changes to flutter_launcher_icons.yaml
