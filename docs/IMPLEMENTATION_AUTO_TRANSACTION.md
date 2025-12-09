@@ -134,6 +134,154 @@ bool isSimilar(Transaction a, Transaction b) {
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Multi-Wallet per Sender (Account Identifier)
+
+One bank sender (e.g., Vietcombank SMS) can have multiple accounts:
+- Checking account
+- Savings account
+- Credit card 1
+- Credit card 2
+
+```dart
+// Enhanced mapping: sender + account_identifier → wallet
+class BankWalletMapping {
+  final String senderId;        // SMS sender or package name
+  final String bankName;
+  final String bankCode;
+  final String? accountId;      // Last 4 digits or card number suffix
+  final int walletId;
+  final DateTime createdAt;
+}
+
+// Detect account from message
+class AccountIdentifier {
+  /// Extract account identifier from SMS/notification
+  /// Returns last 4 digits of account/card number
+  static String? extractFromMessage(String message) {
+    // Pattern: TK ****1234, TK: 1234567890, thẻ ****5678
+    final patterns = [
+      RegExp(r'TK[:\s]*\*+(\d{4})'),           // TK ****1234
+      RegExp(r'TK[:\s]*(\d{4,})'),             // TK: 1234567890 -> take last 4
+      RegExp(r'thẻ[:\s]*\*+(\d{4})', caseSensitive: false),  // thẻ ****5678
+      RegExp(r'card[:\s]*\*+(\d{4})', caseSensitive: false), // card ****5678
+      RegExp(r'(\d{4})\s*(?:VND|đ)\s*(?:SD|số dư)', caseSensitive: false), // 1234 VND SD
+    ];
+
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(message);
+      if (match != null) {
+        final digits = match.group(1)!;
+        // Return last 4 digits
+        return digits.length > 4 ? digits.substring(digits.length - 4) : digits;
+      }
+    }
+    return null;
+  }
+}
+
+// Flow when account detected:
+// 1. New SMS from VCB with account ****1234
+// 2. Check mapping: VCB + 1234 → wallet_id?
+// 3. If found → use that wallet
+// 4. If not found → check if VCB has any mapping
+//    - If yes with different account → ask user "New account detected, create wallet?"
+//    - If no → treat as new sender, ask to create wallet
+```
+
+### Notification Pending Flow
+
+Since notifications are real-time only, we store them locally and process when user opens app:
+
+```dart
+// Pending notification storage
+class PendingNotification {
+  final String id;              // UUID
+  final String packageName;     // App package
+  final String bankName;
+  final String? bankCode;
+  final String title;
+  final String text;
+  final String? accountId;      // Extracted account identifier
+  final DateTime receivedAt;
+  final bool processed;         // Already shown to user?
+
+  String toJson() => jsonEncode({...});
+  static PendingNotification fromJson(String json) => ...;
+}
+
+class NotificationPendingStorage {
+  static const _key = 'pending_notifications';
+
+  /// Store notification when received in background
+  Future<void> addPending(PendingNotification notification) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_key) ?? [];
+    list.add(notification.toJson());
+
+    // Keep max 100 pending
+    if (list.length > 100) {
+      list.removeRange(0, list.length - 100);
+    }
+
+    await prefs.setStringList(_key, list);
+  }
+
+  /// Get all unprocessed notifications
+  Future<List<PendingNotification>> getUnprocessed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_key) ?? [];
+    return list
+        .map((json) => PendingNotification.fromJson(json))
+        .where((n) => !n.processed)
+        .toList();
+  }
+
+  /// Mark as processed
+  Future<void> markProcessed(String id) async {...}
+
+  /// Clear old entries
+  Future<void> cleanup({Duration maxAge = const Duration(days: 7)}) async {...}
+}
+```
+
+### App Startup Flow for Pending Notifications
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                      APP STARTUP                              │
+├──────────────────────────────────────────────────────────────┤
+│                                                               │
+│  Check pending_notifications (SharedPreferences)              │
+│                            │                                  │
+│                            ▼                                  │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │ For each unprocessed notification:                       │ │
+│  │                                                          │ │
+│  │ 1. Check if sender has mapping                          │ │
+│  │    - With same accountId → Create transaction silently   │ │
+│  │    - With different accountId → New account detected     │ │
+│  │    - No mapping at all → New sender detected             │ │
+│  │                                                          │ │
+│  │ 2. Group new senders/accounts                           │ │
+│  │                                                          │ │
+│  │ 3. Show dialog if any new found:                        │ │
+│  │    "Phát hiện X giao dịch từ ngân hàng mới"             │ │
+│  │    [TPBank - ****1234] 3 transactions                   │ │
+│  │    [VCB - ****5678] 2 transactions                      │ │
+│  │                                                          │ │
+│  │    Each item has options:                               │ │
+│  │    ○ Create new wallet                                  │ │
+│  │    ○ Link to existing wallet [dropdown]                 │ │
+│  │    ○ Ignore                                             │ │
+│  │                                                          │ │
+│  │ 4. User confirms → Create wallets + mappings            │ │
+│  │ 5. Import all pending transactions                       │ │
+│  │ 6. Mark notifications as processed                       │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                                                               │
+└──────────────────────────────────────────────────────────────┘
+```
+
 ### Transfer Detection (Bank A → Bank B)
 
 When user transfers money between their own accounts:

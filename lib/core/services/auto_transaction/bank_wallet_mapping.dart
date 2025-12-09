@@ -2,12 +2,20 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/utils/logger.dart';
 
-/// Represents a mapping between a bank sender and a wallet
+/// Represents a mapping between a bank sender (with optional account identifier) and a wallet
+///
+/// Account identifier is used to support multiple wallets per sender.
+/// For example, a user might have multiple accounts at the same bank:
+/// - Checking account (****1234)
+/// - Savings account (****5678)
+/// - Credit card (****9012)
 class BankWalletMapping {
   final String senderId;
   final String bankName;
   final String bankCode;
   final int walletId;
+  final String? accountId; // Last 4 digits of account/card number
+  final String? accountType; // 'checking', 'savings', 'credit', etc.
   final DateTime createdAt;
 
   BankWalletMapping({
@@ -15,14 +23,23 @@ class BankWalletMapping {
     required this.bankName,
     required this.bankCode,
     required this.walletId,
+    this.accountId,
+    this.accountType,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
+
+  /// Unique key for this mapping (sender + accountId)
+  String get mappingKey => accountId != null
+      ? '${senderId.toLowerCase()}_$accountId'
+      : senderId.toLowerCase();
 
   Map<String, dynamic> toJson() => {
         'senderId': senderId,
         'bankName': bankName,
         'bankCode': bankCode,
         'walletId': walletId,
+        'accountId': accountId,
+        'accountType': accountType,
         'createdAt': createdAt.toIso8601String(),
       };
 
@@ -32,12 +49,14 @@ class BankWalletMapping {
       bankName: json['bankName'] as String,
       bankCode: json['bankCode'] as String,
       walletId: json['walletId'] as int,
+      accountId: json['accountId'] as String?,
+      accountType: json['accountType'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }
 
   @override
-  String toString() => 'BankWalletMapping($bankName -> walletId: $walletId)';
+  String toString() => 'BankWalletMapping($bankName${accountId != null ? ' ****$accountId' : ''} -> walletId: $walletId)';
 }
 
 /// Result of scanning SMS for bank senders
@@ -73,6 +92,7 @@ class ScannedTransaction {
   final String? description;
   final String rawMessage;
   final String currency;
+  final String? accountId; // Last 4 digits of account/card number
 
   ScannedTransaction({
     required this.amount,
@@ -82,6 +102,7 @@ class ScannedTransaction {
     this.description,
     required this.rawMessage,
     this.currency = 'VND',
+    this.accountId,
   });
 }
 
@@ -105,31 +126,65 @@ class BankWalletMappingService {
   }
 
   /// Get wallet ID for a sender
-  Future<int?> getWalletIdForSender(String senderId) async {
+  ///
+  /// If accountId is provided, first try to find exact match (sender + accountId).
+  /// If no exact match, fall back to sender-only mapping.
+  Future<int?> getWalletIdForSender(String senderId, {String? accountId}) async {
     final mappings = await getMappings();
     final normalizedSender = senderId.toLowerCase().trim();
 
+    // First, try exact match with accountId
+    if (accountId != null) {
+      for (final mapping in mappings) {
+        if ((mapping.senderId.toLowerCase() == normalizedSender ||
+                mapping.bankName.toLowerCase() == normalizedSender ||
+                normalizedSender.contains(mapping.senderId.toLowerCase()) ||
+                normalizedSender.contains(mapping.bankName.toLowerCase())) &&
+            mapping.accountId == accountId) {
+          return mapping.walletId;
+        }
+      }
+    }
+
+    // Fall back to sender-only mapping (no accountId or accountId is null in mapping)
     for (final mapping in mappings) {
-      if (mapping.senderId.toLowerCase() == normalizedSender ||
-          mapping.bankName.toLowerCase() == normalizedSender ||
-          normalizedSender.contains(mapping.senderId.toLowerCase()) ||
-          normalizedSender.contains(mapping.bankName.toLowerCase())) {
+      if ((mapping.senderId.toLowerCase() == normalizedSender ||
+              mapping.bankName.toLowerCase() == normalizedSender ||
+              normalizedSender.contains(mapping.senderId.toLowerCase()) ||
+              normalizedSender.contains(mapping.bankName.toLowerCase())) &&
+          mapping.accountId == null) {
         return mapping.walletId;
       }
     }
+
     return null;
   }
 
+  /// Get all wallets for a sender (for multi-wallet per sender)
+  Future<List<BankWalletMapping>> getMappingsForSender(String senderId) async {
+    final mappings = await getMappings();
+    final normalizedSender = senderId.toLowerCase().trim();
+
+    return mappings.where((mapping) {
+      return mapping.senderId.toLowerCase() == normalizedSender ||
+          mapping.bankName.toLowerCase() == normalizedSender ||
+          normalizedSender.contains(mapping.senderId.toLowerCase()) ||
+          normalizedSender.contains(mapping.bankName.toLowerCase());
+    }).toList();
+  }
+
   /// Add a new mapping
+  ///
+  /// If a mapping with the same sender + accountId exists, it will be replaced.
   Future<void> addMapping(BankWalletMapping mapping) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final jsonList = prefs.getStringList(_storageKey) ?? [];
 
-      // Remove existing mapping for this sender if any
+      // Remove existing mapping for this sender + accountId combination
       jsonList.removeWhere((json) {
         final existing = BankWalletMapping.fromJson(jsonDecode(json));
-        return existing.senderId.toLowerCase() == mapping.senderId.toLowerCase();
+        return existing.mappingKey == mapping.mappingKey;
       });
 
       jsonList.add(jsonEncode(mapping.toJson()));

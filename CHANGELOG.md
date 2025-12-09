@@ -5,25 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.0.9+369] - 2025-12-09
 
 ### Added
-- **Apple Sign In** setup for Android (Firebase configured with Service ID, Team ID, Key ID)
-- **iOS Build Workflow** improvements (macos-15 runner for Xcode 16 support)
-- **Telegram Bot: Default Wallet Sync**
-  - App now syncs `defaultWalletCloudId` to Firestore when user sets default wallet
-  - Telegram bot reads default wallet from user settings instead of picking first wallet
-  - Fallback to first wallet if no default is set
-- **Filter Form Localization** - All filter labels (Income, Expense, Transfer, Category, Wallet) now support 14 languages
+- **Auto Transaction from SMS** (Android)
+  - Scan SMS inbox to detect bank transactions
+  - Support Vietnamese banks: Vietcombank, Techcombank, TPBank, BIDV, MB Bank, ACB, VPBank, etc.
+  - Auto-create wallets for detected bank accounts
+  - Link bank SMS to existing wallets
+  - Import historical transactions from SMS
+- **Auto Transaction from Notifications** (Android)
+  - Listen for banking app push notifications
+  - Store pending notifications when app is in background
+  - Process pending notifications on app startup
+  - Support multi-account per bank (detect account by last 4 digits)
+- **Telegram Bot Integration**
+  - Create transactions via Telegram chat
+  - AI-powered transaction parsing with Gemini
+  - Link/unlink Telegram account from app
+  - Default wallet sync to Firestore for bot
+- **Subscription System**
+  - Free tier with ads and limited AI messages
+  - Plus tier ($2.99/month) with no ads and more AI
+  - Pro tier ($5.99/month) with unlimited AI
+  - AI usage tracking and limits
+- **AdMob Integration** for free tier users
+- **Apple Sign In** setup for Android
+- **Filter Form Localization** - All filter labels support 14 languages
+- **Dedicated Language Settings Screen**
 
 ### Fixed
-- **Facebook App ID** corrected from DOS app to Bexly app (1583820202985076)
-- Removed unused `oidc` and `flutter_web_auth_2` packages to resolve AppAuth version conflict
-- **Notification delete dialog** now uses proper bottom sheet format (AlertBottomSheet)
+- Facebook App ID corrected for Bexly app
+- iOS build workflow improvements (Xcode 16 support)
+- Notification delete dialog uses proper bottom sheet format
+- Various UI improvements and localization fixes
 
 ### Changed
-- iOS workflow simplified to signed builds only (removed unsigned job)
+- iOS workflow simplified to signed builds only
 - Upgraded `google_sign_in` from 6.2.0 to 6.3.0
+- Improved notification card UI
 
 ---
 

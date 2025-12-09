@@ -12,15 +12,29 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/services/auto_transaction/auto_transaction_service.dart';
-import 'package:bexly/core/services/auto_transaction/bank_wallet_mapping.dart';
 import 'package:bexly/features/settings/presentation/widgets/sms_scan_results_dialog.dart';
-import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/settings/presentation/widgets/sms_permission_dialog.dart';
+import 'package:bexly/features/settings/presentation/widgets/sms_date_range_bottom_sheet.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 
 /// Auto Transaction settings providers
 final autoTransactionSmsEnabledProvider = StateProvider<bool>((ref) => false);
 final autoTransactionNotificationEnabledProvider = StateProvider<bool>((ref) => false);
-final autoTransactionDefaultWalletIdProvider = StateProvider<int?>((ref) => null);
+
+/// Provider for pending notification count
+final pendingNotificationCountProvider = FutureProvider<int>((ref) async {
+  final autoService = ref.read(autoTransactionServiceProvider);
+  await autoService.initialize();
+  return await autoService.getPendingNotificationCount();
+});
+
+/// Provider for pending notification summary
+final pendingNotificationSummaryProvider = FutureProvider<PendingNotificationSummary>((ref) async {
+  final autoService = ref.read(autoTransactionServiceProvider);
+  await autoService.initialize();
+  return await autoService.checkPendingOnStartup();
+});
 
 class AutoTransactionSettingsScreen extends ConsumerStatefulWidget {
   const AutoTransactionSettingsScreen({super.key});
@@ -31,16 +45,80 @@ class AutoTransactionSettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _AutoTransactionSettingsScreenState
-    extends ConsumerState<AutoTransactionSettingsScreen> {
+    extends ConsumerState<AutoTransactionSettingsScreen>
+    with WidgetsBindingObserver {
   bool _isLoading = true;
   bool _isScanning = false;
   int _scanProgress = 0;
   int _scanTotal = 0;
+  bool _awaitingNotificationPermission = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadSettings();
+    _checkPendingPermissionRequest();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // When app resumes from background (e.g., user returns from Settings)
+    if (state == AppLifecycleState.resumed && _awaitingNotificationPermission) {
+      _checkNotificationPermissionAfterResume();
+    }
+  }
+
+  /// Check if there's a pending permission request from before app was killed
+  Future<void> _checkPendingPermissionRequest() async {
+    final prefs = await SharedPreferences.getInstance();
+    final pendingRequest = prefs.getBool('pending_notification_permission_request') ?? false;
+
+    if (pendingRequest) {
+      // Clear the flag first
+      await prefs.remove('pending_notification_permission_request');
+
+      // Check if permission was granted while we were away
+      final autoService = ref.read(autoTransactionServiceProvider);
+      await autoService.initialize();
+
+      final granted = await autoService.hasNotificationPermission();
+      if (granted) {
+        await autoService.setNotificationEnabled(true);
+        ref.read(autoTransactionNotificationEnabledProvider.notifier).state = true;
+        await _saveSetting('auto_transaction_notification_enabled', true);
+        Log.d('Notification permission granted (detected on restart)', label: 'AutoTransaction');
+      }
+    }
+  }
+
+  Future<void> _checkNotificationPermissionAfterResume() async {
+    _awaitingNotificationPermission = false;
+
+    // Clear the persistent flag
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('pending_notification_permission_request');
+
+    final autoService = ref.read(autoTransactionServiceProvider);
+    await autoService.initialize();
+
+    final granted = await autoService.hasNotificationPermission();
+    if (granted) {
+      await autoService.setNotificationEnabled(true);
+      ref.read(autoTransactionNotificationEnabledProvider.notifier).state = true;
+      await _saveSetting('auto_transaction_notification_enabled', true);
+      Log.d('Notification permission granted after resume', label: 'AutoTransaction');
+    } else {
+      Log.w('Notification permission not granted after resume', label: 'AutoTransaction');
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -51,8 +129,6 @@ class _AutoTransactionSettingsScreenState
           prefs.getBool('auto_transaction_sms_enabled') ?? false;
       ref.read(autoTransactionNotificationEnabledProvider.notifier).state =
           prefs.getBool('auto_transaction_notification_enabled') ?? false;
-      ref.read(autoTransactionDefaultWalletIdProvider.notifier).state =
-          prefs.getInt('auto_transaction_default_wallet_id');
 
       setState(() => _isLoading = false);
     } catch (e) {
@@ -79,6 +155,12 @@ class _AutoTransactionSettingsScreenState
 
   Future<void> _toggleSmsSetting(bool value) async {
     if (value) {
+      // Show permission explanation bottom sheet first
+      final shouldProceed = await SmsPermissionBottomSheet.show(context);
+      if (!shouldProceed) {
+        return;
+      }
+
       // Request SMS permission when enabling
       final status = await Permission.sms.request();
       if (!status.isGranted) {
@@ -128,6 +210,12 @@ class _AutoTransactionSettingsScreenState
 
   Future<void> _toggleNotificationSetting(bool value) async {
     if (value) {
+      // Show permission explanation bottom sheet first
+      final shouldProceed = await NotificationPermissionBottomSheet.show(context);
+      if (!shouldProceed) {
+        return;
+      }
+
       // Initialize auto transaction service and request notification permission
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.initialize();
@@ -135,64 +223,60 @@ class _AutoTransactionSettingsScreenState
       // Check if permission is granted
       final hasPermission = await autoService.hasNotificationPermission();
       if (!hasPermission) {
-        // Show dialog explaining that user needs to grant permission in settings
-        if (mounted) {
-          final shouldOpenSettings = await _showNotificationPermissionDialog();
-          if (shouldOpenSettings) {
-            await autoService.requestNotificationPermission();
-            // Check again after user returns from settings
-            await Future.delayed(const Duration(milliseconds: 500));
-            final granted = await autoService.hasNotificationPermission();
-            if (!granted) {
-              Log.w('Notification permission not granted', label: 'AutoTransaction');
-              return;
-            }
-          } else {
-            return;
-          }
+        // Set flag before opening system settings
+        // This allows us to check permission when app resumes
+        _awaitingNotificationPermission = true;
+
+        // Save to SharedPreferences in case app gets killed while in settings
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('pending_notification_permission_request', true);
+
+        // Open system settings - app may be killed while in settings
+        await autoService.requestNotificationPermission();
+
+        // If we get here, app wasn't killed - check permission directly
+        // Wait a bit for settings to apply
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (!mounted) return;
+
+        final granted = await autoService.hasNotificationPermission();
+        if (granted) {
+          _awaitingNotificationPermission = false;
+          // Clear the persistent flag
+          await prefs.remove('pending_notification_permission_request');
+          await autoService.setNotificationEnabled(true);
+          ref.read(autoTransactionNotificationEnabledProvider.notifier).state = true;
+          await _saveSetting('auto_transaction_notification_enabled', true);
+        } else {
+          _awaitingNotificationPermission = false;
+          // Clear the persistent flag
+          await prefs.remove('pending_notification_permission_request');
+          Log.w('Notification permission not granted', label: 'AutoTransaction');
         }
+        return;
       }
 
+      // Permission already granted
       await autoService.setNotificationEnabled(true);
+      ref.read(autoTransactionNotificationEnabledProvider.notifier).state = true;
+      await _saveSetting('auto_transaction_notification_enabled', true);
     } else {
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.setNotificationEnabled(false);
+      ref.read(autoTransactionNotificationEnabledProvider.notifier).state = false;
+      await _saveSetting('auto_transaction_notification_enabled', false);
     }
-
-    ref.read(autoTransactionNotificationEnabledProvider.notifier).state = value;
-    await _saveSetting('auto_transaction_notification_enabled', value);
-  }
-
-  Future<bool> _showNotificationPermissionDialog() async {
-    return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.autoTransactionNotificationTitle),
-        content: const Text(
-          'This feature requires Notification Access permission. '
-          'You will be taken to system settings to enable it for Bexly.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    ) ?? false;
-  }
-
-  Future<void> _setDefaultWallet(int? walletId) async {
-    ref.read(autoTransactionDefaultWalletIdProvider.notifier).state = walletId;
-    await _saveSetting('auto_transaction_default_wallet_id', walletId);
   }
 
   Future<void> _scanSmsForBanks() async {
-    // Request SMS permission first
+    // Show date range selection bottom sheet first
+    final dateRange = await SmsDateRangeBottomSheet.show(context);
+    if (dateRange == null) {
+      return; // User cancelled
+    }
+
+    // Request SMS permission
     final status = await Permission.sms.request();
     if (!status.isGranted) {
       if (mounted) {
@@ -229,6 +313,7 @@ class _AutoTransactionSettingsScreenState
       await autoService.initialize();
 
       final results = await autoService.scanSmsForBankSenders(
+        startDate: dateRange.startDate,
         onProgress: (current, total) {
           setState(() {
             _scanProgress = current;
@@ -394,8 +479,6 @@ class _AutoTransactionSettingsScreenState
 
     final smsEnabled = ref.watch(autoTransactionSmsEnabledProvider);
     final notificationEnabled = ref.watch(autoTransactionNotificationEnabledProvider);
-    final defaultWalletId = ref.watch(autoTransactionDefaultWalletIdProvider);
-    final walletsAsync = ref.watch(allWalletsStreamProvider);
 
     return CustomScaffold(
       context: context,
@@ -443,18 +526,12 @@ class _AutoTransactionSettingsScreenState
               onChanged: _toggleNotificationSetting,
             ),
 
-            const SizedBox(height: AppSpacing.spacing24),
+            // Pending Notifications Section (only show if notification is enabled)
+            if (notificationEnabled) ...[
+              const SizedBox(height: AppSpacing.spacing12),
+              _buildPendingNotificationsSection(),
+            ],
           ],
-
-          // Default Wallet Section
-          _buildSectionTitle(context.l10n.autoTransactionDefaultWallet),
-          const SizedBox(height: AppSpacing.spacing12),
-
-          walletsAsync.when(
-            data: (wallets) => _buildWalletSelector(wallets, defaultWalletId),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Error: $e'),
-          ),
 
           // Platform notice for iOS
           if (!isAndroid) ...[
@@ -502,7 +579,7 @@ class _AutoTransactionSettingsScreenState
 
   Widget _buildInfoCard() {
     return Card(
-      color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+      color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.spacing16),
         child: Row(
@@ -567,53 +644,185 @@ class _AutoTransactionSettingsScreenState
     );
   }
 
-  Widget _buildWalletSelector(List<WalletModel> wallets, int? selectedId) {
-    return Card(
-      child: Column(
-        children: [
-          // Default (use active wallet) option
-          RadioListTile<int?>(
-            title: Text(
-              context.l10n.autoTransactionUseActiveWallet,
-              style: AppTextStyles.body3,
-            ),
-            subtitle: Text(
-              context.l10n.autoTransactionUseActiveWalletDescription,
-              style: AppTextStyles.body4.copyWith(
-                color: AppColors.neutral500,
+  Widget _buildPendingNotificationsSection() {
+    final pendingAsync = ref.watch(pendingNotificationSummaryProvider);
+
+    return pendingAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (summary) {
+        if (summary.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Card(
+          color: Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ListTile(
+                leading: Badge(
+                  label: Text('${summary.totalNotifications}'),
+                  child: Icon(
+                    HugeIcons.strokeRoundedNotificationBubble,
+                    color: Theme.of(context).colorScheme.tertiary,
+                  ),
+                ),
+                title: Text(
+                  'Pending Notifications',
+                  style: AppTextStyles.body3.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  '${summary.totalNotifications} transactions from ${summary.groups.length} source(s)',
+                  style: AppTextStyles.body4.copyWith(
+                    color: AppColors.neutral500,
+                  ),
+                ),
+                trailing: Icon(
+                  HugeIcons.strokeRoundedArrowRight01,
+                  color: AppColors.neutral400,
+                ),
+                onTap: () => _showPendingNotificationsDialog(summary),
               ),
-            ),
-            value: null,
-            groupValue: selectedId,
-            onChanged: (value) => _setDefaultWallet(value),
+              // Show preview of groups
+              if (summary.groups.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: AppSpacing.spacing16,
+                    right: AppSpacing.spacing16,
+                    bottom: AppSpacing.spacing12,
+                  ),
+                  child: Wrap(
+                    spacing: AppSpacing.spacing8,
+                    runSpacing: AppSpacing.spacing8,
+                    children: summary.groups.take(3).map((group) {
+                      return Chip(
+                        avatar: CircleAvatar(
+                          backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          child: Text(
+                            '${group.notificationCount}',
+                            style: AppTextStyles.body5.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        label: Text(
+                          group.displayName,
+                          style: AppTextStyles.body5,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+            ],
           ),
+        );
+      },
+    );
+  }
 
-          const Divider(height: 1),
+  Future<void> _showPendingNotificationsDialog(PendingNotificationSummary summary) async {
+    final wallets = ref.read(allWalletsStreamProvider).valueOrNull ?? [];
 
-          // Wallet options
-          ...wallets.map((wallet) => RadioListTile<int?>(
-            title: Text(
-              wallet.name,
-              style: AppTextStyles.body3,
-            ),
-            subtitle: Text(
-              wallet.currency,
-              style: AppTextStyles.body4.copyWith(
-                color: AppColors.neutral500,
-              ),
-            ),
-            value: wallet.id,
-            groupValue: selectedId,
-            onChanged: (value) => _setDefaultWallet(value),
-          )),
-        ],
+    final result = await showDialog<Map<String, int?>>(
+      context: context,
+      builder: (context) => _PendingNotificationsDialog(
+        summary: summary,
+        existingWallets: wallets,
       ),
     );
+
+    if (result != null && result.isNotEmpty) {
+      await _processPendingWithMapping(summary, result);
+    }
+  }
+
+  Future<void> _processPendingWithMapping(
+    PendingNotificationSummary summary,
+    Map<String, int?> mappingDecisions, // mappingKey -> walletId (null = create new)
+  ) async {
+    final autoService = ref.read(autoTransactionServiceProvider);
+
+    // Build the wallet map
+    final bankAccountToWalletMap = <String, int>{};
+
+    for (final group in summary.groups) {
+      final decision = mappingDecisions[group.mappingKey];
+
+      if (decision == null) {
+        // Create new wallet
+        final wallet = await autoService.createWalletForPendingNotifications(
+          bankCode: group.bankCode,
+          accountId: group.accountId,
+          bankName: group.bankName,
+          currency: 'VND', // Default to VND, could detect from notifications
+          accountType: group.accountType,
+        );
+
+        if (wallet?.id != null) {
+          bankAccountToWalletMap[group.mappingKey] = wallet!.id!;
+        }
+      } else if (decision > 0) {
+        // Link to existing wallet
+        bankAccountToWalletMap[group.mappingKey] = decision;
+      }
+      // decision == 0 means ignore
+    }
+
+    if (bankAccountToWalletMap.isEmpty) {
+      return;
+    }
+
+    // Show processing dialog
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: AppSpacing.spacing16),
+              Text('Processing pending notifications...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Process pending notifications
+    final result = await autoService.processPendingNotifications(
+      bankAccountToWalletMap: bankAccountToWalletMap,
+    );
+
+    // Close processing dialog
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+
+    // Show results
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Processed ${result.processed} transactions, ${result.skipped} skipped',
+          ),
+        ),
+      );
+
+      // Refresh the pending count
+      ref.invalidate(pendingNotificationCountProvider);
+      ref.invalidate(pendingNotificationSummaryProvider);
+    }
   }
 
   Widget _buildPlatformNotice() {
     return Card(
-      color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.3),
+      color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.spacing16),
         child: Row(
@@ -631,6 +840,193 @@ class _AutoTransactionSettingsScreenState
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Dialog to manage pending notifications
+class _PendingNotificationsDialog extends StatefulWidget {
+  final PendingNotificationSummary summary;
+  final List<WalletModel> existingWallets;
+
+  const _PendingNotificationsDialog({
+    required this.summary,
+    required this.existingWallets,
+  });
+
+  @override
+  State<_PendingNotificationsDialog> createState() => _PendingNotificationsDialogState();
+}
+
+class _PendingNotificationsDialogState extends State<_PendingNotificationsDialog> {
+  // mappingKey -> walletId (null = create new, 0 = ignore)
+  late Map<String, int?> _decisions;
+
+  @override
+  void initState() {
+    super.initState();
+    _decisions = {};
+    // Default: create new wallet for each group
+    for (final group in widget.summary.groups) {
+      _decisions[group.mappingKey] = group.existingWalletId; // Use existing if already mapped
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            HugeIcons.strokeRoundedNotificationBubble,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: AppSpacing.spacing12),
+          Expanded(
+            child: Text(
+              'Pending Notifications',
+              style: AppTextStyles.heading5,
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${widget.summary.totalNotifications} transaction(s) from ${widget.summary.groups.length} source(s) are waiting to be processed.',
+              style: AppTextStyles.body4.copyWith(
+                color: AppColors.neutral500,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.spacing16),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: widget.summary.groups.length,
+                itemBuilder: (context, index) {
+                  final group = widget.summary.groups[index];
+                  return _buildGroupItem(group);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _decisions.values.any((v) => v != 0)
+              ? () => Navigator.of(context).pop(_decisions)
+              : null,
+          child: const Text('Process'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGroupItem(PendingNotificationGroup group) {
+    final decision = _decisions[group.mappingKey];
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.spacing8),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.spacing12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  child: Icon(
+                    HugeIcons.strokeRoundedBank,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.spacing12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.displayName,
+                        style: AppTextStyles.body3.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '${group.notificationCount} transaction(s)',
+                        style: AppTextStyles.body4.copyWith(
+                          color: AppColors.neutral500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.spacing12),
+            // Action selector
+            DropdownButtonFormField<int?>(
+              initialValue: decision,
+              decoration: InputDecoration(
+                labelText: 'Action',
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.spacing12,
+                  vertical: AppSpacing.spacing8,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              items: [
+                const DropdownMenuItem<int?>(
+                  value: null,
+                  child: Row(
+                    children: [
+                      Icon(Icons.add, size: 18),
+                      SizedBox(width: AppSpacing.spacing8),
+                      Text('Create new wallet'),
+                    ],
+                  ),
+                ),
+                const DropdownMenuItem<int?>(
+                  value: 0,
+                  child: Row(
+                    children: [
+                      Icon(Icons.close, size: 18),
+                      SizedBox(width: AppSpacing.spacing8),
+                      Text('Ignore'),
+                    ],
+                  ),
+                ),
+                ...widget.existingWallets
+                    .where((wallet) => wallet.id != null)
+                    .map((wallet) => DropdownMenuItem<int?>(
+                          value: wallet.id!,
+                          child: Text(
+                            '${wallet.name} (${wallet.currency})',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        )),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _decisions[group.mappingKey] = value;
+                });
+              },
             ),
           ],
         ),
