@@ -11,6 +11,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
 
+    <!-- SMS permissions for Auto Transaction feature (Android only) -->
+    <uses-permission android:name="android.permission.READ_SMS"/>
+    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
+
     <!-- Permissions for reading and writing to external storage -->
     <!-- Required for Android 12 (API 32) and below -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
