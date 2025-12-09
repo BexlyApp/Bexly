@@ -409,6 +409,33 @@ class AppLocalizations {
       'notifWeeklyReportBody': 'Check out your spending summary from last week',
       'notifMonthlyReportTitle': 'Monthly Financial Report',
       'notifMonthlyReportBody': 'Your complete financial summary for last month is ready',
+      // Auto Transaction
+      'autoTransaction': 'Auto Transaction',
+      'autoTransactionInfo': 'Automatically create transactions from bank SMS messages and notifications. Transactions are created instantly and you can edit or delete them anytime.',
+      'autoTransactionSms': 'SMS Parsing',
+      'autoTransactionSmsTitle': 'Parse Bank SMS',
+      'autoTransactionSmsDescription': 'Automatically detect and create transactions from bank SMS messages',
+      'autoTransactionNotification': 'Notification Listener',
+      'autoTransactionNotificationTitle': 'Parse Bank Notifications',
+      'autoTransactionNotificationDescription': 'Automatically detect and create transactions from banking app notifications',
+      'autoTransactionDefaultWallet': 'Default Wallet',
+      'autoTransactionUseActiveWallet': 'Use Active Wallet',
+      'autoTransactionUseActiveWalletDescription': 'Transactions will be added to your currently selected wallet',
+      'autoTransactionIosNotice': 'Auto transaction from SMS and notifications is only available on Android. iOS does not allow apps to read SMS messages or notifications from other apps.',
+      'autoTransactionScanSms': 'Scan SMS',
+      'autoTransactionScanning': 'Scanning SMS...',
+      'autoTransactionScanResultsTitle': 'Banks Found',
+      'autoTransactionScanResultsDescription': 'Found {count} banks/e-wallets in your SMS',
+      'autoTransactionCreateWallets': 'Create Wallets ({count})',
+      'autoTransactionTargetWallet': 'Target Wallet',
+      'autoTransactionCreateNewWallet': 'Create New Wallet',
+      'autoTransactionImporting': 'Importing from {bank}...',
+      'autoTransactionImportComplete': 'Import Complete',
+      'autoTransactionWalletsCreated': '{count} wallets created',
+      'autoTransactionTransactionsImported': '{count} transactions imported',
+      'autoTransactionDuplicatesSkipped': '{count} duplicates skipped',
+      'autoTransactionNoResults': 'No bank SMS found',
+      'autoTransactionNoResultsDescription': 'We couldn\'t find any SMS from known banks. Make sure you have SMS from your bank in your inbox.',
     },
     'vi': {
       'appTitle': 'Bexly',
@@ -796,6 +823,33 @@ class AppLocalizations {
       'notifWeeklyReportBody': 'Xem tổng hợp chi tiêu tuần trước của bạn',
       'notifMonthlyReportTitle': 'Báo cáo tài chính tháng',
       'notifMonthlyReportBody': 'Báo cáo tài chính đầy đủ tháng trước đã sẵn sàng',
+      // Auto Transaction
+      'autoTransaction': 'Giao dịch tự động',
+      'autoTransactionInfo': 'Tự động tạo giao dịch từ SMS ngân hàng và thông báo. Giao dịch được tạo ngay lập tức và bạn có thể chỉnh sửa hoặc xóa bất cứ lúc nào.',
+      'autoTransactionSms': 'Đọc SMS',
+      'autoTransactionSmsTitle': 'Đọc SMS ngân hàng',
+      'autoTransactionSmsDescription': 'Tự động phát hiện và tạo giao dịch từ tin nhắn SMS ngân hàng',
+      'autoTransactionNotification': 'Đọc thông báo',
+      'autoTransactionNotificationTitle': 'Đọc thông báo ngân hàng',
+      'autoTransactionNotificationDescription': 'Tự động phát hiện và tạo giao dịch từ thông báo ứng dụng ngân hàng',
+      'autoTransactionDefaultWallet': 'Ví mặc định',
+      'autoTransactionUseActiveWallet': 'Dùng ví đang chọn',
+      'autoTransactionUseActiveWalletDescription': 'Giao dịch sẽ được thêm vào ví bạn đang chọn',
+      'autoTransactionIosNotice': 'Giao dịch tự động từ SMS và thông báo chỉ khả dụng trên Android. iOS không cho phép ứng dụng đọc SMS hoặc thông báo từ ứng dụng khác.',
+      'autoTransactionScanSms': 'Quét SMS',
+      'autoTransactionScanning': 'Đang quét SMS...',
+      'autoTransactionScanResultsTitle': 'Ngân hàng tìm thấy',
+      'autoTransactionScanResultsDescription': 'Tìm thấy {count} ngân hàng/ví điện tử trong SMS',
+      'autoTransactionCreateWallets': 'Tạo ví ({count})',
+      'autoTransactionTargetWallet': 'Ví đích',
+      'autoTransactionCreateNewWallet': 'Tạo ví mới',
+      'autoTransactionImporting': 'Đang import từ {bank}...',
+      'autoTransactionImportComplete': 'Import hoàn tất',
+      'autoTransactionWalletsCreated': 'Đã tạo {count} ví',
+      'autoTransactionTransactionsImported': 'Đã import {count} giao dịch',
+      'autoTransactionDuplicatesSkipped': 'Đã bỏ qua {count} giao dịch trùng',
+      'autoTransactionNoResults': 'Không tìm thấy SMS ngân hàng',
+      'autoTransactionNoResultsDescription': 'Không tìm thấy SMS từ ngân hàng đã biết. Hãy đảm bảo bạn có SMS từ ngân hàng trong hộp thư.',
     },
     'zh': {
       'appTitle': 'Bexly',
@@ -1159,6 +1213,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': '查看上周的支出摘要',
       'notifMonthlyReportTitle': '月度财务报告',
       'notifMonthlyReportBody': '上个月的完整财务报告已准备就绪',
+      // Auto Transaction
+      'autoTransaction': '自动交易',
+      'autoTransactionInfo': '自动从银行短信和通知创建交易。交易立即创建，您可以随时编辑或删除。',
+      'autoTransactionSms': '短信解析',
+      'autoTransactionSmsTitle': '解析银行短信',
+      'autoTransactionSmsDescription': '自动检测并从银行短信创建交易',
+      'autoTransactionNotification': '通知监听',
+      'autoTransactionNotificationTitle': '解析银行通知',
+      'autoTransactionNotificationDescription': '自动检测并从银行应用通知创建交易',
+      'autoTransactionDefaultWallet': '默认钱包',
+      'autoTransactionUseActiveWallet': '使用当前钱包',
+      'autoTransactionUseActiveWalletDescription': '交易将添加到您当前选择的钱包',
+      'autoTransactionIosNotice': '短信和通知的自动交易仅在Android上可用。iOS不允许应用读取短信或其他应用的通知。',
     },
     'fr': {
       'appTitle': 'Bexly',
@@ -1522,6 +1589,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': 'Consultez le résumé de vos dépenses de la semaine dernière',
       'notifMonthlyReportTitle': 'Rapport financier mensuel',
       'notifMonthlyReportBody': 'Votre rapport financier complet du mois dernier est prêt',
+      // Auto Transaction
+      'autoTransaction': 'Transaction automatique',
+      'autoTransactionInfo': 'Créez automatiquement des transactions à partir des SMS et notifications bancaires. Les transactions sont créées instantanément et vous pouvez les modifier ou les supprimer à tout moment.',
+      'autoTransactionSms': 'Analyse SMS',
+      'autoTransactionSmsTitle': 'Analyser les SMS bancaires',
+      'autoTransactionSmsDescription': 'Détectez et créez automatiquement des transactions à partir des SMS bancaires',
+      'autoTransactionNotification': 'Écoute des notifications',
+      'autoTransactionNotificationTitle': 'Analyser les notifications bancaires',
+      'autoTransactionNotificationDescription': 'Détectez et créez automatiquement des transactions à partir des notifications des apps bancaires',
+      'autoTransactionDefaultWallet': 'Portefeuille par défaut',
+      'autoTransactionUseActiveWallet': 'Utiliser le portefeuille actif',
+      'autoTransactionUseActiveWalletDescription': 'Les transactions seront ajoutées à votre portefeuille actuellement sélectionné',
+      'autoTransactionIosNotice': 'La transaction automatique par SMS et notifications n\'est disponible que sur Android. iOS ne permet pas aux apps de lire les SMS ou les notifications d\'autres apps.',
     },
     'th': {
       'appTitle': 'Bexly',
@@ -1874,6 +1954,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': 'ดูสรุปการใช้จ่ายของสัปดาห์ที่ผ่านมา',
       'notifMonthlyReportTitle': 'รายงานการเงินประจำเดือน',
       'notifMonthlyReportBody': 'สรุปการเงินของเดือนที่ผ่านมาพร้อมแล้ว',
+      // Auto Transaction
+      'autoTransaction': 'ธุรกรรมอัตโนมัติ',
+      'autoTransactionInfo': 'สร้างธุรกรรมอัตโนมัติจาก SMS และการแจ้งเตือนจากธนาคาร ธุรกรรมจะถูกสร้างทันทีและคุณสามารถแก้ไขหรือลบได้ตลอดเวลา',
+      'autoTransactionSms': 'อ่าน SMS',
+      'autoTransactionSmsTitle': 'อ่าน SMS จากธนาคาร',
+      'autoTransactionSmsDescription': 'ตรวจจับและสร้างธุรกรรมอัตโนมัติจากข้อความ SMS ธนาคาร',
+      'autoTransactionNotification': 'ฟังการแจ้งเตือน',
+      'autoTransactionNotificationTitle': 'อ่านการแจ้งเตือนจากธนาคาร',
+      'autoTransactionNotificationDescription': 'ตรวจจับและสร้างธุรกรรมอัตโนมัติจากการแจ้งเตือนแอปธนาคาร',
+      'autoTransactionDefaultWallet': 'กระเป๋าเงินเริ่มต้น',
+      'autoTransactionUseActiveWallet': 'ใช้กระเป๋าเงินที่เลือก',
+      'autoTransactionUseActiveWalletDescription': 'ธุรกรรมจะถูกเพิ่มในกระเป๋าเงินที่คุณเลือกอยู่',
+      'autoTransactionIosNotice': 'ธุรกรรมอัตโนมัติจาก SMS และการแจ้งเตือนใช้ได้เฉพาะบน Android iOS ไม่อนุญาตให้แอปอ่าน SMS หรือการแจ้งเตือนจากแอปอื่น',
       // Dialog strings
       'deleteBudget': 'ลบงบประมาณ',
       'deleteBudgetConfirm': 'คุณแน่ใจหรือไม่ว่าต้องการลบงบประมาณนี้?',
@@ -2237,6 +2330,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': 'Lihat ringkasan pengeluaran minggu lalu',
       'notifMonthlyReportTitle': 'Laporan Keuangan Bulanan',
       'notifMonthlyReportBody': 'Ringkasan keuangan lengkap bulan lalu sudah siap',
+      // Auto Transaction
+      'autoTransaction': 'Transaksi Otomatis',
+      'autoTransactionInfo': 'Buat transaksi otomatis dari SMS dan notifikasi bank. Transaksi dibuat langsung dan Anda bisa edit atau hapus kapan saja.',
+      'autoTransactionSms': 'Baca SMS',
+      'autoTransactionSmsTitle': 'Baca SMS Bank',
+      'autoTransactionSmsDescription': 'Deteksi dan buat transaksi otomatis dari pesan SMS bank',
+      'autoTransactionNotification': 'Baca Notifikasi',
+      'autoTransactionNotificationTitle': 'Baca Notifikasi Bank',
+      'autoTransactionNotificationDescription': 'Deteksi dan buat transaksi otomatis dari notifikasi aplikasi bank',
+      'autoTransactionDefaultWallet': 'Dompet Default',
+      'autoTransactionUseActiveWallet': 'Gunakan Dompet Aktif',
+      'autoTransactionUseActiveWalletDescription': 'Transaksi akan ditambahkan ke dompet yang sedang dipilih',
+      'autoTransactionIosNotice': 'Transaksi otomatis dari SMS dan notifikasi hanya tersedia di Android. iOS tidak mengizinkan aplikasi membaca SMS atau notifikasi dari aplikasi lain.',
       // Dialog strings
       'deleteBudget': 'Hapus Anggaran',
       'deleteBudgetConfirm': 'Anda yakin ingin menghapus anggaran ini?',
@@ -2600,6 +2706,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': 'Revisa el resumen de gastos de la semana pasada',
       'notifMonthlyReportTitle': 'Informe financiero mensual',
       'notifMonthlyReportBody': 'Tu resumen financiero completo del mes pasado está listo',
+      // Auto Transaction
+      'autoTransaction': 'Transacción Automática',
+      'autoTransactionInfo': 'Crea transacciones automáticamente desde SMS y notificaciones bancarias. Las transacciones se crean al instante y puedes editarlas o eliminarlas en cualquier momento.',
+      'autoTransactionSms': 'Lectura de SMS',
+      'autoTransactionSmsTitle': 'Leer SMS bancarios',
+      'autoTransactionSmsDescription': 'Detecta y crea transacciones automáticamente desde mensajes SMS bancarios',
+      'autoTransactionNotification': 'Escuchar notificaciones',
+      'autoTransactionNotificationTitle': 'Leer notificaciones bancarias',
+      'autoTransactionNotificationDescription': 'Detecta y crea transacciones automáticamente desde notificaciones de apps bancarias',
+      'autoTransactionDefaultWallet': 'Cartera predeterminada',
+      'autoTransactionUseActiveWallet': 'Usar cartera activa',
+      'autoTransactionUseActiveWalletDescription': 'Las transacciones se añadirán a tu cartera seleccionada actualmente',
+      'autoTransactionIosNotice': 'La transacción automática desde SMS y notificaciones solo está disponible en Android. iOS no permite que las apps lean SMS o notificaciones de otras apps.',
       // Dialog strings
       'deleteBudget': 'Eliminar Presupuesto',
       'deleteBudgetConfirm': '¿Estás seguro de que deseas eliminar este presupuesto?',
@@ -2963,6 +3082,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': 'Confira o resumo de gastos da semana passada',
       'notifMonthlyReportTitle': 'Relatório financeiro mensal',
       'notifMonthlyReportBody': 'Seu resumo financeiro completo do mês passado está pronto',
+      // Auto Transaction
+      'autoTransaction': 'Transação Automática',
+      'autoTransactionInfo': 'Crie transações automaticamente a partir de SMS e notificações bancárias. As transações são criadas instantaneamente e você pode editar ou excluir a qualquer momento.',
+      'autoTransactionSms': 'Leitura de SMS',
+      'autoTransactionSmsTitle': 'Ler SMS bancários',
+      'autoTransactionSmsDescription': 'Detecte e crie transações automaticamente a partir de mensagens SMS bancárias',
+      'autoTransactionNotification': 'Ouvir notificações',
+      'autoTransactionNotificationTitle': 'Ler notificações bancárias',
+      'autoTransactionNotificationDescription': 'Detecte e crie transações automaticamente a partir de notificações de apps bancários',
+      'autoTransactionDefaultWallet': 'Carteira padrão',
+      'autoTransactionUseActiveWallet': 'Usar carteira ativa',
+      'autoTransactionUseActiveWalletDescription': 'As transações serão adicionadas à sua carteira selecionada atualmente',
+      'autoTransactionIosNotice': 'Transação automática de SMS e notificações só está disponível no Android. O iOS não permite que apps leiam SMS ou notificações de outros apps.',
       // Dialog strings
       'deleteBudget': 'Excluir Orçamento',
       'deleteBudgetConfirm': 'Tem certeza de que deseja excluir este orçamento?',
@@ -3350,6 +3482,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': '先週の支出サマリーをチェック',
       'notifMonthlyReportTitle': '月次財務レポート',
       'notifMonthlyReportBody': '先月の完全な財務サマリーが準備できました',
+      // Auto Transaction
+      'autoTransaction': '自動取引',
+      'autoTransactionInfo': '銀行のSMSや通知から自動的に取引を作成します。取引は即座に作成され、いつでも編集・削除できます。',
+      'autoTransactionSms': 'SMS解析',
+      'autoTransactionSmsTitle': '銀行SMSを解析',
+      'autoTransactionSmsDescription': '銀行のSMSメッセージから自動的に取引を検出して作成',
+      'autoTransactionNotification': '通知リスナー',
+      'autoTransactionNotificationTitle': '銀行通知を解析',
+      'autoTransactionNotificationDescription': '銀行アプリの通知から自動的に取引を検出して作成',
+      'autoTransactionDefaultWallet': 'デフォルトウォレット',
+      'autoTransactionUseActiveWallet': 'アクティブウォレットを使用',
+      'autoTransactionUseActiveWalletDescription': '現在選択しているウォレットに取引が追加されます',
+      'autoTransactionIosNotice': 'SMSと通知からの自動取引はAndroidでのみ利用可能です。iOSではアプリがSMSや他のアプリの通知を読み取ることができません。',
       // Dialog strings
       'deleteBudget': '予算を削除',
       'deleteBudgetConfirm': 'この予算を削除しますか？',
@@ -3738,6 +3883,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': '지난주 지출 요약을 확인하세요',
       'notifMonthlyReportTitle': '월간 재정 리포트',
       'notifMonthlyReportBody': '지난달의 완전한 재정 요약이 준비되었습니다',
+      // Auto Transaction
+      'autoTransaction': '자동 거래',
+      'autoTransactionInfo': '은행 SMS와 알림에서 자동으로 거래를 생성합니다. 거래는 즉시 생성되며 언제든지 수정하거나 삭제할 수 있습니다.',
+      'autoTransactionSms': 'SMS 분석',
+      'autoTransactionSmsTitle': '은행 SMS 분석',
+      'autoTransactionSmsDescription': '은행 SMS 메시지에서 자동으로 거래를 감지하고 생성',
+      'autoTransactionNotification': '알림 리스너',
+      'autoTransactionNotificationTitle': '은행 알림 분석',
+      'autoTransactionNotificationDescription': '은행 앱 알림에서 자동으로 거래를 감지하고 생성',
+      'autoTransactionDefaultWallet': '기본 지갑',
+      'autoTransactionUseActiveWallet': '활성 지갑 사용',
+      'autoTransactionUseActiveWalletDescription': '현재 선택한 지갑에 거래가 추가됩니다',
+      'autoTransactionIosNotice': 'SMS와 알림에서의 자동 거래는 Android에서만 사용 가능합니다. iOS에서는 앱이 SMS나 다른 앱의 알림을 읽을 수 없습니다.',
       // Dialog strings
       'deleteBudget': '예산 삭제',
       'deleteBudgetConfirm': '이 예산을 삭제하시겠습니까?',
@@ -4126,6 +4284,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': 'Überprüfen Sie Ihre Ausgabenzusammenfassung der letzten Woche',
       'notifMonthlyReportTitle': 'Monatlicher Finanzbericht',
       'notifMonthlyReportBody': 'Ihre vollständige Finanzzusammenfassung des letzten Monats ist bereit',
+      // Auto Transaction
+      'autoTransaction': 'Automatische Transaktion',
+      'autoTransactionInfo': 'Erstellen Sie automatisch Transaktionen aus Bank-SMS und Benachrichtigungen. Transaktionen werden sofort erstellt und Sie können sie jederzeit bearbeiten oder löschen.',
+      'autoTransactionSms': 'SMS-Analyse',
+      'autoTransactionSmsTitle': 'Bank-SMS analysieren',
+      'autoTransactionSmsDescription': 'Erkennen und erstellen Sie automatisch Transaktionen aus Bank-SMS-Nachrichten',
+      'autoTransactionNotification': 'Benachrichtigungs-Listener',
+      'autoTransactionNotificationTitle': 'Bank-Benachrichtigungen analysieren',
+      'autoTransactionNotificationDescription': 'Erkennen und erstellen Sie automatisch Transaktionen aus Bank-App-Benachrichtigungen',
+      'autoTransactionDefaultWallet': 'Standard-Wallet',
+      'autoTransactionUseActiveWallet': 'Aktives Wallet verwenden',
+      'autoTransactionUseActiveWalletDescription': 'Transaktionen werden zu Ihrem aktuell ausgewählten Wallet hinzugefügt',
+      'autoTransactionIosNotice': 'Automatische Transaktionen aus SMS und Benachrichtigungen sind nur auf Android verfügbar. iOS erlaubt Apps nicht, SMS oder Benachrichtigungen anderer Apps zu lesen.',
       // Dialog strings
       'deleteBudget': 'Budget löschen',
       'deleteBudgetConfirm': 'Möchten Sie dieses Budget wirklich löschen?',
@@ -4514,6 +4685,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': 'पिछले सप्ताह की खर्च सारांश देखें',
       'notifMonthlyReportTitle': 'मासिक वित्तीय रिपोर्ट',
       'notifMonthlyReportBody': 'पिछले महीने की आपकी पूर्ण वित्तीय सारांश तैयार है',
+      // Auto Transaction
+      'autoTransaction': 'स्वचालित लेनदेन',
+      'autoTransactionInfo': 'बैंक SMS और नोटिफिकेशन से स्वचालित रूप से लेनदेन बनाएं। लेनदेन तुरंत बनाए जाते हैं और आप किसी भी समय संपादित या हटा सकते हैं।',
+      'autoTransactionSms': 'SMS पढ़ना',
+      'autoTransactionSmsTitle': 'बैंक SMS पढ़ें',
+      'autoTransactionSmsDescription': 'बैंक SMS संदेशों से स्वचालित रूप से लेनदेन का पता लगाएं और बनाएं',
+      'autoTransactionNotification': 'नोटिफिकेशन लिसनर',
+      'autoTransactionNotificationTitle': 'बैंक नोटिफिकेशन पढ़ें',
+      'autoTransactionNotificationDescription': 'बैंकिंग ऐप नोटिफिकेशन से स्वचालित रूप से लेनदेन का पता लगाएं और बनाएं',
+      'autoTransactionDefaultWallet': 'डिफ़ॉल्ट वॉलेट',
+      'autoTransactionUseActiveWallet': 'सक्रिय वॉलेट का उपयोग करें',
+      'autoTransactionUseActiveWalletDescription': 'लेनदेन आपके वर्तमान में चयनित वॉलेट में जोड़े जाएंगे',
+      'autoTransactionIosNotice': 'SMS और नोटिफिकेशन से स्वचालित लेनदेन केवल Android पर उपलब्ध है। iOS ऐप्स को SMS या अन्य ऐप्स की नोटिफिकेशन पढ़ने की अनुमति नहीं देता।',
       // Dialog strings
       'deleteBudget': 'बजट हटाएं',
       'deleteBudgetConfirm': 'क्या आप वाकई इस बजट को हटाना चाहते हैं?',
@@ -4951,6 +5135,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': 'Посмотрите сводку расходов за прошлую неделю',
       'notifMonthlyReportTitle': 'Ежемесячный финансовый отчёт',
       'notifMonthlyReportBody': 'Ваш полный финансовый отчёт за прошлый месяц готов',
+      // Auto Transaction
+      'autoTransaction': 'Автоматические транзакции',
+      'autoTransactionInfo': 'Автоматически создавайте транзакции из банковских SMS и уведомлений. Транзакции создаются мгновенно, и вы можете редактировать или удалять их в любое время.',
+      'autoTransactionSms': 'Чтение SMS',
+      'autoTransactionSmsTitle': 'Читать банковские SMS',
+      'autoTransactionSmsDescription': 'Автоматически обнаруживать и создавать транзакции из банковских SMS-сообщений',
+      'autoTransactionNotification': 'Слушатель уведомлений',
+      'autoTransactionNotificationTitle': 'Читать банковские уведомления',
+      'autoTransactionNotificationDescription': 'Автоматически обнаруживать и создавать транзакции из уведомлений банковских приложений',
+      'autoTransactionDefaultWallet': 'Кошелёк по умолчанию',
+      'autoTransactionUseActiveWallet': 'Использовать активный кошелёк',
+      'autoTransactionUseActiveWalletDescription': 'Транзакции будут добавлены в ваш текущий выбранный кошелёк',
+      'autoTransactionIosNotice': 'Автоматические транзакции из SMS и уведомлений доступны только на Android. iOS не позволяет приложениям читать SMS или уведомления других приложений.',
       // Default wallet
       'defaultWallet': 'Кошелёк по умолчанию',
       'setAsDefault': 'Установить по умолчанию',
@@ -5369,6 +5566,19 @@ class AppLocalizations {
       'notifWeeklyReportBody': 'راجع ملخص إنفاقك للأسبوع الماضي',
       'notifMonthlyReportTitle': 'التقرير المالي الشهري',
       'notifMonthlyReportBody': 'ملخصك المالي الكامل للشهر الماضي جاهز',
+      // Auto Transaction
+      'autoTransaction': 'المعاملات التلقائية',
+      'autoTransactionInfo': 'أنشئ معاملات تلقائياً من رسائل SMS والإشعارات البنكية. يتم إنشاء المعاملات فوراً ويمكنك تعديلها أو حذفها في أي وقت.',
+      'autoTransactionSms': 'قراءة SMS',
+      'autoTransactionSmsTitle': 'قراءة رسائل البنك',
+      'autoTransactionSmsDescription': 'اكتشف وأنشئ معاملات تلقائياً من رسائل SMS البنكية',
+      'autoTransactionNotification': 'مستمع الإشعارات',
+      'autoTransactionNotificationTitle': 'قراءة إشعارات البنك',
+      'autoTransactionNotificationDescription': 'اكتشف وأنشئ معاملات تلقائياً من إشعارات تطبيقات البنوك',
+      'autoTransactionDefaultWallet': 'المحفظة الافتراضية',
+      'autoTransactionUseActiveWallet': 'استخدم المحفظة النشطة',
+      'autoTransactionUseActiveWalletDescription': 'سيتم إضافة المعاملات إلى محفظتك المحددة حالياً',
+      'autoTransactionIosNotice': 'المعاملات التلقائية من SMS والإشعارات متاحة فقط على Android. لا يسمح iOS للتطبيقات بقراءة SMS أو إشعارات التطبيقات الأخرى.',
       // Dialog strings
       'deleteBudget': 'حذف الميزانية',
       'deleteBudgetConfirm': 'هل أنت متأكد من حذف هذه الميزانية؟',
@@ -5690,6 +5900,33 @@ class AppLocalizations {
   String get notifWeeklyReportBody => get('notifWeeklyReportBody');
   String get notifMonthlyReportTitle => get('notifMonthlyReportTitle');
   String get notifMonthlyReportBody => get('notifMonthlyReportBody');
+  // Auto Transaction
+  String get autoTransaction => get('autoTransaction');
+  String get autoTransactionInfo => get('autoTransactionInfo');
+  String get autoTransactionSms => get('autoTransactionSms');
+  String get autoTransactionSmsTitle => get('autoTransactionSmsTitle');
+  String get autoTransactionSmsDescription => get('autoTransactionSmsDescription');
+  String get autoTransactionNotification => get('autoTransactionNotification');
+  String get autoTransactionNotificationTitle => get('autoTransactionNotificationTitle');
+  String get autoTransactionNotificationDescription => get('autoTransactionNotificationDescription');
+  String get autoTransactionDefaultWallet => get('autoTransactionDefaultWallet');
+  String get autoTransactionUseActiveWallet => get('autoTransactionUseActiveWallet');
+  String get autoTransactionUseActiveWalletDescription => get('autoTransactionUseActiveWalletDescription');
+  String get autoTransactionIosNotice => get('autoTransactionIosNotice');
+  String get autoTransactionScanSms => get('autoTransactionScanSms');
+  String get autoTransactionScanning => get('autoTransactionScanning');
+  String get autoTransactionScanResultsTitle => get('autoTransactionScanResultsTitle');
+  String autoTransactionScanResultsDescription(int count) => get('autoTransactionScanResultsDescription').replaceAll('{count}', count.toString());
+  String autoTransactionCreateWallets(int count) => get('autoTransactionCreateWallets').replaceAll('{count}', count.toString());
+  String get autoTransactionTargetWallet => get('autoTransactionTargetWallet');
+  String get autoTransactionCreateNewWallet => get('autoTransactionCreateNewWallet');
+  String autoTransactionImporting(String bank) => get('autoTransactionImporting').replaceAll('{bank}', bank);
+  String get autoTransactionImportComplete => get('autoTransactionImportComplete');
+  String autoTransactionWalletsCreated(int count) => get('autoTransactionWalletsCreated').replaceAll('{count}', count.toString());
+  String autoTransactionTransactionsImported(int count) => get('autoTransactionTransactionsImported').replaceAll('{count}', count.toString());
+  String autoTransactionDuplicatesSkipped(int count) => get('autoTransactionDuplicatesSkipped').replaceAll('{count}', count.toString());
+  String get autoTransactionNoResults => get('autoTransactionNoResults');
+  String get autoTransactionNoResultsDescription => get('autoTransactionNoResultsDescription');
   // Dialog strings
   String get deleteBudget => get('deleteBudget');
   String get deleteBudgetConfirm => get('deleteBudgetConfirm');
