@@ -1,7 +1,7 @@
 import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { setGlobalOptions } from "firebase-functions/v2";
-import * as functions from "firebase-functions"; // v1 for auth triggers
+import { beforeUserCreated } from "firebase-functions/v2/identity";
 import * as admin from "firebase-admin";
 import { Bot, webhookCallback, InlineKeyboard } from "grammy";
 // Using REST API directly instead of SDK for better control
@@ -25,12 +25,10 @@ const GEMINI_MODEL = "gemini-2.5-flash";
 const OPENAI_MODEL = "gpt-4o-mini";
 // const CLAUDE_MODEL = "claude-sonnet-4-20250514"; // Uncomment when Claude is enabled
 
-// Set global options for GEN 2 functions only
-// Note: Gen 1 functions (like auth triggers) need their own region config
-// Note: minInstances removed temporarily because it conflicts with Gen 1 functions (onUserCreated)
+// Set global options for all Gen 2 functions
 setGlobalOptions({
   region: "asia-southeast1",
-  // minInstances: 1, // Disabled - causes "Cannot set CPU" error for Gen 1 functions
+  minInstances: 1, // Keep warm for faster cold starts
 });
 
 // Initialize Firebase Admin
@@ -2600,66 +2598,69 @@ const DEFAULT_CATEGORIES: DefaultCategory[] = [
 ];
 
 // ============================================================================
-// ON USER CREATED - Create default categories for new users
+// BEFORE USER CREATED - Create default categories for new users (Gen 2 Blocking Function)
 // ============================================================================
 
 /**
- * Firebase Auth trigger - runs AFTER a new user is created
+ * Firebase Auth blocking trigger - runs BEFORE a new user is saved
  * Creates default categories in Firestore for users who register via bot/web
  * (Users who register via app will have categories synced from app)
  *
- * Note: Using v1 auth.user().onCreate() because v2 beforeUserCreated requires GCIP
- * Note: This is a Gen 1 function (auth triggers not supported in Gen 2 yet)
+ * Requires: Firebase Auth upgraded to Identity Platform (one-click in Firebase Console)
+ * Timeout: Must complete within 7 seconds
  */
-export const onUserCreated = functions
-  .runWith({ memory: "256MB", timeoutSeconds: 60 }) // Gen 1 config
-  .region("asia-southeast1")
-  .auth.user()
-  .onCreate(async (user) => {
-    console.log(`New user created: ${user.uid} (${user.email || "no email"})`);
+export const onUserCreated = beforeUserCreated(async (event) => {
+  const user = event.data;
+  if (!user) {
+    console.error("No user data in event");
+    return; // Allow user creation to proceed
+  }
 
-    try {
-      // Check if user already has categories (created by app sync)
-      const existingCategories = await bexlyDb
-        .collection(`users/${user.uid}/data/categories/items`)
-        .limit(1)
-        .get();
+  console.log(`New user being created: ${user.uid} (${user.email || "no email"})`);
 
-      if (!existingCategories.empty) {
-        console.log(`User ${user.uid} already has categories, skipping...`);
-        return;
-      }
+  try {
+    // Check if user already has categories (created by app sync)
+    const existingCategories = await bexlyDb
+      .collection(`users/${user.uid}/data/categories/items`)
+      .limit(1)
+      .get();
 
-      // Create default categories for new user
-      console.log(`Creating ${DEFAULT_CATEGORIES.length} default categories for user ${user.uid}...`);
-
-      const batch = bexlyDb.batch();
-      const now = admin.firestore.Timestamp.now();
-
-      for (const cat of DEFAULT_CATEGORIES) {
-        // Use deterministic cloudId based on category id for dedup
-        const cloudId = `default_cat_${cat.id}`;
-        const ref = bexlyDb.collection(`users/${user.uid}/data/categories/items`).doc(cloudId);
-
-        batch.set(ref, {
-          localId: cat.id,
-          title: cat.title,
-          icon: cat.icon,
-          iconBackground: "",
-          iconType: cat.iconType,
-          transactionType: cat.transactionType,
-          parentId: cat.parentId || null,
-          localizedTitles: cat.localizedTitles,
-          isSystemDefault: true,
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
-
-      await batch.commit();
-      console.log(`Successfully created ${DEFAULT_CATEGORIES.length} categories for user ${user.uid}`);
-    } catch (error) {
-      console.error(`Failed to create categories for user ${user.uid}:`, error);
-      // Don't throw - we don't want to block user creation
+    if (!existingCategories.empty) {
+      console.log(`User ${user.uid} already has categories, skipping...`);
+      return; // Allow user creation to proceed
     }
-  });
+
+    // Create default categories for new user
+    console.log(`Creating ${DEFAULT_CATEGORIES.length} default categories for user ${user.uid}...`);
+
+    const batch = bexlyDb.batch();
+    const now = admin.firestore.Timestamp.now();
+
+    for (const cat of DEFAULT_CATEGORIES) {
+      // Use deterministic cloudId based on category id for dedup
+      const cloudId = `default_cat_${cat.id}`;
+      const ref = bexlyDb.collection(`users/${user.uid}/data/categories/items`).doc(cloudId);
+
+      batch.set(ref, {
+        localId: cat.id,
+        title: cat.title,
+        icon: cat.icon,
+        iconBackground: "",
+        iconType: cat.iconType,
+        transactionType: cat.transactionType,
+        parentId: cat.parentId || null,
+        localizedTitles: cat.localizedTitles,
+        isSystemDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    await batch.commit();
+    console.log(`Successfully created ${DEFAULT_CATEGORIES.length} categories for user ${user.uid}`);
+  } catch (error) {
+    console.error(`Failed to create categories for user ${user.uid}:`, error);
+    // Don't throw - we don't want to block user creation
+  }
+  // Return nothing to allow user creation to proceed
+});
