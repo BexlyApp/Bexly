@@ -546,8 +546,8 @@ class _AutoTransactionSettingsScreenState
   Widget _buildScanSmsButton() {
     return Card(
       child: ListTile(
-        leading: Icon(
-          HugeIcons.strokeRoundedSearch01,
+        leading: HugeIcon(
+          icon: HugeIcons.strokeRoundedSearch01,
           color: Theme.of(context).colorScheme.primary,
         ),
         title: Text(
@@ -568,8 +568,8 @@ class _AutoTransactionSettingsScreenState
                 height: 24,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : Icon(
-                HugeIcons.strokeRoundedArrowRight01,
+            : HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowRight01,
                 color: AppColors.neutral400,
               ),
         onTap: _isScanning ? null : _scanSmsForBanks,
@@ -585,8 +585,8 @@ class _AutoTransactionSettingsScreenState
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              HugeIcons.strokeRoundedInformationCircle,
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedInformationCircle,
               color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(width: AppSpacing.spacing12),
@@ -616,14 +616,14 @@ class _AutoTransactionSettingsScreenState
   Widget _buildSettingCard({
     required String title,
     required String subtitle,
-    required IconData icon,
+    required List<List> icon,
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
     return Card(
       child: SwitchListTile(
-        secondary: Icon(
-          icon,
+        secondary: HugeIcon(
+          icon: icon,
           color: value ? Theme.of(context).colorScheme.primary : AppColors.neutral400,
         ),
         title: Text(
@@ -663,8 +663,8 @@ class _AutoTransactionSettingsScreenState
               ListTile(
                 leading: Badge(
                   label: Text('${summary.totalNotifications}'),
-                  child: Icon(
-                    HugeIcons.strokeRoundedNotificationBubble,
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedNotificationBubble,
                     color: Theme.of(context).colorScheme.tertiary,
                   ),
                 ),
@@ -680,8 +680,8 @@ class _AutoTransactionSettingsScreenState
                     color: AppColors.neutral500,
                   ),
                 ),
-                trailing: Icon(
-                  HugeIcons.strokeRoundedArrowRight01,
+                trailing: HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowRight01,
                   color: AppColors.neutral400,
                 ),
                 onTap: () => _showPendingNotificationsDialog(summary),
@@ -828,8 +828,8 @@ class _AutoTransactionSettingsScreenState
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              HugeIcons.strokeRoundedAlert02,
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedAlert02,
               color: Theme.of(context).colorScheme.error,
             ),
             const SizedBox(width: AppSpacing.spacing12),
@@ -881,8 +881,8 @@ class _PendingNotificationsDialogState extends State<_PendingNotificationsDialog
     return AlertDialog(
       title: Row(
         children: [
-          Icon(
-            HugeIcons.strokeRoundedNotificationBubble,
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedNotificationBubble,
             color: Theme.of(context).colorScheme.primary,
           ),
           const SizedBox(width: AppSpacing.spacing12),
@@ -949,8 +949,8 @@ class _PendingNotificationsDialogState extends State<_PendingNotificationsDialog
               children: [
                 CircleAvatar(
                   backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                  child: Icon(
-                    HugeIcons.strokeRoundedBank,
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedBank,
                     color: Theme.of(context).colorScheme.primary,
                     size: 20,
                   ),

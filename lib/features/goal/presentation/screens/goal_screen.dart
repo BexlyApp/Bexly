@@ -24,7 +24,7 @@ class GoalScreen extends ConsumerWidget {
         onPressed: () {
           context.openBottomSheet(child: GoalFormDialog());
         },
-        child: Icon(HugeIcons.strokeRoundedPlusSign),
+        child: HugeIcon(icon: HugeIcons.strokeRoundedPlusSign),
       ),
       body: asyncGoals.when(
         data: (goals) {

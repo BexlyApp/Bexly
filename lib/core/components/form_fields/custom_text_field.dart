@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/form_fields/custom_input_border.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
@@ -27,8 +28,8 @@ class CustomTextField extends TextField {
     String? customCounterText,
     String? hint,
     String? label,
-    IconData? prefixIcon,
-    IconData? suffixIcon,
+    dynamic prefixIcon, // Support both IconData and List<List> (HugeIcons)
+    dynamic suffixIcon, // Support both IconData and List<List> (HugeIcons)
     GestureTapCallback? onTapSuffixIcon,
   }) : super(
          style: AppTextStyles.body3,
@@ -84,7 +85,9 @@ class CustomTextField extends TextField {
                    padding: const EdgeInsets.symmetric(
                      horizontal: AppSpacing.spacing12,
                    ),
-                   child: Icon(prefixIcon, size: 24),
+                   child: prefixIcon is IconData
+                       ? Icon(prefixIcon, size: 24)
+                       : HugeIcon(icon: prefixIcon, size: 24),
                  ),
            suffixIcon: suffixIcon == null
                ? null
@@ -95,11 +98,17 @@ class CustomTextField extends TextField {
                      padding: const EdgeInsets.symmetric(
                        horizontal: AppSpacing.spacing12,
                      ),
-                     child: Icon(
-                       suffixIcon,
-                       color: AppColors.neutral200,
-                       size: 24,
-                     ),
+                     child: suffixIcon is IconData
+                         ? Icon(
+                             suffixIcon,
+                             color: AppColors.neutral200,
+                             size: 24,
+                           )
+                         : HugeIcon(
+                             icon: suffixIcon,
+                             color: AppColors.neutral200,
+                             size: 24,
+                           ),
                    ),
                  ),
          ),

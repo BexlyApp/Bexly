@@ -157,7 +157,7 @@ class SettingsDataGroup extends ConsumerWidget {
                       }
 
                       // Also sign out from Google/Facebook if needed
-                      await GoogleSignIn().signOut();
+                      await GoogleSignIn.instance.signOut();
                       await FacebookAuth.instance.logOut();
 
                       // Navigate to login screen

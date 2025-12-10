@@ -147,6 +147,8 @@ enum WalletType {
   }
 
   /// Get HugeIcon constant for UI display
+  /// This is deprecated in hugeicons 1.x - icons are now List<List> instead of int codepoints
+  @Deprecated('Use _getWalletIcon helper function instead')
   int get hugeIcon {
     switch (this) {
       case WalletType.cash:

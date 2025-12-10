@@ -171,7 +171,7 @@ class RecurringFormScreen extends HookConsumerWidget {
                       label: 'Wallet',
                       hint: 'Select Wallet',
                       isRequired: true,
-                      prefixIcon: HugeIcons.strokeRoundedWallet01,
+                      prefixIcon: HugeIcons.strokeRoundedWallet01, // This is passed to CustomSelectField
                       onTap: () {
                         showModalBottomSheet(
                           context: context,
@@ -197,7 +197,7 @@ class RecurringFormScreen extends HookConsumerWidget {
                     label: 'Category',
                     hint: 'Select Category',
                     isRequired: true,
-                    prefixIcon: HugeIcons.strokeRoundedPackage,
+                    prefixIcon: HugeIcons.strokeRoundedPackage, // This is passed to CustomSelectField
                     onTap: () async {
                       // Pass transaction type to category picker
                       final CategoryModel? result = await context.push(
@@ -215,7 +215,7 @@ class RecurringFormScreen extends HookConsumerWidget {
                     controller: amountController,
                     label: 'Amount',
                     hint: '1,000.00',
-                    icon: HugeIcons.strokeRoundedCoins01,
+                    icon: HugeIcons.strokeRoundedCoins01, // This is passed to CustomNumericField
                     appendCurrencySymbolToHint: true,
                     isRequired: true,
                     defaultCurreny: formState.wallet?.currencyByIsoCode(ref).symbol,

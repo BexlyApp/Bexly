@@ -262,8 +262,8 @@ class BalanceCard extends ConsumerWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            percentChange.isNegative
+          HugeIcon(
+            icon: percentChange.isNegative
                 ? HugeIcons.strokeRoundedArrowDown01
                 : HugeIcons.strokeRoundedArrowUp01,
             size: 14,

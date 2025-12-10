@@ -114,8 +114,8 @@ class _WalletTypeCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              _getWalletIcon(type),
+            HugeIcon(
+              icon: _getWalletIcon(type),
               size: 28,
               color: isSelected
                   ? theme.colorScheme.primary
@@ -141,7 +141,7 @@ class _WalletTypeCard extends StatelessWidget {
     );
   }
 
-  IconData _getWalletIcon(WalletType type) {
+  List<List<dynamic>> _getWalletIcon(WalletType type) {
     switch (type) {
       case WalletType.cash:
         return HugeIcons.strokeRoundedMoney02;

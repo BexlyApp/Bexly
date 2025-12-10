@@ -97,7 +97,7 @@ class MobileBottomAppBar extends ConsumerWidget {
 }
 
 class _NavItem extends StatelessWidget {
-  final IconData icon;
+  final dynamic icon; // Support both IconData and List<List> (HugeIcons)
   final String label;
   final bool isActive;
   final Color activeColor;
@@ -128,7 +128,9 @@ class _NavItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 24),
+            icon is IconData
+                ? Icon(icon, color: color, size: 24)
+                : HugeIcon(icon: icon, color: color, size: 24),
             const SizedBox(height: 2),
             Text(
               label,

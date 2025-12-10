@@ -116,8 +116,8 @@ class _SmsScanResultsDialogState extends ConsumerState<SmsScanResultsDialog> {
     return AlertDialog(
       title: Row(
         children: [
-          Icon(
-            HugeIcons.strokeRoundedDiscoverCircle,
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedDiscoverCircle,
             color: Theme.of(context).colorScheme.primary,
           ),
           const SizedBox(width: AppSpacing.spacing12),
@@ -275,8 +275,8 @@ class _SmsScanResultsDialogState extends ConsumerState<SmsScanResultsDialog> {
 
     return CircleAvatar(
       backgroundColor: iconColor.withValues(alpha: 0.1),
-      child: Icon(
-        HugeIcons.strokeRoundedBank,
+      child: HugeIcon(
+        icon: HugeIcons.strokeRoundedBank,
         color: iconColor,
         size: 20,
       ),
@@ -402,8 +402,8 @@ class ImportResultsDialog extends StatelessWidget {
     return AlertDialog(
       title: Row(
         children: [
-          Icon(
-            HugeIcons.strokeRoundedCheckmarkCircle02,
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedCheckmarkCircle02,
             color: Colors.green,
           ),
           const SizedBox(width: AppSpacing.spacing12),
@@ -448,10 +448,10 @@ class ImportResultsDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildResultRow(BuildContext context, IconData icon, String text, {Color? color}) {
+  Widget _buildResultRow(BuildContext context, List<List> icon, String text, {Color? color}) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: color ?? Theme.of(context).colorScheme.primary),
+        HugeIcon(icon: icon, size: 20, color: color ?? Theme.of(context).colorScheme.primary),
         const SizedBox(width: AppSpacing.spacing12),
         Expanded(
           child: Text(

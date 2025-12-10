@@ -109,8 +109,8 @@ class _NotificationPermissionExplanation extends StatelessWidget {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  HugeIcons.strokeRoundedNotification01,
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedNotification01,
                   color: AppColors.primary,
                   size: 24,
                 ),
@@ -184,7 +184,7 @@ class _NotificationPermissionExplanation extends StatelessWidget {
 }
 
 class _BenefitItem extends StatelessWidget {
-  final IconData icon;
+  final dynamic icon; // Support both IconData and List<List> (HugeIcons)
   final String text;
 
   const _BenefitItem({
@@ -196,11 +196,17 @@ class _BenefitItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: AppColors.primary,
-          size: 20,
-        ),
+        icon is IconData
+            ? Icon(
+                icon,
+                color: AppColors.primary,
+                size: 20,
+              )
+            : HugeIcon(
+                icon: icon,
+                color: AppColors.primary,
+                size: 20,
+              ),
         const Gap(AppSpacing.spacing12),
         Expanded(
           child: Text(

@@ -21,8 +21,8 @@ class MonthNavigator extends ConsumerWidget {
             );
             ref.read(selectedMonthProvider.notifier).state = previousMonth;
           },
-          icon: Icon(
-            HugeIcons.strokeRoundedArrowLeft01,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft01,
             color: context.colors.onSurface,
             size: 20,
           ),
@@ -71,8 +71,8 @@ class MonthNavigator extends ConsumerWidget {
                   );
                   ref.read(selectedMonthProvider.notifier).state = nextMonth;
                 },
-          icon: Icon(
-            HugeIcons.strokeRoundedArrowRight01,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowRight01,
             color: selectedMonth.month == currentMonth.month &&
                     selectedMonth.year == currentMonth.year
                 ? context.colors.onSurface.withOpacity(0.3)

@@ -28,7 +28,7 @@ class NotificationListScreen extends ConsumerWidget {
         data: (notifications) => notifications.isNotEmpty
             ? [
                 PopupMenuButton<String>(
-                  icon: const Icon(HugeIcons.strokeRoundedMoreVertical),
+                  icon: const HugeIcon(icon: HugeIcons.strokeRoundedMoreVertical),
                   onSelected: (value) async {
                     final db = ref.read(databaseProvider);
                     if (value == 'mark_all_read') {
@@ -61,7 +61,7 @@ class NotificationListScreen extends ConsumerWidget {
                       value: 'mark_all_read',
                       child: Row(
                         children: [
-                          const Icon(HugeIcons.strokeRoundedCheckmarkCircle01, size: 18),
+                          const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle01, size: 18),
                           const Gap(8),
                           Text(l10n.markAllAsRead),
                         ],
@@ -71,7 +71,7 @@ class NotificationListScreen extends ConsumerWidget {
                       value: 'delete_all',
                       child: Row(
                         children: [
-                          Icon(HugeIcons.strokeRoundedDelete02, size: 18, color: AppColors.red),
+                          HugeIcon(icon: HugeIcons.strokeRoundedDelete02, size: 18, color: AppColors.red),
                           const Gap(8),
                           Text(l10n.clearAll, style: TextStyle(color: AppColors.red)),
                         ],
@@ -108,8 +108,8 @@ class NotificationListScreen extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              HugeIcons.strokeRoundedNotificationOff02,
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedNotificationOff02,
               size: 80,
               color: theme.colorScheme.outline,
             ),
@@ -168,8 +168,8 @@ class NotificationListScreen extends ConsumerWidget {
           color: AppColors.red,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Icon(
-          HugeIcons.strokeRoundedDelete02,
+        child: const HugeIcon(
+          icon: HugeIcons.strokeRoundedDelete02,
           color: Colors.white,
         ),
       ),
@@ -212,8 +212,8 @@ class NotificationListScreen extends ConsumerWidget {
                       .withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Icon(
-                  _getNotificationTypeIcon(notification.type as String),
+                child: HugeIcon(
+                  icon: _getNotificationTypeIcon(notification.type as String),
                   color: _getNotificationTypeColor(notification.type as String),
                   size: 16,
                 ),
@@ -264,7 +264,7 @@ class NotificationListScreen extends ConsumerWidget {
     );
   }
 
-  IconData _getNotificationTypeIcon(String type) {
+  dynamic _getNotificationTypeIcon(String type) {
     switch (type) {
       case 'daily_reminder':
         return HugeIcons.strokeRoundedCalendar03;

@@ -51,8 +51,8 @@ class SmsPermissionBottomSheet extends StatelessWidget {
                   color: Theme.of(context).colorScheme.primaryContainer,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  HugeIcons.strokeRoundedMessage01,
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedMessage01,
                   size: 48,
                   color: Theme.of(context).colorScheme.primary,
                 ),
@@ -149,7 +149,7 @@ class SmsPermissionBottomSheet extends StatelessWidget {
 
   Widget _buildFeatureItem(
     BuildContext context, {
-    required IconData icon,
+    required List<List> icon,
     required String title,
     required String description,
   }) {
@@ -162,8 +162,8 @@ class SmsPermissionBottomSheet extends StatelessWidget {
             color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
+          child: HugeIcon(
+            icon: icon,
             size: 20,
             color: Theme.of(context).colorScheme.primary,
           ),
@@ -239,8 +239,8 @@ class NotificationPermissionBottomSheet extends StatelessWidget {
                   color: Theme.of(context).colorScheme.primaryContainer,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  HugeIcons.strokeRoundedNotification01,
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedNotification01,
                   size: 48,
                   color: Theme.of(context).colorScheme.primary,
                 ),
@@ -337,7 +337,7 @@ class NotificationPermissionBottomSheet extends StatelessWidget {
 
   Widget _buildFeatureItem(
     BuildContext context, {
-    required IconData icon,
+    required List<List> icon,
     required String title,
     required String description,
   }) {
@@ -350,8 +350,8 @@ class NotificationPermissionBottomSheet extends StatelessWidget {
             color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
+          child: HugeIcon(
+            icon: icon,
             size: 20,
             color: Theme.of(context).colorScheme.primary,
           ),

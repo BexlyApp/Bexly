@@ -61,7 +61,7 @@ class OnboardingSlide2 extends StatelessWidget {
 }
 
 class _FeatureItem extends StatelessWidget {
-  final IconData icon;
+  final dynamic icon;
   final String title;
   final String description;
 
@@ -83,8 +83,8 @@ class _FeatureItem extends StatelessWidget {
             color: AppColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Icon(
-            icon,
+          child: HugeIcon(
+            icon: icon,
             color: AppColors.primary,
             size: 28,
           ),

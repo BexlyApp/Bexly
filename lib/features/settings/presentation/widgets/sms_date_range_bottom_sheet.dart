@@ -35,7 +35,7 @@ extension SmsDateRangeExtension on SmsDateRange {
     }
   }
 
-  IconData get icon {
+  List<List> get icon {
     switch (this) {
       case SmsDateRange.last30Days:
         return HugeIcons.strokeRoundedCalendar01;
@@ -112,8 +112,8 @@ class _SmsDateRangeBottomSheetState extends State<SmsDateRangeBottomSheet> {
                   color: Theme.of(context).colorScheme.primaryContainer,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  HugeIcons.strokeRoundedSearch01,
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedSearch01,
                   size: 48,
                   color: Theme.of(context).colorScheme.primary,
                 ),
@@ -173,7 +173,7 @@ class _SmsDateRangeBottomSheetState extends State<SmsDateRangeBottomSheet> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      icon: const Icon(HugeIcons.strokeRoundedSearch01, size: 20),
+                      icon: const HugeIcon(icon: HugeIcons.strokeRoundedSearch01, size: 20),
                       label: Text(context.l10n.autoTransactionScanSms),
                     ),
                   ),
@@ -218,8 +218,8 @@ class _SmsDateRangeBottomSheetState extends State<SmsDateRangeBottomSheet> {
                       : AppColors.neutral200,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  range.icon,
+                child: HugeIcon(
+                  icon: range.icon,
                   size: 24,
                   color: isSelected
                       ? Theme.of(context).colorScheme.primary
@@ -251,8 +251,8 @@ class _SmsDateRangeBottomSheetState extends State<SmsDateRangeBottomSheet> {
                 ),
               ),
               if (isSelected)
-                Icon(
-                  HugeIcons.strokeRoundedCheckmarkCircle02,
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedCheckmarkCircle02,
                   color: Theme.of(context).colorScheme.primary,
                   size: 24,
                 ),

@@ -20,7 +20,7 @@ class TransactionWalletSelector extends HookConsumerWidget {
     this.isEditing = false,
   });
 
-  IconData _getWalletIcon() {
+  List<List> _getWalletIcon() {
     if (selectedWallet == null) {
       return HugeIcons.strokeRoundedWallet01;
     }

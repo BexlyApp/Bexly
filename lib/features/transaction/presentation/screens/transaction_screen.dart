@@ -54,8 +54,8 @@ class TransactionScreen extends ConsumerWidget {
           );
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
-        child: Icon(
-          HugeIcons.strokeRoundedPlusSign,
+        child: HugeIcon(
+          icon: HugeIcons.strokeRoundedPlusSign,
           color: Theme.of(context).colorScheme.onPrimary,
         ),
       ),
