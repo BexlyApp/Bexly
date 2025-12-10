@@ -45,6 +45,15 @@ post_install do |installer|
     target.build_configurations.each do |config|
       # Set minimum deployment target
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+
+      # Disable Swift strict concurrency to fix warnings-as-errors from Firebase plugins
+      # This is needed because firebase_storage has non-exhaustive switch statements
+      # that become errors with Swift 6 strict concurrency
+      config.build_settings['SWIFT_STRICT_CONCURRENCY'] = 'minimal'
+
+      # Treat warnings as warnings, not errors (for third-party pods)
+      config.build_settings['GCC_TREAT_WARNINGS_AS_ERRORS'] = 'NO'
+      config.build_settings['SWIFT_TREAT_WARNINGS_AS_ERRORS'] = 'NO'
     end
   end
 end
