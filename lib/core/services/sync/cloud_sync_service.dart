@@ -188,6 +188,73 @@ class CloudSyncService {
     }
   }
 
+  /// Sync a category to Firestore
+  Future<void> syncCategory(Category category) async {
+    if (!isAuthenticated) {
+      Log.w('Cannot sync category: User not authenticated', label: 'sync');
+      return;
+    }
+
+    try {
+      // Generate cloudId if not exists
+      String cloudId = category.cloudId ?? UuidGenerator.generate();
+
+      final data = {
+        'localId': category.id,
+        'title': category.title,
+        'icon': category.icon,
+        'iconBackground': category.iconBackground,
+        'iconType': category.iconType,
+        'transactionType': category.transactionType,
+        'parentId': category.parentId,
+        'localizedTitles': category.localizedTitles,
+        'createdAt': Timestamp.fromDate(category.createdAt),
+        'updatedAt': Timestamp.fromDate(category.updatedAt),
+      };
+
+      // Use cloudId as document ID
+      await _userCollection.doc('categories').collection('items').doc(cloudId).set(data);
+
+      // Update local record with cloudId if it was new
+      if (category.cloudId == null) {
+        await (_localDb.update(_localDb.categories)
+          ..where((c) => c.id.equals(category.id!)))
+          .write(
+            CategoriesCompanion(
+              cloudId: Value(cloudId),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+      }
+
+      Log.i('Synced category ${category.id} with cloudId: $cloudId', label: 'sync');
+    } catch (e) {
+      Log.e('Failed to sync category: $e', label: 'sync');
+    }
+  }
+
+  /// Sync all categories to Firestore
+  Future<void> syncAllCategories() async {
+    if (!isAuthenticated) {
+      Log.w('Cannot sync: User not authenticated', label: 'sync');
+      return;
+    }
+
+    try {
+      final categories = await _localDb.categoryDao.getAllCategories();
+      int synced = 0;
+
+      for (final category in categories) {
+        await syncCategory(category);
+        synced++;
+      }
+
+      Log.i('Synced $synced/${categories.length} categories', label: 'sync');
+    } catch (e) {
+      Log.e('Failed to sync all categories: $e', label: 'sync');
+    }
+  }
+
   /// Sync all wallets to Firestore
   Future<void> syncAllWallets() async {
     if (!isAuthenticated) {
@@ -265,6 +332,7 @@ class CloudSyncService {
     try {
       Log.i('Starting full sync to cloud...', label: 'sync');
 
+      await syncAllCategories(); // Sync categories first (transactions depend on them)
       await syncAllWallets();
       await syncAllTransactions();
       await syncAllRecurrings();
