@@ -3,7 +3,7 @@
 ## Overview
 This document outlines the development roadmap for Bexly, focusing on transforming it from a basic expense tracker to a comprehensive financial management platform with AI-powered features.
 
-## Current State (v0.0.8+368)
+## Current State (v0.0.10+370)
 - ✅ Core expense/income tracking
 - ✅ Multi-wallet support with real-time cloud sync
 - ✅ Budget management
@@ -38,7 +38,10 @@ This document outlines the development roadmap for Bexly, focusing on transformi
 - ✅ **Default wallet indicator in Manage Wallets screen (v363)**
 - ✅ **Google Sign In working (v368)**
 - ✅ **Apple Sign In configured for Android (v368)**
-- ✅ **Telegram Bot: Default Wallet Sync** - Bot now uses user's default wallet instead of first wallet
+- ✅ **Telegram Bot Integration (v369)** - Create transactions via Telegram chat
+- ✅ **Facebook Messenger Bot Integration (v370)** - Create transactions via Messenger chat
+- ✅ **Multi-AI Provider Support (v370)** - Gemini, OpenAI, Claude with easy switching
+- ✅ **Category Sync to Cloud (v370)** - Bot can access user's full category list
 - ✅ **Filter Form Localization** - All 14 languages supported for filter UI
 - ⏳ **Facebook Sign In** - pending Facebook App Review
 - 🚧 **iOS Build Workflow** - needs Distribution certificate with private key

@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.10+370] - 2025-12-10
+
+### Added
+- **Facebook Messenger Bot Integration**
+  - Create transactions via Messenger chat
+  - Same AI-powered parsing as Telegram bot
+  - Link/unlink Messenger account from app
+  - Unified link-account page for all platforms
+- **Multi-AI Provider Support for Bots**
+  - Support Gemini, OpenAI, Claude (configurable)
+  - Gemini systemInstruction for implicit caching (75% token savings)
+  - Easy to switch providers via config
+- **Category Sync to Cloud**
+  - Categories now sync to Firestore during fullSync()
+  - Bot can access user's full category list
+
+### Fixed
+- Vietnamese currency detection - "tr/k" only implies VND in Vietnamese context
+- AI empty category fallback to "Other" or "Other Income"
+- Increased maxOutputTokens to 300 to prevent JSON truncation
+
+### Changed
+- Bot response time improved from 2+ minutes to ~15 seconds
+- Unified prompt between Telegram and Messenger bots
+
+---
+
 ## [0.0.9+369] - 2025-12-09
 
 ### Added
