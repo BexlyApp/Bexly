@@ -35,7 +35,7 @@ dependencies:
   auto_size_text_field: ^2.2.4
   calendar_date_picker2: ^2.0.1
   collection: ^1.19.1
-  connectivity_plus: ^6.1.2
+  connectivity_plus: ^7.0.0
   country_flags: ^4.0.1
   cupertino_calendar_picker: ^2.2.6
   docman: ^1.2.0
@@ -44,7 +44,7 @@ dependencies:
   drift_flutter: ^0.2.4
   emoji_picker_flutter: ^4.3.0
   expandable: ^5.0.1
-  fl_chart: ^0.70.1
+  fl_chart: ^1.1.1
   file_picker: ^10.2.0
   firebase_analytics: ^12.0.0
   firebase_auth: ^6.0.2
@@ -61,11 +61,11 @@ dependencies:
   timezone: ^0.10.1
   freezed_annotation: ^3.1.0
   gap: ^3.0.1
-  go_router: ^16.2.1
+  go_router: ^17.0.0
   google_fonts: ^6.2.1
   google_generative_ai: ^0.4.6
   hooks_riverpod: ^2.6.1
-  hugeicons: ^0.0.11
+  hugeicons: ^1.1.2
   image_picker: ^1.1.2
   intl: ^0.20.2
   json_annotation: ^4.9.0
@@ -85,15 +85,15 @@ dependencies:
   uuid: ^4.5.1
   url_launcher: ^6.3.1
   vibration: ^3.1.3
-  google_sign_in: ^6.3.0
+  google_sign_in: ^7.2.0
   sign_in_with_apple: ^7.0.1
   font_awesome_flutter: ^10.8.0
   flutter_facebook_auth: ^7.1.2
   http: ^1.5.0
-  flutter_dotenv: ^5.1.0
+  flutter_dotenv: ^6.0.0
   workmanager: ^0.9.0
   in_app_purchase: ^3.2.0
-  google_mobile_ads: ^5.3.0
+  google_mobile_ads: ^6.0.0
   another_telephony: ^0.4.1
   crypto: ^3.0.6
   notification_listener_service: ^0.3.1
