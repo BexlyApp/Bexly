@@ -68,7 +68,7 @@ class WalletTypeSelectorField extends StatelessWidget {
     );
   }
 
-  IconData _getWalletIcon(WalletType type) {
+  List<List<dynamic>> _getWalletIcon(WalletType type) {
     switch (type) {
       case WalletType.cash:
         return HugeIcons.strokeRoundedMoney02;

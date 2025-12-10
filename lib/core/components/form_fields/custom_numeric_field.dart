@@ -16,8 +16,8 @@ class CustomNumericField extends ConsumerWidget {
   final String? hint;
   final Color? hintColor;
   final Color? background;
-  final IconData? icon;
-  final IconData? suffixIcon;
+  final dynamic icon; // Changed to dynamic for hugeicons v1.x compatibility
+  final dynamic suffixIcon; // Changed to dynamic for hugeicons v1.x compatibility
   final bool useSelectedCurrency;
   final bool appendCurrencySymbolToHint;
   final bool isRequired;

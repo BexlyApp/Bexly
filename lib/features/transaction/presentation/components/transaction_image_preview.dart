@@ -53,7 +53,7 @@ class TransactionImagePreview extends ConsumerWidget {
               imageState.imageFile!,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) =>
-                  Center(child: Icon(HugeIcons.strokeRoundedImageNotFound01)),
+                  Center(child: HugeIcon(icon: HugeIcons.strokeRoundedImageNotFound01)),
             ),
           ),
         ),

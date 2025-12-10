@@ -31,8 +31,8 @@ class TransactionAmountEditor extends StatelessWidget {
                 'Transaction Amount',
                 style: AppTextStyles.body3,
               ),
-              Icon(
-                HugeIcons.strokeRoundedArrowDown01,
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowDown01,
                 size: 20,
                 color: AppColors.primaryAlpha25,
               ),

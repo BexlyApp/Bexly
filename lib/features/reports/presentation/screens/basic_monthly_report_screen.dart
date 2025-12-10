@@ -116,7 +116,7 @@ class BasicMonthlyReportScreen extends ConsumerWidget {
         controller: TextEditingController(text: displayText),
         label: context.l10n.filterByWallet,
         hint: context.l10n.selectWallet,
-        prefixIcon: HugeIcons.strokeRoundedWallet01,
+        prefixIcon: HugeIcons.strokeRoundedWallet01, // This is List<List>, not IconData
         isRequired: false,
         onTap: () async {
           // Temporarily sync report filter with dashboard filter

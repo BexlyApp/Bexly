@@ -171,8 +171,8 @@ class _CurrentPlanBanner extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                _getTierIcon(tier),
+              HugeIcon(
+                icon: _getTierIcon(tier),
                 color: Colors.white,
                 size: 20,
               ),
@@ -208,7 +208,7 @@ class _CurrentPlanBanner extends StatelessWidget {
     }
   }
 
-  IconData _getTierIcon(SubscriptionTier tier) {
+  List<List<dynamic>> _getTierIcon(SubscriptionTier tier) {
     switch (tier) {
       case SubscriptionTier.free:
         return HugeIcons.strokeRoundedUser;
@@ -326,8 +326,8 @@ class _PlanCard extends StatelessWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            HugeIcons.strokeRoundedCheckmarkCircle02,
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedCheckmarkCircle02,
                             color: accentColor,
                             size: 18,
                           ),
@@ -465,8 +465,8 @@ class _FreeTierCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      HugeIcons.strokeRoundedUser,
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedUser,
                       color: accentColor,
                       size: 20,
                     ),
@@ -506,27 +506,27 @@ class _FreeTierCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _FreeTierFeatureRow(
+                _FreeTierFeatureRow(
                   icon: HugeIcons.strokeRoundedWallet01,
                   text: '3 wallets',
                 ),
-                const _FreeTierFeatureRow(
+                _FreeTierFeatureRow(
                   icon: HugeIcons.strokeRoundedChartRose,
                   text: '2 budgets & 2 goals',
                 ),
-                const _FreeTierFeatureRow(
+                _FreeTierFeatureRow(
                   icon: HugeIcons.strokeRoundedRepeat,
                   text: '5 recurring transactions',
                 ),
-                const _FreeTierFeatureRow(
+                _FreeTierFeatureRow(
                   icon: HugeIcons.strokeRoundedAiBrain01,
                   text: '20 AI messages/month (Standard)',
                 ),
-                const _FreeTierFeatureRow(
+                _FreeTierFeatureRow(
                   icon: HugeIcons.strokeRoundedAnalytics01,
                   text: '3 months analytics history',
                 ),
-                const _FreeTierFeatureRow(
+                _FreeTierFeatureRow(
                   icon: HugeIcons.strokeRoundedCloud,
                   text: 'Basic cloud sync',
                 ),
@@ -540,8 +540,8 @@ class _FreeTierCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        HugeIcons.strokeRoundedNotification03,
+                      HugeIcon(
+                        icon: HugeIcons.strokeRoundedNotification03,
                         color: AppColors.tertiary700,
                         size: 18,
                       ),
@@ -567,7 +567,7 @@ class _FreeTierCard extends StatelessWidget {
 }
 
 class _FreeTierFeatureRow extends StatelessWidget {
-  final IconData icon;
+  final List<List<dynamic>> icon;
   final String text;
 
   const _FreeTierFeatureRow({
@@ -582,8 +582,8 @@ class _FreeTierFeatureRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
+          HugeIcon(
+            icon: icon,
             color: AppColors.neutral500,
             size: 18,
           ),

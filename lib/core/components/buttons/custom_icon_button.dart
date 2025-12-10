@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
@@ -10,7 +11,7 @@ class CustomIconButton extends IconButton {
     BuildContext context, {
     super.key,
     required GestureTapCallback super.onPressed,
-    required IconData icon,
+    required dynamic icon,
     ThemeMode themeMode = ThemeMode.system,
     Color? backgroundColor,
     Color? borderColor,
@@ -48,15 +49,26 @@ class CustomIconButton extends IconButton {
                ? SizedBox.square(dimension: 18, child: LoadingIndicator())
                : Stack(
                    children: [
-                     Icon(
-                       icon,
-                       color:
-                           color ??
-                           (active
-                               ? context.purpleIconActive
-                               : context.purpleIcon),
-                       size: _getIconSize(iconSize),
-                     ),
+                     // Support both IconData (Material Icons) and List<List> (HugeIcons)
+                     icon is IconData
+                         ? Icon(
+                             icon,
+                             color:
+                                 color ??
+                                 (active
+                                     ? context.purpleIconActive
+                                     : context.purpleIcon),
+                             size: _getIconSize(iconSize),
+                           )
+                         : HugeIcon(
+                             icon: icon,
+                             color:
+                                 color ??
+                                 (active
+                                     ? context.purpleIconActive
+                                     : context.purpleIcon),
+                             size: _getIconSize(iconSize),
+                           ),
                      !showBadge
                          ? const SizedBox()
                          : Positioned(top: 2, right: 2, child: _badge()),

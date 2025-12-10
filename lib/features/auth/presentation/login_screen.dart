@@ -122,30 +122,25 @@ class LoginScreen extends HookConsumerWidget {
     Future<void> handleGoogleSignIn() async {
       isLoading.value = true;
       try {
-        // Auto-detect OAuth client from google-services.json
-        final googleSignIn = GoogleSignIn();
+        // google_sign_in 7.x uses singleton pattern
+        final googleSignIn = GoogleSignIn.instance;
         // Sign out any cached session to force re-consent/account chooser on first attempt
         try {
           await googleSignIn.signOut();
         } catch (_) {}
-        final googleUser = await googleSignIn.signIn();
-
-        if (googleUser == null) {
-          throw Exception('Google Sign In was cancelled by user');
-        }
+        final googleUser = await googleSignIn.authenticate();
 
         debugPrint('Google Sign In successful for: ${googleUser.email}');
 
-        // Get authentication tokens
-        final googleAuth = await googleUser.authentication;
+        // Get authentication tokens (google_sign_in 7.x: .authentication is sync, no accessToken)
+        final googleAuth = googleUser.authentication;
 
-        // Create Firebase credential (require idToken; accessToken optional but helpful)
+        // Create Firebase credential (idToken only in 7.x)
         if (googleAuth.idToken == null) {
           throw Exception('Missing ID token from Google. Please try again.');
         }
         final credential = GoogleAuthProvider.credential(
           idToken: googleAuth.idToken,
-          accessToken: googleAuth.accessToken,
         );
 
         // Sign in to Firebase using Bexly app

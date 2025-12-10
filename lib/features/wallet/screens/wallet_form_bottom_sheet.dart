@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/bottom_sheets/alert_bottom_sheet.dart';
 import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
 import 'package:bexly/core/components/buttons/button_state.dart';
@@ -152,7 +151,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
               label: 'Wallet Name (max. 15)',
               hint: 'e.g., Savings Account',
               isRequired: true,
-              prefixIcon: HugeIcons.strokeRoundedWallet02,
+              prefixIcon: Icons.wallet, // CustomTextField uses IconData, use Material icon
               textInputAction: TextInputAction.next,
               maxLength: 15,
               customCounterText: '',
@@ -175,7 +174,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
               controller: balanceController,
               label: canEditCurrencyAndBalance ? 'Initial Balance' : 'Current Balance (read-only)',
               hint: '1,000.00',
-              icon: HugeIcons.strokeRoundedMoney01,
+              icon: Icons.attach_money, // CustomNumericField uses IconData, use Material icon
               isRequired: true,
               appendCurrencySymbolToHint: true,
               useSelectedCurrency: true,
@@ -211,7 +210,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                 controller: creditLimitController,
                 label: 'Credit Limit',
                 hint: '5,000.00',
-                icon: HugeIcons.strokeRoundedCreditCard,
+                icon: Icons.credit_card, // CustomNumericField uses IconData, use Material icon
                 isRequired: false,
                 appendCurrencySymbolToHint: true,
                 useSelectedCurrency: true,
@@ -221,7 +220,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                 label: 'Billing Day (1-31)',
                 hint: 'e.g., 15',
                 isRequired: false,
-                prefixIcon: HugeIcons.strokeRoundedCalendar03,
+                prefixIcon: Icons.calendar_today, // CustomTextField uses IconData, use Material icon
                 textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.number,
               ),
@@ -230,7 +229,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                 label: 'Annual Interest Rate (%)',
                 hint: 'e.g., 18.5',
                 isRequired: false,
-                prefixIcon: HugeIcons.strokeRoundedPercent,
+                prefixIcon: Icons.percent, // CustomTextField uses IconData, use Material icon
                 textInputAction: TextInputAction.done,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),

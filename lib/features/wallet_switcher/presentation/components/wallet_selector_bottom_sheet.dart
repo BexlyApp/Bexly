@@ -59,13 +59,13 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
                 return ListTile(
                   title: Text(context.l10n.totalBalance, style: AppTextStyles.body1),
                   dense: true,
-                  leading: const Icon(HugeIcons.strokeRoundedWallet01),
+                  leading: HugeIcon(icon: HugeIcons.strokeRoundedWallet01),
                   subtitle: Text(
                     context.l10n.viewCombinedBalance,
                     style: AppTextStyles.body3,
                   ),
-                  trailing: Icon(
-                    isShowingTotal
+                  trailing: HugeIcon(
+                    icon: isShowingTotal
                         ? HugeIcons.strokeRoundedCheckmarkCircle01
                         : HugeIcons.strokeRoundedCircle,
                     color: isShowingTotal ? Colors.green : Colors.grey,
@@ -104,8 +104,8 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
                     ),
                   ),
                   dense: true,
-                  leading: Icon(
-                    _getWalletTypeIcon(wallet.walletType),
+                  leading: HugeIcon(
+                    icon: _getWalletTypeIcon(wallet.walletType),
                     color: isDisabled ? Colors.grey : null,
                   ),
                   subtitle: Text(
@@ -114,8 +114,8 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
                       color: isDisabled ? Colors.grey : null,
                     ),
                   ),
-                  trailing: Icon(
-                    isSelected
+                  trailing: HugeIcon(
+                    icon: isSelected
                         ? HugeIcons.strokeRoundedCheckmarkCircle01
                         : HugeIcons.strokeRoundedCircle,
                     color: isDisabled
@@ -155,7 +155,7 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
     );
   }
 
-  IconData _getWalletTypeIcon(WalletType walletType) {
+  List<List<dynamic>> _getWalletTypeIcon(WalletType walletType) {
     switch (walletType) {
       case WalletType.cash:
         return HugeIcons.strokeRoundedMoney02;

@@ -62,7 +62,7 @@ class ReportSummaryCards extends ConsumerWidget {
                           amount: totalIncome,
                           currency: baseCurrency,
                           color: AppColors.green200,
-                          icon: HugeIcons.strokeRoundedArrowDown01,
+                          icon: HugeIcons.strokeRoundedArrowDown01, // List<List>
                           percentageChange: incomeChange,
                         ),
                       ),
@@ -75,7 +75,7 @@ class ReportSummaryCards extends ConsumerWidget {
                           amount: totalExpense,
                           currency: baseCurrency,
                           color: AppColors.red700,
-                          icon: HugeIcons.strokeRoundedArrowUp01,
+                          icon: HugeIcons.strokeRoundedArrowUp01, // List<List>
                           percentageChange: expenseChange,
                           isExpense: true,
                         ),
@@ -89,7 +89,7 @@ class ReportSummaryCards extends ConsumerWidget {
                           amount: netSavings,
                           currency: baseCurrency,
                           color: netSavings >= 0 ? AppColors.green200 : AppColors.red700,
-                          icon: HugeIcons.strokeRoundedWallet03,
+                          icon: HugeIcons.strokeRoundedWallet03, // List<List>
                           percentageChange: netChange,
                         ),
                       ),
@@ -216,7 +216,7 @@ class _SummaryCard extends StatelessWidget {
   final double amount;
   final String currency;
   final Color color;
-  final IconData icon;
+  final dynamic icon; // HugeIcons returns dynamic type in v1.x
   final double? percentageChange;
   final bool isExpense;
 
@@ -236,7 +236,7 @@ class _SummaryCard extends StatelessWidget {
     // For income/net: positive change = good (green)
     // For expense: negative change = good (green), positive = bad (red)
     Color? percentageColor;
-    IconData? percentageIcon;
+    dynamic percentageIcon; // HugeIcons returns dynamic type in v1.x
 
     if (percentageChange != null) {
       final isPositiveChange = percentageChange! > 0;
@@ -279,7 +279,7 @@ class _SummaryCard extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              Icon(icon, color: color, size: 16),
+              HugeIcon(icon: icon, color: color, size: 16),
             ],
           ),
           const SizedBox(height: AppSpacing.spacing4),
@@ -296,8 +296,8 @@ class _SummaryCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.spacing2),
             Row(
               children: [
-                Icon(
-                  percentageIcon,
+                HugeIcon(
+                  icon: percentageIcon!,
                   color: percentageColor,
                   size: 12,
                 ),

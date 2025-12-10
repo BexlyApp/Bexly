@@ -9,8 +9,8 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 class MenuTileButton extends StatelessWidget {
   final String label;
   final Widget? subtitle;
-  final IconData icon;
-  final IconData? suffixIcon;
+  final List<List> icon;
+  final List<List>? suffixIcon;
   final Widget? trailing;
   final GestureTapCallback? onTap;
   const MenuTileButton({
@@ -45,13 +45,13 @@ class MenuTileButton extends StatelessWidget {
               child: subtitle!,
             )
           : null,
-      leading: Icon(
-        icon,
+      leading: HugeIcon(
+        icon: icon,
         color: context.purpleIcon,
       ), // Leading icon uses primary color
       trailing: trailing ??
-          Icon(
-            suffixIcon ?? HugeIcons.strokeRoundedArrowRight01,
+          HugeIcon(
+            icon: suffixIcon ?? HugeIcons.strokeRoundedArrowRight01,
             color: context.isDarkMode
                 ? context.colors.onSurfaceVariant
                 : AppColors.purpleAlpha50,

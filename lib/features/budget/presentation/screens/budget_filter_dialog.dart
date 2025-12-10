@@ -47,7 +47,7 @@ class BudgetFilterDialog extends HookConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(HugeIcons.strokeRoundedArrowLeft01),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01),
                 onPressed: selectedYear.value > firstDate.year
                     ? () => selectedYear.value--
                     : null,
@@ -75,7 +75,7 @@ class BudgetFilterDialog extends HookConsumerWidget {
                 },
               ),
               IconButton(
-                icon: const Icon(HugeIcons.strokeRoundedArrowRight01),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01),
                 onPressed: selectedYear.value < lastDate.year
                     ? () => selectedYear.value++
                     : null,

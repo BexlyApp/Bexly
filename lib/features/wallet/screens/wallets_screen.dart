@@ -18,7 +18,7 @@ import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/wallet/screens/wallet_form_bottom_sheet.dart';
 
 /// Get HugeIcon for wallet type (constant for tree-shaking)
-IconData _getWalletIcon(WalletType type) {
+List<List<dynamic>> _getWalletIcon(WalletType type) {
   switch (type) {
     case WalletType.cash:
       return HugeIcons.strokeRoundedMoney02;
@@ -54,7 +54,7 @@ class WalletsScreen extends ConsumerWidget {
       actions: [
         CustomIconButton(
           context,
-          icon: HugeIcons.strokeRoundedAdd01,
+          icon: Icons.add, // CustomIconButton still uses IconData, use Material icon
           onPressed: () {
             context.openBottomSheet(child: const WalletFormBottomSheet());
           },
@@ -85,16 +85,16 @@ class WalletsScreen extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (isDefault)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(right: 8),
-                        child: Icon(
-                          HugeIcons.strokeRoundedCheckmarkCircle02,
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedCheckmarkCircle02,
                           color: AppColors.primary600,
                           size: 22,
                         ),
                       ),
-                    Icon(
-                      HugeIcons.strokeRoundedArrowRight01,
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedArrowRight01,
                       color: AppColors.purpleAlpha50,
                       size: 20,
                     ),

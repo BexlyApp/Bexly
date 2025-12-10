@@ -602,8 +602,8 @@ class _PaymentHistoryItem extends StatelessWidget {
             color: Theme.of(context).colorScheme.primaryContainer.withAlpha(76),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            HugeIcons.strokeRoundedCheckmarkCircle02,
+          child: HugeIcon(
+            icon: HugeIcons.strokeRoundedCheckmarkCircle02,
             color: Theme.of(context).colorScheme.primary,
           ),
         ),

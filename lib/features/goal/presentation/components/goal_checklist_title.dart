@@ -29,8 +29,8 @@ class GoalChecklistTitle extends StatelessWidget {
               ],
             ),
           ),
-          Icon(
-            HugeIcons.strokeRoundedSortByDown01,
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedSortByDown01,
           )
         ],
       ),

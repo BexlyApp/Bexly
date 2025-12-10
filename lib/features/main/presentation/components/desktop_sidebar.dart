@@ -79,7 +79,7 @@ class DesktopSidebar extends ConsumerWidget {
     required BuildContext context,
     required WidgetRef ref,
     required String title,
-    required IconData icon,
+    required dynamic icon, // Support both IconData and List<List> (HugeIcons)
     required VoidCallback onTap,
     int? pageIndex,
     bool isSpecialAction = false,
@@ -91,7 +91,9 @@ class DesktopSidebar extends ConsumerWidget {
               .getIconColor(pageIndex ?? -1);
 
     return ListTile(
-      leading: Icon(icon, color: itemColor, size: 26),
+      leading: icon is IconData
+          ? Icon(icon, color: itemColor, size: 26)
+          : HugeIcon(icon: icon, color: itemColor, size: 26),
       title: Text(
         title,
         style: AppTextStyles.body2.copyWith(

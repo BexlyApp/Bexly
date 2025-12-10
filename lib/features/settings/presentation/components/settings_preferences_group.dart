@@ -21,8 +21,8 @@ class SettingsPreferencesGroup extends ConsumerWidget {
               color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
             ),
           ),
-          leading: Icon(
-            HugeIcons.strokeRoundedTranslation,
+          leading: HugeIcon(
+            icon: HugeIcons.strokeRoundedTranslation,
             color: Theme.of(context).colorScheme.primary,
           ),
           title: Text(
@@ -46,8 +46,8 @@ class SettingsPreferencesGroup extends ConsumerWidget {
                 ),
               ),
               const Gap(8),
-              Icon(
-                HugeIcons.strokeRoundedArrowRight01,
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowRight01,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 size: 20,
               ),

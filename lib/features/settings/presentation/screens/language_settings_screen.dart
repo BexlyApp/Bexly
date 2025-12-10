@@ -114,8 +114,8 @@ class LanguageSettingsScreen extends ConsumerWidget {
                   ),
                   // Checkmark icon
                   if (isSelected)
-                    Icon(
-                      HugeIcons.strokeRoundedCheckmarkCircle02,
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedCheckmarkCircle02,
                       color: Theme.of(context).colorScheme.primary,
                       size: 24,
                     ),

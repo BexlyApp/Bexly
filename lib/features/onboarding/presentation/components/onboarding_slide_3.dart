@@ -29,7 +29,7 @@ final displayNameProvider = StateProvider.autoDispose<String>((ref) {
 });
 
 /// Get HugeIcon for wallet type
-IconData _getWalletIcon(WalletType type) {
+dynamic _getWalletIcon(WalletType type) {
   switch (type) {
     case WalletType.cash:
       return HugeIcons.strokeRoundedMoney02;
@@ -239,8 +239,8 @@ class OnboardingSlide3 extends HookConsumerWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          HugeIcons.strokeRoundedAdd01,
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedAdd01,
                           size: 20,
                           color: AppColors.primary,
                         ),

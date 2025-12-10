@@ -33,8 +33,8 @@ class TransactionOptionsMenu extends StatelessWidget {
                 color: AppColors.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(AppRadius.radius8),
               ),
-              child: Icon(
-                HugeIcons.strokeRoundedEdit02,
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedEdit02,
                 color: AppColors.primary,
               ),
             ),

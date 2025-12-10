@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
@@ -12,7 +13,7 @@ class SecondaryButton extends OutlinedButton {
     required BuildContext context,
     required super.onPressed,
     String? label,
-    IconData? icon,
+    dynamic icon, // Support both IconData and List<List> (HugeIcons)
     bool isLoading = false,
   }) : super(
          style: OutlinedButton.styleFrom(
@@ -27,7 +28,10 @@ class SecondaryButton extends OutlinedButton {
              : Row(
                  mainAxisAlignment: MainAxisAlignment.center,
                  children: [
-                   if (icon != null) Icon(icon, size: 22),
+                   if (icon != null)
+                     icon is IconData
+                         ? Icon(icon, size: 22)
+                         : HugeIcon(icon: icon, size: 22),
                    if (label != null) const Gap(AppSpacing.spacing8),
                    if (label != null)
                      Padding(
