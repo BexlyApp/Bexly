@@ -1,6 +1,7 @@
 import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { setGlobalOptions } from "firebase-functions/v2";
+import * as functions from "firebase-functions"; // v1 for auth triggers
 import * as admin from "firebase-admin";
 import { Bot, webhookCallback, InlineKeyboard } from "grammy";
 // Using REST API directly instead of SDK for better control
@@ -24,11 +25,12 @@ const GEMINI_MODEL = "gemini-2.5-flash";
 const OPENAI_MODEL = "gpt-4o-mini";
 // const CLAUDE_MODEL = "claude-sonnet-4-20250514"; // Uncomment when Claude is enabled
 
-// Set global options for all functions
+// Set global options for GEN 2 functions only
+// Note: Gen 1 functions (like auth triggers) need their own region config
+// Note: minInstances removed temporarily because it conflicts with Gen 1 functions (onUserCreated)
 setGlobalOptions({
   region: "asia-southeast1",
-  // Keep at least 1 instance warm to avoid cold start (~6-8s delay)
-  minInstances: 1,
+  // minInstances: 1, // Disabled - causes "Cannot set CPU" error for Gen 1 functions
 });
 
 // Initialize Firebase Admin
@@ -2471,3 +2473,193 @@ export const unlinkMessengerAccount = onCall(async (request) => {
 
   return { success: true };
 });
+
+// ============================================================================
+// DEFAULT CATEGORIES DATA
+// ============================================================================
+
+interface DefaultCategory {
+  id: number;
+  title: string;
+  icon: string;
+  iconType: string;
+  transactionType: "expense" | "income";
+  parentId?: number;
+  localizedTitles: Record<string, string>;
+}
+
+// Default categories with multi-language support
+// Matches app's category_repo.dart structure
+const DEFAULT_CATEGORIES: DefaultCategory[] = [
+  // ========== EXPENSE CATEGORIES ==========
+  // Food & Drinks (1)
+  { id: 1, title: "Food & Drinks", icon: "category-food-1", iconType: "asset", transactionType: "expense", localizedTitles: { en: "Food & Drinks", vi: "Ăn uống", zh: "餐饮", fr: "Nourriture", th: "อาหารและเครื่องดื่ม", id: "Makanan & Minuman", es: "Comida", pt: "Alimentação", ja: "食費", ko: "식비", de: "Essen", hi: "खाना-पीना", ru: "Еда", ar: "طعام وشراب" } },
+  { id: 101, title: "Groceries", icon: "category-food-2", iconType: "asset", transactionType: "expense", parentId: 1, localizedTitles: { en: "Groceries", vi: "Thực phẩm", zh: "杂货", fr: "Épicerie", th: "ของชำ", id: "Belanjaan", es: "Supermercado", pt: "Mercearia", ja: "食料品", ko: "식료품", de: "Lebensmittel", hi: "किराने का सामान", ru: "Продукты", ar: "بقالة" } },
+  { id: 102, title: "Restaurants", icon: "category-food-3", iconType: "asset", transactionType: "expense", parentId: 1, localizedTitles: { en: "Restaurants", vi: "Nhà hàng", zh: "餐厅", fr: "Restaurants", th: "ร้านอาหาร", id: "Restoran", es: "Restaurantes", pt: "Restaurantes", ja: "レストラン", ko: "레스토랑", de: "Restaurants", hi: "रेस्तरां", ru: "Рестораны", ar: "مطاعم" } },
+  { id: 103, title: "Coffee", icon: "category-food-4", iconType: "asset", transactionType: "expense", parentId: 1, localizedTitles: { en: "Coffee", vi: "Cà phê", zh: "咖啡", fr: "Café", th: "กาแฟ", id: "Kopi", es: "Café", pt: "Café", ja: "コーヒー", ko: "커피", de: "Kaffee", hi: "कॉफी", ru: "Кофе", ar: "قهوة" } },
+  { id: 104, title: "Snacks", icon: "category-food-5", iconType: "asset", transactionType: "expense", parentId: 1, localizedTitles: { en: "Snacks", vi: "Ăn vặt", zh: "零食", fr: "Snacks", th: "ขนม", id: "Camilan", es: "Snacks", pt: "Lanches", ja: "お菓子", ko: "간식", de: "Snacks", hi: "नाश्ता", ru: "Закуски", ar: "وجبات خفيفة" } },
+  { id: 105, title: "Takeout", icon: "category-food-6", iconType: "asset", transactionType: "expense", parentId: 1, localizedTitles: { en: "Takeout", vi: "Đồ ăn mang đi", zh: "外卖", fr: "À emporter", th: "อาหารสั่งกลับบ้าน", id: "Bawa pulang", es: "Para llevar", pt: "Delivery", ja: "テイクアウト", ko: "포장", de: "Zum Mitnehmen", hi: "पार्सल", ru: "Навынос", ar: "طعام جاهز" } },
+
+  // Transportation (2)
+  { id: 2, title: "Transportation", icon: "category-transportation-1", iconType: "asset", transactionType: "expense", localizedTitles: { en: "Transportation", vi: "Di chuyển", zh: "交通", fr: "Transport", th: "การเดินทาง", id: "Transportasi", es: "Transporte", pt: "Transporte", ja: "交通費", ko: "교통비", de: "Transport", hi: "परिवहन", ru: "Транспорт", ar: "مواصلات" } },
+  { id: 201, title: "Public Transport", icon: "category-transportation-2", iconType: "asset", transactionType: "expense", parentId: 2, localizedTitles: { en: "Public Transport", vi: "Xe buýt/Tàu", zh: "公共交通", fr: "Transport public", th: "ขนส่งสาธารณะ", id: "Transportasi Umum", es: "Transporte público", pt: "Transporte público", ja: "公共交通", ko: "대중교통", de: "ÖPNV", hi: "सार्वजनिक परिवहन", ru: "Общ. транспорт", ar: "مواصلات عامة" } },
+  { id: 202, title: "Fuel/Gas", icon: "category-transportation-3", iconType: "asset", transactionType: "expense", parentId: 2, localizedTitles: { en: "Fuel/Gas", vi: "Xăng dầu", zh: "燃油", fr: "Carburant", th: "น้ำมัน", id: "Bahan Bakar", es: "Combustible", pt: "Combustível", ja: "燃料", ko: "연료", de: "Kraftstoff", hi: "ईंधन", ru: "Топливо", ar: "وقود" } },
+  { id: 203, title: "Taxi & Rideshare", icon: "category-transportation-4", iconType: "asset", transactionType: "expense", parentId: 2, localizedTitles: { en: "Taxi & Rideshare", vi: "Taxi/Grab", zh: "出租车/网约车", fr: "Taxi/VTC", th: "แท็กซี่/Grab", id: "Taksi/Ojol", es: "Taxi/App", pt: "Táxi/App", ja: "タクシー", ko: "택시/카풀", de: "Taxi", hi: "टैक्सी", ru: "Такси", ar: "تاكسي" } },
+  { id: 204, title: "Vehicle Maintenance", icon: "category-transportation-5", iconType: "asset", transactionType: "expense", parentId: 2, localizedTitles: { en: "Vehicle Maintenance", vi: "Bảo dưỡng xe", zh: "车辆保养", fr: "Entretien véhicule", th: "ซ่อมบำรุงรถ", id: "Perawatan Kendaraan", es: "Mantenimiento", pt: "Manutenção", ja: "車両整備", ko: "차량정비", de: "Wartung", hi: "वाहन रखरखाव", ru: "Ремонт авто", ar: "صيانة السيارة" } },
+  { id: 205, title: "Parking", icon: "category-transportation-6", iconType: "asset", transactionType: "expense", parentId: 2, localizedTitles: { en: "Parking", vi: "Đậu xe", zh: "停车", fr: "Parking", th: "ที่จอดรถ", id: "Parkir", es: "Estacionamiento", pt: "Estacionamento", ja: "駐車場", ko: "주차", de: "Parken", hi: "पार्किंग", ru: "Парковка", ar: "مواقف" } },
+
+  // Housing (3)
+  { id: 3, title: "Housing", icon: "category-housing-1", iconType: "asset", transactionType: "expense", localizedTitles: { en: "Housing", vi: "Nhà ở", zh: "住房", fr: "Logement", th: "ที่อยู่อาศัย", id: "Perumahan", es: "Vivienda", pt: "Moradia", ja: "住居", ko: "주거비", de: "Wohnen", hi: "आवास", ru: "Жильё", ar: "سكن" } },
+  { id: 301, title: "Rent", icon: "category-housing-2", iconType: "asset", transactionType: "expense", parentId: 3, localizedTitles: { en: "Rent", vi: "Tiền thuê nhà", zh: "房租", fr: "Loyer", th: "ค่าเช่า", id: "Sewa", es: "Alquiler", pt: "Aluguel", ja: "家賃", ko: "월세", de: "Miete", hi: "किराया", ru: "Аренда", ar: "إيجار" } },
+  { id: 302, title: "Mortgage", icon: "category-housing-3", iconType: "asset", transactionType: "expense", parentId: 3, localizedTitles: { en: "Mortgage", vi: "Trả góp nhà", zh: "房贷", fr: "Hypothèque", th: "ผ่อนบ้าน", id: "KPR", es: "Hipoteca", pt: "Financiamento", ja: "住宅ローン", ko: "주택담보대출", de: "Hypothek", hi: "गृह ऋण", ru: "Ипотека", ar: "قسط منزل" } },
+  { id: 303, title: "Utilities", icon: "category-housing-4", iconType: "asset", transactionType: "expense", parentId: 3, localizedTitles: { en: "Utilities", vi: "Tiện ích", zh: "水电费", fr: "Services", th: "สาธารณูปโภค", id: "Utilitas", es: "Servicios", pt: "Utilidades", ja: "光熱費", ko: "공과금", de: "Nebenkosten", hi: "उपयोगिताएं", ru: "Коммунальные", ar: "مرافق" } },
+  { id: 304, title: "Maintenance", icon: "category-housing-5", iconType: "asset", transactionType: "expense", parentId: 3, localizedTitles: { en: "Maintenance", vi: "Sửa chữa", zh: "维修", fr: "Entretien", th: "ซ่อมบำรุง", id: "Perbaikan", es: "Mantenimiento", pt: "Manutenção", ja: "メンテナンス", ko: "유지보수", de: "Instandhaltung", hi: "रखरखाव", ru: "Ремонт", ar: "صيانة" } },
+  { id: 305, title: "Property Tax", icon: "category-housing-6", iconType: "asset", transactionType: "expense", parentId: 3, localizedTitles: { en: "Property Tax", vi: "Thuế nhà đất", zh: "房产税", fr: "Taxe foncière", th: "ภาษีที่ดิน", id: "Pajak Properti", es: "Impuesto", pt: "IPTU", ja: "固定資産税", ko: "재산세", de: "Grundsteuer", hi: "संपत्ति कर", ru: "Налог на недвижимость", ar: "ضريبة عقارية" } },
+
+  // Entertainment (4)
+  { id: 4, title: "Entertainment", icon: "category-entertainment-1", iconType: "asset", transactionType: "expense", localizedTitles: { en: "Entertainment", vi: "Giải trí", zh: "娱乐", fr: "Divertissement", th: "บันเทิง", id: "Hiburan", es: "Entretenimiento", pt: "Entretenimento", ja: "娯楽", ko: "오락", de: "Unterhaltung", hi: "मनोरंजन", ru: "Развлечения", ar: "ترفيه" } },
+  { id: 401, title: "Movies", icon: "category-entertainment-2", iconType: "asset", transactionType: "expense", parentId: 4, localizedTitles: { en: "Movies", vi: "Phim", zh: "电影", fr: "Cinéma", th: "ภาพยนตร์", id: "Film", es: "Cine", pt: "Cinema", ja: "映画", ko: "영화", de: "Kino", hi: "फिल्में", ru: "Кино", ar: "أفلام" } },
+  { id: 402, title: "Streaming", icon: "category-entertainment-3", iconType: "asset", transactionType: "expense", parentId: 4, localizedTitles: { en: "Streaming", vi: "Streaming", zh: "流媒体", fr: "Streaming", th: "สตรีมมิ่ง", id: "Streaming", es: "Streaming", pt: "Streaming", ja: "配信サービス", ko: "스트리밍", de: "Streaming", hi: "स्ट्रीमिंग", ru: "Стриминг", ar: "بث" } },
+  { id: 403, title: "Gaming", icon: "category-entertainment-4", iconType: "asset", transactionType: "expense", parentId: 4, localizedTitles: { en: "Gaming", vi: "Game", zh: "游戏", fr: "Jeux vidéo", th: "เกม", id: "Game", es: "Juegos", pt: "Jogos", ja: "ゲーム", ko: "게임", de: "Gaming", hi: "गेमिंग", ru: "Игры", ar: "ألعاب" } },
+  { id: 404, title: "Events", icon: "category-entertainment-5", iconType: "asset", transactionType: "expense", parentId: 4, localizedTitles: { en: "Events", vi: "Sự kiện", zh: "活动", fr: "Événements", th: "กิจกรรม", id: "Acara", es: "Eventos", pt: "Eventos", ja: "イベント", ko: "이벤트", de: "Events", hi: "कार्यक्रम", ru: "Мероприятия", ar: "فعاليات" } },
+  { id: 405, title: "Subscriptions", icon: "category-entertainment-6", iconType: "asset", transactionType: "expense", parentId: 4, localizedTitles: { en: "Subscriptions", vi: "Đăng ký", zh: "订阅", fr: "Abonnements", th: "สมาชิก", id: "Langganan", es: "Suscripciones", pt: "Assinaturas", ja: "サブスクリプション", ko: "구독", de: "Abos", hi: "सदस्यता", ru: "Подписки", ar: "اشتراكات" } },
+
+  // Health (5)
+  { id: 5, title: "Health", icon: "category-health-1", iconType: "asset", transactionType: "expense", localizedTitles: { en: "Health", vi: "Sức khỏe", zh: "健康", fr: "Santé", th: "สุขภาพ", id: "Kesehatan", es: "Salud", pt: "Saúde", ja: "健康", ko: "건강", de: "Gesundheit", hi: "स्वास्थ्य", ru: "Здоровье", ar: "صحة" } },
+  { id: 501, title: "Doctor Visits", icon: "category-health-2", iconType: "asset", transactionType: "expense", parentId: 5, localizedTitles: { en: "Doctor Visits", vi: "Khám bệnh", zh: "看医生", fr: "Médecin", th: "พบแพทย์", id: "Dokter", es: "Médico", pt: "Médico", ja: "通院", ko: "진료", de: "Arztbesuche", hi: "डॉक्टर", ru: "Врач", ar: "طبيب" } },
+  { id: 502, title: "Pharmacy", icon: "category-health-3", iconType: "asset", transactionType: "expense", parentId: 5, localizedTitles: { en: "Pharmacy", vi: "Thuốc", zh: "药店", fr: "Pharmacie", th: "ร้านยา", id: "Apotek", es: "Farmacia", pt: "Farmácia", ja: "薬局", ko: "약국", de: "Apotheke", hi: "दवाखाना", ru: "Аптека", ar: "صيدلية" } },
+  { id: 503, title: "Insurance", icon: "category-health-4", iconType: "asset", transactionType: "expense", parentId: 5, localizedTitles: { en: "Insurance", vi: "Bảo hiểm", zh: "保险", fr: "Assurance", th: "ประกัน", id: "Asuransi", es: "Seguro", pt: "Seguro", ja: "保険", ko: "보험", de: "Versicherung", hi: "बीमा", ru: "Страховка", ar: "تأمين" } },
+  { id: 504, title: "Fitness", icon: "category-health-5", iconType: "asset", transactionType: "expense", parentId: 5, localizedTitles: { en: "Fitness", vi: "Thể dục", zh: "健身", fr: "Sport", th: "ฟิตเนส", id: "Fitness", es: "Gimnasio", pt: "Academia", ja: "フィットネス", ko: "피트니스", de: "Fitness", hi: "फिटनेस", ru: "Фитнес", ar: "لياقة" } },
+  { id: 505, title: "Dental", icon: "category-health-5", iconType: "asset", transactionType: "expense", parentId: 5, localizedTitles: { en: "Dental", vi: "Nha khoa", zh: "牙科", fr: "Dentiste", th: "ทันตกรรม", id: "Gigi", es: "Dentista", pt: "Dentista", ja: "歯科", ko: "치과", de: "Zahnarzt", hi: "दंत चिकित्सा", ru: "Стоматология", ar: "أسنان" } },
+
+  // Shopping (6)
+  { id: 6, title: "Shopping", icon: "category-shopping-1", iconType: "asset", transactionType: "expense", localizedTitles: { en: "Shopping", vi: "Mua sắm", zh: "购物", fr: "Shopping", th: "ช้อปปิ้ง", id: "Belanja", es: "Compras", pt: "Compras", ja: "ショッピング", ko: "쇼핑", de: "Einkaufen", hi: "खरीदारी", ru: "Покупки", ar: "تسوق" } },
+  { id: 601, title: "Clothing", icon: "category-shopping-2", iconType: "asset", transactionType: "expense", parentId: 6, localizedTitles: { en: "Clothing", vi: "Quần áo", zh: "服装", fr: "Vêtements", th: "เสื้อผ้า", id: "Pakaian", es: "Ropa", pt: "Roupas", ja: "衣類", ko: "의류", de: "Kleidung", hi: "कपड़े", ru: "Одежда", ar: "ملابس" } },
+  { id: 602, title: "Electronics", icon: "category-shopping-3", iconType: "asset", transactionType: "expense", parentId: 6, localizedTitles: { en: "Electronics", vi: "Điện tử", zh: "电子产品", fr: "Électronique", th: "อิเล็กทรอนิกส์", id: "Elektronik", es: "Electrónica", pt: "Eletrônicos", ja: "家電", ko: "전자기기", de: "Elektronik", hi: "इलेक्ट्रॉनिक्स", ru: "Электроника", ar: "إلكترونيات" } },
+  { id: 603, title: "Shoes", icon: "category-shopping-4", iconType: "asset", transactionType: "expense", parentId: 6, localizedTitles: { en: "Shoes", vi: "Giày dép", zh: "鞋子", fr: "Chaussures", th: "รองเท้า", id: "Sepatu", es: "Zapatos", pt: "Calçados", ja: "靴", ko: "신발", de: "Schuhe", hi: "जूते", ru: "Обувь", ar: "أحذية" } },
+  { id: 604, title: "Accessories", icon: "category-shopping-5", iconType: "asset", transactionType: "expense", parentId: 6, localizedTitles: { en: "Accessories", vi: "Phụ kiện", zh: "配件", fr: "Accessoires", th: "เครื่องประดับ", id: "Aksesoris", es: "Accesorios", pt: "Acessórios", ja: "アクセサリー", ko: "액세서리", de: "Accessoires", hi: "सहायक उपकरण", ru: "Аксессуары", ar: "إكسسوارات" } },
+  { id: 605, title: "Online Shopping", icon: "category-shopping-6", iconType: "asset", transactionType: "expense", parentId: 6, localizedTitles: { en: "Online Shopping", vi: "Mua online", zh: "网购", fr: "Achats en ligne", th: "ช้อปออนไลน์", id: "Belanja Online", es: "Compras online", pt: "Compras online", ja: "オンラインショッピング", ko: "온라인쇼핑", de: "Online-Shopping", hi: "ऑनलाइन शॉपिंग", ru: "Онлайн-покупки", ar: "تسوق إلكتروني" } },
+
+  // Education (7)
+  { id: 7, title: "Education", icon: "category-education-1", iconType: "asset", transactionType: "expense", localizedTitles: { en: "Education", vi: "Giáo dục", zh: "教育", fr: "Éducation", th: "การศึกษา", id: "Pendidikan", es: "Educación", pt: "Educação", ja: "教育", ko: "교육", de: "Bildung", hi: "शिक्षा", ru: "Образование", ar: "تعليم" } },
+  { id: 701, title: "Tuition", icon: "category-education-2", iconType: "asset", transactionType: "expense", parentId: 7, localizedTitles: { en: "Tuition", vi: "Học phí", zh: "学费", fr: "Frais de scolarité", th: "ค่าเรียน", id: "Uang Sekolah", es: "Matrícula", pt: "Mensalidade", ja: "授業料", ko: "등록금", de: "Studiengebühren", hi: "ट्यूशन", ru: "Обучение", ar: "رسوم دراسية" } },
+  { id: 702, title: "Books", icon: "category-education-3", iconType: "asset", transactionType: "expense", parentId: 7, localizedTitles: { en: "Books", vi: "Sách", zh: "书籍", fr: "Livres", th: "หนังสือ", id: "Buku", es: "Libros", pt: "Livros", ja: "書籍", ko: "책", de: "Bücher", hi: "किताबें", ru: "Книги", ar: "كتب" } },
+  { id: 703, title: "Online Courses", icon: "category-education-4", iconType: "asset", transactionType: "expense", parentId: 7, localizedTitles: { en: "Online Courses", vi: "Khóa học online", zh: "在线课程", fr: "Cours en ligne", th: "คอร์สออนไลน์", id: "Kursus Online", es: "Cursos online", pt: "Cursos online", ja: "オンライン講座", ko: "온라인강좌", de: "Online-Kurse", hi: "ऑनलाइन कोर्स", ru: "Онлайн-курсы", ar: "دورات إلكترونية" } },
+  { id: 704, title: "Workshops", icon: "category-education-5", iconType: "asset", transactionType: "expense", parentId: 7, localizedTitles: { en: "Workshops", vi: "Workshop", zh: "研讨会", fr: "Ateliers", th: "เวิร์คช็อป", id: "Pelatihan", es: "Talleres", pt: "Workshops", ja: "ワークショップ", ko: "워크숍", de: "Workshops", hi: "कार्यशाला", ru: "Семинары", ar: "ورش عمل" } },
+  { id: 705, title: "School Supplies", icon: "category-education-6", iconType: "asset", transactionType: "expense", parentId: 7, localizedTitles: { en: "School Supplies", vi: "Dụng cụ học tập", zh: "学习用品", fr: "Fournitures", th: "อุปกรณ์การเรียน", id: "Alat Sekolah", es: "Material escolar", pt: "Material escolar", ja: "学用品", ko: "학용품", de: "Schulmaterial", hi: "स्कूल सामग्री", ru: "Канцтовары", ar: "مستلزمات مدرسية" } },
+
+  // Travel (8)
+  { id: 8, title: "Travel", icon: "category-travel-1", iconType: "asset", transactionType: "expense", localizedTitles: { en: "Travel", vi: "Du lịch", zh: "旅行", fr: "Voyage", th: "ท่องเที่ยว", id: "Perjalanan", es: "Viajes", pt: "Viagem", ja: "旅行", ko: "여행", de: "Reisen", hi: "यात्रा", ru: "Путешествия", ar: "سفر" } },
+  { id: 801, title: "Flights", icon: "category-travel-2", iconType: "asset", transactionType: "expense", parentId: 8, localizedTitles: { en: "Flights", vi: "Vé máy bay", zh: "机票", fr: "Vols", th: "ตั๋วเครื่องบิน", id: "Tiket Pesawat", es: "Vuelos", pt: "Passagens", ja: "航空券", ko: "항공권", de: "Flüge", hi: "उड़ान", ru: "Авиабилеты", ar: "طيران" } },
+  { id: 802, title: "Hotels", icon: "category-travel-3", iconType: "asset", transactionType: "expense", parentId: 8, localizedTitles: { en: "Hotels", vi: "Khách sạn", zh: "酒店", fr: "Hôtels", th: "โรงแรม", id: "Hotel", es: "Hoteles", pt: "Hotéis", ja: "ホテル", ko: "호텔", de: "Hotels", hi: "होटल", ru: "Отели", ar: "فنادق" } },
+  { id: 803, title: "Tours", icon: "category-travel-4", iconType: "asset", transactionType: "expense", parentId: 8, localizedTitles: { en: "Tours", vi: "Tour", zh: "旅游团", fr: "Excursions", th: "ทัวร์", id: "Tur", es: "Tours", pt: "Passeios", ja: "ツアー", ko: "투어", de: "Touren", hi: "टूर", ru: "Туры", ar: "جولات" } },
+  { id: 804, title: "Transport", icon: "category-travel-5", iconType: "asset", transactionType: "expense", parentId: 8, localizedTitles: { en: "Transport", vi: "Phương tiện", zh: "交通", fr: "Transport", th: "การเดินทาง", id: "Transportasi", es: "Transporte", pt: "Transporte", ja: "交通", ko: "교통", de: "Transport", hi: "परिवहन", ru: "Транспорт", ar: "مواصلات" } },
+  { id: 805, title: "Souvenirs", icon: "category-travel-6", iconType: "asset", transactionType: "expense", parentId: 8, localizedTitles: { en: "Souvenirs", vi: "Quà lưu niệm", zh: "纪念品", fr: "Souvenirs", th: "ของที่ระลึก", id: "Oleh-oleh", es: "Recuerdos", pt: "Lembranças", ja: "お土産", ko: "기념품", de: "Souvenirs", hi: "स्मृति चिन्ह", ru: "Сувениры", ar: "تذكارات" } },
+
+  // Finance (9)
+  { id: 9, title: "Finance", icon: "category-finance-1", iconType: "asset", transactionType: "expense", localizedTitles: { en: "Finance", vi: "Tài chính", zh: "金融", fr: "Finance", th: "การเงิน", id: "Keuangan", es: "Finanzas", pt: "Finanças", ja: "金融", ko: "금융", de: "Finanzen", hi: "वित्त", ru: "Финансы", ar: "مالية" } },
+  { id: 901, title: "Loan Payments", icon: "category-finance-2", iconType: "asset", transactionType: "expense", parentId: 9, localizedTitles: { en: "Loan Payments", vi: "Trả nợ", zh: "还贷", fr: "Remboursement", th: "ผ่อนชำระ", id: "Cicilan", es: "Préstamos", pt: "Empréstimos", ja: "ローン返済", ko: "대출상환", de: "Kreditzahlung", hi: "ऋण भुगतान", ru: "Платежи по кредиту", ar: "أقساط" } },
+  { id: 902, title: "Savings", icon: "category-finance-3", iconType: "asset", transactionType: "expense", parentId: 9, localizedTitles: { en: "Savings", vi: "Tiết kiệm", zh: "储蓄", fr: "Épargne", th: "ออมเงิน", id: "Tabungan", es: "Ahorros", pt: "Poupança", ja: "貯金", ko: "저축", de: "Sparen", hi: "बचत", ru: "Сбережения", ar: "ادخار" } },
+  { id: 903, title: "Investments", icon: "category-finance-4", iconType: "asset", transactionType: "expense", parentId: 9, localizedTitles: { en: "Investments", vi: "Đầu tư", zh: "投资", fr: "Investissements", th: "ลงทุน", id: "Investasi", es: "Inversiones", pt: "Investimentos", ja: "投資", ko: "투자", de: "Investitionen", hi: "निवेश", ru: "Инвестиции", ar: "استثمارات" } },
+  { id: 904, title: "Credit Card", icon: "category-finance-5", iconType: "asset", transactionType: "expense", parentId: 9, localizedTitles: { en: "Credit Card", vi: "Thẻ tín dụng", zh: "信用卡", fr: "Carte de crédit", th: "บัตรเครดิต", id: "Kartu Kredit", es: "Tarjeta de crédito", pt: "Cartão de crédito", ja: "クレジットカード", ko: "신용카드", de: "Kreditkarte", hi: "क्रेडिट कार्ड", ru: "Кредитная карта", ar: "بطاقة ائتمان" } },
+  { id: 905, title: "Bank Fees", icon: "category-finance-6", iconType: "asset", transactionType: "expense", parentId: 9, localizedTitles: { en: "Bank Fees", vi: "Phí ngân hàng", zh: "银行费用", fr: "Frais bancaires", th: "ค่าธรรมเนียม", id: "Biaya Bank", es: "Comisiones", pt: "Taxas bancárias", ja: "銀行手数料", ko: "은행수수료", de: "Bankgebühren", hi: "बैंक शुल्क", ru: "Комиссии банка", ar: "رسوم بنكية" } },
+
+  // Utilities (10)
+  { id: 10, title: "Utilities", icon: "category-utilities-1", iconType: "asset", transactionType: "expense", localizedTitles: { en: "Utilities", vi: "Tiện ích", zh: "公用事业", fr: "Services publics", th: "สาธารณูปโภค", id: "Utilitas", es: "Servicios", pt: "Utilidades", ja: "光熱費", ko: "공과금", de: "Nebenkosten", hi: "उपयोगिताएं", ru: "Коммунальные услуги", ar: "خدمات" } },
+  { id: 1001, title: "Electricity", icon: "category-utilities-2", iconType: "asset", transactionType: "expense", parentId: 10, localizedTitles: { en: "Electricity", vi: "Điện", zh: "电费", fr: "Électricité", th: "ค่าไฟ", id: "Listrik", es: "Electricidad", pt: "Eletricidade", ja: "電気代", ko: "전기", de: "Strom", hi: "बिजली", ru: "Электричество", ar: "كهرباء" } },
+  { id: 1002, title: "Water", icon: "category-utilities-3", iconType: "asset", transactionType: "expense", parentId: 10, localizedTitles: { en: "Water", vi: "Nước", zh: "水费", fr: "Eau", th: "ค่าน้ำ", id: "Air", es: "Agua", pt: "Água", ja: "水道代", ko: "수도", de: "Wasser", hi: "पानी", ru: "Вода", ar: "مياه" } },
+  { id: 1003, title: "Gas", icon: "category-utilities-4", iconType: "asset", transactionType: "expense", parentId: 10, localizedTitles: { en: "Gas", vi: "Gas", zh: "燃气费", fr: "Gaz", th: "ค่าแก๊ส", id: "Gas", es: "Gas", pt: "Gás", ja: "ガス代", ko: "가스", de: "Gas", hi: "गैस", ru: "Газ", ar: "غاز" } },
+  { id: 1004, title: "Internet", icon: "category-utilities-5", iconType: "asset", transactionType: "expense", parentId: 10, localizedTitles: { en: "Internet", vi: "Internet", zh: "网费", fr: "Internet", th: "อินเทอร์เน็ต", id: "Internet", es: "Internet", pt: "Internet", ja: "インターネット", ko: "인터넷", de: "Internet", hi: "इंटरनेट", ru: "Интернет", ar: "إنترنت" } },
+  { id: 1005, title: "Phone", icon: "category-utilities-6", iconType: "asset", transactionType: "expense", parentId: 10, localizedTitles: { en: "Phone", vi: "Điện thoại", zh: "电话费", fr: "Téléphone", th: "โทรศัพท์", id: "Telepon", es: "Teléfono", pt: "Telefone", ja: "電話代", ko: "전화", de: "Telefon", hi: "फोन", ru: "Телефон", ar: "هاتف" } },
+
+  // Other Expense (14)
+  { id: 14, title: "Other", icon: "category-finance-1", iconType: "asset", transactionType: "expense", localizedTitles: { en: "Other", vi: "Khác", zh: "其他", fr: "Autre", th: "อื่นๆ", id: "Lainnya", es: "Otro", pt: "Outro", ja: "その他", ko: "기타", de: "Sonstiges", hi: "अन्य", ru: "Другое", ar: "أخرى" } },
+
+  // ========== INCOME CATEGORIES ==========
+  // Work & Business (11)
+  { id: 11, title: "Work & Business", icon: "category-finance-1", iconType: "asset", transactionType: "income", localizedTitles: { en: "Work & Business", vi: "Công việc", zh: "工作收入", fr: "Travail", th: "งาน", id: "Pekerjaan", es: "Trabajo", pt: "Trabalho", ja: "仕事", ko: "근로소득", de: "Arbeit", hi: "कार्य", ru: "Работа", ar: "عمل" } },
+  { id: 1101, title: "Salary", icon: "category-finance-2", iconType: "asset", transactionType: "income", parentId: 11, localizedTitles: { en: "Salary", vi: "Lương", zh: "工资", fr: "Salaire", th: "เงินเดือน", id: "Gaji", es: "Salario", pt: "Salário", ja: "給料", ko: "급여", de: "Gehalt", hi: "वेतन", ru: "Зарплата", ar: "راتب" } },
+  { id: 1102, title: "Bonus", icon: "category-finance-3", iconType: "asset", transactionType: "income", parentId: 11, localizedTitles: { en: "Bonus", vi: "Thưởng", zh: "奖金", fr: "Prime", th: "โบนัส", id: "Bonus", es: "Bonificación", pt: "Bônus", ja: "ボーナス", ko: "보너스", de: "Bonus", hi: "बोनस", ru: "Премия", ar: "مكافأة" } },
+  { id: 1103, title: "Freelance", icon: "category-finance-4", iconType: "asset", transactionType: "income", parentId: 11, localizedTitles: { en: "Freelance", vi: "Làm thêm", zh: "自由职业", fr: "Freelance", th: "ฟรีแลนซ์", id: "Freelance", es: "Freelance", pt: "Freelance", ja: "フリーランス", ko: "프리랜서", de: "Freelance", hi: "फ्रीलांस", ru: "Фриланс", ar: "عمل حر" } },
+  { id: 1104, title: "Business Income", icon: "category-finance-5", iconType: "asset", transactionType: "income", parentId: 11, localizedTitles: { en: "Business Income", vi: "Kinh doanh", zh: "经营收入", fr: "Revenus d'entreprise", th: "รายได้ธุรกิจ", id: "Pendapatan Usaha", es: "Ingresos negocio", pt: "Renda empresarial", ja: "事業収入", ko: "사업소득", de: "Geschäftseinnahmen", hi: "व्यापार आय", ru: "Доход от бизнеса", ar: "دخل تجاري" } },
+
+  // Investments (12)
+  { id: 12, title: "Investments", icon: "category-finance-1", iconType: "asset", transactionType: "income", localizedTitles: { en: "Investments", vi: "Đầu tư", zh: "投资收益", fr: "Investissements", th: "การลงทุน", id: "Investasi", es: "Inversiones", pt: "Investimentos", ja: "投資", ko: "투자수익", de: "Investitionen", hi: "निवेश", ru: "Инвестиции", ar: "استثمارات" } },
+  { id: 1201, title: "Dividends", icon: "category-finance-2", iconType: "asset", transactionType: "income", parentId: 12, localizedTitles: { en: "Dividends", vi: "Cổ tức", zh: "股息", fr: "Dividendes", th: "เงินปันผล", id: "Dividen", es: "Dividendos", pt: "Dividendos", ja: "配当金", ko: "배당금", de: "Dividenden", hi: "लाभांश", ru: "Дивиденды", ar: "أرباح أسهم" } },
+  { id: 1202, title: "Interest", icon: "category-finance-3", iconType: "asset", transactionType: "income", parentId: 12, localizedTitles: { en: "Interest", vi: "Lãi suất", zh: "利息", fr: "Intérêts", th: "ดอกเบี้ย", id: "Bunga", es: "Intereses", pt: "Juros", ja: "利息", ko: "이자", de: "Zinsen", hi: "ब्याज", ru: "Проценты", ar: "فوائد" } },
+  { id: 1203, title: "Capital Gains", icon: "category-finance-4", iconType: "asset", transactionType: "income", parentId: 12, localizedTitles: { en: "Capital Gains", vi: "Lợi nhuận", zh: "资本收益", fr: "Plus-values", th: "กำไรจากการลงทุน", id: "Keuntungan Modal", es: "Ganancias", pt: "Ganhos de capital", ja: "キャピタルゲイン", ko: "자본이득", de: "Kapitalgewinne", hi: "पूंजीगत लाभ", ru: "Прирост капитала", ar: "أرباح رأسمالية" } },
+  { id: 1204, title: "Rental Income", icon: "category-finance-5", iconType: "asset", transactionType: "income", parentId: 12, localizedTitles: { en: "Rental Income", vi: "Cho thuê", zh: "租金收入", fr: "Revenus locatifs", th: "รายได้ค่าเช่า", id: "Sewa", es: "Alquiler", pt: "Aluguel", ja: "賃貸収入", ko: "임대수입", de: "Mieteinnahmen", hi: "किराया आय", ru: "Аренда", ar: "إيجار" } },
+
+  // Other Income (13)
+  { id: 13, title: "Other Income", icon: "category-finance-1", iconType: "asset", transactionType: "income", localizedTitles: { en: "Other Income", vi: "Thu nhập khác", zh: "其他收入", fr: "Autres revenus", th: "รายได้อื่นๆ", id: "Pendapatan Lain", es: "Otros ingresos", pt: "Outras receitas", ja: "その他の収入", ko: "기타수입", de: "Sonstige Einnahmen", hi: "अन्य आय", ru: "Прочие доходы", ar: "دخل آخر" } },
+  { id: 1301, title: "Gifts Received", icon: "category-finance-2", iconType: "asset", transactionType: "income", parentId: 13, localizedTitles: { en: "Gifts Received", vi: "Quà tặng", zh: "收到的礼物", fr: "Cadeaux reçus", th: "ของขวัญที่ได้รับ", id: "Hadiah", es: "Regalos", pt: "Presentes", ja: "贈り物", ko: "선물", de: "Geschenke", hi: "उपहार", ru: "Подарки", ar: "هدايا" } },
+  { id: 1302, title: "Refunds", icon: "category-finance-3", iconType: "asset", transactionType: "income", parentId: 13, localizedTitles: { en: "Refunds", vi: "Hoàn tiền", zh: "退款", fr: "Remboursements", th: "เงินคืน", id: "Pengembalian", es: "Reembolsos", pt: "Reembolsos", ja: "払い戻し", ko: "환불", de: "Rückerstattungen", hi: "रिफंड", ru: "Возвраты", ar: "استرداد" } },
+  { id: 1303, title: "Cashback", icon: "category-finance-4", iconType: "asset", transactionType: "income", parentId: 13, localizedTitles: { en: "Cashback", vi: "Cashback", zh: "返现", fr: "Cashback", th: "เงินคืน", id: "Cashback", es: "Cashback", pt: "Cashback", ja: "キャッシュバック", ko: "캐시백", de: "Cashback", hi: "कैशबैक", ru: "Кэшбэк", ar: "استرداد نقدي" } },
+  { id: 1304, title: "Tax Refund", icon: "category-finance-5", iconType: "asset", transactionType: "income", parentId: 13, localizedTitles: { en: "Tax Refund", vi: "Hoàn thuế", zh: "退税", fr: "Remboursement d'impôts", th: "คืนภาษี", id: "Pengembalian Pajak", es: "Devolución de impuestos", pt: "Restituição de impostos", ja: "税金還付", ko: "세금환급", de: "Steuerrückerstattung", hi: "कर वापसी", ru: "Возврат налога", ar: "استرداد ضريبي" } },
+  { id: 1305, title: "Other", icon: "category-finance-6", iconType: "asset", transactionType: "income", parentId: 13, localizedTitles: { en: "Other", vi: "Khác", zh: "其他", fr: "Autre", th: "อื่นๆ", id: "Lainnya", es: "Otro", pt: "Outro", ja: "その他", ko: "기타", de: "Sonstiges", hi: "अन्य", ru: "Другое", ar: "أخرى" } },
+];
+
+// ============================================================================
+// ON USER CREATED - Create default categories for new users
+// ============================================================================
+
+/**
+ * Firebase Auth trigger - runs AFTER a new user is created
+ * Creates default categories in Firestore for users who register via bot/web
+ * (Users who register via app will have categories synced from app)
+ *
+ * Note: Using v1 auth.user().onCreate() because v2 beforeUserCreated requires GCIP
+ * Note: This is a Gen 1 function (auth triggers not supported in Gen 2 yet)
+ */
+export const onUserCreated = functions
+  .runWith({ memory: "256MB", timeoutSeconds: 60 }) // Gen 1 config
+  .region("asia-southeast1")
+  .auth.user()
+  .onCreate(async (user) => {
+    console.log(`New user created: ${user.uid} (${user.email || "no email"})`);
+
+    try {
+      // Check if user already has categories (created by app sync)
+      const existingCategories = await bexlyDb
+        .collection(`users/${user.uid}/data/categories/items`)
+        .limit(1)
+        .get();
+
+      if (!existingCategories.empty) {
+        console.log(`User ${user.uid} already has categories, skipping...`);
+        return;
+      }
+
+      // Create default categories for new user
+      console.log(`Creating ${DEFAULT_CATEGORIES.length} default categories for user ${user.uid}...`);
+
+      const batch = bexlyDb.batch();
+      const now = admin.firestore.Timestamp.now();
+
+      for (const cat of DEFAULT_CATEGORIES) {
+        // Use deterministic cloudId based on category id for dedup
+        const cloudId = `default_cat_${cat.id}`;
+        const ref = bexlyDb.collection(`users/${user.uid}/data/categories/items`).doc(cloudId);
+
+        batch.set(ref, {
+          localId: cat.id,
+          title: cat.title,
+          icon: cat.icon,
+          iconBackground: "",
+          iconType: cat.iconType,
+          transactionType: cat.transactionType,
+          parentId: cat.parentId || null,
+          localizedTitles: cat.localizedTitles,
+          isSystemDefault: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      await batch.commit();
+      console.log(`Successfully created ${DEFAULT_CATEGORIES.length} categories for user ${user.uid}`);
+    } catch (error) {
+      console.error(`Failed to create categories for user ${user.uid}:`, error);
+      // Don't throw - we don't want to block user creation
+    }
+  });
