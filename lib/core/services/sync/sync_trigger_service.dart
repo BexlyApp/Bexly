@@ -252,7 +252,7 @@ class SyncTriggerService {
               // This ensures transactions can reference categoryCloudId
               Log.i('📤 Uploading all categories to cloud...', label: 'sync');
               print('📤 Uploading all categories to cloud...');
-              await _uploadAllCategoriesToCloud(localDb, userId);
+              await uploadAllCategoriesToCloud(localDb, userId);
               Log.i('✅ All categories uploaded to cloud', label: 'sync');
               print('✅ All categories uploaded to cloud');
             } else {
@@ -264,7 +264,7 @@ class SyncTriggerService {
               if (categoriesWithoutCloudId.isNotEmpty) {
                 Log.i('📤 Uploading ${categoriesWithoutCloudId.length} categories without cloudId...', label: 'sync');
                 print('📤 Uploading ${categoriesWithoutCloudId.length} categories without cloudId...');
-                await _uploadAllCategoriesToCloud(localDb, userId);
+                await uploadAllCategoriesToCloud(localDb, userId);
                 Log.i('✅ Categories uploaded to cloud', label: 'sync');
                 print('✅ Categories uploaded to cloud');
               }
@@ -306,7 +306,7 @@ class SyncTriggerService {
               try {
                 Log.i('📤 Uploading categories to cloud...', label: 'sync');
                 print('📤 Uploading categories to cloud...');
-                await _uploadAllCategoriesToCloud(localDb, userId);
+                await uploadAllCategoriesToCloud(localDb, userId);
                 Log.i('✅ Categories uploaded to cloud', label: 'sync');
                 print('✅ Categories uploaded to cloud');
               } catch (uploadError) {
@@ -355,9 +355,10 @@ class SyncTriggerService {
     }
   }
 
-  /// Upload all categories to cloud (helper method)
+  /// Upload all categories to cloud (public method for force sync)
   /// This ensures all default categories have cloudId for transaction sync
-  static Future<void> _uploadAllCategoriesToCloud(
+  /// Can be called from Developer Portal to force sync categories
+  static Future<void> uploadAllCategoriesToCloud(
     AppDatabase localDb,
     String userId,
   ) async {
@@ -384,16 +385,19 @@ class SyncTriggerService {
           // Generate cloudId if not exists
           final cloudId = category.cloudId ?? const Uuid().v7();
 
-          // Upload to Firestore
+          // Upload to Firestore with ALL fields needed for Telegram bot
           await categoriesCollection.doc(cloudId).set({
+            'localId': category.id,
             'title': category.title,
             'icon': category.icon,
             'iconBackground': category.iconBackground,
             'iconType': category.iconType,
             'parentId': category.parentId,
             'description': category.description,
+            'localizedTitles': category.localizedTitles,
+            'transactionType': category.transactionType, // CRITICAL for Telegram bot!
             'isSystemDefault': category.isSystemDefault,
-            'createdAt': category.createdAt,
+            'createdAt': category.createdAt ?? DateTime.now(),
             'updatedAt': DateTime.now(),
           });
 

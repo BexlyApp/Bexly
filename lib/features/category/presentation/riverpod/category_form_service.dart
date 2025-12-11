@@ -26,7 +26,8 @@ class CategoryFormService {
       return;
     }
 
-    final db = ref.read(databaseProvider);
+    // Use categoryDaoProvider (with Ref) for cloud sync support!
+    final categoryDao = ref.read(categoryDaoProvider);
 
     Log.d(categoryModel.toJson(), label: 'category model');
 
@@ -45,7 +46,7 @@ class CategoryFormService {
     );
 
     try {
-      final row = await db.categoryDao.upsertCategory(
+      final row = await categoryDao.upsertCategory(
         categoryCompanion,
       ); // Use upsert for create/update
 

@@ -1,3 +1,4 @@
+// Force redeploy v2
 import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { setGlobalOptions } from "firebase-functions/v2";
@@ -408,33 +409,47 @@ async function getUserCategories(bexlyUserId: string): Promise<UserCategory[]> {
 }
 
 // Build dynamic AI prompt with user's actual categories and wallet info
-// OPTIMIZED: Shorter prompt = faster response
+// CRITICAL: Only use user's ACTUAL categories from Firestore - NEVER use fallback/generic categories!
 function buildDynamicPrompt(userCategories: UserCategory[], walletCurrency?: string): string {
-  // Separate expense and income categories - limit to 10 each to reduce prompt size
+  // Log categories for debugging
+  console.log(`buildDynamicPrompt - User has ${userCategories.length} categories:`);
+  userCategories.forEach(c => console.log(`  - "${c.title}" (${c.transactionType})`));
+
+  // Separate expense and income categories - use ALL user's categories (no limit)
   const expenseCategories = userCategories
     .filter(c => c.transactionType === "expense")
-    .map(c => c.title)
-    .slice(0, 10);
+    .map(c => c.title);
   const incomeCategories = userCategories
     .filter(c => c.transactionType === "income")
-    .map(c => c.title)
-    .slice(0, 5);
+    .map(c => c.title);
 
-  // Build category list for prompt
+  // Build category list - ONLY from user's Firestore, NO fallback/generic categories!
+  // If user has no categories, they need to sync app first
   const expenseCatList = expenseCategories.length > 0
     ? expenseCategories.join("|")
-    : "Food & Drinks|Shopping|Other";
+    : "Other"; // Minimal fallback - user should sync app
   const incomeCatList = incomeCategories.length > 0
     ? incomeCategories.join("|")
-    : "Salary|Other Income";
+    : "Other Income"; // Minimal fallback
 
-  // Ultra-compact prompt for speed - MUST ALWAYS return valid category
-  return `Parse→JSON.{"action":"create_expense"|"create_income"|"none","amount":num,"currency":"VND"|"USD"|null,"lang":"vi"|"en","desc":"str","cat":"CATEGORY"}
+  console.log(`EXP categories for prompt: ${expenseCatList}`);
+  console.log(`INC categories for prompt: ${incomeCatList}`);
+
+  // Prompt with STRICT category matching - AI must use EXACT category names from list
+  return `Parse→JSON.{"action":"create_expense"|"create_income"|"none","amount":num,"currency":"VND"|"USD"|null,"lang":"vi"|"en","desc":"str","cat":"EXACT_CATEGORY_NAME"}
 k=×1000,tr=×1000000→VND.$→USD.No symbol→null.
-EXP:${expenseCatList}|INC:${incomeCatList}
-⚠️cat MUST be from list above or "Other"!NEVER empty!
-"50k lunch"→{"action":"create_expense","amount":50000,"currency":"VND","lang":"vi","desc":"lunch","cat":"Food & Drinks"}
-"mua túi LV 50tr"→{"action":"create_expense","amount":50000000,"currency":"VND","lang":"vi","desc":"mua túi LV","cat":"Shopping"}
+
+⚠️CRITICAL CATEGORY RULES:
+1. EXPENSE categories: ${expenseCatList}
+2. INCOME categories: ${incomeCatList}
+3. cat MUST be EXACTLY one of the names above! Copy the name EXACTLY including case!
+4. If no good match, use first expense category for expenses, first income category for income
+5. NEVER use generic names like "Shopping", "Food" unless they're in the list above!
+6. NEVER make up category names!
+
+Examples:
+"50k lunch"→{"action":"create_expense","amount":50000,"currency":"VND","lang":"vi","desc":"lunch","cat":"${expenseCategories[0] || 'Other'}"}
+"mua bún bò 60tr"→{"action":"create_expense","amount":60000000,"currency":"VND","lang":"vi","desc":"mua bún bò","cat":"${expenseCategories[0] || 'Other'}"}
 "hi"→{"action":"none","amount":0,"currency":null,"lang":"en","desc":"","cat":""}`;
 }
 
@@ -1231,9 +1246,27 @@ function setupBotHandlers(bot: Bot) {
 
     if (!telegramId) return;
 
-    if (data === "cancel") {
-      await ctx.editMessageText("❌ Cancelled");
+    // Handle noop callback (disabled buttons after confirm/cancel)
+    if (data === "noop") {
       await ctx.answerCallbackQuery();
+      return;
+    }
+
+    if (data === "cancel") {
+      // Get original message text and update with cancelled status
+      const originalText = ctx.callbackQuery.message?.text || "";
+      // Remove the confirm prompt line and add cancelled status
+      const textWithoutPrompt = originalText.replace(/\n\n(Xác nhận\?|確認しますか\?|확인하시겠습니까\?|确认？|ยืนยัน\?|Konfirmasi\?|Confirm\?)$/, "");
+
+      // Create disabled button showing cancelled status
+      const cancelledKeyboard = new InlineKeyboard()
+        .text("❌ Đã hủy", "noop");
+
+      await ctx.editMessageText(
+        `${textWithoutPrompt}`,
+        { reply_markup: cancelledKeyboard }
+      );
+      await ctx.answerCallbackQuery({ text: "❌ Đã hủy" });
       return;
     }
 
@@ -1322,7 +1355,24 @@ function setupBotHandlers(bot: Bot) {
 
       // Find matching category from user's categories
       // AI now returns EXACT category title from user's Firestore list
-      console.log(`Searching for category with exact title: "${category}"`);
+      console.log(`=== CATEGORY LOOKUP DEBUG ===`);
+      console.log(`Category from callback data: "${category}"`);
+      console.log(`Transaction type: "${type}"`);
+
+      // First, list ALL user categories for debugging
+      const allCategoriesSnapshot = await bexlyDb
+        .collection("users")
+        .doc(user.bexlyUserId)
+        .collection("data")
+        .doc("categories")
+        .collection("items")
+        .get();
+
+      console.log(`User has ${allCategoriesSnapshot.size} categories:`);
+      allCategoriesSnapshot.docs.forEach(doc => {
+        const cat = doc.data();
+        console.log(`  - "${cat.title}" (${cat.transactionType})`);
+      });
 
       // Search for exact match on title
       const categoriesSnapshot = await bexlyDb
@@ -1337,8 +1387,10 @@ function setupBotHandlers(bot: Bot) {
 
       // If no exact match, try "Other" category (may exist in different languages)
       let categoryDoc = categoriesSnapshot.docs[0];
-      if (!categoryDoc) {
-        console.log(`No exact match for "${category}", trying fallback categories...`);
+      if (categoryDoc) {
+        console.log(`✅ Found exact match for category: "${category}"`);
+      } else {
+        console.log(`❌ No exact match for "${category}", trying fallback categories...`);
         // Try common "Other" category names
         const otherNames = ["Other", "Other Income", "Other Expense", "Khác"];
         const otherCategorySnapshot = await bexlyDb
@@ -1383,6 +1435,12 @@ function setupBotHandlers(bot: Bot) {
         await ctx.answerCallbackQuery();
         return;
       }
+
+      // Log final selected category
+      const finalCategoryData = categoryDoc.data();
+      console.log(`=== FINAL CATEGORY SELECTED ===`);
+      console.log(`Original requested: "${category}"`);
+      console.log(`Final selected: "${finalCategoryData.title}" (cloudId: ${categoryDoc.id})`);
 
       // Convert type string to integer (0: income, 1: expense)
       const transactionType = type === "income" ? 0 : 1;
@@ -1493,15 +1551,20 @@ function setupBotHandlers(bot: Bot) {
       // Format message in user's language
       let loggedText: string;
       if (didConvert) {
-        // With conversion: "✅ $3.22 支出 (¥500から) → My USD Wallet | 飲食"
-        loggedText = `✅ *${formatCurrency(finalAmount, walletCurrency)}* ${localizedType} (${formatCurrency(originalAmount, inputCurrency)} ${loc.from}) → *${walletData.name}*\n📝 ${categoryTitle}`;
+        // With conversion: "✅ $3.22 chi tiêu (từ 100.000.000 đ) → My USD Wallet"
+        // Fixed: "từ" now comes BEFORE the amount for proper Vietnamese grammar
+        loggedText = `✅ *${formatCurrency(finalAmount, walletCurrency)}* ${localizedType} (${loc.from} ${formatCurrency(originalAmount, inputCurrency)}) → *${walletData.name}*\n📝 ${categoryTitle}`;
       } else {
         // Without conversion: "✅ ¥500 支出 → My Wallet | 飲食"
         loggedText = `✅ *${formatCurrency(finalAmount, walletCurrency)}* ${localizedType} → *${walletData.name}*\n📝 ${categoryTitle}`;
       }
 
-      await ctx.editMessageText(loggedText, { parse_mode: "Markdown" });
-      await ctx.answerCallbackQuery({ text: "✅" });
+      // Create confirmed button to keep the message box visible
+      const confirmedKeyboard = new InlineKeyboard()
+        .text("✅ Đã xác nhận", "noop");
+
+      await ctx.editMessageText(loggedText, { parse_mode: "Markdown", reply_markup: confirmedKeyboard });
+      await ctx.answerCallbackQuery({ text: "✅ Đã ghi nhận" });
     }
   });
 }

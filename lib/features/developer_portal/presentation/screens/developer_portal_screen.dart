@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +13,7 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/database/firestore_database.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:bexly/core/services/sync/sync_trigger_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -80,6 +82,39 @@ class DeveloperPortalScreen extends HookConsumerWidget {
                           },
                         ),
                       );
+                    },
+                  ),
+                  MenuTileButton(
+                    label: 'Force Sync Categories to Cloud',
+                    icon: HugeIcons.strokeRoundedCloudUpload as dynamic,
+                    onTap: () async {
+                      final firebaseUser = FirebaseAuth.instance.currentUser;
+                      if (firebaseUser == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please login first')),
+                        );
+                        return;
+                      }
+
+                      isLoading.value = true;
+                      try {
+                        final db = ref.read(databaseProvider);
+                        await SyncTriggerService.uploadAllCategoriesToCloud(db, firebaseUser.uid);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('✅ Categories synced to cloud!')),
+                          );
+                        }
+                      } catch (e) {
+                        Log.e('Force sync failed: $e', label: 'DevPortal');
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('❌ Sync failed: $e')),
+                          );
+                        }
+                      } finally {
+                        isLoading.value = false;
+                      }
                     },
                   ),
                   MenuTileButton(
