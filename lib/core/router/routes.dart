@@ -24,6 +24,7 @@ class Routes {
   static const String notificationSettings = '/notification-settings';
   static const String autoTransactionSettings = '/auto-transaction-settings';
   static const String languageSettings = '/language-settings';
+  static const String aiModelSettings = '/ai-model-settings';
   static const String notifications = '/notifications';
   static const String backupAndRestore = '/backup-restore';
   static const String accountDeletion = '/account-deletion';

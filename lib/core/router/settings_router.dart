@@ -9,6 +9,7 @@ import 'package:bexly/features/settings/presentation/screens/auto_transaction_se
 import 'package:bexly/features/settings/presentation/screens/notification_settings_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/personal_details_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/settings_screen.dart';
+import 'package:bexly/features/settings/presentation/screens/ai_model_settings_screen.dart';
 import 'package:bexly/features/subscription/presentation/screens/subscription_screen.dart';
 
 class SettingsRouter {
@@ -32,6 +33,10 @@ class SettingsRouter {
     GoRoute(
       path: Routes.languageSettings,
       builder: (context, state) => const LanguageSettingsScreen(),
+    ),
+    GoRoute(
+      path: Routes.aiModelSettings,
+      builder: (context, state) => const AIModelSettingsScreen(),
     ),
     GoRoute(
       path: Routes.backupAndRestore,

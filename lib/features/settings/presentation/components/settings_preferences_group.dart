@@ -59,6 +59,11 @@ class SettingsPreferencesGroup extends ConsumerWidget {
           icon: HugeIcons.strokeRoundedNotification01,
           onTap: () => context.push(Routes.notificationSettings),
         ),
+        MenuTileButton(
+          label: 'AI Model',
+          icon: HugeIcons.strokeRoundedAiBrain01,
+          onTap: () => context.push(Routes.aiModelSettings),
+        ),
         if (Platform.isAndroid)
           MenuTileButton(
             label: l10n.autoTransaction,
