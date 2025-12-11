@@ -31,6 +31,7 @@ import 'package:bexly/features/receipt_scanner/presentation/riverpod/receipt_sca
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 import 'package:bexly/core/services/subscription/subscription.dart';
+import 'package:bexly/features/settings/presentation/riverpod/ai_model_provider.dart';
 
 // Simple category info for AI
 class CategoryInfo {
@@ -217,59 +218,82 @@ final aiServiceProvider = Provider<AIService>((ref) {
     // Note: Cache will be populated on first transaction view, then AI will have rate on next init
   }
 
-  // Check which AI provider to use
-  final provider = LLMDefaultConfig.provider;
+  // Check which AI provider to use from user settings
+  final selectedModel = ref.read(aiModelProvider);
 
-  if (provider == 'gemini') {
-    // Use Gemini service
-    final apiKey = LLMDefaultConfig.geminiApiKey.isEmpty
-        ? 'USER_MUST_PROVIDE_API_KEY'
-        : LLMDefaultConfig.geminiApiKey;
+  // Map AIModel setting to service
+  switch (selectedModel) {
+    case AIModel.gemini:
+      // Use Gemini service
+      final apiKey = LLMDefaultConfig.geminiApiKey.isEmpty
+          ? 'USER_MUST_PROVIDE_API_KEY'
+          : LLMDefaultConfig.geminiApiKey;
 
-    if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length >= 11) {
-      final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
-      Log.d('Using Gemini Service with API key: $maskedKey, model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-    } else if (apiKey == 'USER_MUST_PROVIDE_API_KEY') {
-      Log.e('Invalid or missing Gemini API key!', label: 'Chat Provider');
-    } else {
-      Log.d('Using Gemini Service with API key: [SHORT_KEY], model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-    }
+      if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length >= 11) {
+        final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
+        Log.d('Using Gemini Service with API key: $maskedKey, model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
+      } else if (apiKey == 'USER_MUST_PROVIDE_API_KEY') {
+        Log.e('Invalid or missing Gemini API key!', label: 'Chat Provider');
+      } else {
+        Log.d('Using Gemini Service with API key: [SHORT_KEY], model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
+      }
 
-    return GeminiService(
-      apiKey: apiKey,
-      model: LLMDefaultConfig.geminiModel,
-      categories: categories,
-      categoryHierarchy: categoryHierarchy,
-      walletCurrency: walletCurrency,
-      walletName: walletName,
-      exchangeRateVndToUsd: exchangeRateVndToUsd,
-      wallets: walletNames,
-    );
-  } else {
-    // Default to OpenAI service
-    final apiKey = LLMDefaultConfig.apiKey.isEmpty
-        ? 'USER_MUST_PROVIDE_API_KEY'
-        : LLMDefaultConfig.apiKey;
+      return GeminiService(
+        apiKey: apiKey,
+        model: LLMDefaultConfig.geminiModel,
+        categories: categories,
+        categoryHierarchy: categoryHierarchy,
+        walletCurrency: walletCurrency,
+        walletName: walletName,
+        exchangeRateVndToUsd: exchangeRateVndToUsd,
+        wallets: walletNames,
+      );
 
-    if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length >= 11) {
-      final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
-      Log.d('Using OpenAI Service with API key: $maskedKey, model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-    } else if (apiKey == 'USER_MUST_PROVIDE_API_KEY') {
-      Log.e('Invalid or missing OpenAI API key!', label: 'Chat Provider');
-    } else {
-      Log.d('Using OpenAI Service with API key: [SHORT_KEY], model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-    }
+    case AIModel.openAI:
+      // OpenAI service
+      final apiKey = LLMDefaultConfig.apiKey.isEmpty
+          ? 'USER_MUST_PROVIDE_API_KEY'
+          : LLMDefaultConfig.apiKey;
 
-    return OpenAIService(
-      apiKey: apiKey,
-      model: LLMDefaultConfig.model,
-      categories: categories,
-      categoryHierarchy: categoryHierarchy,
-      walletCurrency: walletCurrency,
-      walletName: walletName,
-      exchangeRateVndToUsd: exchangeRateVndToUsd,
-      wallets: walletNames,
-    );
+      if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length >= 11) {
+        final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
+        Log.d('Using OpenAI Service with API key: $maskedKey, model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
+      } else if (apiKey == 'USER_MUST_PROVIDE_API_KEY') {
+        Log.e('Invalid or missing OpenAI API key!', label: 'Chat Provider');
+      } else {
+        Log.d('Using OpenAI Service with API key: [SHORT_KEY], model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
+      }
+
+      return OpenAIService(
+        apiKey: apiKey,
+        model: LLMDefaultConfig.model,
+        categories: categories,
+        categoryHierarchy: categoryHierarchy,
+        walletCurrency: walletCurrency,
+        walletName: walletName,
+        exchangeRateVndToUsd: exchangeRateVndToUsd,
+        wallets: walletNames,
+      );
+
+    case AIModel.dosAI:
+      // DOS AI - Self-hosted vLLM (free tier)
+      final endpoint = LLMDefaultConfig.customEndpoint;
+      final apiKey = LLMDefaultConfig.customApiKey;
+      final model = LLMDefaultConfig.customModel;
+
+      Log.d('Using DOS AI (vLLM): endpoint=$endpoint, model=$model, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
+
+      return CustomLLMService(
+        baseUrl: endpoint,
+        apiKey: apiKey,
+        model: model,
+        categories: categories,
+        categoryHierarchy: categoryHierarchy,
+        walletCurrency: walletCurrency,
+        walletName: walletName,
+        exchangeRateVndToUsd: exchangeRateVndToUsd,
+        wallets: walletNames,
+      );
   }
 });
 

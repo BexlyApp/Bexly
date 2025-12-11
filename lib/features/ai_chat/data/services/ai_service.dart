@@ -494,3 +494,179 @@ class GeminiService with AIServicePromptMixin implements AIService {
     yield response;
   }
 }
+
+/// Custom LLM Service for self-hosted models (vLLM, Ollama, etc.)
+/// Uses OpenAI-compatible API format
+class CustomLLMService with AIServicePromptMixin implements AIService {
+  final String apiKey;
+  final String baseUrl;
+  final String model;
+
+  @override
+  final List<String> categories;
+
+  @override
+  final String? categoryHierarchy;
+
+  @override
+  String? walletCurrency;
+
+  @override
+  String? walletName;
+
+  @override
+  double? exchangeRateVndToUsd;
+
+  @override
+  List<String>? wallets;
+
+  String _recentTransactionsContext = '';
+  String _budgetsContext = '';
+
+  @override
+  String get recentTransactionsContext => _recentTransactionsContext;
+
+  @override
+  String get budgetsContext => _budgetsContext;
+
+  // Conversation history for context
+  final List<Map<String, String>> _conversationHistory = [];
+
+  CustomLLMService({
+    required this.baseUrl,
+    this.apiKey = 'no-key-required',
+    this.model = 'default',
+    this.categories = const [],
+    this.categoryHierarchy,
+    this.walletCurrency,
+    this.walletName,
+    this.exchangeRateVndToUsd,
+    this.wallets,
+  }) {
+    Log.d('CustomLLMService initialized with endpoint: $baseUrl, model: $model, categories: ${categories.length}', label: 'AI Service');
+  }
+
+  @override
+  void updateRecentTransactions(String recentTransactionsContext) {
+    _recentTransactionsContext = recentTransactionsContext;
+    Log.d('Updated recent transactions context (${recentTransactionsContext.length} chars)', label: 'Custom LLM');
+  }
+
+  @override
+  void updateBudgetsContext(String budgetsContext) {
+    _budgetsContext = budgetsContext;
+    Log.d('Updated budgets context (${budgetsContext.length} chars)', label: 'Custom LLM');
+  }
+
+  @override
+  void updateContext({
+    String? walletName,
+    String? walletCurrency,
+    List<String>? wallets,
+    double? exchangeRate,
+  }) {
+    if (walletName != null) this.walletName = walletName;
+    if (walletCurrency != null) this.walletCurrency = walletCurrency;
+    if (wallets != null) this.wallets = wallets;
+    if (exchangeRate != null) exchangeRateVndToUsd = exchangeRate;
+
+    Log.d('✅ Updated AI context: wallet="$walletName" ($walletCurrency)', label: 'Custom LLM');
+  }
+
+  @override
+  void clearHistory() {
+    _conversationHistory.clear();
+    Log.d('Conversation history cleared', label: 'Custom LLM');
+  }
+
+  @override
+  Future<String> sendMessage(String message) async {
+    try {
+      Log.d('Sending message to Custom LLM ($baseUrl): $message', label: 'Custom LLM');
+
+      // Build messages array with history
+      final messages = [
+        {
+          'role': 'system',
+          'content': systemPrompt,
+        },
+        ..._conversationHistory,
+        {
+          'role': 'user',
+          'content': message,
+        }
+      ];
+
+      // Prepare headers
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+
+      // Add Authorization header if API key is provided
+      if (apiKey.isNotEmpty && apiKey != 'no-key-required') {
+        headers['Authorization'] = 'Bearer $apiKey';
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/chat/completions'),
+            headers: headers,
+            body: jsonEncode({
+              'model': model,
+              'messages': messages,
+              'temperature': 0.3,
+              'max_tokens': 2000,
+            }),
+          )
+          .timeout(
+            const Duration(seconds: 60), // Longer timeout for self-hosted
+            onTimeout: () {
+              Log.e('Custom LLM request timed out after 60 seconds', label: 'Custom LLM');
+              throw Exception('Request timed out. Please check your self-hosted LLM server.');
+            },
+          );
+
+      Log.d('Custom LLM Response status: ${response.statusCode}', label: 'Custom LLM');
+
+      if (response.statusCode == 200) {
+        try {
+          final data = jsonDecode(response.body);
+          final content = data['choices'][0]['message']['content'];
+          Log.d('Custom LLM Response: $content', label: 'Custom LLM');
+
+          // Save conversation to history
+          _conversationHistory.add({
+            'role': 'user',
+            'content': message,
+          });
+          _conversationHistory.add({
+            'role': 'assistant',
+            'content': content,
+          });
+
+          return content.trim();
+        } catch (e) {
+          Log.e('Failed to parse Custom LLM response: $e', label: 'Custom LLM');
+          throw Exception('Invalid response format from Custom LLM.');
+        }
+      } else {
+        Log.e('Custom LLM API error: ${response.statusCode} - ${response.body}', label: 'Custom LLM');
+
+        if (response.statusCode == 503) {
+          throw Exception('Self-hosted LLM server is not available. Please check if vLLM/Ollama is running.');
+        } else {
+          throw Exception('Custom LLM Error: ${response.statusCode}');
+        }
+      }
+    } catch (e) {
+      Log.e('Error calling Custom LLM API: $e', label: 'Custom LLM');
+      rethrow;
+    }
+  }
+
+  @override
+  Stream<String> sendMessageStream(String message) async* {
+    final response = await sendMessage(message);
+    yield response;
+  }
+}
