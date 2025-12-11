@@ -67,7 +67,7 @@ class TransactionForm extends HookConsumerWidget {
             onPressed: () {
               formState.deleteTransaction(ref, context);
             },
-            icon: HugeIcons.strokeRoundedDelete02,
+            icon: HugeIcons.strokeRoundedDelete02 as dynamic,
             themeMode: context.themeMode,
           ),
       ],

@@ -208,14 +208,14 @@ class _CurrentPlanBanner extends StatelessWidget {
     }
   }
 
-  List<List<dynamic>> _getTierIcon(SubscriptionTier tier) {
+  dynamic _getTierIcon(SubscriptionTier tier) {
     switch (tier) {
       case SubscriptionTier.free:
-        return HugeIcons.strokeRoundedUser;
+        return HugeIcons.strokeRoundedUser as dynamic;
       case SubscriptionTier.plus:
-        return HugeIcons.strokeRoundedCrown;
+        return HugeIcons.strokeRoundedCrown as dynamic;
       case SubscriptionTier.pro:
-        return HugeIcons.strokeRoundedDiamond01;
+        return HugeIcons.strokeRoundedDiamond01 as dynamic;
     }
   }
 }
@@ -327,7 +327,7 @@ class _PlanCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           HugeIcon(
-                            icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                            icon: HugeIcons.strokeRoundedCheckmarkCircle02 as dynamic,
                             color: accentColor,
                             size: 18,
                           ),
@@ -466,7 +466,7 @@ class _FreeTierCard extends StatelessWidget {
                 Row(
                   children: [
                     HugeIcon(
-                      icon: HugeIcons.strokeRoundedUser,
+                      icon: HugeIcons.strokeRoundedUser as dynamic,
                       color: accentColor,
                       size: 20,
                     ),
@@ -507,27 +507,27 @@ class _FreeTierCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedWallet01,
+                  icon: HugeIcons.strokeRoundedWallet01 as dynamic,
                   text: '3 wallets',
                 ),
                 _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedChartRose,
+                  icon: HugeIcons.strokeRoundedChartRose as dynamic,
                   text: '2 budgets & 2 goals',
                 ),
                 _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedRepeat,
+                  icon: HugeIcons.strokeRoundedRepeat as dynamic,
                   text: '5 recurring transactions',
                 ),
                 _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedAiBrain01,
+                  icon: HugeIcons.strokeRoundedAiBrain01 as dynamic,
                   text: '20 AI messages/month (Standard)',
                 ),
                 _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedAnalytics01,
+                  icon: HugeIcons.strokeRoundedAnalytics01 as dynamic,
                   text: '3 months analytics history',
                 ),
                 _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedCloud,
+                  icon: HugeIcons.strokeRoundedCloud as dynamic,
                   text: 'Basic cloud sync',
                 ),
                 const Gap(AppSpacing.spacing8),
@@ -541,7 +541,7 @@ class _FreeTierCard extends StatelessWidget {
                   child: Row(
                     children: [
                       HugeIcon(
-                        icon: HugeIcons.strokeRoundedNotification03,
+                        icon: HugeIcons.strokeRoundedNotification03 as dynamic,
                         color: AppColors.tertiary700,
                         size: 18,
                       ),
@@ -567,7 +567,7 @@ class _FreeTierCard extends StatelessWidget {
 }
 
 class _FreeTierFeatureRow extends StatelessWidget {
-  final List<List<dynamic>> icon;
+  final dynamic icon;
   final String text;
 
   const _FreeTierFeatureRow({

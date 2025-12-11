@@ -36,7 +36,7 @@ class CategoryIconEmojiPicker extends StatelessWidget {
             categoryViewConfig: CategoryViewConfig(
               iconColorSelected: context.purpleBackgroundActive,
               indicatorColor: context.purpleBackgroundActive,
-              categoryIcons: CategoryIcons(
+              categoryIcons: const CategoryIcons(
                 recentIcon: Icons.access_time,
                 smileyIcon: Icons.emoji_emotions,
                 animalIcon: Icons.pets,

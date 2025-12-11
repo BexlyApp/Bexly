@@ -38,7 +38,7 @@ class BackupDialog extends ConsumerWidget {
 
     return Column(
       children: [
-        HugeIcon(icon: HugeIcons.strokeRoundedInformationSquare),
+        HugeIcon(icon: HugeIcons.strokeRoundedInformationSquare as dynamic),
         Gap(AppSpacing.spacing12),
         Text(
           'Backup data will only create a folder containing your backup files with this format:',

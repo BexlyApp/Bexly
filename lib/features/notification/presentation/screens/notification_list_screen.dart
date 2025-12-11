@@ -28,7 +28,7 @@ class NotificationListScreen extends ConsumerWidget {
         data: (notifications) => notifications.isNotEmpty
             ? [
                 PopupMenuButton<String>(
-                  icon: const HugeIcon(icon: HugeIcons.strokeRoundedMoreVertical),
+                  icon: HugeIcon(icon: HugeIcons.strokeRoundedMoreVertical as dynamic),
                   onSelected: (value) async {
                     final db = ref.read(databaseProvider);
                     if (value == 'mark_all_read') {
@@ -61,7 +61,7 @@ class NotificationListScreen extends ConsumerWidget {
                       value: 'mark_all_read',
                       child: Row(
                         children: [
-                          const HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle01, size: 18),
+                          HugeIcon(icon: HugeIcons.strokeRoundedCheckmarkCircle01 as dynamic, size: 18),
                           const Gap(8),
                           Text(l10n.markAllAsRead),
                         ],
@@ -71,7 +71,7 @@ class NotificationListScreen extends ConsumerWidget {
                       value: 'delete_all',
                       child: Row(
                         children: [
-                          HugeIcon(icon: HugeIcons.strokeRoundedDelete02, size: 18, color: AppColors.red),
+                          HugeIcon(icon: HugeIcons.strokeRoundedDelete02 as dynamic, size: 18, color: AppColors.red),
                           const Gap(8),
                           Text(l10n.clearAll, style: TextStyle(color: AppColors.red)),
                         ],
@@ -109,7 +109,7 @@ class NotificationListScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             HugeIcon(
-              icon: HugeIcons.strokeRoundedNotificationOff02,
+              icon: HugeIcons.strokeRoundedNotificationOff02 as dynamic,
               size: 80,
               color: theme.colorScheme.outline,
             ),
@@ -168,8 +168,8 @@ class NotificationListScreen extends ConsumerWidget {
           color: AppColors.red,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const HugeIcon(
-          icon: HugeIcons.strokeRoundedDelete02,
+        child: HugeIcon(
+          icon: HugeIcons.strokeRoundedDelete02 as dynamic,
           color: Colors.white,
         ),
       ),

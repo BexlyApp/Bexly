@@ -84,8 +84,8 @@ class PrivacyConsentBottomSheet extends StatelessWidget {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: HugeIcon(icon: 
-                  HugeIcons.strokeRoundedShield01,
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedShield01,
                   color: AppColors.primary,
                   size: 24,
                 ),
@@ -191,8 +191,8 @@ class _DataUsageItem extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        HugeIcon(icon: 
-          icon,
+        HugeIcon(
+          icon: icon,
           color: AppColors.neutral500,
           size: 20,
         ),

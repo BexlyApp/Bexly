@@ -26,7 +26,7 @@ class OnboardingSlide2 extends StatelessWidget {
 
           // Feature 1
           _FeatureItem(
-            icon: HugeIcons.strokeRoundedWallet01,
+            icon: HugeIcons.strokeRoundedWallet01 as dynamic,
             title: 'Multi-Wallet & Multi-Currency',
             description: 'Manage multiple wallets in different currencies',
           ),
@@ -34,7 +34,7 @@ class OnboardingSlide2 extends StatelessWidget {
 
           // Feature 2
           _FeatureItem(
-            icon: HugeIcons.strokeRoundedAiChat01,
+            icon: HugeIcons.strokeRoundedAiChat01 as dynamic,
             title: 'AI Chat Assistant',
             description: 'Smart AI helps you track expenses naturally',
           ),
@@ -42,7 +42,7 @@ class OnboardingSlide2 extends StatelessWidget {
 
           // Feature 3
           _FeatureItem(
-            icon: HugeIcons.strokeRoundedTargetDollar,
+            icon: HugeIcons.strokeRoundedTargetDollar as dynamic,
             title: 'Budgets & Goals',
             description: 'Set spending limits and savings goals',
           ),
@@ -50,7 +50,7 @@ class OnboardingSlide2 extends StatelessWidget {
 
           // Feature 4
           _FeatureItem(
-            icon: HugeIcons.strokeRoundedCloudUpload,
+            icon: HugeIcons.strokeRoundedCloudUpload as dynamic,
             title: 'Cloud Sync',
             description: 'Sync your data across all devices',
           ),

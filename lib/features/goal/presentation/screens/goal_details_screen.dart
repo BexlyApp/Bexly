@@ -64,8 +64,8 @@ class GoalDetailsScreen extends ConsumerWidget {
               );
             },
             icon: goalAsync.value!.pinned
-                ? HugeIcons.strokeRoundedPinOff
-                : HugeIcons.strokeRoundedPin,
+                ? HugeIcons.strokeRoundedPinOff as dynamic
+                : HugeIcons.strokeRoundedPin as dynamic,
             active: goalAsync.value!.pinned,
             themeMode: context.themeMode,
           ),
@@ -82,7 +82,7 @@ class GoalDetailsScreen extends ConsumerWidget {
               );
             }
           },
-          icon: HugeIcons.strokeRoundedEdit02,
+          icon: HugeIcons.strokeRoundedEdit02 as dynamic,
           themeMode: context.themeMode,
         ),
         Gap(AppSpacing.spacing8),
@@ -108,7 +108,7 @@ class GoalDetailsScreen extends ConsumerWidget {
                 ),
               );
             },
-            icon: HugeIcons.strokeRoundedDelete02,
+            icon: HugeIcons.strokeRoundedDelete02 as dynamic,
             themeMode: context.themeMode,
           ),
       ],

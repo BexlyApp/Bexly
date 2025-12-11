@@ -36,7 +36,7 @@ class RecurringScreen extends HookConsumerWidget {
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
         child: HugeIcon(
-          icon: HugeIcons.strokeRoundedPlusSign,
+          icon: HugeIcons.strokeRoundedPlusSign as dynamic,
           color: Theme.of(context).colorScheme.onPrimary,
         ),
       ),

@@ -12,7 +12,7 @@ class CategoryTitleField extends ConsumerWidget {
       label: 'Title (max. 25)',
       hint: 'New Category Title',
       isRequired: true,
-      prefixIcon: HugeIcons.strokeRoundedTextSmallcaps,
+      prefixIcon: HugeIcons.strokeRoundedTextSmallcaps as dynamic,
       textInputAction: TextInputAction.next,
       keyboardType: TextInputType.name,
       maxLength: 25,

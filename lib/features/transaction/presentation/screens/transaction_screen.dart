@@ -40,7 +40,7 @@ class TransactionScreen extends ConsumerWidget {
               child: TransactionFilterFormDialog(initialFilter: currentFilter),
             );
           },
-          icon: HugeIcons.strokeRoundedFilter,
+          icon: HugeIcons.strokeRoundedFilter as dynamic,
           showBadge: isFilterActive != null,
           themeMode: context.themeMode,
         ),
@@ -55,7 +55,7 @@ class TransactionScreen extends ConsumerWidget {
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
         child: HugeIcon(
-          icon: HugeIcons.strokeRoundedPlusSign,
+          icon: HugeIcons.strokeRoundedPlusSign as dynamic,
           color: Theme.of(context).colorScheme.onPrimary,
         ),
       ),

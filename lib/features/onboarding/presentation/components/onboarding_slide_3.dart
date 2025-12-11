@@ -32,21 +32,21 @@ final displayNameProvider = StateProvider.autoDispose<String>((ref) {
 dynamic _getWalletIcon(WalletType type) {
   switch (type) {
     case WalletType.cash:
-      return HugeIcons.strokeRoundedMoney02;
+      return HugeIcons.strokeRoundedMoney02 as dynamic;
     case WalletType.bankAccount:
-      return HugeIcons.strokeRoundedBank;
+      return HugeIcons.strokeRoundedBank as dynamic;
     case WalletType.creditCard:
-      return HugeIcons.strokeRoundedCreditCard;
+      return HugeIcons.strokeRoundedCreditCard as dynamic;
     case WalletType.eWallet:
-      return HugeIcons.strokeRoundedMoney04;
+      return HugeIcons.strokeRoundedMoney04 as dynamic;
     case WalletType.investment:
-      return HugeIcons.strokeRoundedChart;
+      return HugeIcons.strokeRoundedChart as dynamic;
     case WalletType.savings:
-      return HugeIcons.strokeRoundedPiggyBank;
+      return HugeIcons.strokeRoundedPiggyBank as dynamic;
     case WalletType.insurance:
-      return HugeIcons.strokeRoundedSecurityCheck;
+      return HugeIcons.strokeRoundedSecurityCheck as dynamic;
     case WalletType.other:
-      return HugeIcons.strokeRoundedWallet03;
+      return HugeIcons.strokeRoundedWallet03 as dynamic;
   }
 }
 
@@ -156,7 +156,7 @@ class OnboardingSlide3 extends HookConsumerWidget {
             controller: nameController,
             label: 'Display Name',
             hint: 'Enter your name',
-            prefixIcon: HugeIcons.strokeRoundedUser,
+            prefixIcon: HugeIcons.strokeRoundedUser as dynamic,
             isRequired: true, // Mark as required with red asterisk
             onChanged: (value) {
               ref.read(displayNameProvider.notifier).state = value;
@@ -186,7 +186,7 @@ class OnboardingSlide3 extends HookConsumerWidget {
                   controller: walletTextController,
                   label: 'Wallet',
                   hint: 'Tap to setup your first wallet',
-                  prefixIcon: HugeIcons.strokeRoundedWallet01,
+                  prefixIcon: HugeIcons.strokeRoundedWallet01 as dynamic,
                   isRequired: true,
                   readOnly: true,
                   onTap: () {
@@ -240,7 +240,7 @@ class OnboardingSlide3 extends HookConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         HugeIcon(
-                          icon: HugeIcons.strokeRoundedAdd01,
+                          icon: HugeIcons.strokeRoundedAdd01 as dynamic,
                           size: 20,
                           color: AppColors.primary,
                         ),

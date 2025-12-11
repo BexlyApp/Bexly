@@ -22,8 +22,8 @@ class CustomFab extends StatelessWidget {
         shape: const CircleBorder(),
         backgroundColor: AppColors.primary,
         onPressed: showTransactionOptions,
-        child: const HugeIcon(icon: 
-          HugeIcons.strokeRoundedPlusSign,
+        child: const HugeIcon(
+          icon: HugeIcons.strokeRoundedPlusSign,
           color: AppColors.light,
         ),
       ),
