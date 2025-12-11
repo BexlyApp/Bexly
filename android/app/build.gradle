@@ -79,6 +79,9 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.release
             }
+            // Disable code shrinking/minification to prevent HugeIcons crash
+            minifyEnabled false
+            shrinkResources false
             // Disable native debug symbol stripping for bundle builds
             ndk {
                 debugSymbolLevel = 'NONE'
@@ -86,21 +89,14 @@ android {
         }
     }
 
-    // Skip stripping native libraries
+    // Keep native libraries in APK - use legacy packaging to embed .so files
     packagingOptions {
         jniLibs {
             useLegacyPackaging = true
         }
-        doNotStrip '**/*.so'
     }
 }
 
-// Disable native library stripping tasks to fix "failed to strip debug symbols" warning
-tasks.configureEach { task ->
-    if (task.name.contains('strip') && task.name.contains('Release')) {
-        task.enabled = false
-    }
-}
 
 flutter {
     source = "../.."

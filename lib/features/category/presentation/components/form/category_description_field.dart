@@ -14,7 +14,7 @@ class CategoryDescriptionField extends StatelessWidget {
       label: 'Description (max. 50)',
       hint: 'Write simple description...',
       controller: descriptionController, // Use the controller
-      prefixIcon: HugeIcons.strokeRoundedNote,
+      prefixIcon: HugeIcons.strokeRoundedNote as dynamic,
       minLines: 1,
       maxLines: 3,
       maxLength: 50,

@@ -84,8 +84,8 @@ class AvatarPicker extends HookConsumerWidget {
                       : null,
             ),
             child: avatarPath == null
-                ? const HugeIcon(
-                    icon: HugeIcons.strokeRoundedUser,
+                ? HugeIcon(
+                    icon: HugeIcons.strokeRoundedUser as dynamic,
                     size: 48,
                     color: AppColors.neutral50,
                   )
@@ -107,8 +107,8 @@ class AvatarPicker extends HookConsumerWidget {
                   width: 2,
                 ),
               ),
-              child: const HugeIcon(
-                icon: HugeIcons.strokeRoundedCamera01,
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedCamera01 as dynamic,
                 size: 18,
                 color: Colors.white,
               ),

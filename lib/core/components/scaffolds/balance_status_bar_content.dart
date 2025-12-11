@@ -46,8 +46,8 @@ class BalanceStatusBarContent extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   spacing: AppSpacing.spacing4,
                   children: [
-                    HugeIcon(icon: 
-                      HugeIcons.strokeRoundedWallet03,
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedWallet03,
                       size: 16,
                       color: AppColors.secondary400,
                     ),

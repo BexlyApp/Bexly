@@ -180,8 +180,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
                   ),
                   child: Center(
                     child: keys[index] == '{backspace}'
-                        ? const HugeIcon(icon: 
-                            HugeIcons.strokeRoundedArrowLeft04,
+                        ? const HugeIcon(
+                            icon: HugeIcons.strokeRoundedArrowLeft04,
                             size: 30,
                           )
                         : Text(

@@ -63,7 +63,7 @@ class CategoryPickerField extends StatelessWidget {
                       ? '-'
                       : selectedParentCategory?.title ??
                             'Leave empty for parent',
-                  prefixIcon: HugeIcons.strokeRoundedStructure01,
+                  prefixIcon: HugeIcons.strokeRoundedStructure01 as dynamic,
                   onTap: () async {
                     // Navigate to the picker screen and wait for a result
                     final result = await context.push<CategoryModel>(

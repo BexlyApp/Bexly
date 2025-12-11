@@ -62,7 +62,7 @@ class ReportSummaryCards extends ConsumerWidget {
                           amount: totalIncome,
                           currency: baseCurrency,
                           color: AppColors.green200,
-                          icon: HugeIcons.strokeRoundedArrowDown01, // List<List>
+                          icon: HugeIcons.strokeRoundedArrowDown01 as dynamic,
                           percentageChange: incomeChange,
                         ),
                       ),
@@ -75,7 +75,7 @@ class ReportSummaryCards extends ConsumerWidget {
                           amount: totalExpense,
                           currency: baseCurrency,
                           color: AppColors.red700,
-                          icon: HugeIcons.strokeRoundedArrowUp01, // List<List>
+                          icon: HugeIcons.strokeRoundedArrowUp01 as dynamic,
                           percentageChange: expenseChange,
                           isExpense: true,
                         ),
@@ -89,7 +89,7 @@ class ReportSummaryCards extends ConsumerWidget {
                           amount: netSavings,
                           currency: baseCurrency,
                           color: netSavings >= 0 ? AppColors.green200 : AppColors.red700,
-                          icon: HugeIcons.strokeRoundedWallet03, // List<List>
+                          icon: HugeIcons.strokeRoundedWallet03 as dynamic,
                           percentageChange: netChange,
                         ),
                       ),
@@ -245,14 +245,14 @@ class _SummaryCard extends StatelessWidget {
         // For expenses: decrease is good, increase is bad
         percentageColor = isPositiveChange ? AppColors.red700 : AppColors.green200;
         percentageIcon = isPositiveChange
-            ? HugeIcons.strokeRoundedArrowUp01
-            : HugeIcons.strokeRoundedArrowDown01;
+            ? HugeIcons.strokeRoundedArrowUp01 as dynamic
+            : HugeIcons.strokeRoundedArrowDown01 as dynamic;
       } else {
         // For income/net: increase is good, decrease is bad
         percentageColor = isPositiveChange ? AppColors.green200 : AppColors.red700;
         percentageIcon = isPositiveChange
-            ? HugeIcons.strokeRoundedArrowUp01
-            : HugeIcons.strokeRoundedArrowDown01;
+            ? HugeIcons.strokeRoundedArrowUp01 as dynamic
+            : HugeIcons.strokeRoundedArrowDown01 as dynamic;
       }
     }
 
@@ -279,7 +279,7 @@ class _SummaryCard extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              HugeIcon(icon: icon, color: color, size: 16),
+              HugeIcon(icon: icon as dynamic, color: color, size: 16),
             ],
           ),
           const SizedBox(height: AppSpacing.spacing4),

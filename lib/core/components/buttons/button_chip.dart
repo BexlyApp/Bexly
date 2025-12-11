@@ -42,8 +42,8 @@ class ButtonChip extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            HugeIcon(icon: 
-              active
+            HugeIcon(
+              icon: active
                   ? HugeIcons.strokeRoundedCheckmarkCircle01
                   : HugeIcons.strokeRoundedCircle,
               color: active ? context.purpleIcon : null,

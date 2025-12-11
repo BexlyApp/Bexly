@@ -76,7 +76,7 @@ class PlanningScreen extends HookConsumerWidget {
                     builder: (context) => const BudgetFilterDialog(),
                   );
                 },
-                icon: HugeIcons.strokeRoundedFilter,
+                icon: HugeIcons.strokeRoundedFilter as dynamic,
                 showBadge: !isCurrentMonth,
                 themeMode: context.themeMode,
               ),
@@ -100,7 +100,7 @@ class PlanningScreen extends HookConsumerWidget {
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
         child: HugeIcon(
-          icon: HugeIcons.strokeRoundedPlusSign,
+          icon: HugeIcons.strokeRoundedPlusSign as dynamic,
           color: Theme.of(context).colorScheme.onPrimary,
         ),
       ),

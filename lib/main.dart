@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:bexly/core/app.dart';
 import 'package:bexly/core/services/background_service.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
@@ -42,6 +43,15 @@ Future<void> main() async {
   } catch (e) {
     print('Firebase init error in main: $e');
     // Continue without Crashlytics if Firebase fails
+  }
+
+  // Initialize Google Sign-In (google_sign_in 7.x requires explicit initialization)
+  // On Android, serverClientId is read from google-services.json automatically
+  try {
+    await GoogleSignIn.instance.initialize();
+  } catch (e) {
+    print('Google Sign-In init error: $e');
+    // Continue without Google Sign-In if init fails
   }
 
   // Initialize PackageInfo service

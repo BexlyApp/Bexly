@@ -38,7 +38,7 @@ class DeveloperPortalScreen extends HookConsumerWidget {
                   ),
                   MenuTileButton(
                     label: 'Reset Categories',
-                    icon: HugeIcons.strokeRoundedStructure01,
+                    icon: HugeIcons.strokeRoundedStructure01 as dynamic,
                     onTap: () async {
                       context.openBottomSheet(
                         isScrollControlled: false,
@@ -61,7 +61,7 @@ class DeveloperPortalScreen extends HookConsumerWidget {
                   ),
                   MenuTileButton(
                     label: 'Reset Wallets',
-                    icon: HugeIcons.strokeRoundedWallet02,
+                    icon: HugeIcons.strokeRoundedWallet02 as dynamic,
                     onTap: () async {
                       context.openBottomSheet(
                         isScrollControlled: false,
@@ -84,7 +84,7 @@ class DeveloperPortalScreen extends HookConsumerWidget {
                   ),
                   MenuTileButton(
                     label: 'Reset Database',
-                    icon: HugeIcons.strokeRoundedDeletePutBack,
+                    icon: HugeIcons.strokeRoundedDeletePutBack as dynamic,
                     onTap: () {
                       context.openBottomSheet(
                         isScrollControlled: false,
