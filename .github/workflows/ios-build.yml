@@ -126,12 +126,25 @@ jobs:
         env:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_USERNAME: ${{ secrets.APP_STORE_CONNECT_USERNAME }}
+          APP_STORE_CONNECT_PASSWORD: ${{ secrets.APP_STORE_CONNECT_PASSWORD }}
         run: |
-          app-store-connect publish \
+          # Try App Store Connect API first
+          if app-store-connect publish \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_ID" \
             --private-key @file:~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
-            --path build/ios/ipa/*.ipa
+            --path build/ios/ipa/*.ipa; then
+            echo "✅ Upload successful via App Store Connect API"
+          else
+            echo "⚠️ API upload failed, trying App Password fallback..."
+            xcrun altool --upload-app \
+              --type ios \
+              --file build/ios/ipa/*.ipa \
+              --username "$APP_STORE_CONNECT_USERNAME" \
+              --password "$APP_STORE_CONNECT_PASSWORD"
+            echo "✅ Upload successful via App Password"
+          fi
 
       - name: Cleanup keychain
         if: always()
