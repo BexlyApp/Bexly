@@ -93,6 +93,12 @@ jobs:
           # Set up Xcode project signing
           xcode-project use-profiles || true
 
+      - name: Create .env file
+        run: |
+          # Create empty .env file for CI build
+          # The app handles missing values gracefully
+          touch .env
+
       - name: Install dependencies
         run: flutter pub get
 
