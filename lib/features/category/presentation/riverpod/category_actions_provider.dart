@@ -16,11 +16,12 @@ class CategoriesActions {
 }
 
 /// Expose your CRUD methods via Riverpod
+/// IMPORTANT: Uses categoryDaoProvider (with Ref) to enable cloud sync!
 final categoriesActionsProvider = Provider<CategoriesActions>((ref) {
-  final db = ref.watch(databaseProvider);
+  final categoryDao = ref.watch(categoryDaoProvider);
   return CategoriesActions(
-    add: db.categoryDao.addCategory,
-    update: db.categoryDao.updateCategory,
-    delete: db.categoryDao.deleteCategoryById,
+    add: categoryDao.addCategory,
+    update: categoryDao.updateCategory,
+    delete: categoryDao.deleteCategoryById,
   );
 });

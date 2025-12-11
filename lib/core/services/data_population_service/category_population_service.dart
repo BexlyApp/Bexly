@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/services/sync/sync_trigger_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/category/data/repositories/category_repo.dart';
 
@@ -85,7 +86,8 @@ class CategoryPopulationService {
 
   /// Re-populates default categories by removing all and re-inserting
   /// This fixes corrupted categories while preserving transactions
-  static Future<void> repopulate(AppDatabase db) async {
+  /// If [userId] is provided, categories will be synced to cloud after repopulating
+  static Future<void> repopulate(AppDatabase db, {String? userId}) async {
     Log.i('Re-populating default categories...', label: 'category');
     final allDefaultCategories = categories.getAllCategories();
     final categoryDao = db.categoryDao;
@@ -140,8 +142,20 @@ class CategoryPopulationService {
         'Successfully re-populated ${allDefaultCategories.length} categories',
         label: 'category',
       );
+
+      // STEP 4: Sync to cloud if userId provided
+      if (userId != null) {
+        Log.i('Syncing categories to cloud for user: $userId', label: 'category');
+        try {
+          await SyncTriggerService.uploadAllCategoriesToCloud(db, userId);
+          Log.i('✅ Categories synced to cloud successfully', label: 'category');
+        } catch (e) {
+          Log.e('Failed to sync categories to cloud: $e', label: 'category');
+          // Don't rethrow - local repopulate succeeded
+        }
+      }
     } finally {
-      // STEP 4: Re-enable foreign key constraints
+      // STEP 5: Re-enable foreign key constraints
       Log.i('Re-enabling foreign key constraints...', label: 'category');
       await db.customStatement('PRAGMA foreign_keys = ON;');
     }
