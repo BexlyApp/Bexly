@@ -13,14 +13,14 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 - 2 budgets & 2 goals
 - 5 recurring transactions
 - 3 months analytics history
-- 20 AI messages/month (Standard model)
+- 60 DOS AI messages/month
 - Cloud sync (basic)
 - Manual export/import (JSON/CSV)
 
 **Limitations:**
 - Contains ads
 - No receipt photo storage
-- Limited AI capabilities
+- DOS AI model only (cannot choose other models)
 
 ---
 
@@ -32,7 +32,9 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 - Unlimited budgets & goals
 - Unlimited recurring transactions
 - 6 months analytics history
-- 60 AI messages/month (Premium model)
+- 120 DOS AI messages/month
+- 120 Premium AI messages/month (Gemini 2.5 Pro)
+- Can choose between DOS AI and Gemini
 - Receipt photo storage (1GB)
 - **No ads**
 
@@ -43,7 +45,10 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 
 **Everything in Plus, plus:**
 - Full analytics history (unlimited)
-- Unlimited AI messages (Flagship model)
+- 300 DOS AI messages/month
+- 300 Premium AI messages/month (Gemini 2.5 Pro)
+- 100 Flagship AI messages/month (GPT-4o / Claude)
+- Can choose any AI model
 - Receipt photo storage (5GB)
 - AI insights & predictions
 - Priority support
@@ -53,13 +58,13 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 
 ## AI Model Tiers
 
-| Tier | Model Name | Description |
-|------|------------|-------------|
-| Standard | TBD | Basic AI for simple tasks |
-| Premium | TBD | Better AI with improved accuracy |
-| Flagship | TBD | Best AI with advanced capabilities |
+| Tier | Description | Notes |
+|------|-------------|-------|
+| Standard | Free model for all users | Self-hosted, good for simple tasks |
+| Premium | Better accuracy and reasoning | Available for Plus+ subscribers |
+| Flagship | Best AI capabilities | Available for Pro subscribers only |
 
-*Specific models will be defined based on cost/performance analysis.*
+*Specific models are managed internally and may be upgraded over time.*
 
 ---
 
@@ -71,8 +76,10 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 | Budgets & Goals | 2 each | Unlimited | Unlimited |
 | Recurring transactions | 5 | Unlimited | Unlimited |
 | Analytics history | 3 months | 6 months | Unlimited |
-| AI messages/month | 20 | 60 | Unlimited |
-| AI model | Standard | Premium | Flagship |
+| DOS AI messages | 60/month | 120/month | 300/month |
+| Premium AI (Gemini) | - | 120/month | 300/month |
+| Flagship AI (GPT-4o) | - | - | 100/month |
+| Choose AI model | No | Yes | Yes |
 | Receipt photos | - | 1GB | 5GB |
 | Cloud sync | Basic | Full | Full |
 | Ads | Yes | No | No |
@@ -100,17 +107,30 @@ bool canCreateWallet() {
   return currentWalletCount < 3;
 }
 
-bool canUseAI() {
-  if (subscription.isPro) return true;
-  return aiMessagesUsed < subscription.aiLimit;
+bool canUseAI(AIModel model) {
+  final usage = getAIUsage();
+  switch (model) {
+    case AIModel.dosAI:
+      final limit = subscription.isPro ? 300 : subscription.isPlus ? 120 : 60;
+      return usage.dosAI < limit;
+    case AIModel.gemini:
+      if (subscription.isFree) return false;
+      final limit = subscription.isPro ? 300 : 120;
+      return usage.gemini < limit;
+    case AIModel.openAI:
+      if (!subscription.isPro) return false;
+      return usage.openAI < 100;
+  }
 }
 
-String getAIModel() {
-  switch (subscription.tier) {
-    case Tier.pro: return 'flagship';
-    case Tier.plus: return 'premium';
-    default: return 'standard';
-  }
+bool canChooseModel() {
+  return subscription.isPlus || subscription.isPro;
+}
+
+List<AIModel> getAvailableModels() {
+  if (subscription.isPro) return [AIModel.dosAI, AIModel.gemini, AIModel.openAI];
+  if (subscription.isPlus) return [AIModel.dosAI, AIModel.gemini];
+  return [AIModel.dosAI];
 }
 ```
 

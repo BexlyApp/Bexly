@@ -4,9 +4,9 @@ import 'package:bexly/core/services/subscription/ai_usage_service.dart';
 
 /// Available AI models for the app
 enum AIModel {
-  dosAI('dos_ai', 'DOSAI', 'Free AI powered by DOS Labs'),
-  gemini('gemini', 'Gemini', 'Google Gemini AI'),
-  openAI('openai', 'OpenAI', 'OpenAI GPT models');
+  dosAI('dos_ai', 'Standard', 'Free AI for all users'),
+  gemini('gemini', 'Premium', 'Better accuracy (Plus+)'),
+  openAI('openai', 'Flagship', 'Best AI capabilities (Pro)');
 
   final String key;
   final String displayName;
