@@ -1,4 +1,4 @@
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
@@ -13,17 +13,34 @@ final allWalletsStreamProvider = StreamProvider.autoDispose<List<WalletModel>>((
   return db.walletDao.watchAllWallets();
 });
 
-final walletAmountVisibilityProvider = StateProvider<bool>((ref) {
-  // set default to visible
-  return true;
-});
+/// Notifier for wallet amount visibility
+class WalletAmountVisibilityNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    // set default to visible
+    return true;
+  }
 
-/// StateNotifier for managing the active wallet.
-class ActiveWalletNotifier extends StateNotifier<AsyncValue<WalletModel?>> {
-  final Ref _ref;
+  void toggle() {
+    state = !state;
+  }
 
-  ActiveWalletNotifier(this._ref) : super(const AsyncValue.loading()) {
+  void update(bool value) {
+    state = value;
+  }
+}
+
+final walletAmountVisibilityProvider = NotifierProvider<WalletAmountVisibilityNotifier, bool>(
+  WalletAmountVisibilityNotifier.new,
+);
+
+/// Notifier for managing the active wallet.
+class ActiveWalletNotifier extends Notifier<AsyncValue<WalletModel?>> {
+  @override
+  AsyncValue<WalletModel?> build() {
+    // Initialize on build
     initializeActiveWallet();
+    return const AsyncValue.loading();
   }
 
   // Initialize active wallet - auto-select if only one wallet exists
@@ -32,7 +49,7 @@ class ActiveWalletNotifier extends StateNotifier<AsyncValue<WalletModel?>> {
   Future<void> initializeActiveWallet() async {
     try {
       // Get all wallets
-      final db = _ref.read(databaseProvider);
+      final db = ref.read(databaseProvider);
       final wallets = await db.walletDao.watchAllWallets().first;
 
       if (wallets.isEmpty) {
@@ -60,7 +77,7 @@ class ActiveWalletNotifier extends StateNotifier<AsyncValue<WalletModel?>> {
   }
 
   void updateActiveWallet(WalletModel? newWalletData) {
-    final currentActiveWallet = state.valueOrNull;
+    final currentActiveWallet = state.value;
     final currentActiveWalletId = currentActiveWallet?.id;
 
     if (newWalletData != null && newWalletData.id == currentActiveWalletId) {
@@ -91,10 +108,10 @@ class ActiveWalletNotifier extends StateNotifier<AsyncValue<WalletModel?>> {
   /// Refreshes the data for the currently active wallet from the database.
   /// Useful if the wallet data might have changed externally or by other operations.
   Future<void> refreshActiveWallet() async {
-    final currentWalletId = state.valueOrNull?.id;
+    final currentWalletId = state.value?.id;
     if (currentWalletId != null) {
       try {
-        final db = _ref.read(databaseProvider);
+        final db = ref.read(databaseProvider);
         final refreshedWallet = await db.walletDao
             .watchWalletById(currentWalletId)
             .first;
@@ -113,11 +130,9 @@ class ActiveWalletNotifier extends StateNotifier<AsyncValue<WalletModel?>> {
 
 /// Provider for the ActiveWalletNotifier, managing the currently selected wallet.
 final activeWalletProvider =
-    StateNotifierProvider<ActiveWalletNotifier, AsyncValue<WalletModel?>>((
-      ref,
-    ) {
-      return ActiveWalletNotifier(ref);
-    });
+    NotifierProvider<ActiveWalletNotifier, AsyncValue<WalletModel?>>(
+      ActiveWalletNotifier.new,
+    );
 
 /// Provider to calculate total balance grouped by currency from all wallets.
 /// Returns a Map where key is currency ISO code and value is total balance.
@@ -136,7 +151,7 @@ final totalBalanceProvider = Provider<Map<String, double>>((ref) {
       return totals;
     },
     loading: () => {},
-    error: (_, __) => {},
+    error: (error, stackTrace) => {},
   );
 });
 

@@ -34,7 +34,8 @@ class AppAnalytics {
       parameters: {
         'button_name': buttonName,
         'screen': screen ?? 'unknown',
-        ...?parameters,
+        if (parameters != null)
+          ...parameters.map((key, value) => MapEntry(key, value ?? '')),
       },
     );
   }
@@ -160,7 +161,8 @@ class AppAnalytics {
       name: 'feature_used',
       parameters: {
         'feature_name': feature,
-        ...?parameters,
+        if (parameters != null)
+          ...parameters.map((key, value) => MapEntry(key, value ?? '')),
       },
     );
   }

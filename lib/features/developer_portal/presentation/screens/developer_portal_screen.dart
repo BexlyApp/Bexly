@@ -133,7 +133,7 @@ class DeveloperPortalScreen extends HookConsumerWidget {
                             isLoading.value = true;
                             context.pop();
 
-                            final user = ref.read(authProvider).valueOrNull;
+                            final user = ref.read(authProvider).value;
                             final isLoggedIn = user != null && user.email.isNotEmpty;
                             String resultMessage;
 

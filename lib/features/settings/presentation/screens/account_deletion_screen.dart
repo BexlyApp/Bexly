@@ -24,8 +24,15 @@ import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 
-final accountDeletionLoadingProvider = StateProvider.autoDispose<bool>(
-  (ref) => false,
+class AccountDeletionLoadingNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setLoading(bool value) => state = value;
+}
+
+final accountDeletionLoadingProvider = NotifierProvider<AccountDeletionLoadingNotifier, bool>(
+  AccountDeletionLoadingNotifier.new,
 );
 
 class AccountDeletionScreen extends HookConsumerWidget {
@@ -59,7 +66,7 @@ class AccountDeletionScreen extends HookConsumerWidget {
     WidgetRef ref,
     BuildContext context,
   ) async {
-    ref.read(accountDeletionLoadingProvider.notifier).state = true;
+    ref.read(accountDeletionLoadingProvider.notifier).setLoading(true);
     await Future.delayed(Duration(milliseconds: 1200));
 
     try {
@@ -142,7 +149,7 @@ class AccountDeletionScreen extends HookConsumerWidget {
       // Ensure loading state is reset.
       // If the widget is disposed (e.g. due to navigation), autoDispose handles the provider.
       // If still mounted (e.g. error occurred), this hides the overlay.
-      ref.read(accountDeletionLoadingProvider.notifier).state = false;
+      ref.read(accountDeletionLoadingProvider.notifier).setLoading(false);
     }
   }
 

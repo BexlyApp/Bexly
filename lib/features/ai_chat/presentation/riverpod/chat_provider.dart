@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:collection/collection.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/data/services/ai_service.dart';
@@ -27,8 +27,8 @@ import 'package:drift/drift.dart' as drift;
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/services/sync/chat_message_sync_service.dart';
 import 'package:bexly/core/utils/category_translation_map.dart';
+import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/features/receipt_scanner/presentation/riverpod/receipt_scanner_provider.dart';
-import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:bexly/features/settings/presentation/riverpod/ai_model_provider.dart';
@@ -184,14 +184,28 @@ final aiServiceProvider = Provider<AIService>((ref) {
   }
 
   // Get wallet info for context (use read to avoid rebuild)
-  final wallet = ref.read(activeWalletProvider).valueOrNull;
+  final walletAsync = ref.read(activeWalletProvider);
+  final wallet = walletAsync.when(
+    data: (data) => data,
+    loading: () => null,
+    error: (_, _) => null,
+  );
 
   // Get all wallets for fallback when activeWallet is null (multi-wallet case)
   final allWalletsAsync = ref.read(allWalletsStreamProvider);
-  final allWallets = allWalletsAsync.valueOrNull ?? [];
+  final allWallets = allWalletsAsync.when(
+    data: (data) => data,
+    loading: () => <WalletModel>[],
+    error: (_, _) => <WalletModel>[],
+  );
 
   // Get default wallet for fallback (when activeWallet is null in multi-wallet mode)
-  final defaultWallet = ref.read(defaultWalletProvider).valueOrNull;
+  final defaultWalletAsync = ref.read(defaultWalletProvider);
+  final defaultWallet = defaultWalletAsync.when(
+    data: (data) => data,
+    loading: () => null,
+    error: (_, _) => null,
+  );
 
   // If activeWallet is null (multi-wallet), use default wallet for AI context
   final contextWallet = wallet ?? defaultWallet ?? (allWallets.isNotEmpty ? allWallets.first : null);
@@ -299,12 +313,9 @@ final aiServiceProvider = Provider<AIService>((ref) {
 
 // Chat State Provider - Using regular provider to prevent dispose
 // IMPORTANT: Don't watch aiServiceProvider here to avoid rebuild/dispose!
-final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
-  return ChatNotifier(ref);
-});
+final chatProvider = NotifierProvider<ChatNotifier, ChatState>(ChatNotifier.new);
 
-class ChatNotifier extends StateNotifier<ChatState> {
-  final Ref _ref;
+class ChatNotifier extends Notifier<ChatState> {
   final Uuid _uuid = const Uuid();
   StreamSubscription? _typingSubscription;
 
@@ -312,10 +323,26 @@ class ChatNotifier extends StateNotifier<ChatState> {
   Uint8List? _currentReceiptImage;
 
   // Get AI service when needed to avoid provider rebuilds
-  AIService get _aiService => _ref.read(aiServiceProvider);
+  AIService get _aiService => ref.read(aiServiceProvider);
 
-  ChatNotifier(this._ref) : super(const ChatState()) {
+  // Helper method to unwrap AsyncValue
+  T? _unwrapAsyncValue<T>(AsyncValue<T> asyncValue) {
+    return asyncValue.when(
+      data: (data) => data,
+      loading: () => null,
+      error: (_, _) => null,
+    );
+  }
+
+  @override
+  ChatState build() {
+    // Register dispose callback for cleanup
+    ref.onDispose(() {
+      _typingSubscription?.cancel();
+    });
+
     _initializeChat();
+    return const ChatState();
   }
 
   /// Helper method to add error message to chat
@@ -332,8 +359,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   void _initializeChat() async {
-    final dao = _ref.read(chatMessageDaoProvider);
-    final syncService = _ref.read(chatMessageSyncServiceProvider);
+    final dao = ref.read(chatMessageDaoProvider);
+    final syncService = ref.read(chatMessageSyncServiceProvider);
 
     // STEP 1: Try to download messages from cloud (if authenticated)
     try {
@@ -405,7 +432,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   Future<void> _saveMessageToDatabase(ChatMessage message, {bool shouldSync = true}) async {
-    final dao = _ref.read(chatMessageDaoProvider);
+    final dao = ref.read(chatMessageDaoProvider);
     await dao.addMessage(db.ChatMessagesCompanion(
       messageId: drift.Value(message.id),
       content: drift.Value(message.content),
@@ -418,7 +445,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     // Sync to cloud (if authenticated)
     // Don't sync typing messages or welcome messages
     if (shouldSync && !message.isTyping) {
-      final syncService = _ref.read(chatMessageSyncServiceProvider);
+      final syncService = ref.read(chatMessageSyncServiceProvider);
       final dbMessage = db.ChatMessage(
         id: 0, // Not used for Firestore sync
         messageId: message.id,
@@ -438,8 +465,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
     if ((content.trim().isEmpty && imageBytes == null) || state.isLoading) return;
 
     // Check AI message limit
-    final aiUsageService = _ref.read(aiUsageServiceProvider);
-    final limits = _ref.read(subscriptionLimitsProvider);
+    final aiUsageService = ref.read(aiUsageServiceProvider);
+    final limits = ref.read(subscriptionLimitsProvider);
     if (!aiUsageService.canSendMessage(limits)) {
       final remaining = aiUsageService.getRemainingMessages(limits);
       state = state.copyWith(
@@ -454,11 +481,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
     // Categories are watched by the provider and will auto-update when changed
 
     // Refresh wallet providers to ensure latest data
-    _ref.invalidate(activeWalletProvider);
-    _ref.read(activeWalletProvider); // Force rebuild active wallet
+    ref.invalidate(activeWalletProvider);
+    ref.read(activeWalletProvider); // Force rebuild active wallet
 
-    _ref.invalidate(allWalletsStreamProvider);
-    _ref.read(allWalletsStreamProvider); // Force rebuild all wallets
+    ref.invalidate(allWalletsStreamProvider);
+    ref.read(allWalletsStreamProvider); // Force rebuild all wallets
 
     final userMessage = ChatMessage(
       id: _uuid.v4(),
@@ -489,7 +516,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         Log.d('Receipt image detected, analyzing...', label: 'Chat Provider');
 
         try {
-          final receiptService = _ref.read(receiptScannerServiceProvider);
+          final receiptService = ref.read(receiptScannerServiceProvider);
           final receiptResult = await receiptService.analyzeReceipt(imageBytes: imageBytes);
 
           print('📸 [RECEIPT] Receipt analyzed: ${receiptResult.merchant}, ${receiptResult.amount} ${receiptResult.currency}');
@@ -529,19 +556,19 @@ Please create a transaction based on this receipt data.''';
 
       // Update AI with current wallet context (CRITICAL: wallet list must be current!)
       print('🔧 [CHAT_DEBUG] About to update AI context...');
-      final activeWallet = _ref.read(activeWalletProvider).valueOrNull;
+      final activeWallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       print('🔧 [CHAT_DEBUG] Active wallet: ${activeWallet?.name} (${activeWallet?.currency})');
-      final allWalletsAsync = _ref.read(allWalletsStreamProvider);
-      final allWallets = allWalletsAsync.valueOrNull ?? [];
+      final allWalletsAsync = ref.read(allWalletsStreamProvider);
+      final allWallets = _unwrapAsyncValue(allWalletsAsync) ?? [];
       print('🔧 [CHAT_DEBUG] All wallets count: ${allWallets.length}');
       final walletNames = allWallets.map((w) => '${w.name} (${w.currency}, ${w.walletType.displayName})').toList();
       print('🔧 [CHAT_DEBUG] Wallet names: ${walletNames.join(", ")}');
-      final exchangeRateCache = _ref.read(exchangeRateCacheProvider);
+      final exchangeRateCache = ref.read(exchangeRateCacheProvider);
       final cachedRate = exchangeRateCache['VND_USD'];
       print('🔧 [CHAT_DEBUG] Exchange rate from cache: ${cachedRate?.rate} (key: VND_USD, cache size: ${exchangeRateCache.length})');
 
       // If no active wallet, use default wallet as fallback
-      final defaultWallet = _ref.read(defaultWalletProvider).valueOrNull;
+      final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
       final fallbackWallet = activeWallet ?? defaultWallet ?? (allWallets.isNotEmpty ? allWallets.first : null);
       print('🔧 [CHAT_DEBUG] Using wallet for context: ${fallbackWallet?.name} (${fallbackWallet?.currency})');
       print('🔧 [CHAT_DEBUG] Calling updateContext()...');
@@ -653,7 +680,7 @@ Please create a transaction based on this receipt data.''';
 
                 // IMPORTANT: Query wallets directly from database instead of using Stream provider
                 // Stream providers may not have latest data immediately after invalidate
-                final walletDao = _ref.read(walletDaoProvider);
+                final walletDao = ref.read(walletDaoProvider);
                 final walletEntities = await walletDao.getAllWallets();
                 final allWallets = walletEntities.map((w) => WalletModel(
                   id: w.id,
@@ -712,7 +739,7 @@ Please create a transaction based on this receipt data.''';
 
                 // Priority 3: Use default wallet, then first available wallet
                 if (wallet == null && allWallets.isNotEmpty) {
-                  final defaultWallet = _ref.read(defaultWalletProvider).valueOrNull;
+                  final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
                   wallet = defaultWallet ?? allWallets.first;
                   Log.d('No wallet found for $aiCurrency, using ${defaultWallet != null ? "default" : "first"} wallet: ${wallet.name} (${wallet.currency}) - will convert', label: 'AI_CURRENCY');
                 }
@@ -830,7 +857,7 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing create_budget action: $action', label: 'Chat Provider');
 
-                final wallet = _ref.read(activeWalletProvider).valueOrNull;
+                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
@@ -857,7 +884,7 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing create_goal action: $action', label: 'Chat Provider');
 
-                final wallet = _ref.read(activeWalletProvider).valueOrNull;
+                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
@@ -905,7 +932,7 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing update_transaction action: $action', label: 'Chat Provider');
 
-                final wallet = _ref.read(activeWalletProvider).valueOrNull;
+                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
@@ -919,7 +946,7 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing delete_transaction action: $action', label: 'Chat Provider');
 
-                final wallet = _ref.read(activeWalletProvider).valueOrNull;
+                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
@@ -943,8 +970,8 @@ Please create a transaction based on this receipt data.''';
                 Log.d('🔵 AI Response: $response', label: 'Chat Provider');
 
                 // CRITICAL: Check if categories are loaded before processing
-                final categoriesAsync = _ref.read(hierarchicalCategoriesProvider);
-                final hierarchicalCategories = categoriesAsync.valueOrNull ?? [];
+                final categoriesAsync = ref.read(hierarchicalCategoriesProvider);
+                final hierarchicalCategories = _unwrapAsyncValue(categoriesAsync) ?? [];
 
                 if (hierarchicalCategories.isEmpty) {
                   Log.w('⚠️ Categories not loaded yet, skipping recurring creation. Action: $action', label: 'Chat Provider');
@@ -954,7 +981,7 @@ Please create a transaction based on this receipt data.''';
                 }
 
                 // Get wallet used by recurring (query directly from database)
-                final walletDao = _ref.read(walletDaoProvider);
+                final walletDao = ref.read(walletDaoProvider);
                 final walletEntities = await walletDao.getAllWallets();
                 final allWallets = walletEntities.map((w) => WalletModel(
                   id: w.id,
@@ -1011,7 +1038,7 @@ Please create a transaction based on this receipt data.''';
 
                 // Priority 3: Use default wallet, then first available wallet
                 if (usedWallet == null && allWallets.isNotEmpty) {
-                  final defaultWallet = _ref.read(defaultWalletProvider).valueOrNull;
+                  final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
                   usedWallet = defaultWallet ?? allWallets.first;
                 }
 
@@ -1164,7 +1191,7 @@ Please create a transaction based on this receipt data.''';
       await _saveMessageToDatabase(aiMessage);
 
       // Increment AI message usage count
-      await _ref.read(aiUsageServiceProvider).incrementMessageCount();
+      await ref.read(aiUsageServiceProvider).incrementMessageCount();
 
       Log.d('Message sent and response received successfully', label: 'Chat Provider');
     } catch (error) {
@@ -1196,18 +1223,16 @@ Please create a transaction based on this receipt data.''';
         error: errorString,
       );
 
-      // Check if still mounted before updating state
-      if (mounted) {
-        state = state.copyWith(
-          isLoading: false,
-          isTyping: false,
-          error: errorString,
-        );
+      // Update state
+      state = state.copyWith(
+        isLoading: false,
+        isTyping: false,
+        error: errorString,
+      );
 
-        state = state.copyWith(
-          messages: [...state.messages, errorMessage],
-        );
-      }
+      state = state.copyWith(
+        messages: [...state.messages, errorMessage],
+      );
 
       // Save error message to database
       await _saveMessageToDatabase(errorMessage);
@@ -1232,8 +1257,6 @@ Please create a transaction based on this receipt data.''';
   }
 
   void _cancelTypingEffect() {
-    // Check if provider is still mounted before updating state
-    if (!mounted) return;
     if (!state.isTyping) return;
 
     // Remove typing message
@@ -1259,11 +1282,11 @@ Please create a transaction based on this receipt data.''';
     _cancelTypingEffect();
 
     // Clear messages from database
-    final dao = _ref.read(chatMessageDaoProvider);
+    final dao = ref.read(chatMessageDaoProvider);
     await dao.clearAllMessages();
 
     // Clear messages from cloud (if authenticated)
-    final syncService = _ref.read(chatMessageSyncServiceProvider);
+    final syncService = ref.read(chatMessageSyncServiceProvider);
     await syncService.clearAllMessages();
 
     // Clear AI conversation history
@@ -1291,17 +1314,17 @@ Please create a transaction based on this receipt data.''';
 
       // Use provided wallet or get current wallet
       if (wallet == null) {
-        wallet = _ref.read(activeWalletProvider).valueOrNull;
+        wallet = ref.read(activeWalletProvider).value;
 
         // If still no wallet, try to get default wallet, then first available wallet
         if (wallet == null) {
-          final defaultWallet = _ref.read(defaultWalletProvider).valueOrNull;
+          final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
           if (defaultWallet != null) {
             wallet = defaultWallet;
             Log.d('No active wallet, using default wallet: ${wallet.name}', label: 'TRANSACTION_DEBUG');
           } else {
-            final walletsAsync = _ref.read(allWalletsStreamProvider);
-            final allWallets = walletsAsync.valueOrNull ?? [];
+            final walletsAsync = ref.read(allWalletsStreamProvider);
+            final allWallets = _unwrapAsyncValue(walletsAsync) ?? [];
             if (allWallets.isNotEmpty) {
               wallet = allWallets.first;
               Log.d('No active wallet, using first available: ${wallet.name}', label: 'TRANSACTION_DEBUG');
@@ -1336,36 +1359,16 @@ Please create a transaction based on this receipt data.''';
       Log.d('Using wallet: ${wallet.name} (id: ${wallet.id}, balance: ${wallet.balance} ${wallet.currency})', label: 'TRANSACTION_DEBUG');
 
       // Get categories and find matching one
-      // CRITICAL: hierarchicalCategoriesProvider returns only PARENT categories!
-      // We need to FLATTEN to include ALL subcategories for matching
-      final categoriesAsync = _ref.read(hierarchicalCategoriesProvider);
-      Log.d('Categories async state: $categoriesAsync', label: 'TRANSACTION_DEBUG');
+      // IMPORTANT: Query categories directly from database instead of using async provider
+      // Async providers may not have latest data immediately
+      final categoryDao = ref.read(categoryDaoProvider);
+      final categoryEntities = await categoryDao.getAllCategories();
 
-      final hierarchicalCategories = categoriesAsync.maybeWhen(
-        data: (cats) => cats,
-        orElse: () => [],
-      );
-      print('[TRANSACTION_DEBUG] Available hierarchical categories count: ${hierarchicalCategories.length}');
-      Log.d('Available hierarchical categories count: ${hierarchicalCategories.length}', label: 'TRANSACTION_DEBUG');
+      // Convert entities to CategoryModel using built-in toModel() extension
+      final List<CategoryModel> allCategories = categoryEntities.map((e) => e.toModel()).toList();
 
-      print('[TRANSACTION_DEBUG] ✅ Categories loaded: ${hierarchicalCategories.length}');
-
-      // If no categories, we'll handle it later with null category
-
-      // Flatten hierarchy to include BOTH parent categories AND subcategories
-      final List<CategoryModel> allCategories = [];
-      for (final cat in hierarchicalCategories) {
-        print('[TRANSACTION_DEBUG] Processing category: ${cat.title}, has subcategories: ${cat.subCategories?.length ?? 0}');
-        // ALWAYS add parent category first
-        allCategories.add(cat);
-        // Then add subcategories if any
-        if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
-          allCategories.addAll(cat.subCategories!);
-        }
-      }
-
-      print('[TRANSACTION_DEBUG] Flattened ${allCategories.length} categories');
-      Log.d('Flattened ${allCategories.length} categories', label: 'TRANSACTION_DEBUG');
+      print('[TRANSACTION_DEBUG] Fetched ${allCategories.length} categories directly from database');
+      Log.d('Fetched ${allCategories.length} categories from database', label: 'TRANSACTION_DEBUG');
 
       final categoryName = action['category'] as String;
       Log.d('Looking for category: "$categoryName"', label: 'TRANSACTION_DEBUG');
@@ -1462,7 +1465,7 @@ Please create a transaction based on this receipt data.''';
         print('[TRANSACTION_DEBUG] 💱 Currency conversion needed: $amount $actionCurrency → $walletCurrency');
 
         try {
-          final exchangeRateService = _ref.read(exchangeRateServiceProvider);
+          final exchangeRateService = ref.read(exchangeRateServiceProvider);
           // Use convertAmount() instead of getExchangeRate() - it has fallback logic
           final convertedAmount = await exchangeRateService.convertAmount(
             amount: amount,
@@ -1506,7 +1509,7 @@ Please create a transaction based on this receipt data.''';
 
       // Insert to database
       Log.d('Getting database instance...', label: 'TRANSACTION_DEBUG');
-      final db = _ref.read(databaseProvider);
+      final db = ref.read(databaseProvider);
       Log.d('Database instance obtained: $db', label: 'TRANSACTION_DEBUG');
 
       // Validate transaction before insert
@@ -1523,7 +1526,7 @@ Please create a transaction based on this receipt data.''';
       }
 
       Log.d('Calling transactionDao.addTransaction()...', label: 'TRANSACTION_DEBUG');
-      final transactionDao = _ref.read(transactionDaoProvider);
+      final transactionDao = ref.read(transactionDaoProvider);
       final insertedId = await transactionDao.addTransaction(transaction);
 
       print('[TRANSACTION_DEBUG] TRANSACTION INSERTED! ID: $insertedId');
@@ -1543,7 +1546,7 @@ Please create a transaction based on this receipt data.''';
           print('📸 [RECEIPT] Attaching receipt image to transaction $insertedId');
           Log.d('Attaching receipt image to transaction $insertedId', label: 'TRANSACTION_DEBUG');
 
-          final imageNotifier = _ref.read(imageProvider.notifier);
+          final imageNotifier = ref.read(imageProvider.notifier);
           await imageNotifier.setImageFromBytes(_currentReceiptImage!);
           final savedPath = await imageNotifier.saveImage();
 
@@ -1580,8 +1583,8 @@ Please create a transaction based on this receipt data.''';
 
       // Invalidate both transaction providers to update UI
       // Wallet balance is already updated via _adjustWalletBalanceAfterCreate
-      _ref.invalidate(transactionListProvider);
-      _ref.invalidate(allTransactionsProvider);
+      ref.invalidate(transactionListProvider);
+      ref.invalidate(allTransactionsProvider);
 
       Log.d('Transaction list provider invalidated, UI should update', label: 'TRANSACTION_DEBUG');
 
@@ -1592,7 +1595,7 @@ Please create a transaction based on this receipt data.''';
       // TODO: Re-enable cloud sync after fixing data_sync_service.dart
       // try {
       //   Log.d('Triggering immediate cloud sync...', label: 'TRANSACTION_DEBUG');
-      //   _ref.read(dataSyncServiceProvider.notifier).syncAll();
+      //   ref.read(dataSyncServiceProvider.notifier).syncAll();
       //   Log.d('Cloud sync triggered successfully', label: 'TRANSACTION_DEBUG');
       // } catch (e) {
       //   Log.i('Cloud sync failed (may not be authenticated): $e', label: 'TRANSACTION_DEBUG');
@@ -1625,7 +1628,7 @@ Please create a transaction based on this receipt data.''';
     Log.d('Creating budget from action: $action', label: 'BUDGET_DEBUG');
 
     try {
-      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       if (wallet == null) {
         Log.e('No active wallet for budget creation', label: 'BUDGET_DEBUG');
         return;
@@ -1637,7 +1640,7 @@ Please create a transaction based on this receipt data.''';
       final categoryName = action['category']?.toString() ?? 'Others';
       Log.d('🔍 Searching for category: "$categoryName"', label: 'BUDGET_DEBUG');
 
-      final hierarchicalCategories = _ref.read(hierarchicalCategoriesProvider).valueOrNull ?? [];
+      final hierarchicalCategories = _unwrapAsyncValue(ref.read(hierarchicalCategoriesProvider)) ?? [];
 
       if (hierarchicalCategories.isEmpty) {
         Log.e('❌ No categories available for budget', label: 'BUDGET_DEBUG');
@@ -1747,7 +1750,7 @@ Please create a transaction based on this receipt data.''';
       final isRoutine = action['isRoutine'] ?? false;
 
       // Check for duplicate budget before creating
-      final existingBudgets = await _ref.read(budgetListProvider.future);
+      final existingBudgets = await ref.read(budgetListProvider.future);
       final categoryId = category.id;
       final walletId = wallet.id;
       final isDuplicate = existingBudgets.any((b) =>
@@ -1778,18 +1781,18 @@ Please create a transaction based on this receipt data.''';
       Log.d('Creating budget: amount=$amount, category=${category.title}, period=$period', label: 'BUDGET_DEBUG');
 
       // Save budget to database
-      final budgetDao = _ref.read(budgetDaoProvider);
+      final budgetDao = ref.read(budgetDaoProvider);
       await budgetDao.addBudget(budget);
 
       Log.d('Budget created successfully', label: 'BUDGET_DEBUG');
 
       // Invalidate budget list to refresh UI
-      _ref.invalidate(budgetListProvider);
+      ref.invalidate(budgetListProvider);
 
       // TODO: Re-enable cloud sync after fixing data_sync_service.dart
       // try {
       //   Log.d('Triggering immediate cloud sync...', label: 'BUDGET_DEBUG');
-      //   _ref.read(dataSyncServiceProvider.notifier).syncAll();
+      //   ref.read(dataSyncServiceProvider.notifier).syncAll();
       //   Log.d('Cloud sync triggered successfully', label: 'BUDGET_DEBUG');
       // } catch (e) {
       //   Log.i('Cloud sync failed (may not be authenticated): $e', label: 'BUDGET_DEBUG');
@@ -1839,7 +1842,7 @@ Please create a transaction based on this receipt data.''';
       Log.d('Creating goal: title=$title, target=$targetAmount, deadline=$endDate', label: 'GOAL_DEBUG');
 
       // Save goal to database
-      final database = _ref.read(databaseProvider);
+      final database = ref.read(databaseProvider);
 
       // Convert GoalModel to GoalsCompanion for insert
       final companion = db.GoalsCompanion(
@@ -1860,12 +1863,12 @@ Please create a transaction based on this receipt data.''';
       Log.d('Goal created successfully', label: 'GOAL_DEBUG');
 
       // Invalidate goal list to refresh UI
-      _ref.invalidate(goalsListProvider);
+      ref.invalidate(goalsListProvider);
 
       // TODO: Re-enable cloud sync after fixing data_sync_service.dart
       // try {
       //   Log.d('Triggering immediate cloud sync...', label: 'GOAL_DEBUG');
-      //   _ref.read(dataSyncServiceProvider.notifier).syncAll();
+      //   ref.read(dataSyncServiceProvider.notifier).syncAll();
       //   Log.d('Cloud sync triggered successfully', label: 'GOAL_DEBUG');
       // } catch (e) {
       //   Log.i('Cloud sync failed (may not be authenticated): $e', label: 'GOAL_DEBUG');
@@ -1878,8 +1881,8 @@ Please create a transaction based on this receipt data.''';
   }
 
   Future<String> _getActiveWalletBalanceText() async {
-    final walletState = _ref.read(activeWalletProvider);
-    final wallet = walletState.valueOrNull;
+    final walletState = ref.read(activeWalletProvider);
+    final wallet = _unwrapAsyncValue(walletState);
     if (wallet == null) {
       return 'No active wallet selected.';
     }
@@ -1889,8 +1892,8 @@ Please create a transaction based on this receipt data.''';
 
   Future<String> _getSummaryText(Map<String, dynamic> action) async {
     try {
-      final db = _ref.read(databaseProvider);
-      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final db = ref.read(databaseProvider);
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       if (wallet == null || wallet.id == null) return 'No active wallet selected.';
 
       final now = DateTime.now();
@@ -1950,8 +1953,8 @@ Please create a transaction based on this receipt data.''';
 
   Future<String> _getTransactionsListText(Map<String, dynamic> action) async {
     try {
-      final db = _ref.read(databaseProvider);
-      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final db = ref.read(databaseProvider);
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       if (wallet == null || wallet.id == null) return 'No active wallet selected.';
 
       final now = DateTime.now();
@@ -2052,7 +2055,7 @@ Please create a transaction based on this receipt data.''';
       final isIncome = RegExp(r'\b(luong|lương|thu nhap|thu nhập|nhan|nhận|ban|bán|thu)\b').hasMatch(lower);
 
       // Get wallet currency to handle conversion
-      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       final walletCurrency = wallet?.currency ?? 'VND';
       Log.d('Wallet currency: $walletCurrency', label: 'AI_CURRENCY');
 
@@ -2127,7 +2130,7 @@ Please create a transaction based on this receipt data.''';
       if (description.isEmpty) description = isIncome ? 'Thu nhập' : 'Chi tiêu';
 
       // Guess category: try to match any known category title substring
-      final categoriesAsync = _ref.read(hierarchicalCategoriesProvider);
+      final categoriesAsync = ref.read(hierarchicalCategoriesProvider);
       final categories = categoriesAsync.maybeWhen(data: (cats) => cats, orElse: () => <CategoryModel>[]);
       String categoryTitle = 'Others';
       for (final c in categories) {
@@ -2147,8 +2150,8 @@ Please create a transaction based on this receipt data.''';
 
   Future<void> _adjustWalletBalanceAfterCreate(TransactionModel newTransaction) async {
     try {
-      final walletDao = _ref.read(walletDaoProvider);
-      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final walletDao = ref.read(walletDaoProvider);
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       if (wallet == null || wallet.id == null) return;
       double balanceChange = 0.0;
       if (newTransaction.transactionType == TransactionType.income) {
@@ -2158,7 +2161,7 @@ Please create a transaction based on this receipt data.''';
       }
       final updatedWallet = wallet.copyWith(balance: wallet.balance + balanceChange);
       await walletDao.updateWallet(updatedWallet);
-      _ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
+      ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
     } catch (e) {
       Log.e('adjust wallet after create failed: $e', label: 'Chat Provider');
     }
@@ -2170,9 +2173,9 @@ Please create a transaction based on this receipt data.''';
       Log.d('Updating transaction ID: $transactionId', label: 'UPDATE_TRANSACTION');
 
       // Get transaction from database
-      final db = _ref.read(databaseProvider);
+      final db = ref.read(databaseProvider);
       final transactions = await db.transactionDao.watchFilteredTransactionsWithDetails(
-        walletId: _ref.read(activeWalletProvider).valueOrNull?.id ?? 0,
+        walletId: _unwrapAsyncValue(ref.read(activeWalletProvider))?.id ?? 0,
         filter: null,
       ).first;
 
@@ -2193,7 +2196,7 @@ Please create a transaction based on this receipt data.''';
 
       // Handle currency conversion
       if (newAmount != null && action['currency'] != null) {
-        final wallet = _ref.read(activeWalletProvider).valueOrNull;
+        final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
         final walletCurrency = wallet?.currency ?? 'VND';
         final aiCurrency = action['currency'];
 
@@ -2205,7 +2208,7 @@ Please create a transaction based on this receipt data.''';
       // Get category if changed
       CategoryModel? newCategory;
       if (newCategoryName != null) {
-        final categories = _ref.read(hierarchicalCategoriesProvider).valueOrNull ?? [];
+        final categories = _unwrapAsyncValue(ref.read(hierarchicalCategoriesProvider)) ?? [];
         newCategory = categories.firstWhereOrNull(
           (c) => c.title.toLowerCase() == newCategoryName.toLowerCase(),
         );
@@ -2225,11 +2228,11 @@ Please create a transaction based on this receipt data.''';
       );
 
       // Update in database
-      final transactionDao = _ref.read(transactionDaoProvider);
+      final transactionDao = ref.read(transactionDaoProvider);
       await transactionDao.updateTransaction(updatedTransaction);
 
       // Adjust wallet balance (reverse old, apply new)
-      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       if (wallet != null) {
         double balanceAdjustment = 0;
 
@@ -2248,13 +2251,13 @@ Please create a transaction based on this receipt data.''';
         }
 
         final updatedWallet = wallet.copyWith(balance: wallet.balance + balanceAdjustment);
-        final walletDao = _ref.read(walletDaoProvider);
+        final walletDao = ref.read(walletDaoProvider);
         await walletDao.updateWallet(updatedWallet);
-        _ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
+        ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
       }
 
       // Invalidate providers to refresh UI
-      _ref.invalidate(transactionListProvider);
+      ref.invalidate(transactionListProvider);
 
       final amountText = _formatAmount(updatedTransaction.amount, currency: wallet?.currency ?? 'VND');
       return '✅ Updated transaction: ${updatedTransaction.title} → $amountText (${updatedTransaction.category.title})';
@@ -2285,7 +2288,7 @@ Please create a transaction based on this receipt data.''';
       );
 
       // Save to database
-      final walletDao = _ref.read(walletDaoProvider);
+      final walletDao = ref.read(walletDaoProvider);
       final walletId = await walletDao.addWallet(wallet);
 
       final createdWallet = wallet.copyWith(id: walletId);
@@ -2318,17 +2321,17 @@ Please create a transaction based on this receipt data.''';
       Log.d('AI Action received: ${action.toString()}', label: 'CREATE_RECURRING');
 
       // Find wallet matching currency
-      final walletsAsync = _ref.read(allWalletsStreamProvider);
-      final allWallets = walletsAsync.valueOrNull ?? [];
+      final walletsAsync = ref.read(allWalletsStreamProvider);
+      final allWallets = _unwrapAsyncValue(walletsAsync) ?? [];
       WalletModel? wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
 
       if (wallet == null) {
-        wallet = _ref.read(activeWalletProvider).valueOrNull;
+        wallet = ref.read(activeWalletProvider).value;
       }
 
       // If still no wallet, try to get default wallet, then first available wallet
       if (wallet == null) {
-        final defaultWallet = _ref.read(defaultWalletProvider).valueOrNull;
+        final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
         if (defaultWallet != null) {
           wallet = defaultWallet;
           Log.d('No active wallet, using default wallet: ${wallet.name}', label: 'CREATE_RECURRING');
@@ -2345,8 +2348,8 @@ Please create a transaction based on this receipt data.''';
       // Find category with fallback logic
       // CRITICAL: hierarchicalCategoriesProvider returns only PARENT categories!
       // We need to FLATTEN to include ALL subcategories for matching
-      final categoriesAsync = _ref.read(hierarchicalCategoriesProvider);
-      final hierarchicalCategories = categoriesAsync.valueOrNull ?? [];
+      final categoriesAsync = ref.read(hierarchicalCategoriesProvider);
+      final hierarchicalCategories = _unwrapAsyncValue(categoriesAsync) ?? [];
 
       if (hierarchicalCategories.isEmpty) {
         throw Exception('No categories available.');
@@ -2449,7 +2452,7 @@ Please create a transaction based on this receipt data.''';
 
       if (aiCurrency != wallet.currency) {
         try {
-          final exchangeService = _ref.read(exchangeRateServiceProvider);
+          final exchangeService = ref.read(exchangeRateServiceProvider);
           recurringAmount = await exchangeService.convertAmount(
             amount: amount,
             fromCurrency: aiCurrency,
@@ -2529,7 +2532,7 @@ Please create a transaction based on this receipt data.''';
       );
 
       // Save to database
-      final db = _ref.read(databaseProvider);
+      final db = ref.read(databaseProvider);
       final recurringId = await db.recurringDao.addRecurring(recurring);
 
       if (shouldChargeNow) {
@@ -2574,7 +2577,7 @@ Please create a transaction based on this receipt data.''';
           wallet: wallet,
           notes: transactionNotes,
         );
-        final transactionDao = _ref.read(transactionDaoProvider);
+        final transactionDao = ref.read(transactionDaoProvider);
         final transactionId = await transactionDao.addTransaction(transaction);
         Log.d('Created initial transaction (ID: $transactionId) for recurring payment on date: ${nextDueDate.toIso8601String()}', label: 'CREATE_RECURRING');
       }
@@ -2597,9 +2600,9 @@ Please create a transaction based on this receipt data.''';
       Log.d('Deleting transaction ID: $transactionId', label: 'DELETE_TRANSACTION');
 
       // Get transaction from database
-      final db = _ref.read(databaseProvider);
+      final db = ref.read(databaseProvider);
       final transactions = await db.transactionDao.watchFilteredTransactionsWithDetails(
-        walletId: _ref.read(activeWalletProvider).valueOrNull?.id ?? 0,
+        walletId: _unwrapAsyncValue(ref.read(activeWalletProvider))?.id ?? 0,
         filter: null,
       ).first;
 
@@ -2614,11 +2617,11 @@ Please create a transaction based on this receipt data.''';
       final type = transaction.transactionType;
 
       // Delete from database
-      final transactionDao = _ref.read(transactionDaoProvider);
+      final transactionDao = ref.read(transactionDaoProvider);
       await transactionDao.deleteTransaction(transactionId);
 
       // Adjust wallet balance (reverse the transaction)
-      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       if (wallet != null) {
         double balanceAdjustment = 0;
 
@@ -2629,13 +2632,13 @@ Please create a transaction based on this receipt data.''';
         }
 
         final updatedWallet = wallet.copyWith(balance: wallet.balance + balanceAdjustment);
-        final walletDao = _ref.read(walletDaoProvider);
+        final walletDao = ref.read(walletDaoProvider);
         await walletDao.updateWallet(updatedWallet);
-        _ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
+        ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
       }
 
       // Invalidate providers to refresh UI
-      _ref.invalidate(transactionListProvider);
+      ref.invalidate(transactionListProvider);
 
       final amountText = _formatAmount(amount, currency: wallet?.currency ?? 'VND');
       return '✅ Deleted transaction: $description ($amountText)';
@@ -2649,14 +2652,14 @@ Please create a transaction based on this receipt data.''';
   /// Update AI service with recent transactions context
   Future<void> _updateRecentTransactionsContext() async {
     try {
-      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       if (wallet == null || wallet.id == null) {
         Log.d('No active wallet or wallet ID is null, skipping transaction context update', label: 'Chat Provider');
         return;
       }
 
       // Get recent 10 transactions
-      final db = _ref.read(databaseProvider);
+      final db = ref.read(databaseProvider);
       final transactions = await db.transactionDao.watchFilteredTransactionsWithDetails(
         walletId: wallet.id!,
         filter: null,
@@ -2691,8 +2694,8 @@ Please create a transaction based on this receipt data.''';
   /// Get list of budgets for AI context
   Future<String> _getBudgetsListText(Map<String, dynamic> action) async {
     try {
-      final budgets = await _ref.read(budgetListProvider.future);
-      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final budgets = await ref.read(budgetListProvider.future);
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       final currency = wallet?.currency ?? 'VND';
 
       if (budgets.isEmpty) {
@@ -2737,11 +2740,11 @@ Please create a transaction based on this receipt data.''';
       final budgetId = (action['budgetId'] as num).toInt();
       Log.d('Deleting budget ID: $budgetId', label: 'DELETE_BUDGET');
 
-      final budgetDao = _ref.read(budgetDaoProvider);
+      final budgetDao = ref.read(budgetDaoProvider);
       await budgetDao.deleteBudget(budgetId);
 
       // Invalidate providers to refresh UI
-      _ref.invalidate(budgetListProvider);
+      ref.invalidate(budgetListProvider);
 
       return '✅ Đã xoá budget thành công.';
     } catch (e, stackTrace) {
@@ -2756,7 +2759,7 @@ Please create a transaction based on this receipt data.''';
     try {
       print('🗑️ [DELETE_ALL] Starting delete all budgets...');
       final period = action['period'] ?? 'all'; // Default to 'all' to delete everything
-      final budgets = await _ref.read(budgetListProvider.future);
+      final budgets = await ref.read(budgetListProvider.future);
 
       print('🗑️ [DELETE_ALL] period=$period, total budgets=${budgets.length}');
       Log.d('Delete all budgets: period=$period, total budgets=${budgets.length}', label: 'DELETE_ALL_BUDGETS');
@@ -2765,7 +2768,7 @@ Please create a transaction based on this receipt data.''';
         return '📋 Không có budget nào để xoá.';
       }
 
-      final budgetDao = _ref.read(budgetDaoProvider);
+      final budgetDao = ref.read(budgetDaoProvider);
       final now = DateTime.now();
       final currentMonthStart = DateTime(now.year, now.month, 1);
       final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
@@ -2792,7 +2795,7 @@ Please create a transaction based on this receipt data.''';
       }
 
       // Invalidate providers to refresh UI
-      _ref.invalidate(budgetListProvider);
+      ref.invalidate(budgetListProvider);
 
       return '✅ Đã xoá $deletedCount budget thành công.';
     } catch (e, stackTrace) {
@@ -2808,7 +2811,7 @@ Please create a transaction based on this receipt data.''';
       final budgetId = (action['budgetId'] as num).toInt();
       Log.d('Updating budget ID: $budgetId', label: 'UPDATE_BUDGET');
 
-      final budgets = await _ref.read(budgetListProvider.future);
+      final budgets = await ref.read(budgetListProvider.future);
       final budget = budgets.firstWhereOrNull((b) => b.id == budgetId);
 
       if (budget == null) {
@@ -2826,13 +2829,13 @@ Please create a transaction based on this receipt data.''';
         updatedAt: DateTime.now(),
       );
 
-      final budgetDao = _ref.read(budgetDaoProvider);
+      final budgetDao = ref.read(budgetDaoProvider);
       await budgetDao.updateBudget(updatedBudget);
 
       // Invalidate providers to refresh UI
-      _ref.invalidate(budgetListProvider);
+      ref.invalidate(budgetListProvider);
 
-      final amountText = _formatAmount(newAmount, currency: _ref.read(activeWalletProvider).valueOrNull?.currency ?? 'VND');
+      final amountText = _formatAmount(newAmount, currency: _unwrapAsyncValue(ref.read(activeWalletProvider))?.currency ?? 'VND');
       return '✅ Đã cập nhật budget thành $amountText.';
     } catch (e, stackTrace) {
       Log.e('Failed to update budget: $e', label: 'UPDATE_BUDGET');
@@ -2893,7 +2896,7 @@ Please create a transaction based on this receipt data.''';
   /// Update existing message in database
   Future<void> _updateMessageInDatabase(ChatMessage message) async {
     try {
-      final dao = _ref.read(chatMessageDaoProvider);
+      final dao = ref.read(chatMessageDaoProvider);
       Log.d('Updating message ${message.id} with content: ${message.content}', label: 'Chat Provider');
       final rowsAffected = await dao.updateMessageContent(
         message.id,
@@ -2908,8 +2911,8 @@ Please create a transaction based on this receipt data.''';
   /// Update AI with current budgets context
   Future<void> _updateBudgetsContext() async {
     try {
-      final budgets = await _ref.read(budgetListProvider.future);
-      final wallet = _ref.read(activeWalletProvider).valueOrNull;
+      final budgets = await ref.read(budgetListProvider.future);
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       final currency = wallet?.currency ?? 'VND';
 
       if (budgets.isEmpty) {
@@ -2931,11 +2934,6 @@ Please create a transaction based on this receipt data.''';
     }
   }
 
-  @override
-  void dispose() {
-    _typingSubscription?.cancel();
-    super.dispose();
-  }
 }
 
 // Helper provider to get the last message

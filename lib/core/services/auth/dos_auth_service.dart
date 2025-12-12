@@ -41,13 +41,14 @@ class DOSAuthState {
   }
 }
 
-class DOSAuthService extends StateNotifier<DOSAuthState> {
-  final FirebaseAuth _auth;
+class DOSAuthService extends Notifier<DOSAuthState> {
+  late final FirebaseAuth _auth;
 
-  DOSAuthService({FirebaseAuth? auth})
-      : _auth = auth ?? FirebaseAuth.instance,
-        super(DOSAuthState()) {
+  @override
+  DOSAuthState build() {
+    _auth = ref.watch(dosAuthProvider);
     _init();
+    return DOSAuthState();
   }
 
   void _init() {
@@ -287,9 +288,9 @@ final dosAuthProvider = Provider<FirebaseAuth>((ref) {
   return FirebaseAuth.instance;
 });
 
-final dosAuthServiceProvider = StateNotifierProvider<DOSAuthService, DOSAuthState>((ref) {
-  return DOSAuthService(auth: ref.watch(dosAuthProvider));
-});
+final dosAuthServiceProvider = NotifierProvider<DOSAuthService, DOSAuthState>(
+  DOSAuthService.new,
+);
 
 final currentDOSUserProvider = Provider<User?>((ref) {
   return ref.watch(dosAuthServiceProvider).user;

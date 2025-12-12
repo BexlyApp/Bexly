@@ -208,7 +208,7 @@ class RecurringDetailScreen extends HookConsumerWidget {
                 }
 
                 // Sync to cloud
-                final user = ref.read(authStateProvider).valueOrNull;
+                final user = ref.read(authStateProvider).value;
                 if (user?.uid != null) {
                   try {
                     final syncService = ref.read(cloudSyncServiceProvider);
@@ -291,7 +291,7 @@ class RecurringDetailScreen extends HookConsumerWidget {
                   final db = ref.read(databaseProvider);
 
                   // Sync delete to cloud first
-                  final user = ref.read(authStateProvider).valueOrNull;
+                  final user = ref.read(authStateProvider).value;
                   if (user?.uid != null) {
                     try {
                       final syncService = ref.read(cloudSyncServiceProvider);

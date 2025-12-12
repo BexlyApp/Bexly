@@ -1,14 +1,24 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/utils/logger.dart';
 
-/// Provider to hold the selected avatar path (local file path or URL)
-final avatarPathProvider = StateProvider.autoDispose<String?>((ref) => null);
+/// Notifier to hold the selected avatar path (local file path or URL)
+class AvatarPathNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void setPath(String? path) => state = path;
+}
+
+final avatarPathProvider = NotifierProvider<AvatarPathNotifier, String?>(
+  AvatarPathNotifier.new,
+);
 
 class AvatarPicker extends HookConsumerWidget {
   final String? initialImageUrl; // Firebase photoURL or other URL
@@ -26,7 +36,7 @@ class AvatarPicker extends HookConsumerWidget {
     useEffect(() {
       if (initialImageUrl != null && avatarPath == null) {
         Future.microtask(() {
-          ref.read(avatarPathProvider.notifier).state = initialImageUrl;
+          ref.read(avatarPathProvider.notifier).setPath(initialImageUrl);
         });
       }
       return null;
@@ -43,7 +53,7 @@ class AvatarPicker extends HookConsumerWidget {
         );
 
         if (image != null) {
-          ref.read(avatarPathProvider.notifier).state = image.path;
+          ref.read(avatarPathProvider.notifier).setPath(image.path);
           Log.i('Avatar selected: ${image.path}', label: 'onboarding');
         }
       } catch (e) {

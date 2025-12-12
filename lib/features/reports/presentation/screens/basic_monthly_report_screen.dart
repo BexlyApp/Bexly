@@ -31,8 +31,17 @@ part '../components/spending_by_category_chart.dart';
 part '../components/income_by_category_chart.dart';
 part '../components/report_summary_cards.dart';
 
-/// State provider for selected wallet filter (null = All Wallets)
-final reportWalletFilterProvider = StateProvider<int?>((ref) => null);
+/// Notifier for selected wallet filter (null = All Wallets)
+class ReportWalletFilterNotifier extends Notifier<int?> {
+  @override
+  int? build() => null;
+
+  void setWalletFilter(int? walletId) => state = walletId;
+}
+
+final reportWalletFilterProvider = NotifierProvider<ReportWalletFilterNotifier, int?>(
+  ReportWalletFilterNotifier.new,
+);
 
 class BasicMonthlyReportScreen extends ConsumerWidget {
   const BasicMonthlyReportScreen({super.key});
@@ -139,7 +148,7 @@ class BasicMonthlyReportScreen extends ConsumerWidget {
 
           // Sync back to report filter
           final selectedDashboardWallet = ref.read(dashboardWalletFilterProvider);
-          ref.read(reportWalletFilterProvider.notifier).state = selectedDashboardWallet?.id;
+          ref.read(reportWalletFilterProvider.notifier).setWalletFilter(selectedDashboardWallet?.id);
         },
       ),
     );

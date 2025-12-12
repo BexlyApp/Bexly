@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -107,15 +107,13 @@ const List<Language> availableLanguages = [
 ];
 
 // Language provider
-final languageProvider = StateNotifierProvider<LanguageNotifier, Language>((ref) {
-  return LanguageNotifier();
-});
-
-class LanguageNotifier extends StateNotifier<Language> {
+class LanguageNotifier extends Notifier<Language> {
   static const String _prefsKey = 'app_language';
 
-  LanguageNotifier() : super(availableLanguages[0]) {
+  @override
+  Language build() {
     _loadLanguage();
+    return availableLanguages[0];
   }
 
   Future<void> _loadLanguage() async {
@@ -169,6 +167,10 @@ class LanguageNotifier extends StateNotifier<Language> {
     await prefs.setString(_prefsKey, language.code);
   }
 }
+
+final languageProvider = NotifierProvider<LanguageNotifier, Language>(
+  LanguageNotifier.new,
+);
 
 // Locale provider for app localization
 final localeProvider = Provider<Locale>((ref) {

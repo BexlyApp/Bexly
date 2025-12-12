@@ -66,7 +66,7 @@ class RecurringFormScreen extends HookConsumerWidget {
 
     // Initialize form with recurring data when editing
     useEffect(() {
-      if (recurringId != null && recurringAsync?.valueOrNull != null) {
+      if (recurringId != null && recurringAsync?.value != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           formNotifier.initializeWithRecurring(recurringAsync!.value!);
         });
@@ -77,7 +77,7 @@ class RecurringFormScreen extends HookConsumerWidget {
         });
       }
       return null;
-    }, [recurringId, recurringAsync?.valueOrNull]);
+    }, [recurringId, recurringAsync?.value]);
 
     // Update controllers when formState changes (Fix for edit mode)
     useEffect(() {
@@ -88,9 +88,9 @@ class RecurringFormScreen extends HookConsumerWidget {
 
     // Auto-select wallet if only one wallet exists
     useEffect(() {
-      if (recurringId == null && formState.wallet == null && allWalletsAsync.valueOrNull != null) {
+      if (recurringId == null && formState.wallet == null && allWalletsAsync.value != null) {
         Future.microtask(() {
-          final wallets = allWalletsAsync.valueOrNull;
+          final wallets = allWalletsAsync.value;
           if (wallets != null && wallets.length == 1) {
             // Only 1 wallet - auto-select it
             final wallet = wallets.first;
@@ -164,7 +164,7 @@ class RecurringFormScreen extends HookConsumerWidget {
                   ),
 
                   // Wallet selector - only show if multiple wallets
-                  if (allWalletsAsync.valueOrNull != null && allWalletsAsync.valueOrNull!.length > 1)
+                  if (allWalletsAsync.value != null && allWalletsAsync.value!.length > 1)
                     CustomSelectField(
                       context: context,
                       controller: walletController,
@@ -521,7 +521,7 @@ class _ActionButtons extends HookConsumerWidget {
                   }
 
                   // Sync to cloud
-                  final user = ref.read(authStateProvider).valueOrNull;
+                  final user = ref.read(authStateProvider).value;
                   if (user?.uid != null) {
                     try {
                       final syncService = ref.read(cloudSyncServiceProvider);
@@ -593,7 +593,7 @@ class _ActionButtons extends HookConsumerWidget {
                     final db = ref.read(databaseProvider);
 
                     // Sync delete to cloud first
-                    final user = ref.read(authStateProvider).valueOrNull;
+                    final user = ref.read(authStateProvider).value;
                     if (user?.uid != null) {
                       try {
                         final syncService = ref.read(cloudSyncServiceProvider);

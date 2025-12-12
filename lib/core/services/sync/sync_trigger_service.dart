@@ -179,7 +179,7 @@ class SyncTriggerService {
           final walletsAfterDownload = await localDb.walletDao.getAllWallets();
           if (walletsAfterDownload.isNotEmpty) {
             final activeWalletNotifier = ref.read(activeWalletProvider.notifier);
-            final currentActiveWallet = ref.read(activeWalletProvider).valueOrNull;
+            final currentActiveWallet = ref.read(activeWalletProvider).value;
 
             if (currentActiveWallet == null) {
               // No active wallet set, auto-select first wallet
@@ -274,7 +274,7 @@ class SyncTriggerService {
             final walletsAfterPull2 = await localDb.walletDao.getAllWallets();
             if (walletsAfterPull2.isNotEmpty) {
               final activeWalletNotifier = ref.read(activeWalletProvider.notifier);
-              final currentActiveWallet = ref.read(activeWalletProvider).valueOrNull;
+              final currentActiveWallet = ref.read(activeWalletProvider).value;
 
               if (currentActiveWallet == null) {
                 // No active wallet set, auto-select first wallet

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/exchange_rate_service.dart';
@@ -13,16 +13,13 @@ import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 /// This wallet is used for:
 /// - AI context when viewing "All Wallets"
 /// - Base currency derivation for dashboard aggregation
-final defaultWalletIdProvider = StateNotifierProvider<DefaultWalletIdNotifier, int?>((ref) {
-  return DefaultWalletIdNotifier(ref);
-});
-
-class DefaultWalletIdNotifier extends StateNotifier<int?> {
+class DefaultWalletIdNotifier extends Notifier<int?> {
   static const _key = 'default_wallet_id';
-  final Ref _ref;
 
-  DefaultWalletIdNotifier(this._ref) : super(null) {
+  @override
+  int? build() {
     _loadFromPrefs();
+    return null;
   }
 
   Future<void> _loadFromPrefs() async {
@@ -49,7 +46,7 @@ class DefaultWalletIdNotifier extends StateNotifier<int?> {
 
   Future<void> _initializeFromFirstWallet() async {
     try {
-      final db = _ref.read(databaseProvider);
+      final db = ref.read(databaseProvider);
       final wallets = await db.walletDao.watchAllWallets().first;
 
       if (wallets.isNotEmpty) {
@@ -92,7 +89,7 @@ class DefaultWalletIdNotifier extends StateNotifier<int?> {
       }
 
       // Get wallet's cloudId from database
-      final db = _ref.read(databaseProvider);
+      final db = ref.read(databaseProvider);
       final wallet = await db.walletDao.getWalletById(walletId);
       if (wallet == null || wallet.cloudId == null) {
         Log.w('Wallet or cloudId not found for ID: $walletId', label: 'DefaultWallet');
@@ -134,6 +131,10 @@ class DefaultWalletIdNotifier extends StateNotifier<int?> {
   }
 }
 
+final defaultWalletIdProvider = NotifierProvider<DefaultWalletIdNotifier, int?>(
+  DefaultWalletIdNotifier.new,
+);
+
 /// Provider for the default wallet model (resolved from ID)
 final defaultWalletProvider = FutureProvider<WalletModel?>((ref) async {
   final defaultWalletId = ref.watch(defaultWalletIdProvider);
@@ -155,7 +156,7 @@ final baseCurrencyProvider = Provider<String>((ref) {
   return defaultWallet.when(
     data: (wallet) => wallet?.currency ?? 'VND',
     loading: () => 'VND',
-    error: (_, _) => 'VND',
+    error: (_, __) => 'VND',
   );
 });
 
@@ -168,10 +169,6 @@ final exchangeRateServiceProvider = Provider<ExchangeRateService>((ref) {
 /// Provider for cached exchange rates
 /// Key format: "FROM_TO" (e.g., "USD_VND")
 /// Cache expires after 1 hour
-final exchangeRateCacheProvider = StateNotifierProvider<ExchangeRateCacheNotifier, Map<String, CachedRate>>((ref) {
-  return ExchangeRateCacheNotifier(ref);
-});
-
 class CachedRate {
   final double rate;
   final DateTime fetchedAt;
@@ -185,10 +182,11 @@ class CachedRate {
   }
 }
 
-class ExchangeRateCacheNotifier extends StateNotifier<Map<String, CachedRate>> {
-  final Ref _ref;
-
-  ExchangeRateCacheNotifier(this._ref) : super({});
+class ExchangeRateCacheNotifier extends Notifier<Map<String, CachedRate>> {
+  @override
+  Map<String, CachedRate> build() {
+    return {};
+  }
 
   /// Get exchange rate with caching
   Future<double> getRate(String fromCurrency, String toCurrency) async {
@@ -203,7 +201,7 @@ class ExchangeRateCacheNotifier extends StateNotifier<Map<String, CachedRate>> {
 
     // Fetch new rate
     Log.d('Fetching new rate for $key', label: 'ExchangeRate');
-    final service = _ref.read(exchangeRateServiceProvider);
+    final service = ref.read(exchangeRateServiceProvider);
     final rate = await service.getExchangeRate(fromCurrency, toCurrency);
 
     // Update cache
@@ -228,3 +226,7 @@ class ExchangeRateCacheNotifier extends StateNotifier<Map<String, CachedRate>> {
     Log.d('Cleared cached rate for $key', label: 'ExchangeRate');
   }
 }
+
+final exchangeRateCacheProvider = NotifierProvider<ExchangeRateCacheNotifier, Map<String, CachedRate>>(
+  ExchangeRateCacheNotifier.new,
+);

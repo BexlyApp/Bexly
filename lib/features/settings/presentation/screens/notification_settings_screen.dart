@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
@@ -10,12 +10,33 @@ import 'package:bexly/core/services/scheduled_notifications_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 
-/// Notification settings providers
-final notificationRecurringPaymentsProvider = StateProvider<bool>((ref) => true);
-final notificationDailyReminderProvider = StateProvider<bool>((ref) => false);
-final notificationWeeklyReportProvider = StateProvider<bool>((ref) => false);
-final notificationMonthlyReportProvider = StateProvider<bool>((ref) => false);
-final notificationGoalMilestonesProvider = StateProvider<bool>((ref) => true);
+/// Notification settings notifiers
+class NotificationSettingNotifier extends Notifier<bool> {
+  final bool defaultValue;
+
+  NotificationSettingNotifier({this.defaultValue = false});
+
+  @override
+  bool build() => defaultValue;
+
+  void setValue(bool value) => state = value;
+}
+
+final notificationRecurringPaymentsProvider = NotifierProvider<NotificationSettingNotifier, bool>(
+  () => NotificationSettingNotifier(defaultValue: true),
+);
+final notificationDailyReminderProvider = NotifierProvider<NotificationSettingNotifier, bool>(
+  () => NotificationSettingNotifier(defaultValue: false),
+);
+final notificationWeeklyReportProvider = NotifierProvider<NotificationSettingNotifier, bool>(
+  () => NotificationSettingNotifier(defaultValue: false),
+);
+final notificationMonthlyReportProvider = NotifierProvider<NotificationSettingNotifier, bool>(
+  () => NotificationSettingNotifier(defaultValue: false),
+);
+final notificationGoalMilestonesProvider = NotifierProvider<NotificationSettingNotifier, bool>(
+  () => NotificationSettingNotifier(defaultValue: true),
+);
 
 class NotificationSettingsScreen extends ConsumerStatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -40,16 +61,16 @@ class _NotificationSettingsScreenState
       final prefs = await SharedPreferences.getInstance();
 
       // Load all notification settings
-      ref.read(notificationRecurringPaymentsProvider.notifier).state =
-          prefs.getBool('notif_recurring_payments') ?? true;
-      ref.read(notificationDailyReminderProvider.notifier).state =
-          prefs.getBool('notif_daily_reminder') ?? false;
-      ref.read(notificationWeeklyReportProvider.notifier).state =
-          prefs.getBool('notif_weekly_report') ?? false;
-      ref.read(notificationMonthlyReportProvider.notifier).state =
-          prefs.getBool('notif_monthly_report') ?? false;
-      ref.read(notificationGoalMilestonesProvider.notifier).state =
-          prefs.getBool('notif_goal_milestones') ?? true;
+      ref.read(notificationRecurringPaymentsProvider.notifier).setValue(
+          prefs.getBool('notif_recurring_payments') ?? true);
+      ref.read(notificationDailyReminderProvider.notifier).setValue(
+          prefs.getBool('notif_daily_reminder') ?? false);
+      ref.read(notificationWeeklyReportProvider.notifier).setValue(
+          prefs.getBool('notif_weekly_report') ?? false);
+      ref.read(notificationMonthlyReportProvider.notifier).setValue(
+          prefs.getBool('notif_monthly_report') ?? false);
+      ref.read(notificationGoalMilestonesProvider.notifier).setValue(
+          prefs.getBool('notif_goal_milestones') ?? true);
 
       setState(() => _isLoading = false);
     } catch (e) {
@@ -68,7 +89,7 @@ class _NotificationSettingsScreenState
     }
   }
 
-  Future<void> _toggleSetting(String key, StateProvider<bool> provider, bool value) async {
+  Future<void> _toggleSetting(String key, NotifierProvider<NotificationSettingNotifier, bool> provider, bool value) async {
     if (value) {
       // Request permission when enabling any notification
       final granted = await NotificationService.requestPermission();
@@ -87,7 +108,7 @@ class _NotificationSettingsScreenState
     }
 
     // Update state and save
-    ref.read(provider.notifier).state = value;
+    ref.read(provider.notifier).setValue(value);
     await _saveSetting(key, value);
 
     // Schedule/cancel notifications based on type

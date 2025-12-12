@@ -1,4 +1,4 @@
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/category_table.dart'
@@ -64,6 +64,13 @@ List<CategoryModel> _buildCategoryHierarchy(
 
 /// Provider to temporarily hold the selected parent category when navigating
 /// back from the category picker screen.
-final selectedParentCategoryProvider = StateProvider<CategoryModel?>(
-  (ref) => null,
+class SelectedParentCategoryNotifier extends Notifier<CategoryModel?> {
+  @override
+  CategoryModel? build() => null;
+
+  void setCategory(CategoryModel? category) => state = category;
+}
+
+final selectedParentCategoryProvider = NotifierProvider<SelectedParentCategoryNotifier, CategoryModel?>(
+  SelectedParentCategoryNotifier.new,
 );

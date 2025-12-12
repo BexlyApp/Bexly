@@ -86,12 +86,21 @@ final tenantIdProvider = Provider<String?>((ref) {
   );
 });
 
-// Guest mode tracking
-final isGuestModeProvider = StateProvider<bool>((ref) {
-  // User is in guest mode when not authenticated
-  final isAuthenticated = ref.watch(isAuthenticatedProvider);
-  return !isAuthenticated;
-});
+// Guest mode tracking using NotifierProvider
+class GuestModeNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    // User is in guest mode when not authenticated
+    final isAuthenticated = ref.watch(isAuthenticatedProvider);
+    return !isAuthenticated;
+  }
+
+  void setGuestMode(bool value) => state = value;
+}
+
+final isGuestModeProvider = NotifierProvider<GuestModeNotifier, bool>(
+  GuestModeNotifier.new,
+);
 
 // Provider to check if a feature requires authentication
 final requiresAuthProvider = Provider.family<bool, String>((ref, feature) {

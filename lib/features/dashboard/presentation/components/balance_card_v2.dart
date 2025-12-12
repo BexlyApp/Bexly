@@ -14,8 +14,8 @@ class BalanceCard extends ConsumerWidget {
     return totalBalanceAsync.when(
       data: (totalBalance) {
         final walletsAsync = ref.watch(allWalletsStreamProvider);
-        final wallets = walletsAsync.valueOrNull ?? [];
-        final transactions = transactionsAsync.valueOrNull ?? [];
+        final wallets = walletsAsync.value ?? [];
+        final transactions = transactionsAsync.value ?? [];
 
         // Calculate balance change percentage
         double balancePercentChange = 0.0;

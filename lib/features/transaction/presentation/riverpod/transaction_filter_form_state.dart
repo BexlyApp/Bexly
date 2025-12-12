@@ -138,12 +138,12 @@ TransactionFilterFormState useTransactionFilterFormState({
   final minAmountController = useTextEditingController(
     text: initialFilter?.minAmount == null
         ? ''
-        : '${activeWallet.valueOrNull?.currencyByIsoCode(ref).symbol} ${initialFilter?.minAmount?.toPriceFormat()}',
+        : '${activeWallet.value?.currencyByIsoCode(ref).symbol} ${initialFilter?.minAmount?.toPriceFormat()}',
   );
   final maxAmountController = useTextEditingController(
     text: initialFilter?.maxAmount == null
         ? ''
-        : '${activeWallet.valueOrNull?.currencyByIsoCode(ref).symbol} ${initialFilter?.maxAmount?.toPriceFormat()}',
+        : '${activeWallet.value?.currencyByIsoCode(ref).symbol} ${initialFilter?.maxAmount?.toPriceFormat()}',
   );
   final notesController = useTextEditingController(
     text: initialFilter?.notes ?? '',

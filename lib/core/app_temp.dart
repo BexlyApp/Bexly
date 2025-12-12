@@ -5,8 +5,17 @@ import 'package:bexly/core/router/app_router.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:toastification/toastification.dart';
 
-// Simple theme provider
-final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
+// Simple theme provider using NotifierProvider
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() => ThemeMode.system;
+
+  void setThemeMode(ThemeMode mode) => state = mode;
+}
+
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
+  ThemeModeNotifier.new,
+);
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
@@ -37,7 +46,7 @@ class MyApp extends ConsumerWidget {
             ),
             filled: true,
           ),
-          cardTheme: CardTheme(
+          cardTheme: CardThemeData(
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -76,7 +85,7 @@ class MyApp extends ConsumerWidget {
             ),
             filled: true,
           ),
-          cardTheme: CardTheme(
+          cardTheme: CardThemeData(
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),

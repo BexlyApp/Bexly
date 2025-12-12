@@ -1,4 +1,4 @@
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/features/transaction/data/model/transaction_filter_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
@@ -59,8 +59,17 @@ final transactionDetailsProvider = StreamProvider.autoDispose.family<Transaction
   );
 });
 
-final transactionFilterProvider = StateProvider<TransactionFilter?>(
-  (ref) => null,
+class TransactionFilterNotifier extends Notifier<TransactionFilter?> {
+  @override
+  TransactionFilter? build() => null;
+
+  void setFilter(TransactionFilter? filter) => state = filter;
+
+  void clearFilter() => state = null;
+}
+
+final transactionFilterProvider = NotifierProvider<TransactionFilterNotifier, TransactionFilter?>(
+  TransactionFilterNotifier.new,
 );
 
 /// Provider for dashboard/transaction screen - returns ALL transactions across all wallets

@@ -20,7 +20,7 @@ class BudgetSummaryCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final budgetsAsync = ref.watch(budgetListProvider);
     final selectedPeriod = ref.watch(selectedBudgetPeriodProvider);
-    final activeWallet = ref.watch(activeWalletProvider).valueOrNull;
+    final activeWallet = ref.watch(activeWalletProvider).value;
     final currencySymbol = activeWallet?.currency == 'USD' ? '\$' : 'đ';
 
     return budgetsAsync.when(

@@ -15,16 +15,19 @@ final authProvider = FutureProvider<UserModel?>((ref) async {
   return await ref.read(authStateProvider.notifier).getSession();
 });
 
-class AuthProvider extends StateNotifier<UserModel> {
-  final Ref ref;
-  AuthProvider(this.ref) : super(UserRepository.dummy) {
+class AuthProvider extends Notifier<UserModel> {
+  late final UserDao _userDao;
+
+  @override
+  UserModel build() {
+    _userDao = ref.watch(userDaoProvider);
     // Automatically load session from database on initialization
     _initializeSession();
+    return UserRepository.dummy;
   }
 
   Future<void> _initializeSession() async {
-    final userDao = ref.read(userDaoProvider);
-    final userFromDb = await userDao.getFirstUser();
+    final userFromDb = await _userDao.getFirstUser();
     if (userFromDb != null) {
       state = userFromDb.toModel();
       Log.i(state.toJson(), label: 'auto-loaded user session on provider init');
@@ -44,26 +47,24 @@ class AuthProvider extends StateNotifier<UserModel> {
   UserModel getUser() => state;
 
   Future<void> _setSession() async {
-    final userDao = ref.read(userDaoProvider);
-    final existingUser = await userDao.getFirstUser();
+    final existingUser = await _userDao.getFirstUser();
 
     if (existingUser != null) {
       // Update the user, ensuring the ID from the database is preserved
-      await userDao.updateUser(
+      await _userDao.updateUser(
         state.copyWith(id: existingUser.id).toCompanion(),
       );
       Log.i(state.toJson(), label: 'updated user session');
     } else {
       // Insert a new user
-      final newId = await userDao.insertUser(state.toCompanion());
+      final newId = await _userDao.insertUser(state.toCompanion());
       state = state.copyWith(id: newId); // Update state with the new ID from DB
       Log.i(state.toJson(), label: 'created user session');
     }
   }
 
   Future<UserModel?> getSession() async {
-    final userDao = ref.read(userDaoProvider);
-    final userFromDb = await userDao.getFirstUser();
+    final userFromDb = await _userDao.getFirstUser();
     if (userFromDb != null) {
       final userModel = userFromDb.toModel();
       state = userModel;
@@ -76,12 +77,9 @@ class AuthProvider extends StateNotifier<UserModel> {
   }
 
   Future<void> logout() async {
-    final userDao = ref.read(userDaoProvider);
-    await userDao.deleteAllUsers();
+    await _userDao.deleteAllUsers();
     state = UserRepository.dummy;
   }
 }
 
-final authStateProvider = StateNotifierProvider<AuthProvider, UserModel>((ref) {
-  return AuthProvider(ref);
-});
+final authStateProvider = NotifierProvider<AuthProvider, UserModel>(AuthProvider.new);

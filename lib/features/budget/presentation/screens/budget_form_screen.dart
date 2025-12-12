@@ -59,10 +59,10 @@ class BudgetFormScreen extends HookConsumerWidget {
 
     useEffect(() {
       // Set default wallet to active wallet if not editing
-      if (!isEditing && selectedWallet.value == null && activeWalletsAsync.valueOrNull != null) {
-        selectedWallet.value = activeWalletsAsync.valueOrNull;
+      if (!isEditing && selectedWallet.value == null && activeWalletsAsync.value != null) {
+        selectedWallet.value = activeWalletsAsync.value;
         walletController.text =
-            '${activeWalletsAsync.valueOrNull?.currencyByIsoCode(ref).symbol} ${activeWalletsAsync.valueOrNull?.balance.toPriceFormat()}';
+            '${activeWalletsAsync.value?.currencyByIsoCode(ref).symbol} ${activeWalletsAsync.value?.balance.toPriceFormat()}';
       }
 
       if (isEditing && budgetDetails is AsyncData<BudgetModel?>) {
@@ -83,7 +83,7 @@ class BudgetFormScreen extends HookConsumerWidget {
 
     final remainingBudgetForEntry = useMemoized<double?>(() {
       final wallet = selectedWallet.value;
-      final budgets = allBudgetsAsync.valueOrNull;
+      final budgets = allBudgetsAsync.value;
 
       // Don't calculate if essential data is missing
       if (wallet == null || budgets == null) {
@@ -147,7 +147,7 @@ class BudgetFormScreen extends HookConsumerWidget {
 
       // Get all budgets to calculate the current total
       final allBudgetsAsync = ref.read(budgetListProvider);
-      final allBudgets = allBudgetsAsync.valueOrNull ?? [];
+      final allBudgets = allBudgetsAsync.value ?? [];
 
       double totalExistingBudgetsAmount = allBudgets.fold(
         0.0,

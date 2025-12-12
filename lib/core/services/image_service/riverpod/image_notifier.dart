@@ -1,16 +1,20 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:bexly/core/services/image_service/domain/image_state.dart';
 import 'package:bexly/core/services/image_service/image_service.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_service_provider.dart';
 
-class ImageNotifier extends StateNotifier<ImageState> {
-  final ImageService _imageService;
+class ImageNotifier extends Notifier<ImageState> {
+  late final ImageService _imageService;
 
-  ImageNotifier(this._imageService) : super(ImageState());
+  @override
+  ImageState build() {
+    _imageService = ref.watch(imageServiceProvider);
+    return ImageState();
+  }
 
   Future<String?> pickImage() async {
     state = state.copyWith(isLoading: true, error: null);
@@ -139,7 +143,6 @@ class ImageNotifier extends StateNotifier<ImageState> {
   }
 }
 
-final imageProvider = StateNotifierProvider<ImageNotifier, ImageState>((ref) {
-  final imageService = ref.watch(imageServiceProvider);
-  return ImageNotifier(imageService);
-});
+final imageProvider = NotifierProvider<ImageNotifier, ImageState>(
+  ImageNotifier.new,
+);

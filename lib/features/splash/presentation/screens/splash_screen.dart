@@ -53,7 +53,7 @@ class SplashScreen extends HookConsumerWidget {
         try {
           // Check authentication state - read the actual User value from AsyncValue
           final authAsyncValue = ref.read(authStateProvider);
-          final currentUser = authAsyncValue.valueOrNull;
+          final currentUser = authAsyncValue.value;
 
           // Check if user has skipped auth before
           final prefs = await SharedPreferences.getInstance();
