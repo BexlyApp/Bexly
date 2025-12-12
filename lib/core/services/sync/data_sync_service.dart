@@ -1,8 +1,9 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/database/app_database.dart';
+import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/database/firestore_database.dart';
 import 'package:bexly/core/services/auth/firebase_auth_service.dart';
 import 'package:bexly/core/utils/logger.dart';
@@ -42,30 +43,32 @@ class SyncState {
   }
 }
 
-class DataSyncService extends StateNotifier<SyncState> {
-  final AppDatabase _localDb;
-  final FirestoreDatabase _cloudDb;
-  final FirebaseAuthService _authService;
+class DataSyncService extends Notifier<SyncState> {
+  late final AppDatabase _localDb;
+  late final FirestoreDatabase _cloudDb;
+  late final FirebaseAuthService _authService;
 
   Timer? _syncTimer;
   static const Duration _syncInterval = Duration(minutes: 5);
 
-  DataSyncService({
-    required AppDatabase localDb,
-    required FirestoreDatabase cloudDb,
-    required FirebaseAuthService authService,
-  })  : _localDb = localDb,
-        _cloudDb = cloudDb,
-        _authService = authService,
-        super(SyncState()) {
-    _init();
-  }
+  @override
+  SyncState build() {
+    // Initialize dependencies
+    _localDb = ref.watch(databaseProvider);
+    _cloudDb = FirestoreDatabase();
+    _authService = ref.watch(authServiceProvider.notifier);
 
-  void _init() {
     // Start auto-sync if authenticated
     if (_authService.isAuthenticated) {
       startAutoSync();
     }
+
+    // Cleanup when disposed
+    ref.onDispose(() {
+      stopAutoSync();
+    });
+
+    return SyncState();
   }
 
   void startAutoSync() {
@@ -127,19 +130,25 @@ class DataSyncService extends StateNotifier<SyncState> {
   Future<void> _syncWallets() async {
     try {
       // Get local wallets
-      final localWallets = await _localDb.walletsDao.getAllWallets();
+      final localWallets = await _localDb.walletDao.getAllWallets();
 
       // Get cloud wallets
       final cloudWallets = await _cloudDb.getAllWallets();
 
-      // Create a map for quick lookup
+      // Create a map for quick lookup by cloudId
       final cloudWalletMap = {
-        for (var w in cloudWallets) w['id'] as String: w
+        for (var w in cloudWallets) w['cloudId'] as String: w
       };
 
       // Upload new or modified local wallets
       for (final wallet in localWallets) {
-        final cloudWallet = cloudWalletMap[wallet.id];
+        // Skip if wallet doesn't have cloudId yet
+        if (wallet.cloudId == null) {
+          await _uploadWallet(wallet);
+          continue;
+        }
+
+        final cloudWallet = cloudWalletMap[wallet.cloudId];
 
         if (cloudWallet == null) {
           // New wallet, upload to cloud
@@ -157,7 +166,8 @@ class DataSyncService extends StateNotifier<SyncState> {
 
       // Download new cloud wallets
       for (final cloudWallet in cloudWallets) {
-        final localExists = localWallets.any((w) => w.id == cloudWallet['id']);
+        final cloudId = cloudWallet['cloudId'] as String;
+        final localExists = localWallets.any((w) => w.cloudId == cloudId);
         if (!localExists) {
           await _downloadWallet(cloudWallet);
         }
@@ -173,19 +183,25 @@ class DataSyncService extends StateNotifier<SyncState> {
   Future<void> _syncCategories() async {
     try {
       // Get local categories
-      final localCategories = await _localDb.categoriesDao.getAllCategories();
+      final localCategories = await _localDb.categoryDao.getAllCategories();
 
       // Get cloud categories
       final cloudCategories = await _cloudDb.getAllCategories();
 
-      // Create a map for quick lookup
+      // Create a map for quick lookup by cloudId
       final cloudCategoryMap = {
-        for (var c in cloudCategories) c['id'] as String: c
+        for (var c in cloudCategories) c['cloudId'] as String: c
       };
 
       // Upload new or modified local categories
       for (final category in localCategories) {
-        final cloudCategory = cloudCategoryMap[category.id];
+        // Skip if category doesn't have cloudId yet
+        if (category.cloudId == null) {
+          await _uploadCategory(category);
+          continue;
+        }
+
+        final cloudCategory = cloudCategoryMap[category.cloudId];
 
         if (cloudCategory == null) {
           await _uploadCategory(category);
@@ -201,7 +217,8 @@ class DataSyncService extends StateNotifier<SyncState> {
 
       // Download new cloud categories
       for (final cloudCategory in cloudCategories) {
-        final localExists = localCategories.any((c) => c.id == cloudCategory['id']);
+        final cloudId = cloudCategory['cloudId'] as String;
+        final localExists = localCategories.any((c) => c.cloudId == cloudId);
         if (!localExists) {
           await _downloadCategory(cloudCategory);
         }
@@ -216,44 +233,53 @@ class DataSyncService extends StateNotifier<SyncState> {
 
   Future<void> _syncTransactions() async {
     try {
-      // Get all wallet IDs
-      final wallets = await _localDb.walletsDao.getAllWallets();
+      // Get all local transactions
+      final localTransactions = await _localDb.transactionDao.getAllTransactions();
+
+      // Get all cloud transactions (across all wallets)
+      final wallets = await _localDb.walletDao.getAllWallets();
+      final allCloudTransactions = <Map<String, dynamic>>[];
 
       for (final wallet in wallets) {
-        // Get local transactions for this wallet
-        final localTransactions = await _localDb.transactionsDao
-            .getTransactionsByWalletId(wallet.id);
+        if (wallet.cloudId != null) {
+          final cloudTransactions = await _cloudDb.getAllTransactions(wallet.cloudId!);
+          allCloudTransactions.addAll(cloudTransactions);
+        }
+      }
 
-        // Get cloud transactions for this wallet
-        final cloudTransactions = await _cloudDb.getAllTransactions(wallet.id);
+      // Create a map for quick lookup by cloudId
+      final cloudTransactionMap = {
+        for (var t in allCloudTransactions) t['cloudId'] as String: t
+      };
 
-        // Create a map for quick lookup
-        final cloudTransactionMap = {
-          for (var t in cloudTransactions) t['id'] as String: t
-        };
-
-        // Upload new or modified local transactions
-        for (final transaction in localTransactions) {
-          final cloudTransaction = cloudTransactionMap[transaction.id];
-
-          if (cloudTransaction == null) {
-            await _uploadTransaction(transaction);
-          } else {
-            final localUpdated = transaction.updatedAt;
-            final cloudUpdated = (cloudTransaction['updatedAt'] as Timestamp?)?.toDate();
-
-            if (cloudUpdated == null || localUpdated.isAfter(cloudUpdated)) {
-              await _updateCloudTransaction(transaction);
-            }
-          }
+      // Upload new or modified local transactions
+      for (final transaction in localTransactions) {
+        // Skip if transaction doesn't have cloudId yet
+        if (transaction.cloudId == null) {
+          await _uploadTransaction(transaction);
+          continue;
         }
 
-        // Download new cloud transactions
-        for (final cloudTransaction in cloudTransactions) {
-          final localExists = localTransactions.any((t) => t.id == cloudTransaction['id']);
-          if (!localExists) {
-            await _downloadTransaction(cloudTransaction);
+        final cloudTransaction = cloudTransactionMap[transaction.cloudId];
+
+        if (cloudTransaction == null) {
+          await _uploadTransaction(transaction);
+        } else {
+          final localUpdated = transaction.updatedAt;
+          final cloudUpdated = (cloudTransaction['updatedAt'] as Timestamp?)?.toDate();
+
+          if (cloudUpdated == null || localUpdated.isAfter(cloudUpdated)) {
+            await _updateCloudTransaction(transaction);
           }
+        }
+      }
+
+      // Download new cloud transactions
+      for (final cloudTransaction in allCloudTransactions) {
+        final cloudId = cloudTransaction['cloudId'] as String;
+        final localExists = localTransactions.any((t) => t.cloudId == cloudId);
+        if (!localExists) {
+          await _downloadTransaction(cloudTransaction);
         }
       }
 
@@ -266,44 +292,53 @@ class DataSyncService extends StateNotifier<SyncState> {
 
   Future<void> _syncBudgets() async {
     try {
-      // Get all wallet IDs
-      final wallets = await _localDb.walletsDao.getAllWallets();
+      // Get all local budgets
+      final localBudgets = await _localDb.budgetDao.getAllBudgets();
+
+      // Get all cloud budgets (across all wallets)
+      final wallets = await _localDb.walletDao.getAllWallets();
+      final allCloudBudgets = <Map<String, dynamic>>[];
 
       for (final wallet in wallets) {
-        // Get local budgets for this wallet
-        final localBudgets = await _localDb.budgetsDao
-            .getBudgetsByWalletId(wallet.id);
+        if (wallet.cloudId != null) {
+          final cloudBudgets = await _cloudDb.getAllBudgets(wallet.cloudId!);
+          allCloudBudgets.addAll(cloudBudgets);
+        }
+      }
 
-        // Get cloud budgets for this wallet
-        final cloudBudgets = await _cloudDb.getAllBudgets(wallet.id);
+      // Create a map for quick lookup by cloudId
+      final cloudBudgetMap = {
+        for (var b in allCloudBudgets) b['cloudId'] as String: b
+      };
 
-        // Create a map for quick lookup
-        final cloudBudgetMap = {
-          for (var b in cloudBudgets) b['id'] as String: b
-        };
-
-        // Upload new or modified local budgets
-        for (final budget in localBudgets) {
-          final cloudBudget = cloudBudgetMap[budget.id];
-
-          if (cloudBudget == null) {
-            await _uploadBudget(budget);
-          } else {
-            final localUpdated = budget.updatedAt;
-            final cloudUpdated = (cloudBudget['updatedAt'] as Timestamp?)?.toDate();
-
-            if (cloudUpdated == null || localUpdated.isAfter(cloudUpdated)) {
-              await _updateCloudBudget(budget);
-            }
-          }
+      // Upload new or modified local budgets
+      for (final budget in localBudgets) {
+        // Skip if budget doesn't have cloudId yet
+        if (budget.cloudId == null) {
+          await _uploadBudget(budget);
+          continue;
         }
 
-        // Download new cloud budgets
-        for (final cloudBudget in cloudBudgets) {
-          final localExists = localBudgets.any((b) => b.id == cloudBudget['id']);
-          if (!localExists) {
-            await _downloadBudget(cloudBudget);
+        final cloudBudget = cloudBudgetMap[budget.cloudId];
+
+        if (cloudBudget == null) {
+          await _uploadBudget(budget);
+        } else {
+          final localUpdated = budget.updatedAt;
+          final cloudUpdated = (cloudBudget['updatedAt'] as Timestamp?)?.toDate();
+
+          if (cloudUpdated == null || localUpdated.isAfter(cloudUpdated)) {
+            await _updateCloudBudget(budget);
           }
+        }
+      }
+
+      // Download new cloud budgets
+      for (final cloudBudget in allCloudBudgets) {
+        final cloudId = cloudBudget['cloudId'] as String;
+        final localExists = localBudgets.any((b) => b.cloudId == cloudId);
+        if (!localExists) {
+          await _downloadBudget(cloudBudget);
         }
       }
 
@@ -320,7 +355,8 @@ class DataSyncService extends StateNotifier<SyncState> {
   }
 
   Future<void> _updateCloudWallet(Wallet wallet) async {
-    await _cloudDb.updateWallet(wallet.id, wallet.toJson());
+    if (wallet.cloudId == null) return;
+    await _cloudDb.updateWallet(wallet.cloudId!, wallet.toJson());
   }
 
   Future<void> _uploadCategory(Category category) async {
@@ -328,7 +364,8 @@ class DataSyncService extends StateNotifier<SyncState> {
   }
 
   Future<void> _updateCloudCategory(Category category) async {
-    await _cloudDb.updateCategory(category.id, category.toJson());
+    if (category.cloudId == null) return;
+    await _cloudDb.updateCategory(category.cloudId!, category.toJson());
   }
 
   Future<void> _uploadTransaction(Transaction transaction) async {
@@ -336,7 +373,8 @@ class DataSyncService extends StateNotifier<SyncState> {
   }
 
   Future<void> _updateCloudTransaction(Transaction transaction) async {
-    await _cloudDb.updateTransaction(transaction.id, transaction.toJson());
+    if (transaction.cloudId == null) return;
+    await _cloudDb.updateTransaction(transaction.cloudId!, transaction.toJson());
   }
 
   Future<void> _uploadBudget(Budget budget) async {
@@ -344,86 +382,136 @@ class DataSyncService extends StateNotifier<SyncState> {
   }
 
   Future<void> _updateCloudBudget(Budget budget) async {
-    await _cloudDb.updateBudget(budget.id, budget.toJson());
+    if (budget.cloudId == null) return;
+    await _cloudDb.updateBudget(budget.cloudId!, budget.toJson());
   }
 
   // Helper methods for downloading
   Future<void> _downloadWallet(Map<String, dynamic> cloudWallet) async {
     final wallet = WalletsCompanion(
-      id: drift.Value(cloudWallet['id'] as String),
+      cloudId: drift.Value(cloudWallet['cloudId'] as String?),
       name: drift.Value(cloudWallet['name'] as String),
       currency: drift.Value(cloudWallet['currency'] as String),
-      balance: drift.Value((cloudWallet['balance'] as num).toDouble()),
-      icon: drift.Value(cloudWallet['icon'] as String?),
-      color: drift.Value(cloudWallet['color'] as String?),
+      balance: drift.Value((cloudWallet['balance'] as num?)?.toDouble() ?? 0.0),
+      iconName: drift.Value(cloudWallet['iconName'] as String?),
+      colorHex: drift.Value(cloudWallet['colorHex'] as String?),
+      walletType: drift.Value(cloudWallet['walletType'] as String? ?? 'cash'),
+      creditLimit: drift.Value((cloudWallet['creditLimit'] as num?)?.toDouble()),
+      billingDay: drift.Value(cloudWallet['billingDay'] as int?),
+      interestRate: drift.Value((cloudWallet['interestRate'] as num?)?.toDouble()),
       createdAt: drift.Value((cloudWallet['createdAt'] as Timestamp).toDate()),
       updatedAt: drift.Value((cloudWallet['updatedAt'] as Timestamp).toDate()),
     );
-    await _localDb.walletsDao.insertWallet(wallet);
+    await _localDb.into(_localDb.wallets).insert(wallet);
   }
 
   Future<void> _downloadCategory(Map<String, dynamic> cloudCategory) async {
     final category = CategoriesCompanion(
-      id: drift.Value(cloudCategory['id'] as String),
-      name: drift.Value(cloudCategory['name'] as String),
-      icon: drift.Value(cloudCategory['icon'] as String),
-      color: drift.Value(cloudCategory['color'] as String),
-      type: drift.Value(cloudCategory['type'] as String),
+      cloudId: drift.Value(cloudCategory['cloudId'] as String?),
+      title: drift.Value(cloudCategory['title'] as String),
+      icon: drift.Value(cloudCategory['icon'] as String?),
+      iconBackground: drift.Value(cloudCategory['iconBackground'] as String?),
+      iconType: drift.Value(cloudCategory['iconType'] as String?),
+      parentId: drift.Value(cloudCategory['parentId'] as int?),
+      description: drift.Value(cloudCategory['description'] as String?),
+      localizedTitles: drift.Value(cloudCategory['localizedTitles'] as String?),
+      isSystemDefault: drift.Value(cloudCategory['isSystemDefault'] as bool? ?? false),
+      transactionType: drift.Value(cloudCategory['transactionType'] as String),
       createdAt: drift.Value((cloudCategory['createdAt'] as Timestamp).toDate()),
       updatedAt: drift.Value((cloudCategory['updatedAt'] as Timestamp).toDate()),
     );
-    await _localDb.categoriesDao.insertCategory(category);
+    await _localDb.into(_localDb.categories).insert(category);
   }
 
   Future<void> _downloadTransaction(Map<String, dynamic> cloudTransaction) async {
+    // Need to map cloudId references to local IDs
+    // Get wallet by cloudId
+    final walletCloudId = cloudTransaction['walletId'] as String;
+    final wallet = await (_localDb.select(_localDb.wallets)
+      ..where((w) => w.cloudId.equals(walletCloudId)))
+      .getSingleOrNull();
+
+    if (wallet == null) {
+      Log.w('Cannot download transaction: wallet with cloudId=$walletCloudId not found', label: 'sync');
+      return;
+    }
+
+    // Get category by cloudId (if exists)
+    int? categoryId;
+    final categoryCloudId = cloudTransaction['categoryId'] as String?;
+    if (categoryCloudId != null) {
+      final category = await (_localDb.select(_localDb.categories)
+        ..where((c) => c.cloudId.equals(categoryCloudId)))
+        .getSingleOrNull();
+      categoryId = category?.id;
+
+      if (categoryId == null) {
+        Log.w('Cannot download transaction: category with cloudId=$categoryCloudId not found', label: 'sync');
+        return;
+      }
+    }
+
     final transaction = TransactionsCompanion(
-      id: drift.Value(cloudTransaction['id'] as String),
-      walletId: drift.Value(cloudTransaction['walletId'] as String),
-      categoryId: drift.Value(cloudTransaction['categoryId'] as String?),
+      cloudId: drift.Value(cloudTransaction['cloudId'] as String?),
+      transactionType: drift.Value(cloudTransaction['transactionType'] as int),
       amount: drift.Value((cloudTransaction['amount'] as num).toDouble()),
-      type: drift.Value(cloudTransaction['type'] as String),
-      note: drift.Value(cloudTransaction['note'] as String?),
       date: drift.Value((cloudTransaction['date'] as Timestamp).toDate()),
-      receiptUrl: drift.Value(cloudTransaction['receiptUrl'] as String?),
+      title: drift.Value(cloudTransaction['title'] as String),
+      categoryId: drift.Value(categoryId!),
+      walletId: drift.Value(wallet.id),
+      notes: drift.Value(cloudTransaction['notes'] as String?),
+      imagePath: drift.Value(cloudTransaction['imagePath'] as String?),
+      isRecurring: drift.Value(cloudTransaction['isRecurring'] as bool?),
+      recurringId: drift.Value(cloudTransaction['recurringId'] as int?),
       createdAt: drift.Value((cloudTransaction['createdAt'] as Timestamp).toDate()),
       updatedAt: drift.Value((cloudTransaction['updatedAt'] as Timestamp).toDate()),
     );
-    await _localDb.transactionsDao.insertTransaction(transaction);
+    await _localDb.into(_localDb.transactions).insert(transaction);
   }
 
   Future<void> _downloadBudget(Map<String, dynamic> cloudBudget) async {
+    // Need to map cloudId references to local IDs
+    // Get wallet by cloudId
+    final walletCloudId = cloudBudget['walletId'] as String;
+    final wallet = await (_localDb.select(_localDb.wallets)
+      ..where((w) => w.cloudId.equals(walletCloudId)))
+      .getSingleOrNull();
+
+    if (wallet == null) {
+      Log.w('Cannot download budget: wallet with cloudId=$walletCloudId not found', label: 'sync');
+      return;
+    }
+
+    // Get category by cloudId
+    final categoryCloudId = cloudBudget['categoryId'] as String;
+    final category = await (_localDb.select(_localDb.categories)
+      ..where((c) => c.cloudId.equals(categoryCloudId)))
+      .getSingleOrNull();
+
+    if (category == null) {
+      Log.w('Cannot download budget: category with cloudId=$categoryCloudId not found', label: 'sync');
+      return;
+    }
+
     final budget = BudgetsCompanion(
-      id: drift.Value(cloudBudget['id'] as String),
-      walletId: drift.Value(cloudBudget['walletId'] as String),
-      categoryId: drift.Value(cloudBudget['categoryId'] as String?),
+      cloudId: drift.Value(cloudBudget['cloudId'] as String?),
+      walletId: drift.Value(wallet.id),
+      categoryId: drift.Value(category.id),
       amount: drift.Value((cloudBudget['amount'] as num).toDouble()),
-      period: drift.Value(cloudBudget['period'] as String),
       startDate: drift.Value((cloudBudget['startDate'] as Timestamp).toDate()),
-      endDate: drift.Value((cloudBudget['endDate'] as Timestamp?)?.toDate()),
+      endDate: drift.Value((cloudBudget['endDate'] as Timestamp).toDate()),
+      isRoutine: drift.Value(cloudBudget['isRoutine'] as bool? ?? false),
       createdAt: drift.Value((cloudBudget['createdAt'] as Timestamp).toDate()),
       updatedAt: drift.Value((cloudBudget['updatedAt'] as Timestamp).toDate()),
     );
-    await _localDb.budgetsDao.insertBudget(budget);
+    await _localDb.into(_localDb.budgets).insert(budget);
   }
 
-  @override
-  void dispose() {
-    stopAutoSync();
-    super.dispose();
-  }
 }
 
 // Providers
-final dataSyncServiceProvider = StateNotifierProvider<DataSyncService, SyncState>((ref) {
-  final localDb = ref.watch(appDatabaseProvider);
-  final cloudDb = FirestoreDatabase();
-  final authService = ref.watch(authServiceProvider.notifier);
-
-  return DataSyncService(
-    localDb: localDb,
-    cloudDb: cloudDb,
-    authService: authService,
-  );
+final dataSyncServiceProvider = NotifierProvider<DataSyncService, SyncState>(() {
+  return DataSyncService();
 });
 
 final lastSyncTimeProvider = Provider<DateTime?>((ref) {

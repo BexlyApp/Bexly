@@ -21,6 +21,9 @@ import 'package:bexly/features/onboarding/presentation/components/onboarding_sli
 import 'package:bexly/features/onboarding/presentation/components/avatar_picker.dart';
 import 'package:bexly/core/components/dialogs/privacy_consent_bottom_sheet.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
+import 'package:toastification/toastification.dart';
+
+part '../components/get_started_button.dart';
 
 class OnboardingScreen extends HookConsumerWidget {
   const OnboardingScreen({super.key});
@@ -125,7 +128,7 @@ class OnboardingScreen extends HookConsumerWidget {
   Future<void> _handleGetStarted(BuildContext context, WidgetRef ref) async {
     final displayName = ref.read(displayNameProvider);
     final avatarPath = ref.read(avatarPathProvider);
-    final wallet = ref.read(activeWalletProvider).valueOrNull;
+    final wallet = ref.read(activeWalletProvider).value;
 
     // Validation
     if (displayName.trim().isEmpty) {

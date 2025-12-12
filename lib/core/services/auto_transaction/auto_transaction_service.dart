@@ -181,13 +181,13 @@ class AutoTransactionService {
 
     // Otherwise use the active wallet
     final activeWalletAsync = _ref.read(activeWalletProvider);
-    return activeWalletAsync.valueOrNull;
+    return activeWalletAsync.value;
   }
 
   /// Find the best category for the transaction
   Future<CategoryModel> _findBestCategory(ParsedTransaction parsed) async {
     final categoriesAsync = _ref.read(hierarchicalCategoriesProvider);
-    final categories = categoriesAsync.valueOrNull ?? [];
+    final categories = categoriesAsync.value ?? [];
 
     if (categories.isEmpty) {
       throw Exception('No categories available');

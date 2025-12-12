@@ -1,8 +1,17 @@
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Provider to manage selected month/year for dashboard
-final selectedMonthProvider = StateProvider<DateTime>((ref) {
-  // Default to current month
-  final now = DateTime.now();
-  return DateTime(now.year, now.month);
-});
+class SelectedMonthNotifier extends Notifier<DateTime> {
+  @override
+  DateTime build() {
+    // Default to current month
+    final now = DateTime.now();
+    return DateTime(now.year, now.month);
+  }
+
+  void setMonth(DateTime month) => state = month;
+}
+
+final selectedMonthProvider = NotifierProvider<SelectedMonthNotifier, DateTime>(
+  SelectedMonthNotifier.new,
+);

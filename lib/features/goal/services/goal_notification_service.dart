@@ -23,7 +23,7 @@ class GoalNotificationService {
 
       final percentage = (currentAmount / goal.targetAmount) * 100;
       final currencyFormat = NumberFormat.currency(
-        symbol: goal.currency,
+        symbol: '', // GoalModel doesn't store currency
         decimalDigits: 0,
       );
 
@@ -73,14 +73,14 @@ class GoalNotificationService {
       if (!enabled) return;
 
       final currencyFormat = NumberFormat.currency(
-        symbol: goal.currency,
+        symbol: '', // GoalModel doesn't store currency
         decimalDigits: 0,
       );
 
       await NotificationService.showInstantNotification(
         id: (goal.id ?? 0) + 20000,
         title: 'New Goal Set',
-        body: '${goal.title}: ${currencyFormat.format(goal.targetAmount)} by ${DateFormat.yMMMd().format(goal.targetDate)}',
+        body: '${goal.title}: ${currencyFormat.format(goal.targetAmount)} by ${DateFormat.yMMMd().format(goal.endDate)}',
       );
     } catch (e) {
       Log.e('Failed to notify goal created: $e', label: 'notification');

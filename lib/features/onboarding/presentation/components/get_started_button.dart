@@ -15,7 +15,7 @@ class GetStartedButton extends ConsumerWidget {
           label: 'Get Started',
           onPressed: () async {
             // Check if user has created a wallet
-            final wallet = ref.read(activeWalletProvider).valueOrNull;
+            final wallet = ref.read(activeWalletProvider).value;
 
             if (wallet == null) {
               // No wallet created - show warning

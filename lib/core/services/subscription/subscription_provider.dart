@@ -52,11 +52,14 @@ class SubscriptionState {
 }
 
 /// Notifier for subscription state
-class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
-  final SubscriptionService _service;
+class SubscriptionNotifier extends Notifier<SubscriptionState> {
+  late final SubscriptionService _service;
 
-  SubscriptionNotifier(this._service) : super(const SubscriptionState()) {
+  @override
+  SubscriptionState build() {
+    _service = ref.watch(subscriptionServiceProvider);
     _initialize();
+    return const SubscriptionState();
   }
 
   Future<void> _initialize() async {
@@ -110,11 +113,9 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
 }
 
 /// Provider for subscription state
-final subscriptionProvider =
-    StateNotifierProvider<SubscriptionNotifier, SubscriptionState>((ref) {
-  final service = ref.watch(subscriptionServiceProvider);
-  return SubscriptionNotifier(service);
-});
+final subscriptionProvider = NotifierProvider<SubscriptionNotifier, SubscriptionState>(
+  SubscriptionNotifier.new,
+);
 
 /// Provider for current subscription tier (convenience)
 final subscriptionTierProvider = Provider<SubscriptionTier>((ref) {

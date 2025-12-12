@@ -101,7 +101,7 @@ class SettingsDataGroup extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Check Firebase Auth state to determine if user is authenticated
     final firebaseAuthState = ref.watch(firebase_auth.authStateProvider);
-    final isAuthenticated = firebaseAuthState.valueOrNull != null;
+    final isAuthenticated = firebaseAuthState.value != null;
 
     return SettingsGroupHolder(
       title: context.l10n.dataManagement,

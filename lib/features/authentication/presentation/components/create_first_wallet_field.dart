@@ -15,7 +15,7 @@ class CreateFirstWalletField extends HookConsumerWidget {
   const CreateFirstWalletField({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final wallet = ref.watch(activeWalletProvider).valueOrNull;
+    final wallet = ref.watch(activeWalletProvider).value;
     final initialText = wallet != null
         ? '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}'
         : 'Setup Wallet'; // Fallback if no active wallet

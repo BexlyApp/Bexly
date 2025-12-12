@@ -18,9 +18,27 @@ import 'package:bexly/features/settings/presentation/widgets/sms_date_range_bott
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 
-/// Auto Transaction settings providers
-final autoTransactionSmsEnabledProvider = StateProvider<bool>((ref) => false);
-final autoTransactionNotificationEnabledProvider = StateProvider<bool>((ref) => false);
+/// Auto Transaction settings notifiers
+class AutoTransactionSmsEnabledNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setEnabled(bool value) => state = value;
+}
+
+class AutoTransactionNotificationEnabledNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setEnabled(bool value) => state = value;
+}
+
+final autoTransactionSmsEnabledProvider = NotifierProvider<AutoTransactionSmsEnabledNotifier, bool>(
+  AutoTransactionSmsEnabledNotifier.new,
+);
+final autoTransactionNotificationEnabledProvider = NotifierProvider<AutoTransactionNotificationEnabledNotifier, bool>(
+  AutoTransactionNotificationEnabledNotifier.new,
+);
 
 /// Provider for pending notification count
 final pendingNotificationCountProvider = FutureProvider<int>((ref) async {
@@ -93,7 +111,7 @@ class _AutoTransactionSettingsScreenState
       final granted = await autoService.hasNotificationPermission();
       if (granted) {
         await autoService.setNotificationEnabled(true);
-        ref.read(autoTransactionNotificationEnabledProvider.notifier).state = true;
+        ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(true);
         await _saveSetting('auto_transaction_notification_enabled', true);
         Log.d('Notification permission granted (detected on restart)', label: 'AutoTransaction');
       }
@@ -125,10 +143,10 @@ class _AutoTransactionSettingsScreenState
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      ref.read(autoTransactionSmsEnabledProvider.notifier).state =
-          prefs.getBool('auto_transaction_sms_enabled') ?? false;
-      ref.read(autoTransactionNotificationEnabledProvider.notifier).state =
-          prefs.getBool('auto_transaction_notification_enabled') ?? false;
+      ref.read(autoTransactionSmsEnabledProvider.notifier).setEnabled(
+          prefs.getBool('auto_transaction_sms_enabled') ?? false);
+      ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(
+          prefs.getBool('auto_transaction_notification_enabled') ?? false);
 
       setState(() => _isLoading = false);
     } catch (e) {
@@ -181,7 +199,7 @@ class _AutoTransactionSettingsScreenState
       await autoService.setSmsEnabled(false);
     }
 
-    ref.read(autoTransactionSmsEnabledProvider.notifier).state = value;
+    ref.read(autoTransactionSmsEnabledProvider.notifier).setEnabled(value);
     await _saveSetting('auto_transaction_sms_enabled', value);
   }
 
@@ -246,7 +264,7 @@ class _AutoTransactionSettingsScreenState
           // Clear the persistent flag
           await prefs.remove('pending_notification_permission_request');
           await autoService.setNotificationEnabled(true);
-          ref.read(autoTransactionNotificationEnabledProvider.notifier).state = true;
+          ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(true);
           await _saveSetting('auto_transaction_notification_enabled', true);
         } else {
           _awaitingNotificationPermission = false;
@@ -264,7 +282,7 @@ class _AutoTransactionSettingsScreenState
     } else {
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.setNotificationEnabled(false);
-      ref.read(autoTransactionNotificationEnabledProvider.notifier).state = false;
+      ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(false);
       await _saveSetting('auto_transaction_notification_enabled', false);
     }
   }
@@ -338,7 +356,7 @@ class _AutoTransactionSettingsScreenState
       }
 
       // Get existing wallets
-      final wallets = ref.read(allWalletsStreamProvider).valueOrNull ?? [];
+      final wallets = ref.read(allWalletsStreamProvider).value ?? [];
 
       // Show results dialog
       if (mounted) {
@@ -725,7 +743,7 @@ class _AutoTransactionSettingsScreenState
   }
 
   Future<void> _showPendingNotificationsDialog(PendingNotificationSummary summary) async {
-    final wallets = ref.read(allWalletsStreamProvider).valueOrNull ?? [];
+    final wallets = ref.read(allWalletsStreamProvider).value ?? [];
 
     final result = await showDialog<Map<String, int?>>(
       context: context,

@@ -17,7 +17,7 @@ class ActionButton extends ConsumerWidget {
           context,
           onPressed: () => context.push(Routes.notifications),
           icon: HugeIcons.strokeRoundedNotification02,
-          showBadge: hasUnreadNotifications.valueOrNull ?? false,
+          showBadge: hasUnreadNotifications.value ?? false,
           themeMode: context.themeMode,
         ),
         CustomIconButton(

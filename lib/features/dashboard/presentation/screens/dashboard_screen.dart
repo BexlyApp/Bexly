@@ -45,6 +45,7 @@ import 'package:bexly/features/dashboard/presentation/riverpod/cash_flow_provide
 import 'package:bexly/features/notification/presentation/riverpod/notification_providers.dart';
 
 part '../components/action_button.dart';
+// part '../components/balance_card.dart'; // Legacy - using balance_card_v2 instead
 part '../components/balance_card_v2.dart';
 part '../components/wallet_amount_visibility_button.dart';
 part '../components/wallet_amount_edit_button.dart';

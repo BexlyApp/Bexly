@@ -18,7 +18,7 @@ class GreetingCard extends ConsumerWidget {
   Widget build(BuildContext context, ref) {
     // Watch Firebase Auth state changes to auto-rebuild when user profile updates
     final firebaseAuthState = ref.watch(firebase_auth.authStateProvider);
-    final firebaseUser = firebaseAuthState.valueOrNull;
+    final firebaseUser = firebaseAuthState.value;
 
     // Fallback to local auth for profile picture (not stored in Firebase Auth)
     final auth = ref.watch(authStateProvider);

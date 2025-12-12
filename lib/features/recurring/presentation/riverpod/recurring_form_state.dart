@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/features/recurring/data/model/recurring_model.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
@@ -13,9 +14,9 @@ import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/database/database_provider.dart';
 
 /// Provider for recurring form state
-final recurringFormProvider = StateNotifierProvider.autoDispose<RecurringFormNotifier, RecurringFormState>((ref) {
-  return RecurringFormNotifier(ref);
-});
+final recurringFormProvider = NotifierProvider<RecurringFormNotifier, RecurringFormState>(
+  RecurringFormNotifier.new,
+);
 
 /// Recurring form state
 class RecurringFormState {
@@ -131,10 +132,9 @@ class RecurringFormState {
 }
 
 /// Notifier for recurring form state
-class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
-  final Ref _ref;
-
-  RecurringFormNotifier(this._ref) : super(RecurringFormState());
+class RecurringFormNotifier extends Notifier<RecurringFormState> {
+  @override
+  RecurringFormState build() => RecurringFormState();
 
   /// Initialize form with existing recurring for editing
   void initializeWithRecurring(RecurringModel recurring) {
@@ -269,7 +269,7 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
-      final actions = _ref.read(recurringActionsProvider);
+      final actions = ref.read(recurringActionsProvider);
 
       final recurring = RecurringModel(
         id: state.editingRecurring?.id,
@@ -317,8 +317,8 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
         }
       } else {
         // Check subscription limit before creating new recurring
-        final limits = _ref.read(subscriptionLimitsProvider);
-        final db = _ref.read(databaseProvider);
+        final limits = ref.read(subscriptionLimitsProvider);
+        final db = ref.read(databaseProvider);
         final allRecurrings = await db.recurringDao.getAllRecurrings();
         if (!limits.isWithinLimit(allRecurrings.length, limits.maxRecurring)) {
           state = state.copyWith(
@@ -343,11 +343,11 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
       }
 
       // Sync to cloud if user is authenticated
-      final user = _ref.read(authStateProvider).valueOrNull;
+      final user = ref.read(authStateProvider).value;
       if (user?.uid != null && savedRecurringId != null) {
         try {
-          final db = _ref.read(databaseProvider);
-          final syncService = _ref.read(cloudSyncServiceProvider);
+          final db = ref.read(databaseProvider);
+          final syncService = ref.read(cloudSyncServiceProvider);
 
           // Get the recurring entity from database
           final recurringEntity = await (db.select(db.recurrings)
@@ -374,7 +374,7 @@ class RecurringFormNotifier extends StateNotifier<RecurringFormState> {
           // If next due date is today or in the past, create transaction immediately
           if (dueDateOnly.isBefore(todayOnly) || dueDateOnly.isAtSameMomentAs(todayOnly)) {
             Log.i('Recurring is due now, creating transaction...', label: 'RecurringForm');
-            final chargeService = _ref.read(recurringChargeServiceProvider);
+            final chargeService = ref.read(recurringChargeServiceProvider);
             await chargeService.createDueTransactions();
             Log.i('Transaction created for new recurring', label: 'RecurringForm');
           }

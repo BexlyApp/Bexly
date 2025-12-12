@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -21,12 +22,20 @@ import 'package:bexly/features/onboarding/presentation/components/avatar_picker.
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
 import 'package:bexly/features/currency_picker/data/models/currency.dart';
 
-/// Provider to hold display name
-final displayNameProvider = StateProvider.autoDispose<String>((ref) {
-  // Pre-fill with Firebase user display name if available
-  final firebaseDisplayName = ref.watch(userDisplayNameProvider);
-  return firebaseDisplayName ?? '';
-});
+/// Notifier to hold display name (pre-filled with Firebase display name if available)
+class DisplayNameNotifier extends Notifier<String> {
+  @override
+  String build() {
+    final firebaseDisplayName = ref.watch(userDisplayNameProvider);
+    return firebaseDisplayName ?? '';
+  }
+
+  void setDisplayName(String name) => state = name;
+}
+
+final displayNameProvider = NotifierProvider<DisplayNameNotifier, String>(
+  DisplayNameNotifier.new,
+);
 
 /// Get HugeIcon for wallet type
 dynamic _getWalletIcon(WalletType type) {
@@ -81,7 +90,7 @@ class OnboardingSlide3 extends HookConsumerWidget {
     final firebasePhotoUrl = ref.watch(userPhotoUrlProvider);
 
     final displayName = ref.watch(displayNameProvider);
-    final wallet = ref.watch(activeWalletProvider).valueOrNull;
+    final wallet = ref.watch(activeWalletProvider).value;
 
     // Watch all wallets for display
     final allWalletsAsync = ref.watch(allWalletsStreamProvider);
@@ -108,7 +117,7 @@ class OnboardingSlide3 extends HookConsumerWidget {
     useEffect(() {
       if (firebaseDisplayName != null && nameController.text.isEmpty) {
         nameController.text = firebaseDisplayName;
-        ref.read(displayNameProvider.notifier).state = firebaseDisplayName;
+        ref.read(displayNameProvider.notifier).setDisplayName(firebaseDisplayName);
       }
       return null;
     }, [firebaseDisplayName]);
@@ -159,7 +168,7 @@ class OnboardingSlide3 extends HookConsumerWidget {
             prefixIcon: HugeIcons.strokeRoundedUser as dynamic,
             isRequired: true, // Mark as required with red asterisk
             onChanged: (value) {
-              ref.read(displayNameProvider.notifier).state = value;
+              ref.read(displayNameProvider.notifier).setDisplayName(value);
             },
           ),
           const Gap(AppSpacing.spacing12),

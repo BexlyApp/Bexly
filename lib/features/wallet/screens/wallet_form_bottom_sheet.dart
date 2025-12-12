@@ -59,7 +59,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
 
     // Default wallet checkbox state
     final defaultWalletId = ref.watch(defaultWalletIdProvider);
-    final allWallets = ref.watch(allWalletsStreamProvider).valueOrNull ?? [];
+    final allWallets = ref.watch(allWalletsStreamProvider).value ?? [];
     final isFirstWallet = !isEditing && allWallets.isEmpty;
     final isOnlyWallet = isEditing && allWallets.length == 1;
 

@@ -1,15 +1,8 @@
 part of '../screens/login_screen.dart';
 
-final loginImageServiceProvider = Provider<ImageService>((ref) {
-  return ImageService();
-});
-
-final loginImageProvider = StateNotifierProvider<ImageNotifier, ImageState>((
-  ref,
-) {
-  final imageService = ref.watch(loginImageServiceProvider);
-  return ImageNotifier(imageService);
-});
+final loginImageProvider = NotifierProvider<ImageNotifier, ImageState>(
+  ImageNotifier.new,
+);
 
 class LoginImagePicker extends ConsumerWidget {
   const LoginImagePicker({super.key});

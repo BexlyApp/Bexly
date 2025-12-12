@@ -25,16 +25,14 @@ enum AIModel {
 const String _aiModelKey = 'selected_ai_model';
 
 /// Provider for the currently selected AI model
-final aiModelProvider = StateNotifierProvider<AIModelNotifier, AIModel>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return AIModelNotifier(prefs);
-});
+class AIModelNotifier extends Notifier<AIModel> {
+  late final SharedPreferences _prefs;
 
-class AIModelNotifier extends StateNotifier<AIModel> {
-  final SharedPreferences _prefs;
-
-  AIModelNotifier(this._prefs) : super(AIModel.dosAI) {
+  @override
+  AIModel build() {
+    _prefs = ref.watch(sharedPreferencesProvider);
     _loadModel();
+    return AIModel.dosAI;
   }
 
   void _loadModel() {
@@ -49,3 +47,7 @@ class AIModelNotifier extends StateNotifier<AIModel> {
     await _prefs.setString(_aiModelKey, model.key);
   }
 }
+
+final aiModelProvider = NotifierProvider<AIModelNotifier, AIModel>(
+  AIModelNotifier.new,
+);

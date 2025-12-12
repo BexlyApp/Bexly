@@ -331,7 +331,7 @@ class TransactionFormState {
     await db.walletDao.updateWallet(updatedWallet);
 
     // Update activeWallet provider if the adjusted wallet is the active one
-    final activeWallet = ref.read(activeWalletProvider).valueOrNull;
+    final activeWallet = ref.read(activeWalletProvider).value;
     if (activeWallet?.id == targetWallet.id) {
       ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
     }
@@ -392,7 +392,7 @@ TransactionFormState useTransactionFormState({
   );
 
   // For new transactions, default to active wallet
-  final activeWallet = ref.watch(activeWalletProvider).valueOrNull;
+  final activeWallet = ref.watch(activeWalletProvider).value;
   final selectedWallet = useState<WalletModel?>(
     isEditing ? transaction?.wallet : activeWallet,
   );

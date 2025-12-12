@@ -33,13 +33,14 @@ class AuthState {
   }
 }
 
-class FirebaseAuthService extends StateNotifier<AuthState> {
-  final FirebaseAuth _auth;
+class FirebaseAuthService extends Notifier<AuthState> {
+  late final FirebaseAuth _auth;
 
-  FirebaseAuthService({FirebaseAuth? auth})
-      : _auth = auth ?? FirebaseAuth.instance,
-        super(AuthState()) {
+  @override
+  AuthState build() {
+    _auth = ref.watch(firebaseAuthProvider);
     _init();
+    return AuthState();
   }
 
   void _init() {
@@ -223,9 +224,9 @@ final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
   return FirebaseAuth.instance;
 });
 
-final authServiceProvider = StateNotifierProvider<FirebaseAuthService, AuthState>((ref) {
-  return FirebaseAuthService(auth: ref.watch(firebaseAuthProvider));
-});
+final authServiceProvider = NotifierProvider<FirebaseAuthService, AuthState>(
+  FirebaseAuthService.new,
+);
 
 final currentUserProvider = Provider<User?>((ref) {
   return ref.watch(authServiceProvider).user;
