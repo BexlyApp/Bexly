@@ -49,6 +49,22 @@ let lastToken: string = "";
 // In-memory dedup for Messenger messages (survives within same instance)
 const processedMessageIds = new Set<string>();
 
+// In-memory cache for pending transactions (to avoid 64-byte callback_data limit)
+interface PendingTransaction {
+  type: "expense" | "income";
+  amount: number;
+  currency: string | null;
+  category: string;
+  language: string;
+  description: string;
+  timestamp: number;
+  datetime: string | null; // Time hint from AI parsing
+}
+const pendingTransactions = new Map<string, PendingTransaction>();
+
+// Track if bot commands have been set
+let commandsSet = false;
+
 function getBot(): Bot {
   const token = telegramBotToken.value();
 
@@ -60,8 +76,34 @@ function getBot(): Bot {
     bot = new Bot(token);
     lastToken = token;
     setupBotHandlers(bot);
+
+    // Set bot commands menu (only once)
+    if (!commandsSet) {
+      setBotCommands(bot).catch(err => console.error("Failed to set bot commands:", err));
+      commandsSet = true;
+    }
   }
   return bot;
+}
+
+// Set bot commands for Telegram menu
+async function setBotCommands(bot: Bot): Promise<void> {
+  const commands = [
+    { command: "start", description: "Start the bot" },
+    { command: "help", description: "Show help and examples" },
+    { command: "balance", description: "Check your wallet balances" },
+    { command: "today", description: "Today's transactions" },
+    { command: "week", description: "This week's spending" },
+    { command: "month", description: "This month's summary" },
+    { command: "plan", description: "View your subscription plan" },
+    { command: "model", description: "Change AI model (Plus+)" },
+    { command: "language", description: "Change language" },
+    { command: "link", description: "Link Bexly account" },
+    { command: "unlink", description: "Unlink account" },
+  ];
+
+  await bot.api.setMyCommands(commands);
+  console.log("Bot commands menu updated successfully");
 }
 
 // AI-parsed transaction interface
@@ -73,6 +115,7 @@ interface ParsedTransaction {
   description: string;
   responseText: string;
   language: string; // ISO language code detected from user input (vi, en, ja, ko, zh, th, etc.)
+  datetime: string | null; // ISO datetime string or relative like "today_morning", "yesterday", etc.
 }
 
 // User category from Firestore
@@ -436,7 +479,7 @@ function buildDynamicPrompt(userCategories: UserCategory[], walletCurrency?: str
   console.log(`INC categories for prompt: ${incomeCatList}`);
 
   // Prompt with STRICT category matching - AI must use EXACT category names from list
-  return `Parse→JSON.{"action":"create_expense"|"create_income"|"none","amount":num,"currency":"VND"|"USD"|null,"lang":"vi"|"en","desc":"str","cat":"EXACT_CATEGORY_NAME"}
+  return `Parse→JSON.{"action":"create_expense"|"create_income"|"none","amount":num,"currency":"VND"|"USD"|null,"lang":"vi"|"en","desc":"str","cat":"EXACT_CATEGORY_NAME","time":"TIME_HINT"}
 k=×1000,tr=×1000000→VND.$→USD.No symbol→null.
 
 ⚠️CRITICAL CATEGORY RULES:
@@ -447,10 +490,26 @@ k=×1000,tr=×1000000→VND.$→USD.No symbol→null.
 5. NEVER use generic names like "Shopping", "Food" unless they're in the list above!
 6. NEVER make up category names!
 
+⏰TIME EXTRACTION (time field):
+- "ăn sáng/breakfast/早餐"→"morning" (7:00)
+- "ăn trưa/lunch/午餐"→"noon" (12:00)
+- "ăn chiều/snack"→"afternoon" (15:00)
+- "ăn tối/dinner/晚餐"→"evening" (19:00)
+- "đêm qua/last night"→"yesterday_night"
+- "hôm qua/yesterday"→"yesterday"
+- "tuần trước/last week"→"last_week"
+- "tháng trước/last month"→"last_month"
+- "sáng nay/this morning"→"morning"
+- "tối qua/yesterday evening"→"yesterday_evening"
+- Explicit time "lúc 3h/at 3pm"→"15:00"
+- No time hint→null
+
 Examples:
-"50k lunch"→{"action":"create_expense","amount":50000,"currency":"VND","lang":"vi","desc":"lunch","cat":"${expenseCategories[0] || 'Other'}"}
-"mua bún bò 60tr"→{"action":"create_expense","amount":60000000,"currency":"VND","lang":"vi","desc":"mua bún bò","cat":"${expenseCategories[0] || 'Other'}"}
-"hi"→{"action":"none","amount":0,"currency":null,"lang":"en","desc":"","cat":""}`;
+"50k ăn sáng"→{"action":"create_expense","amount":50000,"currency":"VND","lang":"vi","desc":"ăn sáng","cat":"${expenseCategories[0] || 'Other'}","time":"morning"}
+"lunch $20"→{"action":"create_expense","amount":20,"currency":"USD","lang":"en","desc":"lunch","cat":"${expenseCategories[0] || 'Other'}","time":"noon"}
+"hôm qua mua sách 100k"→{"action":"create_expense","amount":100000,"currency":"VND","lang":"vi","desc":"mua sách","cat":"${expenseCategories[0] || 'Other'}","time":"yesterday"}
+"50k cafe"→{"action":"create_expense","amount":50000,"currency":"VND","lang":"vi","desc":"cafe","cat":"${expenseCategories[0] || 'Other'}","time":null}
+"hi"→{"action":"none","amount":0,"currency":null,"lang":"en","desc":"","cat":"","time":null}`;
 }
 
 // Parse transaction using Gemini AI
@@ -647,7 +706,8 @@ async function parseTransactionWithAI(text: string, userCategories: UserCategory
       category,
       description: parsed.desc || parsed.description || "",
       responseText: "", // We build this ourselves now
-      language: parsed.lang || parsed.language || "en"
+      language: parsed.lang || parsed.language || "en",
+      datetime: parsed.time || null // Time hint from AI
     };
   } catch (error) {
     console.error("AI parsing error:", error);
@@ -655,6 +715,95 @@ async function parseTransactionWithAI(text: string, userCategories: UserCategory
     console.log("AI failed, falling back to regex parser");
     return parseTransactionFallback(text);
   }
+}
+
+// Convert time hint from AI to actual Date object
+// Uses UTC+7 (Vietnam timezone) for calculation
+function resolveTimeHint(timeHint: string | null): Date {
+  const now = new Date();
+
+  if (!timeHint) {
+    return now;
+  }
+
+  // Work with UTC+7 (Vietnam timezone) - add 7 hours to get local time
+  const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+  const localNow = new Date(now.getTime() + VN_OFFSET_MS);
+
+  // Create result date - start with today's date in VN timezone
+  const result = new Date(Date.UTC(
+    localNow.getUTCFullYear(),
+    localNow.getUTCMonth(),
+    localNow.getUTCDate(),
+    0, 0, 0, 0
+  ));
+
+  try {
+    const hint = timeHint.toLowerCase();
+
+    switch (hint) {
+      case "morning":
+        result.setUTCHours(7 - 7, 30, 0, 0); // 7:30 AM VN = 0:30 UTC
+        break;
+      case "noon":
+        result.setUTCHours(12 - 7, 0, 0, 0); // 12:00 PM VN = 5:00 UTC
+        break;
+      case "afternoon":
+        result.setUTCHours(15 - 7, 0, 0, 0); // 3:00 PM VN = 8:00 UTC
+        break;
+      case "evening":
+        result.setUTCHours(19 - 7, 0, 0, 0); // 7:00 PM VN = 12:00 UTC
+        break;
+      case "night":
+        result.setUTCHours(21 - 7, 0, 0, 0); // 9:00 PM VN = 14:00 UTC
+        break;
+      case "yesterday":
+        result.setUTCDate(result.getUTCDate() - 1);
+        result.setUTCHours(12 - 7, 0, 0, 0);
+        break;
+      case "yesterday_morning":
+        result.setUTCDate(result.getUTCDate() - 1);
+        result.setUTCHours(7 - 7, 30, 0, 0);
+        break;
+      case "yesterday_noon":
+        result.setUTCDate(result.getUTCDate() - 1);
+        result.setUTCHours(12 - 7, 0, 0, 0);
+        break;
+      case "yesterday_evening":
+        result.setUTCDate(result.getUTCDate() - 1);
+        result.setUTCHours(19 - 7, 0, 0, 0);
+        break;
+      case "yesterday_night":
+        result.setUTCDate(result.getUTCDate() - 1);
+        result.setUTCHours(21 - 7, 0, 0, 0);
+        break;
+      case "last_week":
+        result.setUTCDate(result.getUTCDate() - 7);
+        result.setUTCHours(12 - 7, 0, 0, 0);
+        break;
+      case "last_month":
+        result.setUTCMonth(result.getUTCMonth() - 1);
+        result.setUTCHours(12 - 7, 0, 0, 0);
+        break;
+      default:
+        // Try to parse explicit time like "15:00"
+        const timeMatch = hint.match(/^(\d{1,2}):?(\d{2})?$/);
+        if (timeMatch) {
+          const hours = parseInt(timeMatch[1], 10);
+          const minutes = parseInt(timeMatch[2] || "0", 10);
+          result.setUTCHours(hours - 7, minutes, 0, 0);
+        } else {
+          // Can't parse, return current time
+          return now;
+        }
+        break;
+    }
+  } catch (e) {
+    console.error("Error resolving time hint:", e);
+    return now;
+  }
+
+  return result;
 }
 
 // Legacy regex parser as fallback
@@ -740,6 +889,13 @@ function parseTransactionFallback(text: string): ParsedTransaction | null {
   const impliesVND = hasVietnameseAmountShortcut || hasKwithVietnamese;
   const finalCurrency = (hasCurrencySymbol || impliesVND) ? currency : null;
 
+  // Simple time detection for fallback parser
+  let datetime: string | null = null;
+  if (/ăn sáng|breakfast|早餐|朝食/i.test(text)) datetime = "morning";
+  else if (/ăn trưa|lunch|午餐|昼食/i.test(text)) datetime = "noon";
+  else if (/ăn tối|dinner|晚餐|夕食/i.test(text)) datetime = "evening";
+  else if (/hôm qua|yesterday|昨天/i.test(text)) datetime = "yesterday";
+
   return {
     type: transactionType,
     amount,
@@ -747,7 +903,8 @@ function parseTransactionFallback(text: string): ParsedTransaction | null {
     category,
     description: description || category,
     responseText: "",
-    language
+    language,
+    datetime
   };
 }
 
@@ -842,8 +999,12 @@ function setupBotHandlers(bot: Bot) {
       "• \"Received $500 salary\"\n\n" +
       "*Commands:*\n" +
       "• /balance - Check your balance\n" +
+      "• /today - Today's transactions\n" +
       "• /week - This week's spending\n" +
       "• /month - This month's summary\n" +
+      "• /plan - View your subscription plan\n" +
+      "• /model - Change AI model (Plus+)\n" +
+      "• /language - Change language\n" +
       "• /link - Link Bexly account\n" +
       "• /unlink - Unlink account\n\n" +
       "*Tips:*\n" +
@@ -852,6 +1013,178 @@ function setupBotHandlers(bot: Bot) {
       "• Supports USD and VND",
       { parse_mode: "Markdown" }
     );
+  });
+
+  // /model command - Change AI model based on subscription
+  bot.command("model", async (ctx) => {
+    const telegramId = ctx.from?.id.toString();
+    if (!telegramId) return;
+
+    const user = await getUserByTelegramId(telegramId);
+    if (!user) {
+      await ctx.reply("❌ Please link your Bexly account first. Use /link");
+      return;
+    }
+
+    // Get user subscription tier from Firestore
+    const settingsDoc = await bexlyDb
+      .collection("users")
+      .doc(user.bexlyUserId)
+      .collection("data")
+      .doc("settings")
+      .get();
+
+    const settings = settingsDoc.data() || {};
+    const subscription = settings.subscriptionTier || "free"; // free, plus, pro
+    const currentModel = settings.aiModel || "auto";
+
+    // Build keyboard based on subscription
+    let keyboard: InlineKeyboard;
+    let message: string;
+
+    if (subscription === "free") {
+      // Free users can't choose - just show info
+      await ctx.reply(
+        "🤖 *AI Model*\n\n" +
+        "You're using *Standard* model (free).\n\n" +
+        "Upgrade to *Plus* to choose between:\n" +
+        "• Auto (Standard first, then Premium)\n" +
+        "• Standard\n" +
+        "• Premium\n\n" +
+        "Upgrade to *Pro* for Flagship model access!",
+        { parse_mode: "Markdown" }
+      );
+      return;
+    }
+
+    if (subscription === "plus") {
+      // Plus: Auto, Standard, Premium
+      keyboard = new InlineKeyboard()
+        .text(currentModel === "auto" ? "✅ Auto" : "Auto", "model_auto").row()
+        .text(currentModel === "standard" ? "✅ Standard" : "Standard", "model_standard").row()
+        .text(currentModel === "premium" ? "✅ Premium" : "Premium", "model_premium");
+
+      message = "🤖 *Select AI Model*\n\n" +
+        "*Auto*: Uses Standard first, switches to Premium when quota runs out\n" +
+        "*Standard*: Free model (120/month)\n" +
+        "*Premium*: Better accuracy (120/month)\n\n" +
+        `Current: *${currentModel}*`;
+    } else {
+      // Pro: Auto, Standard, Premium, Flagship
+      keyboard = new InlineKeyboard()
+        .text(currentModel === "auto" ? "✅ Auto" : "Auto", "model_auto").row()
+        .text(currentModel === "standard" ? "✅ Standard" : "Standard", "model_standard").row()
+        .text(currentModel === "premium" ? "✅ Premium" : "Premium", "model_premium").row()
+        .text(currentModel === "flagship" ? "✅ Flagship" : "Flagship", "model_flagship");
+
+      message = "🤖 *Select AI Model*\n\n" +
+        "*Auto*: Standard → Premium → Flagship based on quota\n" +
+        "*Standard*: Free model (300/month)\n" +
+        "*Premium*: Better accuracy (300/month)\n" +
+        "*Flagship*: Best AI capabilities (100/month)\n\n" +
+        `Current: *${currentModel}*`;
+    }
+
+    await ctx.reply(message, { parse_mode: "Markdown", reply_markup: keyboard });
+  });
+
+  // /plan command - Show subscription info and upgrade options
+  bot.command("plan", async (ctx) => {
+    const telegramId = ctx.from?.id.toString();
+    if (!telegramId) return;
+
+    const user = await getUserByTelegramId(telegramId);
+    if (!user) {
+      await ctx.reply("❌ Please link your Bexly account first. Use /link");
+      return;
+    }
+
+    // Get user subscription info from Firestore
+    const settingsDoc = await bexlyDb
+      .collection("users")
+      .doc(user.bexlyUserId)
+      .collection("data")
+      .doc("settings")
+      .get();
+
+    const settings = settingsDoc.data() || {};
+    const subscription = settings.subscriptionTier || "free"; // free, plus, pro
+
+    // Get AI usage for this month
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const usageDoc = await bexlyDb
+      .collection("users")
+      .doc(user.bexlyUserId)
+      .collection("data")
+      .doc("ai_usage")
+      .get();
+
+    const usageData = usageDoc.data() || {};
+    const monthUsage = usageData[monthKey] || { standard: 0, premium: 0, flagship: 0 };
+
+    let message = "";
+    let keyboard: InlineKeyboard | undefined;
+
+    if (subscription === "free") {
+      message = "📋 *Your Plan: Free*\n\n" +
+        "*Features:*\n" +
+        "• 3 wallets\n" +
+        "• 2 budgets & 2 goals\n" +
+        "• 5 recurring transactions\n" +
+        "• 3 months analytics history\n" +
+        "• Standard AI only\n\n" +
+        `*AI Usage (this month):*\n` +
+        `• Standard: ${monthUsage.standard || 0}/60\n\n` +
+        "─────────────────\n" +
+        "✨ *Upgrade to Plus ($2.99/mo)*\n" +
+        "• Unlimited wallets, budgets & goals\n" +
+        "• 6 months analytics history\n" +
+        "• 120 Standard + 120 Premium AI/month\n" +
+        "• No ads\n\n" +
+        "🚀 *Upgrade to Pro ($5.99/mo)*\n" +
+        "• Everything in Plus\n" +
+        "• Unlimited analytics history\n" +
+        "• 300 Standard + 300 Premium + 100 Flagship AI/month\n" +
+        "• Priority support";
+
+      keyboard = new InlineKeyboard()
+        .url("⬆️ Upgrade in App", "https://bexly-app.web.app/upgrade");
+    } else if (subscription === "plus") {
+      message = "📋 *Your Plan: Plus*\n\n" +
+        "*Features:*\n" +
+        "• Unlimited wallets, budgets & goals\n" +
+        "• 6 months analytics history\n" +
+        "• Standard & Premium AI models\n" +
+        "• No ads\n\n" +
+        `*AI Usage (this month):*\n` +
+        `• Standard: ${monthUsage.standard || 0}/120\n` +
+        `• Premium: ${monthUsage.premium || 0}/120\n\n` +
+        "─────────────────\n" +
+        "🚀 *Upgrade to Pro ($5.99/mo)*\n" +
+        "• Unlimited analytics history\n" +
+        "• 300 Standard + 300 Premium + 100 Flagship AI/month\n" +
+        "• Priority support";
+
+      keyboard = new InlineKeyboard()
+        .url("⬆️ Upgrade to Pro", "https://bexly-app.web.app/upgrade");
+    } else {
+      // Pro
+      message = "📋 *Your Plan: Pro* 🚀\n\n" +
+        "*Features:*\n" +
+        "• Unlimited wallets, budgets & goals\n" +
+        "• Unlimited analytics history\n" +
+        "• All AI models (Standard, Premium, Flagship)\n" +
+        "• Priority support\n" +
+        "• No ads\n\n" +
+        `*AI Usage (this month):*\n` +
+        `• Standard: ${monthUsage.standard || 0}/300\n` +
+        `• Premium: ${monthUsage.premium || 0}/300\n` +
+        `• Flagship: ${monthUsage.flagship || 0}/100\n\n` +
+        "Thank you for supporting Bexly! 💜";
+    }
+
+    await ctx.reply(message, { parse_mode: "Markdown", reply_markup: keyboard });
   });
 
   // /balance command
@@ -1209,13 +1542,33 @@ function setupBotHandlers(bot: Bot) {
     const localizedTypeLabel = parsed.type === "expense" ? loc.expenseDetected : loc.incomeDetected;
 
     // Include language and description in callback data so we can use it after confirm
-    // Use "WALLET" as placeholder when currency should use wallet default
-    // Truncate description to fit in 64-byte limit (category|lang|desc takes ~30 bytes max)
-    const currencyForCallback = parsed.currency || "WALLET";
-    const truncatedDesc = parsed.description.substring(0, 20);
+    // IMPORTANT: Telegram callback_data has 64-byte limit!
+    // Store full data in memory cache, use short key in callback
+    const pendingKey = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    // Store pending transaction data in memory (will be cleared after 10 minutes)
+    pendingTransactions.set(pendingKey, {
+      type: parsed.type,
+      amount: parsed.amount,
+      currency: parsed.currency,
+      category: parsed.category,
+      language: parsed.language,
+      description: parsed.description,
+      timestamp: Date.now(),
+      datetime: parsed.datetime, // Time hint from AI
+    });
+
+    // Clean up old pending transactions (older than 10 minutes)
+    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+    for (const [key, value] of pendingTransactions.entries()) {
+      if (value.timestamp < tenMinutesAgo) {
+        pendingTransactions.delete(key);
+      }
+    }
+
     const keyboard = new InlineKeyboard()
-      .text(`✅ ${loc.confirm}`, `confirm_${parsed.type}_${parsed.amount}_${currencyForCallback}_${parsed.category}|${parsed.language}|${truncatedDesc}`)
-      .text(`❌ ${loc.cancel}`, "cancel");
+      .text(`✅ ${loc.confirm}`, `c_${pendingKey}`)
+      .text(`❌ ${loc.cancel}`, "x");
 
     // Use AI response text if available, otherwise build localized preview
     const responseMessage = parsed.responseText ||
@@ -1252,7 +1605,41 @@ function setupBotHandlers(bot: Bot) {
       return;
     }
 
-    if (data === "cancel") {
+    // Handle model selection callbacks
+    if (data.startsWith("model_")) {
+      const selectedModel = data.replace("model_", ""); // auto, standard, premium, flagship
+
+      const user = await getUserByTelegramId(telegramId);
+      if (!user) {
+        await ctx.answerCallbackQuery({ text: "❌ Account not linked!" });
+        return;
+      }
+
+      // Save to Firestore
+      await bexlyDb
+        .collection("users")
+        .doc(user.bexlyUserId)
+        .collection("data")
+        .doc("settings")
+        .set({ aiModel: selectedModel }, { merge: true });
+
+      // Update message to show new selection
+      const modelNames: Record<string, string> = {
+        auto: "Auto",
+        standard: "Standard",
+        premium: "Premium",
+        flagship: "Flagship",
+      };
+
+      await ctx.editMessageText(
+        `✅ AI Model changed to *${modelNames[selectedModel] || selectedModel}*`,
+        { parse_mode: "Markdown" }
+      );
+      await ctx.answerCallbackQuery({ text: `✅ ${modelNames[selectedModel]}` });
+      return;
+    }
+
+    if (data === "cancel" || data === "x") {
       // Get original message text and update with cancelled status
       const originalText = ctx.callbackQuery.message?.text || "";
       // Remove the confirm prompt line and add cancelled status
@@ -1270,15 +1657,26 @@ function setupBotHandlers(bot: Bot) {
       return;
     }
 
-    if (data.startsWith("confirm_")) {
-      // Format: confirm_type_amount_currency_category|language|description
-      const parts = data.split("_");
-      const type = parts[1] as "expense" | "income";
-      const originalAmount = parseFloat(parts[2]);
-      const inputCurrencyRaw = parts[3]; // "WALLET" means use wallet default, otherwise currency code
-      // parts[4] onwards contains: category|language|description (rejoin in case category has underscores)
-      const lastPart = parts.slice(4).join("_");
-      const [category, language = "en", description = ""] = lastPart.split("|");
+    if (data.startsWith("c_")) {
+      // New format: c_{pendingKey} - lookup from in-memory cache
+      const pendingKey = data.slice(2);
+      const pending = pendingTransactions.get(pendingKey);
+
+      if (!pending) {
+        await ctx.answerCallbackQuery({ text: "❌ Session expired. Please try again." });
+        return;
+      }
+
+      // Clean up used pending transaction
+      pendingTransactions.delete(pendingKey);
+
+      const type = pending.type;
+      const originalAmount = pending.amount;
+      const inputCurrencyRaw = pending.currency || "WALLET";
+      const category = pending.category;
+      const language = pending.language;
+      const description = pending.description;
+      const datetimeHint = pending.datetime;
 
       const user = await getUserByTelegramId(telegramId);
       if (!user) {
@@ -1491,6 +1889,11 @@ function setupBotHandlers(bot: Bot) {
       // Generate UUID v7 for document ID (same format as app)
       const transactionId = uuidv7();
 
+      // Resolve datetime from AI hint (e.g., "morning" → 7:30 today, "yesterday" → noon yesterday)
+      const transactionDate = resolveTimeHint(datetimeHint);
+      const transactionTimestamp = admin.firestore.Timestamp.fromDate(transactionDate);
+      console.log(`Datetime hint: "${datetimeHint}" → resolved to: ${transactionDate.toISOString()}`);
+
       // Create transaction with correct format for app sync
       // Use UUID v7 as document ID and store walletCloudId/categoryCloudId
       // Title: use description from AI (e.g., "lunch", "Mua PC"), fallback to category name
@@ -1509,7 +1912,7 @@ function setupBotHandlers(bot: Bot) {
           amount: finalAmount,
           title: transactionTitle,
           notes: conversionNote || "",
-          date: admin.firestore.Timestamp.now(),
+          date: transactionTimestamp,
           createdAt: admin.firestore.Timestamp.now(),
           updatedAt: admin.firestore.Timestamp.now(),
           source: "telegram_bot"
@@ -1722,6 +2125,49 @@ export const telegramWebhook = onRequest(
     } catch (error) {
       console.error("Webhook error:", error);
       res.status(500).send("Error");
+    }
+  }
+);
+
+// Admin endpoint to update bot commands menu
+export const updateTelegramCommands = onRequest(
+  {
+    secrets: [telegramBotToken],
+  },
+  async (req, res) => {
+    try {
+      const token = telegramBotToken.value();
+      const commands = [
+        { command: "start", description: "Start the bot" },
+        { command: "help", description: "Show help and examples" },
+        { command: "balance", description: "Check your wallet balances" },
+        { command: "today", description: "Today's transactions" },
+        { command: "week", description: "This week's spending" },
+        { command: "month", description: "This month's summary" },
+        { command: "plan", description: "View your subscription plan" },
+        { command: "model", description: "Change AI model (Plus+)" },
+        { command: "language", description: "Change language" },
+        { command: "link", description: "Link Bexly account" },
+        { command: "unlink", description: "Unlink account" },
+      ];
+
+      const response = await fetch(`https://api.telegram.org/bot${token}/setMyCommands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commands }),
+      });
+
+      const result = await response.json();
+      console.log("setMyCommands result:", result);
+
+      if (result.ok) {
+        res.status(200).json({ success: true, message: "Bot commands updated successfully" });
+      } else {
+        res.status(400).json({ success: false, error: result.description });
+      }
+    } catch (error) {
+      console.error("Error updating commands:", error);
+      res.status(500).json({ success: false, error: String(error) });
     }
   }
 );
