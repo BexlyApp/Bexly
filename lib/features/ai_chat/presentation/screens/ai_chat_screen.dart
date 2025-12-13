@@ -618,12 +618,15 @@ class _ChatInput extends HookWidget {
     final selectedImage = useState<Uint8List?>(null);
     final imagePicker = ImagePicker();
 
+    // Get bottom padding for safe area (to avoid bottom nav bar overlap)
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Container(
-      padding: const EdgeInsets.only(
+      padding: EdgeInsets.only(
         left: AppSpacing.spacing16,
         right: AppSpacing.spacing16,
         top: AppSpacing.spacing8,
-        bottom: AppSpacing.spacing8,
+        bottom: AppSpacing.spacing8 + bottomPadding,
       ),
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
