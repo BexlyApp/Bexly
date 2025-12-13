@@ -719,6 +719,7 @@ async function parseTransactionWithAI(text: string, userCategories: UserCategory
 
 // Convert time hint from AI to actual Date object
 // Uses UTC+7 (Vietnam timezone) for calculation
+// Handles late-night scenarios: if it's 2AM and user says "dinner", means yesterday's dinner
 function resolveTimeHint(timeHint: string | null): Date {
   const now = new Date();
 
@@ -729,6 +730,7 @@ function resolveTimeHint(timeHint: string | null): Date {
   // Work with UTC+7 (Vietnam timezone) - add 7 hours to get local time
   const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
   const localNow = new Date(now.getTime() + VN_OFFSET_MS);
+  const currentHourVN = localNow.getUTCHours(); // This is VN hour since we added offset
 
   // Create result date - start with today's date in VN timezone
   const result = new Date(Date.UTC(
@@ -738,72 +740,77 @@ function resolveTimeHint(timeHint: string | null): Date {
     0, 0, 0, 0
   ));
 
+  // Map of time hints to their target hours (in VN time)
+  const timeHintHours: Record<string, number> = {
+    morning: 7,
+    noon: 12,
+    afternoon: 15,
+    evening: 19,
+    night: 21,
+  };
+
   try {
     const hint = timeHint.toLowerCase();
 
-    switch (hint) {
-      case "morning":
-        result.setUTCHours(7 - 7, 30, 0, 0); // 7:30 AM VN = 0:30 UTC
-        break;
-      case "noon":
-        result.setUTCHours(12 - 7, 0, 0, 0); // 12:00 PM VN = 5:00 UTC
-        break;
-      case "afternoon":
-        result.setUTCHours(15 - 7, 0, 0, 0); // 3:00 PM VN = 8:00 UTC
-        break;
-      case "evening":
-        result.setUTCHours(19 - 7, 0, 0, 0); // 7:00 PM VN = 12:00 UTC
-        break;
-      case "night":
-        result.setUTCHours(21 - 7, 0, 0, 0); // 9:00 PM VN = 14:00 UTC
-        break;
-      case "yesterday":
-        result.setUTCDate(result.getUTCDate() - 1);
-        result.setUTCHours(12 - 7, 0, 0, 0);
-        break;
-      case "yesterday_morning":
-        result.setUTCDate(result.getUTCDate() - 1);
-        result.setUTCHours(7 - 7, 30, 0, 0);
-        break;
-      case "yesterday_noon":
-        result.setUTCDate(result.getUTCDate() - 1);
-        result.setUTCHours(12 - 7, 0, 0, 0);
-        break;
-      case "yesterday_evening":
-        result.setUTCDate(result.getUTCDate() - 1);
-        result.setUTCHours(19 - 7, 0, 0, 0);
-        break;
-      case "yesterday_night":
-        result.setUTCDate(result.getUTCDate() - 1);
-        result.setUTCHours(21 - 7, 0, 0, 0);
-        break;
-      case "last_week":
-        result.setUTCDate(result.getUTCDate() - 7);
-        result.setUTCHours(12 - 7, 0, 0, 0);
-        break;
-      case "last_month":
-        result.setUTCMonth(result.getUTCMonth() - 1);
-        result.setUTCHours(12 - 7, 0, 0, 0);
-        break;
-      default:
-        // Try to parse explicit time like "15:00"
-        const timeMatch = hint.match(/^(\d{1,2}):?(\d{2})?$/);
-        if (timeMatch) {
-          const hours = parseInt(timeMatch[1], 10);
-          const minutes = parseInt(timeMatch[2] || "0", 10);
-          result.setUTCHours(hours - 7, minutes, 0, 0);
-        } else {
-          // Can't parse, return current time
-          return now;
-        }
-        break;
+    // Check if it's a yesterday_ prefix
+    if (hint.startsWith("yesterday")) {
+      result.setUTCDate(result.getUTCDate() - 1);
+      const subHint = hint.replace("yesterday_", "").replace("yesterday", "noon");
+      const targetHour = timeHintHours[subHint] || 12;
+      result.setUTCHours(targetHour - 7, subHint === "morning" ? 30 : 0, 0, 0);
+      return result;
     }
+
+    // Check if it's a last_week or last_month
+    if (hint === "last_week") {
+      result.setUTCDate(result.getUTCDate() - 7);
+      result.setUTCHours(12 - 7, 0, 0, 0);
+      return result;
+    }
+    if (hint === "last_month") {
+      result.setUTCMonth(result.getUTCMonth() - 1);
+      result.setUTCHours(12 - 7, 0, 0, 0);
+      return result;
+    }
+
+    // Handle regular time hints (morning, noon, etc.)
+    const targetHour = timeHintHours[hint];
+    if (targetHour !== undefined) {
+      result.setUTCHours(targetHour - 7, hint === "morning" ? 30 : 0, 0, 0);
+
+      // KEY FIX: If target time is in the future (e.g., it's 2AM and user says "dinner" at 19:00),
+      // then they likely mean yesterday's dinner, not today's (which hasn't happened yet)
+      // Only apply this logic for late-night hours (0-6 AM)
+      if (currentHourVN < 6 && targetHour > currentHourVN) {
+        result.setUTCDate(result.getUTCDate() - 1);
+        console.log(`Late-night adjustment: ${hint} at ${currentHourVN}:00 VN → moved to yesterday`);
+      }
+
+      return result;
+    }
+
+    // Try to parse explicit time like "15:00"
+    const timeMatch = hint.match(/^(\d{1,2}):?(\d{2})?$/);
+    if (timeMatch) {
+      const hours = parseInt(timeMatch[1], 10);
+      const minutes = parseInt(timeMatch[2] || "0", 10);
+      result.setUTCHours(hours - 7, minutes, 0, 0);
+
+      // Apply same late-night logic for explicit times
+      if (currentHourVN < 6 && hours > currentHourVN) {
+        result.setUTCDate(result.getUTCDate() - 1);
+        console.log(`Late-night adjustment: ${hours}:${minutes} at ${currentHourVN}:00 VN → moved to yesterday`);
+      }
+
+      return result;
+    }
+
+    // Can't parse, return current time
+    return now;
   } catch (e) {
     console.error("Error resolving time hint:", e);
     return now;
   }
-
-  return result;
 }
 
 // Legacy regex parser as fallback
@@ -2443,10 +2450,30 @@ async function handleMessengerMessage(senderPsid: string, messageText: string): 
   // Use wallet currency we already fetched, or parsed currency
   const displayCurrency = parsed.currency || walletCurrency;
 
-  // Show confirmation
-  const currencyForPayload = parsed.currency || "WALLET";
-  const truncatedDesc = parsed.description.substring(0, 15);
-  const confirmPayload = `CONFIRM_${parsed.type.toUpperCase()}_${parsed.amount}_${currencyForPayload}_${parsed.category}|${parsed.language}|${truncatedDesc}`;
+  // Store pending transaction in memory (same approach as Telegram)
+  // Use format: m_{senderPsid}_{timestamp} to avoid conflicts with Telegram
+  const pendingKey = `m_${senderPsid}_${Date.now()}`;
+  pendingTransactions.set(pendingKey, {
+    type: parsed.type,
+    amount: parsed.amount,
+    currency: parsed.currency,
+    category: parsed.category,
+    language: parsed.language,
+    description: parsed.description,
+    timestamp: Date.now(),
+    datetime: parsed.datetime || null,
+  });
+
+  // Clean up old pending transactions (older than 10 minutes)
+  const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+  for (const [key, value] of pendingTransactions.entries()) {
+    if (value.timestamp < tenMinutesAgo) {
+      pendingTransactions.delete(key);
+    }
+  }
+
+  // Use short key for payload (Messenger has 1000 byte limit, but keep it short)
+  const confirmPayload = `MC_${pendingKey}`;
 
   const emoji = parsed.type === "expense" ? "💸" : "💰";
   const catEmoji = getCategoryEmoji(parsed.category);
@@ -2592,7 +2619,227 @@ async function handleMessengerPostback(senderPsid: string, payload: string): Pro
     return;
   }
 
-  // Handle confirm transaction
+  // Handle confirm transaction with new pending cache (MC_ prefix)
+  if (payload.startsWith("MC_")) {
+    const pendingKey = payload.slice(3); // Remove "MC_" prefix
+    const pending = pendingTransactions.get(pendingKey);
+
+    if (!pending) {
+      await sendMessengerText(senderPsid, "❌ Session expired. Please try again.");
+      return;
+    }
+
+    // Clean up used pending transaction
+    pendingTransactions.delete(pendingKey);
+
+    const user = await getUserByMessengerPsid(senderPsid);
+    if (!user) {
+      await sendMessengerText(senderPsid, "❌ Account not linked!");
+      return;
+    }
+
+    const type = pending.type;
+    const originalAmount = pending.amount;
+    const inputCurrencyRaw = pending.currency || "WALLET";
+    const category = pending.category;
+    const language = pending.language;
+    const description = pending.description;
+
+    // Get wallet
+    let wallet: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    const settingsDoc = await bexlyDb
+      .collection("users")
+      .doc(user.bexlyUserId)
+      .collection("data")
+      .doc("settings")
+      .get();
+
+    const defaultWalletCloudId = settingsDoc.exists ? settingsDoc.data()?.defaultWalletCloudId : null;
+
+    if (defaultWalletCloudId) {
+      const defaultWalletDoc = await bexlyDb
+        .collection("users")
+        .doc(user.bexlyUserId)
+        .collection("data")
+        .doc("wallets")
+        .collection("items")
+        .doc(defaultWalletCloudId)
+        .get();
+
+      if (defaultWalletDoc.exists) {
+        wallet = defaultWalletDoc as unknown as FirebaseFirestore.QueryDocumentSnapshot;
+      }
+    }
+
+    if (!wallet) {
+      const walletsSnapshot = await bexlyDb
+        .collection("users")
+        .doc(user.bexlyUserId)
+        .collection("data")
+        .doc("wallets")
+        .collection("items")
+        .limit(1)
+        .get();
+
+      if (walletsSnapshot.empty) {
+        const loc = getLocalization(language);
+        await sendMessengerText(senderPsid, `❌ ${loc.noWallet}`);
+        return;
+      }
+      wallet = walletsSnapshot.docs[0];
+    }
+
+    // Find category
+    const categoriesSnapshot = await bexlyDb
+      .collection("users")
+      .doc(user.bexlyUserId)
+      .collection("data")
+      .doc("categories")
+      .collection("items")
+      .where("title", "==", category)
+      .limit(1)
+      .get();
+
+    let categoryDoc = categoriesSnapshot.docs[0];
+    if (!categoryDoc) {
+      const anyCategorySnapshot = await bexlyDb
+        .collection("users")
+        .doc(user.bexlyUserId)
+        .collection("data")
+        .doc("categories")
+        .collection("items")
+        .where("transactionType", "==", type)
+        .limit(1)
+        .get();
+      categoryDoc = anyCategorySnapshot.docs[0];
+    }
+
+    if (!categoryDoc) {
+      const loc = getLocalization(language);
+      await sendMessengerText(senderPsid, `❌ ${loc.noCategory}`);
+      return;
+    }
+
+    // Convert currency if needed
+    const walletData = wallet.data();
+    const walletCurrency = walletData.currency || "USD";
+    const inputCurrency = inputCurrencyRaw === "WALLET" ? walletCurrency : inputCurrencyRaw;
+
+    let finalAmount = originalAmount;
+    let conversionNote = "";
+
+    if (inputCurrency !== walletCurrency) {
+      try {
+        const { convertedAmount, rate } = await convertCurrency(originalAmount, inputCurrency, walletCurrency);
+        finalAmount = convertedAmount;
+        if (inputCurrency === "VND" && rate < 0.01) {
+          const reverseRate = 1 / rate;
+          conversionNote = ` (from ${formatCurrency(originalAmount, inputCurrency)} @ 1 ${walletCurrency} = ${reverseRate.toFixed(0)} ${inputCurrency})`;
+        } else {
+          conversionNote = ` (from ${formatCurrency(originalAmount, inputCurrency)})`;
+        }
+      } catch (convError) {
+        console.error("Currency conversion failed:", convError);
+        const loc = getLocalization(language);
+        await sendMessengerText(
+          senderPsid,
+          `❌ ${loc.conversionFailed}\n${walletCurrency} ≠ ${inputCurrency}`
+        );
+        return;
+      }
+    }
+
+    // Resolve datetime from time hint (same as Telegram)
+    const transactionDate = resolveTimeHint(pending.datetime);
+    console.log(`Messenger transaction datetime: hint="${pending.datetime}" → ${transactionDate.toISOString()}`);
+
+    // Create transaction
+    const transactionId = uuidv7();
+    const transactionType = type === "income" ? 0 : 1;
+    const transactionTitle = description || category;
+
+    await bexlyDb
+      .collection("users")
+      .doc(user.bexlyUserId)
+      .collection("data")
+      .doc("transactions")
+      .collection("items")
+      .doc(transactionId)
+      .set({
+        walletCloudId: wallet.id,
+        categoryCloudId: categoryDoc.id,
+        transactionType,
+        amount: finalAmount,
+        title: transactionTitle,
+        notes: conversionNote || "",
+        date: admin.firestore.Timestamp.fromDate(transactionDate),
+        createdAt: admin.firestore.Timestamp.now(),
+        updatedAt: admin.firestore.Timestamp.now(),
+        source: "messenger_bot"
+      });
+
+    // Update wallet balance
+    const balanceChange = type === "expense" ? -finalAmount : finalAmount;
+    await wallet.ref.update({
+      balance: admin.firestore.FieldValue.increment(balanceChange)
+    });
+
+    // Send confirmation - same format as Telegram
+    const loc = getLocalization(language);
+    const localizedType = type === "expense" ? loc.expense : loc.income;
+
+    // Get localized category title
+    const categoryData = categoryDoc.data();
+    let categoryTitle = categoryData?.title || category;
+    if (categoryData?.localizedTitles) {
+      try {
+        const localizedTitles = typeof categoryData.localizedTitles === 'string'
+          ? JSON.parse(categoryData.localizedTitles)
+          : categoryData.localizedTitles;
+        if (localizedTitles[language]) {
+          categoryTitle = localizedTitles[language];
+        }
+      } catch (e) {
+        // Use default title
+      }
+    }
+
+    // Format time from resolved date (UTC+7)
+    const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+    const localDate = new Date(transactionDate.getTime() + VN_OFFSET_MS);
+    const hours = localDate.getUTCHours().toString().padStart(2, '0');
+    const minutes = localDate.getUTCMinutes().toString().padStart(2, '0');
+    const day = localDate.getUTCDate().toString().padStart(2, '0');
+    const month = (localDate.getUTCMonth() + 1).toString().padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+    const dateStr = `${day}/${month}`;
+
+    // Build confirmation message (same format as Telegram)
+    let confirmMsg: string;
+    if (conversionNote) {
+      confirmMsg = `✅ ${formatCurrency(finalAmount, walletCurrency)} ${localizedType}${conversionNote}\n` +
+        `📂 ${categoryTitle}\n` +
+        `💼 ${walletData.name}\n` +
+        `🕐 ${timeStr} ${dateStr}`;
+    } else {
+      confirmMsg = `✅ ${formatCurrency(finalAmount, walletCurrency)} ${localizedType}\n` +
+        `📂 ${categoryTitle}\n` +
+        `💼 ${walletData.name}\n` +
+        `🕐 ${timeStr} ${dateStr}`;
+    }
+
+    await sendMessengerQuickReplies(
+      senderPsid,
+      confirmMsg,
+      [
+        { title: `➕ ${loc.addMore}`, payload: "HELP_EXPENSE" },
+        { title: `💰 ${loc.balance}`, payload: "VIEW_BALANCE" }
+      ]
+    );
+    return;
+  }
+
+  // Handle confirm transaction (legacy format - keep for backwards compatibility)
   if (payload.startsWith("CONFIRM_")) {
     const user = await getUserByMessengerPsid(senderPsid);
     if (!user) {
