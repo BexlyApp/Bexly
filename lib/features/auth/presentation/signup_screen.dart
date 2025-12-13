@@ -74,7 +74,8 @@ class SignUpScreen extends HookConsumerWidget {
         }
 
         if (context.mounted) {
-          context.go('/');
+          // Navigate to onboarding to create first wallet
+          context.go('/onboarding');
         }
       } catch (e) {
         if (context.mounted) {

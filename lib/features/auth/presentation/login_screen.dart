@@ -488,21 +488,13 @@ class LoginScreen extends HookConsumerWidget {
                     size: 80,
                     color: Theme.of(context).colorScheme.primary,
                   ),
-                  const Gap(24),
-                  Text(
-                    'Welcome to Bexly',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const Gap(8),
+                  const Gap(16),
                   Text(
                     'Sign in to sync across devices',
                     style: Theme.of(context).textTheme.bodyLarge,
                     textAlign: TextAlign.center,
                   ),
-                  const Gap(32),
+                  const Gap(24),
                   TextFormField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -662,16 +654,9 @@ class LoginScreen extends HookConsumerWidget {
                       Expanded(child: Divider(color: Colors.grey.shade400)),
                     ],
                   ),
-                  const Gap(20),
+                  const Gap(16),
                   // Social Login Buttons
-                  Column(
-                    children: [
-                      Text(
-                        'Or continue with',
-                        style: AppTextStyles.body4,
-                      ),
-                      const Gap(16),
-                      Wrap(
+                  Wrap(
                         alignment: WrapAlignment.center,
                         spacing: 12,
                         runSpacing: 12,
@@ -718,8 +703,6 @@ class LoginScreen extends HookConsumerWidget {
                           ),
                         ],
                       ),
-                    ],
-                  ),
                   const Gap(16),
                   TextButton(
                     onPressed: isLoading.value ? null : handleSkip,

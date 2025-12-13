@@ -89,6 +89,17 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 
 ## Technical Implementation
 
+### Product IDs (Google Play & App Store)
+
+| Plan | Product ID | Price (USD) | Price (VND) |
+|------|------------|-------------|-------------|
+| Plus Monthly | `bexly_plus_monthly` | $2.99/month | 79,000đ/tháng |
+| Plus Yearly | `bexly_plus_yearly` | $29.99/year | 790,000đ/năm |
+| Pro Monthly | `bexly_pro_monthly` | $5.99/month | 149,000đ/tháng |
+| Pro Yearly | `bexly_pro_yearly` | $59.99/year | 1,490,000đ/năm |
+
+**Subscription Group:** `Bexly Premium`
+
 ### Subscription Management
 **Payment Processing:**
 - Google Play Billing (Android)

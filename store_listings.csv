@@ -1,78 +1,1240 @@
-Field,en-US,vi,de,es,pt-BR,ru,nl,id,fr,it,pl
-App Name,Bexly - AI Budget & Expense,,,,,,,,,,
-Short Description,Smart expense tracker with AI categorization and cross-device sync,,,,,,,,,,
-Full Description,"Take control of your finances with Bexly, an intelligent expense tracking app powered by AI. Track spending, manage budgets, and reach your financial goals — all in one beautiful app.
+﻿Field,en-US,vi,de,es,pt-BR,ru,nl,id,fr,it,pl
+App Name (Google Play),Bexly - AI-Powered Finance Assistant,Bexly - Trợ lý Tài chính AI,Bexly - KI-Finanzassistent,Bexly - Asistente Financiero IA,Bexly - Assistente Financeiro IA,Bexly - ИИ Финансовый помощник,Bexly - AI Financieel Assistent,Bexly - Asisten Keuangan AI,Bexly - Assistant Financier IA,Bexly - Assistente Finanziario IA,Bexly - Asystent Finansowy AI
+App Name (iOS),Bexly - AI Finance Assistant,Bexly - Trợ lý Tài chính AI,Bexly - KI-Finanzassistent,Bexly - Asistente Financiero,Bexly - Assistente Financeiro,Bexly - ИИ Финансы,Bexly - AI Financieel,Bexly - Asisten Keuangan AI,Bexly - Assistant Financier,Bexly - Assistente Finanza,Bexly - Asystent Finansowy
+Subtitle (iOS),Smart Expense & Budget Tracker,Quản lý Chi tiêu & Ngân sách,Ausgaben- & Budgettracker,Control de Gastos y Presupuesto,Controle de Gastos e Orçamento,Трекер Расходов и Бюджета,Uitgaven- & Budgettracker,Pelacak Pengeluaran & Anggaran,Suivi Dépenses & Budget,Traccia Spese e Budget,Śledzenie Wydatków i Budżetu
+Short Description,AI expense tracker with smart categorization, budgets & cross-device sync,Quản lý chi tiêu thông minh với AI tự động phân loại và đồng bộ đa thiết bị,KI-Ausgabentracker mit intelligenter Kategorisierung und Gerätesynchronisierung,Control de gastos con IA, categorización inteligente y sincronización,Controle de gastos com IA, categorização inteligente e sincronização,ИИ-трекер расходов с умной категоризацией и синхронизацией,AI-uitgaventracker met slimme categorisatie en synchronisatie,Pelacak pengeluaran AI dengan kategorisasi cerdas dan sinkronisasi,Suivi des dépenses IA avec catégorisation intelligente et synchronisation,Traccia spese IA con categorizzazione intelligente e sincronizzazione,Śledzenie wydatków AI z inteligentną kategoryzacją i synchronizacją
+Promotional Text,Just launched! Track expenses with AI that understands you. Smart categorization, budget alerts, and cross-device sync. Start your financial journey today!,Mới ra mắt! Quản lý chi tiêu với AI thông minh. Tự động phân loại, cảnh báo ngân sách, đồng bộ đa thiết bị. Bắt đầu hành trình tài chính ngay!,Gerade gestartet! Verfolgen Sie Ausgaben mit KI. Intelligente Kategorisierung, Budget-Warnungen und Gerätesynchronisierung. Starten Sie Ihre Finanzreise!,Recién lanzado! Controla gastos con IA inteligente. Categorización automática, alertas de presupuesto y sincronización. ¡Comienza tu viaje financiero!,Acabou de lançar! Controle gastos com IA inteligente. Categorização automática, alertas de orçamento e sincronização. Comece sua jornada financeira!,Только запустились! Отслеживайте расходы с умным ИИ. Автокатегоризация, уведомления о бюджете и синхронизация. Начните финансовый путь!,Net gelanceerd! Volg uitgaven met slimme AI. Automatische categorisatie, budgetwaarschuwingen en synchronisatie. Start je financiële reis vandaag!,Baru diluncurkan! Lacak pengeluaran dengan AI cerdas. Kategorisasi otomatis, peringatan anggaran, dan sinkronisasi. Mulai perjalanan keuangan Anda!,Vient de sortir! Suivez vos dépenses avec une IA intelligente. Catégorisation automatique, alertes budget et synchronisation. Commencez votre voyage financier!,Appena lanciato! Traccia le spese con IA intelligente. Categorizzazione automatica, avvisi budget e sincronizzazione. Inizia il tuo viaggio finanziario!,Właśnie wystartowaliśmy! Śledź wydatki z inteligentnym AI. Automatyczna kategoryzacja, alerty budżetowe i synchronizacja. Rozpocznij swoją podróż finansową!
+Full Description,"Take control of your finances with Bexly — the AI-powered expense tracker that makes budgeting effortless. Track spending, manage budgets, and achieve your financial goals with ease.
 
 KEY FEATURES
 
 💰 SMART EXPENSE TRACKING
-• Quick transaction entry with custom keyboard
-• AI-powered automatic categorization
-• Track income and expenses effortlessly
+• Quick entry with custom keyboard
+• AI auto-categorization saves time
+• Track income & expenses effortlessly
 • Manage recurring transactions
 • Attach receipt photos
 
+🤖 AI-POWERED FEATURES
+• Chat with AI about your finances
+• Auto-categorize transactions instantly
+• Get personalized spending insights
+• Log expenses via Telegram & Messenger bots
+
 📊 MULTI-WALLET SUPPORT
-• Create unlimited wallets for different purposes
-• Support 150+ currencies with real-time conversion
-• Track cash, bank accounts, and credit cards separately
+• Unlimited wallets for different purposes
+• 150+ currencies with real-time rates
+• Track cash, cards & bank accounts
 • Switch between wallets instantly
 
 📈 POWERFUL ANALYTICS
-• Beautiful charts and visual reports
+• Beautiful charts & visual reports
 • Spending trends by category
-• Monthly and weekly expense summaries
-• Budget progress tracking
-• Export data to CSV/Excel
+• Monthly & weekly summaries
+• Export to CSV/Excel
 
-🎯 BUDGET & GOALS
+🎯 BUDGETS & GOALS
 • Set spending limits by category
-• Create and track savings goals
-• Visual progress indicators
-• Smart notifications and reminders
+• Track savings goals visually
+• Smart reminders & notifications
 
-🤖 AI-POWERED ASSISTANT
-• Chat with AI about your finances
-• Automatic transaction categorization
-• Smart spending insights
-• Personalized financial tips
-
-☁️ CLOUD SYNC & BACKUP
-• Sync seamlessly across all devices
-• Secure cloud storage
-• Automatic backup
+☁️ CLOUD SYNC
+• Seamless sync across all devices
 • Works offline, syncs when online
+• Secure automatic backup
 
 🎨 BEAUTIFUL DESIGN
-• Modern Material Design interface
+• Modern Material Design
 • Dark mode support
-• Customizable color schemes
-• Custom categories with icons
+• Customizable themes & icons
 
 🔒 PRIVACY FIRST
-• Data encryption
-• Optional authentication
+• End-to-end encryption
 • Full offline mode
-• No ads, no tracking
-
-PERFECT FOR
-• Personal expense tracking
-• Family budget management
-• Student spending control
-• Freelancer expense reports
-• Anyone seeking financial freedom
-
-WHY BEXLY?
-Bexly combines powerful features with simplicity. Our AI learns your spending patterns to automatically categorize transactions, saving you time. Beautiful charts show exactly where your money goes.
 
 PLUS & PRO PLANS
-• Unlimited wallets and budgets
-• Advanced AI features
-• Full analytics history
+• Ad-free experience
+• Advanced AI models
 • Priority support
-• And more!
+• Full analytics history
 
-SUPPORT
-Questions? Contact us at support@doslabs.dev
+Questions? help@bexly.app
 
-Download Bexly now and take control of your money!",,,,,,,,,,
+Download Bexly — take control of your money!","Kiểm soát tài chính với Bexly — ứng dụng quản lý chi tiêu thông minh với AI. Theo dõi chi tiêu, quản lý ngân sách và đạt mục tiêu tài chính dễ dàng.
+
+TÍNH NĂNG CHÍNH
+
+💰 THEO DÕI CHI TIÊU THÔNG MINH
+• Nhập nhanh với bàn phím tùy chỉnh
+• AI tự động phân loại tiết kiệm thời gian
+• Theo dõi thu nhập & chi tiêu dễ dàng
+• Quản lý giao dịch định kỳ
+• Đính kèm ảnh hóa đơn
+
+🤖 TÍNH NĂNG AI
+• Chat với AI về tài chính
+• Tự động phân loại giao dịch
+• Nhận phân tích chi tiêu cá nhân
+• Ghi chi tiêu qua bot Telegram & Messenger
+
+📊 HỖ TRỢ ĐA VÍ
+• Tạo không giới hạn ví cho mục đích khác nhau
+• Hỗ trợ 150+ loại tiền tệ với tỷ giá thời gian thực
+• Theo dõi tiền mặt, thẻ & tài khoản ngân hàng
+• Chuyển đổi giữa các ví ngay lập tức
+
+📈 PHÂN TÍCH MẠNH MẼ
+• Biểu đồ đẹp & báo cáo trực quan
+• Xu hướng chi tiêu theo danh mục
+• Tóm tắt hàng tháng & hàng tuần
+• Xuất ra CSV/Excel
+
+🎯 NGÂN SÁCH & MỤC TIÊU
+• Đặt giới hạn chi tiêu theo danh mục
+• Theo dõi mục tiêu tiết kiệm trực quan
+• Nhắc nhở & thông báo thông minh
+
+☁️ ĐỒNG BỘ ĐÁM MÂY
+• Đồng bộ liền mạch trên mọi thiết bị
+• Hoạt động offline, đồng bộ khi online
+• Sao lưu tự động an toàn
+
+🎨 THIẾT KẾ ĐẸP
+• Giao diện Material Design hiện đại
+• Hỗ trợ chế độ tối
+• Tùy chỉnh chủ đề & biểu tượng
+
+🔒 BẢO MẬT
+• Mã hóa đầu cuối
+• Chế độ offline hoàn toàn
+
+GÓI PLUS & PRO
+• Không quảng cáo
+• Mô hình AI nâng cao
+• Hỗ trợ ưu tiên
+• Lịch sử phân tích đầy đủ
+
+Câu hỏi? help@bexly.app
+
+Tải Bexly ngay — kiểm soát tài chính của bạn!","Übernehmen Sie die Kontrolle über Ihre Finanzen mit Bexly — dem KI-gestützten Ausgabentracker. Verfolgen Sie Ausgaben, verwalten Sie Budgets und erreichen Sie Ihre finanziellen Ziele mühelos.
+
+HAUPTFUNKTIONEN
+
+💰 INTELLIGENTE AUSGABENVERFOLGUNG
+• Schnelle Eingabe mit benutzerdefinierter Tastatur
+• KI-Autokategorisierung spart Zeit
+• Einnahmen & Ausgaben mühelos verfolgen
+• Wiederkehrende Transaktionen verwalten
+• Belegfotos anhängen
+
+🤖 KI-FUNKTIONEN
+• Chatten Sie mit KI über Ihre Finanzen
+• Transaktionen sofort automatisch kategorisieren
+• Personalisierte Ausgabeneinblicke erhalten
+• Ausgaben über Telegram & Messenger Bots erfassen
+
+📊 MULTI-WALLET-UNTERSTÜTZUNG
+• Unbegrenzte Wallets für verschiedene Zwecke
+• 150+ Währungen mit Echtzeit-Kursen
+• Bargeld, Karten & Bankkonten verfolgen
+• Sofort zwischen Wallets wechseln
+
+📈 LEISTUNGSSTARKE ANALYSEN
+• Schöne Diagramme & visuelle Berichte
+• Ausgabentrends nach Kategorie
+• Monatliche & wöchentliche Zusammenfassungen
+• Export nach CSV/Excel
+
+🎯 BUDGETS & ZIELE
+• Ausgabenlimits nach Kategorie festlegen
+• Sparziele visuell verfolgen
+• Intelligente Erinnerungen & Benachrichtigungen
+
+☁️ CLOUD-SYNCHRONISIERUNG
+• Nahtlose Synchronisierung auf allen Geräten
+• Funktioniert offline, synchronisiert wenn online
+• Sichere automatische Sicherung
+
+🎨 SCHÖNES DESIGN
+• Modernes Material Design
+• Dunkelmodus-Unterstützung
+• Anpassbare Themen & Icons
+
+🔒 DATENSCHUTZ ZUERST
+• Ende-zu-Ende-Verschlüsselung
+• Vollständiger Offline-Modus
+
+PLUS & PRO PLÄNE
+• Werbefreies Erlebnis
+• Erweiterte KI-Modelle
+• Prioritäts-Support
+• Vollständiger Analyseverlauf
+
+Fragen? help@bexly.app
+
+Laden Sie Bexly herunter — übernehmen Sie die Kontrolle über Ihr Geld!","Toma el control de tus finanzas con Bexly — el rastreador de gastos con IA que hace que presupuestar sea fácil. Rastrea gastos, administra presupuestos y alcanza tus metas financieras.
+
+CARACTERÍSTICAS PRINCIPALES
+
+💰 SEGUIMIENTO INTELIGENTE DE GASTOS
+• Entrada rápida con teclado personalizado
+• Categorización automática con IA ahorra tiempo
+• Rastrea ingresos y gastos fácilmente
+• Gestiona transacciones recurrentes
+• Adjunta fotos de recibos
+
+🤖 FUNCIONES DE IA
+• Chatea con IA sobre tus finanzas
+• Categoriza transacciones automáticamente
+• Obtén análisis personalizados de gastos
+• Registra gastos vía bots de Telegram y Messenger
+
+📊 SOPORTE MULTI-BILLETERA
+• Billeteras ilimitadas para diferentes propósitos
+• 150+ monedas con tasas en tiempo real
+• Rastrea efectivo, tarjetas y cuentas bancarias
+• Cambia entre billeteras al instante
+
+📈 ANÁLISIS POTENTES
+• Gráficos hermosos e informes visuales
+• Tendencias de gastos por categoría
+• Resúmenes mensuales y semanales
+• Exporta a CSV/Excel
+
+🎯 PRESUPUESTOS Y METAS
+• Establece límites de gastos por categoría
+• Rastrea metas de ahorro visualmente
+• Recordatorios y notificaciones inteligentes
+
+☁️ SINCRONIZACIÓN EN LA NUBE
+• Sincronización perfecta en todos los dispositivos
+• Funciona sin conexión, sincroniza cuando hay conexión
+• Respaldo automático seguro
+
+🎨 DISEÑO HERMOSO
+• Interfaz Material Design moderna
+• Soporte de modo oscuro
+• Temas e iconos personalizables
+
+🔒 PRIVACIDAD PRIMERO
+• Cifrado de extremo a extremo
+• Modo offline completo
+
+PLANES PLUS Y PRO
+• Experiencia sin anuncios
+• Modelos de IA avanzados
+• Soporte prioritario
+• Historial completo de análisis
+
+¿Preguntas? help@bexly.app
+
+¡Descarga Bexly — toma el control de tu dinero!","Assuma o controle das suas finanças com Bexly — o rastreador de despesas com IA que facilita o orçamento. Acompanhe gastos, gerencie orçamentos e alcance suas metas financeiras.
+
+RECURSOS PRINCIPAIS
+
+💰 RASTREAMENTO INTELIGENTE DE DESPESAS
+• Entrada rápida com teclado personalizado
+• Categorização automática com IA economiza tempo
+• Acompanhe receitas e despesas facilmente
+• Gerencie transações recorrentes
+• Anexe fotos de recibos
+
+🤖 RECURSOS DE IA
+• Converse com IA sobre suas finanças
+• Categorize transações automaticamente
+• Obtenha análises personalizadas de gastos
+• Registre despesas via bots do Telegram e Messenger
+
+📊 SUPORTE MULTI-CARTEIRA
+• Carteiras ilimitadas para diferentes propósitos
+• 150+ moedas com taxas em tempo real
+• Acompanhe dinheiro, cartões e contas bancárias
+• Alterne entre carteiras instantaneamente
+
+📈 ANÁLISES PODEROSAS
+• Gráficos bonitos e relatórios visuais
+• Tendências de gastos por categoria
+• Resumos mensais e semanais
+• Exporte para CSV/Excel
+
+🎯 ORÇAMENTOS E METAS
+• Defina limites de gastos por categoria
+• Acompanhe metas de economia visualmente
+• Lembretes e notificações inteligentes
+
+☁️ SINCRONIZAÇÃO NA NUVEM
+• Sincronização perfeita em todos os dispositivos
+• Funciona offline, sincroniza quando online
+• Backup automático seguro
+
+🎨 DESIGN BONITO
+• Interface Material Design moderna
+• Suporte ao modo escuro
+• Temas e ícones personalizáveis
+
+🔒 PRIVACIDADE EM PRIMEIRO LUGAR
+• Criptografia de ponta a ponta
+• Modo offline completo
+
+PLANOS PLUS E PRO
+• Experiência sem anúncios
+• Modelos de IA avançados
+• Suporte prioritário
+• Histórico completo de análises
+
+Dúvidas? help@bexly.app
+
+Baixe Bexly — assuma o controle do seu dinheiro!","Возьмите под контроль свои финансы с Bexly — ИИ-трекером расходов, который делает бюджетирование простым. Отслеживайте расходы, управляйте бюджетами и достигайте финансовых целей.
+
+ОСНОВНЫЕ ФУНКЦИИ
+
+💰 УМНЫЙ УЧЁТ РАСХОДОВ
+• Быстрый ввод с пользовательской клавиатурой
+• ИИ-автокатегоризация экономит время
+• Легко отслеживайте доходы и расходы
+• Управляйте повторяющимися транзакциями
+• Прикрепляйте фото чеков
+
+🤖 ФУНКЦИИ ИИ
+• Общайтесь с ИИ о ваших финансах
+• Мгновенная автокатегоризация транзакций
+• Получайте персональные аналитические данные
+• Записывайте расходы через Telegram и Messenger ботов
+
+📊 МУЛЬТИ-КОШЕЛЁК
+• Неограниченные кошельки для разных целей
+• 150+ валют с курсами в реальном времени
+• Отслеживайте наличные, карты и банковские счета
+• Мгновенно переключайтесь между кошельками
+
+📈 МОЩНАЯ АНАЛИТИКА
+• Красивые графики и визуальные отчёты
+• Тренды расходов по категориям
+• Ежемесячные и еженедельные сводки
+• Экспорт в CSV/Excel
+
+🎯 БЮДЖЕТЫ И ЦЕЛИ
+• Устанавливайте лимиты по категориям
+• Визуально отслеживайте цели накопления
+• Умные напоминания и уведомления
+
+☁️ ОБЛАЧНАЯ СИНХРОНИЗАЦИЯ
+• Бесшовная синхронизация на всех устройствах
+• Работает офлайн, синхронизируется онлайн
+• Безопасное автоматическое резервное копирование
+
+🎨 КРАСИВЫЙ ДИЗАЙН
+• Современный Material Design
+• Поддержка тёмного режима
+• Настраиваемые темы и иконки
+
+🔒 КОНФИДЕНЦИАЛЬНОСТЬ
+• Сквозное шифрование
+• Полный офлайн-режим
+
+ПЛАНЫ PLUS И PRO
+• Без рекламы
+• Продвинутые модели ИИ
+• Приоритетная поддержка
+• Полная история аналитики
+
+Вопросы? help@bexly.app
+
+Скачайте Bexly — возьмите под контроль свои деньги!","Neem controle over je financiën met Bexly — de AI-uitgaventracker die budgetteren moeiteloos maakt. Volg uitgaven, beheer budgetten en bereik je financiële doelen.
+
+BELANGRIJKSTE FUNCTIES
+
+💰 SLIMME UITGAVENTRACKING
+• Snelle invoer met aangepast toetsenbord
+• AI-autocategorisatie bespaart tijd
+• Volg inkomsten & uitgaven moeiteloos
+• Beheer terugkerende transacties
+• Voeg bonnetjesfoto's toe
+
+🤖 AI-FUNCTIES
+• Chat met AI over je financiën
+• Categoriseer transacties automatisch direct
+• Krijg gepersonaliseerde uitgaveninzichten
+• Log uitgaven via Telegram & Messenger bots
+
+📊 MULTI-WALLET ONDERSTEUNING
+• Onbeperkte wallets voor verschillende doeleinden
+• 150+ valuta's met realtime koersen
+• Volg contant geld, kaarten & bankrekeningen
+• Wissel direct tussen wallets
+
+📈 KRACHTIGE ANALYSES
+• Mooie grafieken & visuele rapporten
+• Uitgaventrends per categorie
+• Maandelijkse & wekelijkse samenvattingen
+• Exporteer naar CSV/Excel
+
+🎯 BUDGETTEN & DOELEN
+• Stel uitgavenlimieten per categorie in
+• Volg spaardoelen visueel
+• Slimme herinneringen & meldingen
+
+☁️ CLOUD SYNC
+• Naadloze synchronisatie op alle apparaten
+• Werkt offline, synchroniseert wanneer online
+• Veilige automatische back-up
+
+🎨 MOOI ONTWERP
+• Modern Material Design
+• Ondersteuning voor donkere modus
+• Aanpasbare thema's & iconen
+
+🔒 PRIVACY EERST
+• End-to-end encryptie
+• Volledige offline modus
+
+PLUS & PRO PLANNEN
+• Advertentievrije ervaring
+• Geavanceerde AI-modellen
+• Prioriteitsondersteuning
+• Volledige analysegeschiedenis
+
+Vragen? help@bexly.app
+
+Download Bexly — neem controle over je geld!","Kendalikan keuangan Anda dengan Bexly — pelacak pengeluaran bertenaga AI yang membuat penganggaran mudah. Lacak pengeluaran, kelola anggaran, dan capai tujuan keuangan Anda.
+
+FITUR UTAMA
+
+💰 PELACAKAN PENGELUARAN CERDAS
+• Entri cepat dengan keyboard kustom
+• Kategorisasi otomatis AI menghemat waktu
+• Lacak pendapatan & pengeluaran dengan mudah
+• Kelola transaksi berulang
+• Lampirkan foto struk
+
+🤖 FITUR AI
+• Chat dengan AI tentang keuangan Anda
+• Kategorisasi transaksi secara otomatis
+• Dapatkan wawasan pengeluaran yang dipersonalisasi
+• Catat pengeluaran via bot Telegram & Messenger
+
+📊 DUKUNGAN MULTI-DOMPET
+• Dompet tak terbatas untuk berbagai tujuan
+• 150+ mata uang dengan kurs real-time
+• Lacak uang tunai, kartu & rekening bank
+• Beralih antar dompet secara instan
+
+📈 ANALITIK KUAT
+• Grafik indah & laporan visual
+• Tren pengeluaran berdasarkan kategori
+• Ringkasan bulanan & mingguan
+• Ekspor ke CSV/Excel
+
+🎯 ANGGARAN & TUJUAN
+• Tetapkan batas pengeluaran per kategori
+• Lacak tujuan tabungan secara visual
+• Pengingat & notifikasi cerdas
+
+☁️ SINKRONISASI CLOUD
+• Sinkronisasi mulus di semua perangkat
+• Bekerja offline, sinkron saat online
+• Backup otomatis yang aman
+
+🎨 DESAIN INDAH
+• Antarmuka Material Design modern
+• Dukungan mode gelap
+• Tema & ikon yang dapat disesuaikan
+
+🔒 PRIVASI UTAMA
+• Enkripsi end-to-end
+• Mode offline penuh
+
+PAKET PLUS & PRO
+• Pengalaman bebas iklan
+• Model AI canggih
+• Dukungan prioritas
+• Riwayat analitik lengkap
+
+Pertanyaan? help@bexly.app
+
+Unduh Bexly — kendalikan uang Anda!","Prenez le contrôle de vos finances avec Bexly — le suivi des dépenses alimenté par l'IA qui rend la budgétisation facile. Suivez vos dépenses, gérez vos budgets et atteignez vos objectifs financiers.
+
+FONCTIONNALITÉS PRINCIPALES
+
+💰 SUIVI INTELLIGENT DES DÉPENSES
+• Saisie rapide avec clavier personnalisé
+• Catégorisation automatique par IA gain de temps
+• Suivez revenus et dépenses facilement
+• Gérez les transactions récurrentes
+• Joignez des photos de reçus
+
+🤖 FONCTIONNALITÉS IA
+• Discutez avec l'IA de vos finances
+• Catégorisez les transactions automatiquement
+• Obtenez des analyses de dépenses personnalisées
+• Enregistrez les dépenses via les bots Telegram et Messenger
+
+📊 SUPPORT MULTI-PORTEFEUILLE
+• Portefeuilles illimités pour différents usages
+• 150+ devises avec taux en temps réel
+• Suivez espèces, cartes et comptes bancaires
+• Changez de portefeuille instantanément
+
+📈 ANALYSES PUISSANTES
+• Beaux graphiques et rapports visuels
+• Tendances de dépenses par catégorie
+• Résumés mensuels et hebdomadaires
+• Exportez vers CSV/Excel
+
+🎯 BUDGETS ET OBJECTIFS
+• Fixez des limites de dépenses par catégorie
+• Suivez visuellement les objectifs d'épargne
+• Rappels et notifications intelligents
+
+☁️ SYNCHRONISATION CLOUD
+• Synchronisation transparente sur tous les appareils
+• Fonctionne hors ligne, synchronise en ligne
+• Sauvegarde automatique sécurisée
+
+🎨 BEAU DESIGN
+• Interface Material Design moderne
+• Support du mode sombre
+• Thèmes et icônes personnalisables
+
+🔒 CONFIDENTIALITÉ D'ABORD
+• Chiffrement de bout en bout
+• Mode hors ligne complet
+
+PLANS PLUS ET PRO
+• Expérience sans publicité
+• Modèles IA avancés
+• Support prioritaire
+• Historique complet des analyses
+
+Questions? help@bexly.app
+
+Téléchargez Bexly — prenez le contrôle de votre argent!","Prendi il controllo delle tue finanze con Bexly — il tracker di spese con IA che rende il budgeting semplice. Traccia le spese, gestisci i budget e raggiungi i tuoi obiettivi finanziari.
+
+FUNZIONALITÀ PRINCIPALI
+
+💰 TRACCIAMENTO SPESE INTELLIGENTE
+• Inserimento rapido con tastiera personalizzata
+• Categorizzazione automatica IA risparmia tempo
+• Traccia entrate e uscite facilmente
+• Gestisci transazioni ricorrenti
+• Allega foto degli scontrini
+
+🤖 FUNZIONALITÀ IA
+• Chatta con l'IA sulle tue finanze
+• Categorizza le transazioni automaticamente
+• Ottieni analisi personalizzate delle spese
+• Registra spese tramite bot Telegram e Messenger
+
+📊 SUPPORTO MULTI-PORTAFOGLIO
+• Portafogli illimitati per scopi diversi
+• 150+ valute con tassi in tempo reale
+• Traccia contanti, carte e conti bancari
+• Cambia portafoglio istantaneamente
+
+📈 ANALISI POTENTI
+• Bellissimi grafici e report visivi
+• Tendenze di spesa per categoria
+• Riepiloghi mensili e settimanali
+• Esporta in CSV/Excel
+
+🎯 BUDGET E OBIETTIVI
+• Imposta limiti di spesa per categoria
+• Traccia visivamente gli obiettivi di risparmio
+• Promemoria e notifiche intelligenti
+
+☁️ SINCRONIZZAZIONE CLOUD
+• Sincronizzazione perfetta su tutti i dispositivi
+• Funziona offline, sincronizza quando online
+• Backup automatico sicuro
+
+🎨 DESIGN BELLISSIMO
+• Interfaccia Material Design moderna
+• Supporto modalità scura
+• Temi e icone personalizzabili
+
+🔒 PRIVACY PRIMA DI TUTTO
+• Crittografia end-to-end
+• Modalità offline completa
+
+PIANI PLUS E PRO
+• Esperienza senza pubblicità
+• Modelli IA avanzati
+• Supporto prioritario
+• Storico completo delle analisi
+
+Domande? help@bexly.app
+
+Scarica Bexly — prendi il controllo dei tuoi soldi!","Przejmij kontrolę nad swoimi finansami z Bexly — narzędziem do śledzenia wydatków z AI, które sprawia, że budżetowanie jest łatwe. Śledź wydatki, zarządzaj budżetami i osiągaj cele finansowe.
+
+GŁÓWNE FUNKCJE
+
+💰 INTELIGENTNE ŚLEDZENIE WYDATKÓW
+• Szybkie wprowadzanie z niestandardową klawiaturą
+• Automatyczna kategoryzacja AI oszczędza czas
+• Łatwo śledź przychody i wydatki
+• Zarządzaj transakcjami cyklicznymi
+• Dołączaj zdjęcia paragonów
+
+🤖 FUNKCJE AI
+• Rozmawiaj z AI o swoich finansach
+• Automatycznie kategoryzuj transakcje
+• Uzyskaj spersonalizowane analizy wydatków
+• Rejestruj wydatki przez boty Telegram i Messenger
+
+📊 OBSŁUGA WIELU PORTFELI
+• Nieograniczone portfele do różnych celów
+• 150+ walut z kursami w czasie rzeczywistym
+• Śledź gotówkę, karty i konta bankowe
+• Natychmiast przełączaj między portfelami
+
+📈 POTĘŻNE ANALIZY
+• Piękne wykresy i raporty wizualne
+• Trendy wydatków według kategorii
+• Podsumowania miesięczne i tygodniowe
+• Eksport do CSV/Excel
+
+🎯 BUDŻETY I CELE
+• Ustaw limity wydatków według kategorii
+• Wizualnie śledź cele oszczędnościowe
+• Inteligentne przypomnienia i powiadomienia
+
+☁️ SYNCHRONIZACJA W CHMURZE
+• Bezproblemowa synchronizacja na wszystkich urządzeniach
+• Działa offline, synchronizuje gdy online
+• Bezpieczna automatyczna kopia zapasowa
+
+🎨 PIĘKNY DESIGN
+• Nowoczesny interfejs Material Design
+• Obsługa trybu ciemnego
+• Konfigurowalne motywy i ikony
+
+🔒 PRYWATNOŚĆ PRZEDE WSZYSTKIM
+• Szyfrowanie end-to-end
+• Pełny tryb offline
+
+PLANY PLUS I PRO
+• Bez reklam
+• Zaawansowane modele AI
+• Priorytetowe wsparcie
+• Pełna historia analiz
+
+Pytania? help@bexly.app
+
+Pobierz Bexly — przejmij kontrolę nad swoimi pieniędzmi!"
+Full Description (iOS),"Take control of your finances with Bexly — the AI-powered expense tracker that makes budgeting effortless. Track spending, manage budgets, and achieve your financial goals with ease.
+
+KEY FEATURES
+
+SMART EXPENSE TRACKING
+• Quick entry with custom keyboard
+• AI auto-categorization saves time
+• Track income & expenses effortlessly
+• Manage recurring transactions
+• Attach receipt photos
+
+AI-POWERED FEATURES
+• Chat with AI about your finances
+• Auto-categorize transactions instantly
+• Get personalized spending insights
+• Log expenses via Telegram & Messenger bots
+
+MULTI-WALLET SUPPORT
+• Unlimited wallets for different purposes
+• 150+ currencies with real-time rates
+• Track cash, cards & bank accounts
+• Switch between wallets instantly
+
+POWERFUL ANALYTICS
+• Beautiful charts & visual reports
+• Spending trends by category
+• Monthly & weekly summaries
+• Export to CSV/Excel
+
+BUDGETS & GOALS
+• Set spending limits by category
+• Track savings goals visually
+• Smart reminders & notifications
+
+CLOUD SYNC
+• Seamless sync across all devices
+• Works offline, syncs when online
+• Secure automatic backup
+
+BEAUTIFUL DESIGN
+• Modern Material Design
+• Dark mode support
+• Customizable themes & icons
+
+PRIVACY FIRST
+• End-to-end encryption
+• Full offline mode
+
+PLUS & PRO PLANS
+• Ad-free experience
+• Advanced AI models
+• Priority support
+• Full analytics history
+
+Questions? help@bexly.app
+
+Download Bexly — take control of your money!","Kiểm soát tài chính với Bexly — ứng dụng quản lý chi tiêu thông minh với AI. Theo dõi chi tiêu, quản lý ngân sách và đạt mục tiêu tài chính dễ dàng.
+
+TÍNH NĂNG CHÍNH
+
+THEO DÕI CHI TIÊU THÔNG MINH
+• Nhập nhanh với bàn phím tùy chỉnh
+• AI tự động phân loại tiết kiệm thời gian
+• Theo dõi thu nhập & chi tiêu dễ dàng
+• Quản lý giao dịch định kỳ
+• Đính kèm ảnh hóa đơn
+
+TÍNH NĂNG AI
+• Chat với AI về tài chính
+• Tự động phân loại giao dịch
+• Nhận phân tích chi tiêu cá nhân
+• Ghi chi tiêu qua bot Telegram & Messenger
+
+HỖ TRỢ ĐA VÍ
+• Tạo không giới hạn ví cho mục đích khác nhau
+• Hỗ trợ 150+ loại tiền tệ với tỷ giá thời gian thực
+• Theo dõi tiền mặt, thẻ & tài khoản ngân hàng
+• Chuyển đổi giữa các ví ngay lập tức
+
+PHÂN TÍCH MẠNH MẼ
+• Biểu đồ đẹp & báo cáo trực quan
+• Xu hướng chi tiêu theo danh mục
+• Tóm tắt hàng tháng & hàng tuần
+• Xuất ra CSV/Excel
+
+NGÂN SÁCH & MỤC TIÊU
+• Đặt giới hạn chi tiêu theo danh mục
+• Theo dõi mục tiêu tiết kiệm trực quan
+• Nhắc nhở & thông báo thông minh
+
+ĐỒNG BỘ ĐÁM MÂY
+• Đồng bộ liền mạch trên mọi thiết bị
+• Hoạt động offline, đồng bộ khi online
+• Sao lưu tự động an toàn
+
+THIẾT KẾ ĐẸP
+• Giao diện Material Design hiện đại
+• Hỗ trợ chế độ tối
+• Tùy chỉnh chủ đề & biểu tượng
+
+BẢO MẬT
+• Mã hóa đầu cuối
+• Chế độ offline hoàn toàn
+
+GÓI PLUS & PRO
+• Không quảng cáo
+• Mô hình AI nâng cao
+• Hỗ trợ ưu tiên
+• Lịch sử phân tích đầy đủ
+
+Câu hỏi? help@bexly.app
+
+Tải Bexly ngay — kiểm soát tài chính của bạn!","Ubernehmen Sie die Kontrolle uber Ihre Finanzen mit Bexly — dem KI-gestutzten Ausgabentracker. Verfolgen Sie Ausgaben, verwalten Sie Budgets und erreichen Sie Ihre finanziellen Ziele muhelos.
+
+HAUPTFUNKTIONEN
+
+INTELLIGENTE AUSGABENVERFOLGUNG
+• Schnelle Eingabe mit benutzerdefinierter Tastatur
+• KI-Autokategorisierung spart Zeit
+• Einnahmen & Ausgaben muhelos verfolgen
+• Wiederkehrende Transaktionen verwalten
+• Belegfotos anhangen
+
+KI-FUNKTIONEN
+• Chatten Sie mit KI uber Ihre Finanzen
+• Transaktionen sofort automatisch kategorisieren
+• Personalisierte Ausgabeneinblicke erhalten
+• Ausgaben uber Telegram & Messenger Bots erfassen
+
+MULTI-WALLET-UNTERSTUTZUNG
+• Unbegrenzte Wallets fur verschiedene Zwecke
+• 150+ Wahrungen mit Echtzeit-Kursen
+• Bargeld, Karten & Bankkonten verfolgen
+• Sofort zwischen Wallets wechseln
+
+LEISTUNGSSTARKE ANALYSEN
+• Schone Diagramme & visuelle Berichte
+• Ausgabentrends nach Kategorie
+• Monatliche & wochentliche Zusammenfassungen
+• Export nach CSV/Excel
+
+BUDGETS & ZIELE
+• Ausgabenlimits nach Kategorie festlegen
+• Sparziele visuell verfolgen
+• Intelligente Erinnerungen & Benachrichtigungen
+
+CLOUD-SYNCHRONISIERUNG
+• Nahtlose Synchronisierung auf allen Geraten
+• Funktioniert offline, synchronisiert wenn online
+• Sichere automatische Sicherung
+
+SCHONES DESIGN
+• Modernes Material Design
+• Dunkelmodus-Unterstutzung
+• Anpassbare Themen & Icons
+
+DATENSCHUTZ ZUERST
+• Ende-zu-Ende-Verschlusselung
+• Vollstandiger Offline-Modus
+
+PLUS & PRO PLANE
+• Werbefreies Erlebnis
+• Erweiterte KI-Modelle
+• Prioritats-Support
+• Vollstandiger Analyseverlauf
+
+Fragen? help@bexly.app
+
+Laden Sie Bexly herunter — ubernehmen Sie die Kontrolle uber Ihr Geld!","Toma el control de tus finanzas con Bexly — el rastreador de gastos con IA que hace que presupuestar sea facil. Rastrea gastos, administra presupuestos y alcanza tus metas financieras.
+
+CARACTERISTICAS PRINCIPALES
+
+SEGUIMIENTO INTELIGENTE DE GASTOS
+• Entrada rapida con teclado personalizado
+• Categorizacion automatica con IA ahorra tiempo
+• Rastrea ingresos y gastos facilmente
+• Gestiona transacciones recurrentes
+• Adjunta fotos de recibos
+
+FUNCIONES DE IA
+• Chatea con IA sobre tus finanzas
+• Categoriza transacciones automaticamente
+• Obten analisis personalizados de gastos
+• Registra gastos via bots de Telegram y Messenger
+
+SOPORTE MULTI-BILLETERA
+• Billeteras ilimitadas para diferentes propositos
+• 150+ monedas con tasas en tiempo real
+• Rastrea efectivo, tarjetas y cuentas bancarias
+• Cambia entre billeteras al instante
+
+ANALISIS POTENTES
+• Graficos hermosos e informes visuales
+• Tendencias de gastos por categoria
+• Resumenes mensuales y semanales
+• Exporta a CSV/Excel
+
+PRESUPUESTOS Y METAS
+• Establece limites de gastos por categoria
+• Rastrea metas de ahorro visualmente
+• Recordatorios y notificaciones inteligentes
+
+SINCRONIZACION EN LA NUBE
+• Sincronizacion perfecta en todos los dispositivos
+• Funciona sin conexion, sincroniza cuando hay conexion
+• Respaldo automatico seguro
+
+DISENO HERMOSO
+• Interfaz Material Design moderna
+• Soporte de modo oscuro
+• Temas e iconos personalizables
+
+PRIVACIDAD PRIMERO
+• Cifrado de extremo a extremo
+• Modo offline completo
+
+PLANES PLUS Y PRO
+• Experiencia sin anuncios
+• Modelos de IA avanzados
+• Soporte prioritario
+• Historial completo de analisis
+
+Preguntas? help@bexly.app
+
+Descarga Bexly — toma el control de tu dinero!","Assuma o controle das suas financas com Bexly — o rastreador de despesas com IA que facilita o orcamento. Acompanhe gastos, gerencie orcamentos e alcance suas metas financeiras.
+
+RECURSOS PRINCIPAIS
+
+RASTREAMENTO INTELIGENTE DE DESPESAS
+• Entrada rapida com teclado personalizado
+• Categorizacao automatica com IA economiza tempo
+• Acompanhe receitas e despesas facilmente
+• Gerencie transacoes recorrentes
+• Anexe fotos de recibos
+
+RECURSOS DE IA
+• Converse com IA sobre suas financas
+• Categorize transacoes automaticamente
+• Obtenha analises personalizadas de gastos
+• Registre despesas via bots do Telegram e Messenger
+
+SUPORTE MULTI-CARTEIRA
+• Carteiras ilimitadas para diferentes propositos
+• 150+ moedas com taxas em tempo real
+• Acompanhe dinheiro, cartoes e contas bancarias
+• Alterne entre carteiras instantaneamente
+
+ANALISES PODEROSAS
+• Graficos bonitos e relatorios visuais
+• Tendencias de gastos por categoria
+• Resumos mensais e semanais
+• Exporte para CSV/Excel
+
+ORCAMENTOS E METAS
+• Defina limites de gastos por categoria
+• Acompanhe metas de economia visualmente
+• Lembretes e notificacoes inteligentes
+
+SINCRONIZACAO NA NUVEM
+• Sincronizacao perfeita em todos os dispositivos
+• Funciona offline, sincroniza quando online
+• Backup automatico seguro
+
+DESIGN BONITO
+• Interface Material Design moderna
+• Suporte ao modo escuro
+• Temas e icones personalizaveis
+
+PRIVACIDADE EM PRIMEIRO LUGAR
+• Criptografia de ponta a ponta
+• Modo offline completo
+
+PLANOS PLUS E PRO
+• Experiencia sem anuncios
+• Modelos de IA avancados
+• Suporte prioritario
+• Historico completo de analises
+
+Duvidas? help@bexly.app
+
+Baixe Bexly — assuma o controle do seu dinheiro!","Vozmite pod kontrol svoi finansy s Bexly — II-trekerom raskhodov, kotoryy delaet byudzhetirovanie prostym. Otslezhivayte raskhody, upravlyayte byudzhetami i dostigayte finansovykh tseley.
+
+OSNOVNYE FUNKTSII
+
+UMNYY UCHYOT RASKHODOV
+• Bystryy vvod s polzovatelskoy klaviaturoy
+• II-avtokategorizatsiya ekonomit vremya
+• Legko otslezhivayte dokhody i raskhody
+• Upravlyayte povtoryayushchimisya tranzaktsiyami
+• Prikreplyayte foto chekov
+
+FUNKTSII II
+• Obshchaytes s II o vashikh finansakh
+• Mgnovennaya avtokategorizatsiya tranzaktsiy
+• Poluchayte personalnye analiticheskie dannye
+• Zapisyvayte raskhody cherez Telegram i Messenger botov
+
+MULTI-KOSHELYOK
+• Neogranichennye koshelki dlya raznykh tseley
+• 150+ valyut s kursami v realnom vremeni
+• Otslezhivayte nalichnye, karty i bankovskie scheta
+• Mgnovenno pereklyuchaysya mezhdu koshelkami
+
+MOSHCHNAYA ANALITIKA
+• Krasivye grafiki i vizualnye otchyoty
+• Trendy raskhodov po kategoriyam
+• Ezhemesyachnye i ezhenedelnye svodki
+• Eksport v CSV/Excel
+
+BYUDZHETY I TSELI
+• Ustanavlivayte limity po kategoriyam
+• Vizualno otslezhivayte tseli nakopleniya
+• Umnye napominaniya i uvedomleniya
+
+OBLACHNAYA SINKHRONIZATSIYA
+• Besshovnaya sinkhronizatsiya na vsekh ustroystvakh
+• Rabotaet oflayn, sinkhroniziruyetsya onlayn
+• Bezopasnoe avtomaticheskoe rezervnoe kopirovanie
+
+KRASIVYY DIZAYN
+• Sovremennyy Material Design
+• Podderzhka tyomnogo rezhima
+• Nastraivaemye temy i ikonki
+
+KONFIDENTSIALNOST
+• Skvoznoe shifrovanie
+• Polnyy oflayn-rezhim
+
+PLANY PLUS I PRO
+• Bez reklamy
+• Prodvinutye modeli II
+• Prioritetnaya podderzhka
+• Polnaya istoriya analitiki
+
+Voprosy? help@bexly.app
+
+Skaychayte Bexly — vozmite pod kontrol svoi dengi!","Neem controle over je financien met Bexly — de AI-uitgaventracker die budgetteren moeiteloos maakt. Volg uitgaven, beheer budgetten en bereik je financiele doelen.
+
+BELANGRIJKSTE FUNCTIES
+
+SLIMME UITGAVENTRACKING
+• Snelle invoer met aangepast toetsenbord
+• AI-autocategorisatie bespaart tijd
+• Volg inkomsten & uitgaven moeiteloos
+• Beheer terugkerende transacties
+• Voeg bonnetjesfoto's toe
+
+AI-FUNCTIES
+• Chat met AI over je financien
+• Categoriseer transacties automatisch direct
+• Krijg gepersonaliseerde uitgaveninzichten
+• Log uitgaven via Telegram & Messenger bots
+
+MULTI-WALLET ONDERSTEUNING
+• Onbeperkte wallets voor verschillende doeleinden
+• 150+ valuta's met realtime koersen
+• Volg contant geld, kaarten & bankrekeningen
+• Wissel direct tussen wallets
+
+KRACHTIGE ANALYSES
+• Mooie grafieken & visuele rapporten
+• Uitgaventrends per categorie
+• Maandelijkse & wekelijkse samenvattingen
+• Exporteer naar CSV/Excel
+
+BUDGETTEN & DOELEN
+• Stel uitgavenlimieten per categorie in
+• Volg spaardoelen visueel
+• Slimme herinneringen & meldingen
+
+CLOUD SYNC
+• Naadloze synchronisatie op alle apparaten
+• Werkt offline, synchroniseert wanneer online
+• Veilige automatische back-up
+
+MOOI ONTWERP
+• Modern Material Design
+• Ondersteuning voor donkere modus
+• Aanpasbare thema's & iconen
+
+PRIVACY EERST
+• End-to-end encryptie
+• Volledige offline modus
+
+PLUS & PRO PLANNEN
+• Advertentievrije ervaring
+• Geavanceerde AI-modellen
+• Prioriteitsondersteuning
+• Volledige analysegeschiedenis
+
+Vragen? help@bexly.app
+
+Download Bexly — neem controle over je geld!","Kendalikan keuangan Anda dengan Bexly — pelacak pengeluaran bertenaga AI yang membuat penganggaran mudah. Lacak pengeluaran, kelola anggaran, dan capai tujuan keuangan Anda.
+
+FITUR UTAMA
+
+PELACAKAN PENGELUARAN CERDAS
+• Entri cepat dengan keyboard kustom
+• Kategorisasi otomatis AI menghemat waktu
+• Lacak pendapatan & pengeluaran dengan mudah
+• Kelola transaksi berulang
+• Lampirkan foto struk
+
+FITUR AI
+• Chat dengan AI tentang keuangan Anda
+• Kategorisasi transaksi secara otomatis
+• Dapatkan wawasan pengeluaran yang dipersonalisasi
+• Catat pengeluaran via bot Telegram & Messenger
+
+DUKUNGAN MULTI-DOMPET
+• Dompet tak terbatas untuk berbagai tujuan
+• 150+ mata uang dengan kurs real-time
+• Lacak uang tunai, kartu & rekening bank
+• Beralih antar dompet secara instan
+
+ANALITIK KUAT
+• Grafik indah & laporan visual
+• Tren pengeluaran berdasarkan kategori
+• Ringkasan bulanan & mingguan
+• Ekspor ke CSV/Excel
+
+ANGGARAN & TUJUAN
+• Tetapkan batas pengeluaran per kategori
+• Lacak tujuan tabungan secara visual
+• Pengingat & notifikasi cerdas
+
+SINKRONISASI CLOUD
+• Sinkronisasi mulus di semua perangkat
+• Bekerja offline, sinkron saat online
+• Backup otomatis yang aman
+
+DESAIN INDAH
+• Antarmuka Material Design modern
+• Dukungan mode gelap
+• Tema & ikon yang dapat disesuaikan
+
+PRIVASI UTAMA
+• Enkripsi end-to-end
+• Mode offline penuh
+
+PAKET PLUS & PRO
+• Pengalaman bebas iklan
+• Model AI canggih
+• Dukungan prioritas
+• Riwayat analitik lengkap
+
+Pertanyaan? help@bexly.app
+
+Unduh Bexly — kendalikan uang Anda!","Prenez le controle de vos finances avec Bexly — le suivi des depenses alimente par l'IA qui rend la budgetisation facile. Suivez vos depenses, gerez vos budgets et atteignez vos objectifs financiers.
+
+FONCTIONNALITES PRINCIPALES
+
+SUIVI INTELLIGENT DES DEPENSES
+• Saisie rapide avec clavier personnalise
+• Categorisation automatique par IA gain de temps
+• Suivez revenus et depenses facilement
+• Gerez les transactions recurrentes
+• Joignez des photos de recus
+
+FONCTIONNALITES IA
+• Discutez avec l'IA de vos finances
+• Categorisez les transactions automatiquement
+• Obtenez des analyses de depenses personnalisees
+• Enregistrez les depenses via les bots Telegram et Messenger
+
+SUPPORT MULTI-PORTEFEUILLE
+• Portefeuilles illimites pour differents usages
+• 150+ devises avec taux en temps reel
+• Suivez especes, cartes et comptes bancaires
+• Changez de portefeuille instantanement
+
+ANALYSES PUISSANTES
+• Beaux graphiques et rapports visuels
+• Tendances de depenses par categorie
+• Resumes mensuels et hebdomadaires
+• Exportez vers CSV/Excel
+
+BUDGETS ET OBJECTIFS
+• Fixez des limites de depenses par categorie
+• Suivez visuellement les objectifs d'epargne
+• Rappels et notifications intelligents
+
+SYNCHRONISATION CLOUD
+• Synchronisation transparente sur tous les appareils
+• Fonctionne hors ligne, synchronise en ligne
+• Sauvegarde automatique securisee
+
+BEAU DESIGN
+• Interface Material Design moderne
+• Support du mode sombre
+• Themes et icones personnalisables
+
+CONFIDENTIALITE D'ABORD
+• Chiffrement de bout en bout
+• Mode hors ligne complet
+
+PLANS PLUS ET PRO
+• Experience sans publicite
+• Modeles IA avances
+• Support prioritaire
+• Historique complet des analyses
+
+Questions? help@bexly.app
+
+Telechargez Bexly — prenez le controle de votre argent!","Prendi il controllo delle tue finanze con Bexly — il tracker di spese con IA che rende il budgeting semplice. Traccia le spese, gestisci i budget e raggiungi i tuoi obiettivi finanziari.
+
+FUNZIONALITA PRINCIPALI
+
+TRACCIAMENTO SPESE INTELLIGENTE
+• Inserimento rapido con tastiera personalizzata
+• Categorizzazione automatica IA risparmia tempo
+• Traccia entrate e uscite facilmente
+• Gestisci transazioni ricorrenti
+• Allega foto degli scontrini
+
+FUNZIONALITA IA
+• Chatta con l'IA sulle tue finanze
+• Categorizza le transazioni automaticamente
+• Ottieni analisi personalizzate delle spese
+• Registra spese tramite bot Telegram e Messenger
+
+SUPPORTO MULTI-PORTAFOGLIO
+• Portafogli illimitati per scopi diversi
+• 150+ valute con tassi in tempo reale
+• Traccia contanti, carte e conti bancari
+• Cambia portafoglio istantaneamente
+
+ANALISI POTENTI
+• Bellissimi grafici e report visivi
+• Tendenze di spesa per categoria
+• Riepiloghi mensili e settimanali
+• Esporta in CSV/Excel
+
+BUDGET E OBIETTIVI
+• Imposta limiti di spesa per categoria
+• Traccia visivamente gli obiettivi di risparmio
+• Promemoria e notifiche intelligenti
+
+SINCRONIZZAZIONE CLOUD
+• Sincronizzazione perfetta su tutti i dispositivi
+• Funziona offline, sincronizza quando online
+• Backup automatico sicuro
+
+DESIGN BELLISSIMO
+• Interfaccia Material Design moderna
+• Supporto modalita scura
+• Temi e icone personalizzabili
+
+PRIVACY PRIMA DI TUTTO
+• Crittografia end-to-end
+• Modalita offline completa
+
+PIANI PLUS E PRO
+• Esperienza senza pubblicita
+• Modelli IA avanzati
+• Supporto prioritario
+• Storico completo delle analisi
+
+Domande? help@bexly.app
+
+Scarica Bexly — prendi il controllo dei tuoi soldi!","Przejmij kontrole nad swoimi finansami z Bexly — narzedziem do sledzenia wydatkow z AI, ktore sprawia, ze budzetowanie jest latwe. Sledz wydatki, zarzadzaj budzetami i osiagaj cele finansowe.
+
+GLOWNE FUNKCJE
+
+INTELIGENTNE SLEDZENIE WYDATKOW
+• Szybkie wprowadzanie z niestandardowa klawiatura
+• Automatyczna kategoryzacja AI oszczedza czas
+• Latwo sledz przychody i wydatki
+• Zarzadzaj transakcjami cyklicznymi
+• Dolaczaj zdjecia paragonow
+
+FUNKCJE AI
+• Rozmawiaj z AI o swoich finansach
+• Automatycznie kategoryzuj transakcje
+• Uzyskaj spersonalizowane analizy wydatkow
+• Rejestruj wydatki przez boty Telegram i Messenger
+
+OBSLUGA WIELU PORTFELI
+• Nieograniczone portfele do roznych celow
+• 150+ walut z kursami w czasie rzeczywistym
+• Sledz gotowke, karty i konta bankowe
+• Natychmiast przelaczaj miedzy portfelami
+
+POTEZNE ANALIZY
+• Piekne wykresy i raporty wizualne
+• Trendy wydatkow wedlug kategorii
+• Podsumowania miesieczne i tygodniowe
+• Eksport do CSV/Excel
+
+BUDZETY I CELE
+• Ustaw limity wydatkow wedlug kategorii
+• Wizualnie sledz cele oszczednosciowe
+• Inteligentne przypomnienia i powiadomienia
+
+SYNCHRONIZACJA W CHMURZE
+• Bezproblemowa synchronizacja na wszystkich urzadzeniach
+• Dziala offline, synchronizuje gdy online
+• Bezpieczna automatyczna kopia zapasowa
+
+PIEKNY DESIGN
+• Nowoczesny interfejs Material Design
+• Obsluga trybu ciemnego
+• Konfigurowalne motywy i ikony
+
+PRYWATNOSC PRZEDE WSZYSTKIM
+• Szyfrowanie end-to-end
+• Pelny tryb offline
+
+PLANY PLUS I PRO
+• Bez reklam
+• Zaawansowane modele AI
+• Priorytetowe wsparcie
+• Pelna historia analiz
+
+Pytania? help@bexly.app
+
+Pobierz Bexly — przejmij kontrole nad swoimi pieniedzmi!"
