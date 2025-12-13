@@ -53,9 +53,13 @@ flutter test
 
 ### Building
 ```bash
-# Android
+# Android (build locally on Windows)
 flutter build apk              # APK for direct installation
 flutter build appbundle        # For Play Store submission
+
+# iOS - MUST use GitHub Actions (cannot build on Windows!)
+# Merge dev to main and push → GitHub Actions auto-builds iOS
+git checkout main && git merge dev && git push bexly main
 
 # Other platforms (planned)
 flutter build web              # Web version
@@ -68,6 +72,12 @@ flutter build windows          # Windows desktop
 - File output: `build/app/outputs/bundle/release/app-release.aab`
 - KHÔNG cần build lại nhiều lần khi thấy warning này
 - Kiểm tra file đã tồn tại bằng: `dir build\app\outputs\bundle\release`
+
+**IMPORTANT: iOS Build Process**
+- **KHÔNG THỂ build iOS trên Windows** - yêu cầu macOS
+- Project dùng **GitHub Actions** để build iOS tự động
+- Push code lên GitHub → Actions tự động build
+- Check build status: https://github.com/BexlyApp/Bexly/actions
 
 ### App Icons
 ```bash
