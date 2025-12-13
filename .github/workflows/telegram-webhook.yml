@@ -1,0 +1,75 @@
+name: Telegram Webhook Health Check
+
+on:
+  # Run every 6 hours to check webhook health
+  schedule:
+    - cron: '0 */6 * * *'
+  # Manual trigger
+  workflow_dispatch:
+  # After functions deploy (if you add a deploy workflow later)
+  # workflow_run:
+  #   workflows: ["Deploy Functions"]
+  #   types: [completed]
+
+jobs:
+  check-and-set-webhook:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check current webhook status
+        id: check
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          WEBHOOK_INFO=$(curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo")
+          echo "Current webhook info: $WEBHOOK_INFO"
+
+          CURRENT_URL=$(echo $WEBHOOK_INFO | jq -r '.result.url')
+          EXPECTED_URL="https://asia-southeast1-bexly-app.cloudfunctions.net/telegramWebhook"
+
+          echo "current_url=$CURRENT_URL" >> $GITHUB_OUTPUT
+          echo "expected_url=$EXPECTED_URL" >> $GITHUB_OUTPUT
+
+          if [ "$CURRENT_URL" = "$EXPECTED_URL" ]; then
+            echo "✅ Webhook URL is correct"
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Webhook URL mismatch!"
+            echo "  Current:  $CURRENT_URL"
+            echo "  Expected: $EXPECTED_URL"
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set webhook if needed
+        if: steps.check.outputs.needs_update == 'true'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          EXPECTED_URL="${{ steps.check.outputs.expected_url }}"
+
+          echo "Setting webhook to: $EXPECTED_URL"
+          RESULT=$(curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=${EXPECTED_URL}")
+          echo "Result: $RESULT"
+
+          # Verify it was set correctly
+          VERIFY=$(curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo")
+          VERIFIED_URL=$(echo $VERIFY | jq -r '.result.url')
+
+          if [ "$VERIFIED_URL" = "$EXPECTED_URL" ]; then
+            echo "✅ Webhook successfully restored!"
+          else
+            echo "❌ Failed to set webhook"
+            exit 1
+          fi
+
+      - name: Send notification if webhook was restored
+        if: steps.check.outputs.needs_update == 'true'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ADMIN_CHAT_ID: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+        run: |
+          # Only send if admin chat ID is configured
+          if [ -n "$TELEGRAM_ADMIN_CHAT_ID" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_ADMIN_CHAT_ID}" \
+              -d "text=⚠️ Bexly Bot webhook was missing and has been restored automatically."
+          fi
