@@ -94,7 +94,7 @@ class SmsPermissionBottomSheet extends StatelessWidget {
 
               _buildFeatureItem(
                 context,
-                icon: HugeIcons.strokeRoundedComputerProtection,
+                icon: HugeIcons.strokeRoundedSmartPhone01,
                 title: 'Processed Locally',
                 description: 'All SMS data stays on your device',
               ),
@@ -282,7 +282,7 @@ class NotificationPermissionBottomSheet extends StatelessWidget {
 
               _buildFeatureItem(
                 context,
-                icon: HugeIcons.strokeRoundedComputerProtection,
+                icon: HugeIcons.strokeRoundedSmartPhone01,
                 title: 'Processed Locally',
                 description: 'All notification data stays on your device',
               ),
