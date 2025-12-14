@@ -103,11 +103,18 @@ class _AutoTransactionSettingsScreenState
       // Clear the flag first
       await prefs.remove('pending_notification_permission_request');
 
+      // Check if widget is still mounted before accessing ref
+      if (!mounted) return;
+
       // Check if permission was granted while we were away
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.initialize();
 
       final granted = await autoService.hasNotificationPermission();
+
+      // Check mounted again after async operation
+      if (!mounted) return;
+
       if (granted) {
         await autoService.setNotificationEnabled(true);
         ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(true);
@@ -124,13 +131,20 @@ class _AutoTransactionSettingsScreenState
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('pending_notification_permission_request');
 
+    // Check if widget is still mounted before accessing ref
+    if (!mounted) return;
+
     final autoService = ref.read(autoTransactionServiceProvider);
     await autoService.initialize();
 
     final granted = await autoService.hasNotificationPermission();
+
+    // Check mounted again after async operation
+    if (!mounted) return;
+
     if (granted) {
       await autoService.setNotificationEnabled(true);
-      ref.read(autoTransactionNotificationEnabledProvider.notifier).state = true;
+      ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(true);
       await _saveSetting('auto_transaction_notification_enabled', true);
       Log.d('Notification permission granted after resume', label: 'AutoTransaction');
     } else {
