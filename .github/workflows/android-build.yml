@@ -33,16 +33,22 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: |
-          # Decode keystore
+          # Decode keystore to android/app folder
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
 
-          # Create key.properties
-          cat > android/key.properties << EOF
+          # Create keystore.properties (NOT key.properties) - this is what build.gradle reads
+          cat > android/keystore.properties << EOF
           storePassword=$ANDROID_STORE_PASSWORD
           keyPassword=$ANDROID_KEY_PASSWORD
           keyAlias=$ANDROID_KEY_ALIAS
-          storeFile=upload-keystore.jks
+          storeFile=app/upload-keystore.jks
           EOF
+
+          # Debug: verify files exist
+          echo "Keystore file:"
+          ls -la android/app/upload-keystore.jks
+          echo "Properties file:"
+          cat android/keystore.properties
 
       - name: Setup google-services.json
         env:
