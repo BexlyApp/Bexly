@@ -21,7 +21,12 @@ jobs:
           haskell: true
           large-packages: true
           docker-images: true
-          swap-storage: true
+          swap-storage: false
+
+      - name: Setup swap space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 10
 
       - name: Checkout code
         uses: actions/checkout@v4
