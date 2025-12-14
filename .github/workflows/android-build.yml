@@ -37,11 +37,12 @@ jobs:
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
 
           # Create keystore.properties (NOT key.properties) - this is what build.gradle reads
+          # storeFile path is relative to where build.gradle reads it (android folder)
           cat > android/keystore.properties << EOF
           storePassword=$ANDROID_STORE_PASSWORD
           keyPassword=$ANDROID_KEY_PASSWORD
           keyAlias=$ANDROID_KEY_ALIAS
-          storeFile=app/upload-keystore.jks
+          storeFile=upload-keystore.jks
           EOF
 
           # Debug: verify files exist
