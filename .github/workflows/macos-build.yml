@@ -1,0 +1,74 @@
+name: macOS Build
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Create .env file
+        run: |
+          # Create empty .env file for CI build
+          touch .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd macos
+          pod install --repo-update || true
+
+      - name: Build macOS app
+        run: flutter build macos --release
+
+      - name: Create DMG
+        run: |
+          # Install create-dmg
+          brew install create-dmg
+
+          # Create DMG from the app bundle
+          create-dmg \
+            --volname "Bexly" \
+            --volicon "macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "Bexly.app" 150 190 \
+            --hide-extension "Bexly.app" \
+            --app-drop-link 450 185 \
+            "build/macos/Bexly.dmg" \
+            "build/macos/Build/Products/Release/Bexly.app" || true
+
+          # If create-dmg fails, just zip the app
+          if [ ! -f "build/macos/Bexly.dmg" ]; then
+            cd build/macos/Build/Products/Release
+            zip -r ../../../Bexly-macos.zip Bexly.app
+          fi
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: |
+            build/macos/Bexly.dmg
+            build/macos/Bexly-macos.zip
+          retention-days: 30
+          if-no-files-found: warn
