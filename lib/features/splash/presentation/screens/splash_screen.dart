@@ -36,6 +36,17 @@ class SplashScreen extends HookConsumerWidget {
           Log.e('Failed to validate category integrity: $e', label: 'SplashScreen');
         }
 
+        // Clean up orphaned transactions (missing category or wallet)
+        try {
+          Log.d('Starting transaction integrity check...', label: 'SplashScreen');
+          final deletedCount = await ref.read(transactionIntegrityProvider.future);
+          if (deletedCount > 0) {
+            Log.w('Cleaned up $deletedCount orphaned transactions', label: 'SplashScreen');
+          }
+        } catch (e) {
+          Log.e('Failed to clean up orphaned transactions: $e', label: 'SplashScreen');
+        }
+
         // Create transactions for due recurring payments
         try {
           final recurringService = ref.read(recurringChargeServiceProvider);

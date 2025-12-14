@@ -49,6 +49,51 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Delete orphaned transactions (transactions with missing category or wallet)
+  /// Returns the number of deleted transactions
+  Future<int> deleteOrphanedTransactions() async {
+    Log.i('🧹 Checking for orphaned transactions...', label: 'transaction');
+
+    // Find transactions with missing categories
+    final missingCategoryQuery = customSelect(
+      'SELECT id FROM transactions WHERE category_id NOT IN (SELECT id FROM categories)',
+      readsFrom: {transactions},
+    );
+    final missingCategoryRows = await missingCategoryQuery.get();
+    final missingCategoryIds =
+        missingCategoryRows.map((row) => row.read<int>('id')).toList();
+
+    // Find transactions with missing wallets
+    final missingWalletQuery = customSelect(
+      'SELECT id FROM transactions WHERE wallet_id NOT IN (SELECT id FROM wallets)',
+      readsFrom: {transactions},
+    );
+    final missingWalletRows = await missingWalletQuery.get();
+    final missingWalletIds =
+        missingWalletRows.map((row) => row.read<int>('id')).toList();
+
+    // Combine unique IDs
+    final orphanedIds = {...missingCategoryIds, ...missingWalletIds}.toList();
+
+    if (orphanedIds.isEmpty) {
+      Log.i('✅ No orphaned transactions found', label: 'transaction');
+      return 0;
+    }
+
+    // Delete orphaned transactions
+    Log.w(
+      '⚠️ Found ${orphanedIds.length} orphaned transactions, deleting...',
+      label: 'transaction',
+    );
+
+    final deleted = await (delete(transactions)
+          ..where((t) => t.id.isIn(orphanedIds)))
+        .go();
+
+    Log.i('✅ Deleted $deleted orphaned transactions', label: 'transaction');
+    return deleted;
+  }
+
   /// Streams all transactions; logs each emission
   Future<List<Transaction>> getAllTransactions() {
     Log.d('Subscribing to getAllTransactions()', label: 'transaction');
