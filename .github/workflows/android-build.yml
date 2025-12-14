@@ -38,12 +38,10 @@ jobs:
 
           # Create keystore.properties (NOT key.properties) - this is what build.gradle reads
           # storeFile path is relative to where build.gradle reads it (android folder)
-          cat > android/keystore.properties << EOF
-          storePassword=$ANDROID_STORE_PASSWORD
-          keyPassword=$ANDROID_KEY_PASSWORD
-          keyAlias=$ANDROID_KEY_ALIAS
-          storeFile=upload-keystore.jks
-          EOF
+          echo "storePassword=$ANDROID_STORE_PASSWORD" > android/keystore.properties
+          echo "keyPassword=$ANDROID_KEY_PASSWORD" >> android/keystore.properties
+          echo "keyAlias=$ANDROID_KEY_ALIAS" >> android/keystore.properties
+          echo "storeFile=upload-keystore.jks" >> android/keystore.properties
 
           # Debug: verify files exist
           echo "Keystore file:"
