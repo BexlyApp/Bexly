@@ -477,12 +477,14 @@ class LoginScreen extends HookConsumerWidget {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                   Icon(
                     Icons.account_balance_wallet,
                     size: 80,
@@ -725,7 +727,8 @@ class LoginScreen extends HookConsumerWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
