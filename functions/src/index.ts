@@ -2117,6 +2117,60 @@ async function convertCurrency(
   return { convertedAmount, rate };
 }
 
+// Health check endpoint for AI service monitoring
+// Used by Upptime to verify AI is responding
+export const aiHealthCheck = onRequest(
+  {
+    secrets: [geminiApiKey, openaiApiKey],
+    timeoutSeconds: 30,
+  },
+  async (req, res) => {
+    const startTime = Date.now();
+
+    try {
+      // Simple ping to AI
+      const prompt = "Reply with exactly: OK";
+      let response: string | null = null;
+      let provider = AI_PROVIDER;
+
+      if (provider === "gemini") {
+        response = await parseWithGemini("ping", prompt);
+      } else if (provider === "openai") {
+        response = await parseWithOpenAI("ping", prompt);
+      }
+
+      const latency = Date.now() - startTime;
+
+      if (response && response.toLowerCase().includes("ok")) {
+        res.status(200).json({
+          status: "healthy",
+          provider: provider,
+          latency: `${latency}ms`,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        res.status(503).json({
+          status: "unhealthy",
+          provider: provider,
+          error: "AI did not respond correctly",
+          response: response,
+          latency: `${latency}ms`,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      const latency = Date.now() - startTime;
+      console.error("AI health check failed:", error);
+      res.status(503).json({
+        status: "unhealthy",
+        error: error instanceof Error ? error.message : "Unknown error",
+        latency: `${latency}ms`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+);
+
 // Telegram webhook endpoint (2nd gen)
 export const telegramWebhook = onRequest(
   {
