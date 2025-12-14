@@ -80,13 +80,14 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Watches all transactions with their associated category and wallet details.
+  /// Uses leftOuterJoin to handle cases where category or wallet may be missing.
   Stream<List<TransactionModel>> watchAllTransactionsWithDetails() {
     final query = select(transactions).join([
-      innerJoin(categories, categories.id.equalsExp(transactions.categoryId)),
-      innerJoin(
+      leftOuterJoin(categories, categories.id.equalsExp(transactions.categoryId)),
+      leftOuterJoin(
         db.wallets,
         db.wallets.id.equalsExp(transactions.walletId),
-      ), // Use db.wallets
+      ),
     ])
       ..orderBy([
         // Sort by date descending (newest first), then by id descending
@@ -98,8 +99,19 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       final result = <TransactionModel>[];
       for (final row in rows) {
         final transactionData = row.readTable(transactions);
-        final categoryData = row.readTable(categories);
-        final walletData = row.readTable(db.wallets); // Use db.wallets
+        final categoryData = row.readTableOrNull(categories);
+        final walletData = row.readTableOrNull(db.wallets);
+
+        // Skip transactions with missing category or wallet (orphaned data)
+        if (categoryData == null || walletData == null) {
+          Log.w(
+            'Skipping orphaned transaction ID: ${transactionData.id} '
+            '(category: ${categoryData != null}, wallet: ${walletData != null})',
+            label: 'transaction',
+          );
+          continue;
+        }
+
         result.add(
           await _mapToTransactionModel(
             transactionData,
@@ -117,12 +129,12 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     int walletId,
   ) {
     Log.d(
-      'ubscribing to watchTransactionsByWalletIdWithDetails($walletId)',
+      'Subscribing to watchTransactionsByWalletIdWithDetails($walletId)',
       label: 'transaction',
     );
     final query = select(transactions).join([
-      innerJoin(categories, categories.id.equalsExp(transactions.categoryId)),
-      innerJoin(db.wallets, db.wallets.id.equalsExp(transactions.walletId)),
+      leftOuterJoin(categories, categories.id.equalsExp(transactions.categoryId)),
+      leftOuterJoin(db.wallets, db.wallets.id.equalsExp(transactions.walletId)),
     ])
       ..where(transactions.walletId.equals(walletId))
       ..orderBy([
@@ -135,8 +147,13 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       final result = <TransactionModel>[];
       for (final row in rows) {
         final transactionData = row.readTable(transactions);
-        final categoryData = row.readTable(categories);
-        final walletData = row.readTable(db.wallets);
+        final categoryData = row.readTableOrNull(categories);
+        final walletData = row.readTableOrNull(db.wallets);
+
+        if (categoryData == null || walletData == null) {
+          continue;
+        }
+
         result.add(
           await _mapToTransactionModel(
             transactionData,
@@ -156,8 +173,8 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       label: 'transaction',
     );
     final query = select(transactions).join([
-      innerJoin(categories, categories.id.equalsExp(transactions.categoryId)),
-      innerJoin(db.wallets, db.wallets.id.equalsExp(transactions.walletId)),
+      leftOuterJoin(categories, categories.id.equalsExp(transactions.categoryId)),
+      leftOuterJoin(db.wallets, db.wallets.id.equalsExp(transactions.walletId)),
     ])
       ..where(transactions.recurringId.equals(recurringId))
       ..orderBy([
@@ -170,8 +187,13 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       final result = <TransactionModel>[];
       for (final row in rows) {
         final transactionData = row.readTable(transactions);
-        final categoryData = row.readTable(categories);
-        final walletData = row.readTable(db.wallets);
+        final categoryData = row.readTableOrNull(categories);
+        final walletData = row.readTableOrNull(db.wallets);
+
+        if (categoryData == null || walletData == null) {
+          continue;
+        }
+
         result.add(
           await _mapToTransactionModel(
             transactionData,
@@ -194,11 +216,11 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     // We need to join with Categories and Wallets to get the full TransactionModel
     final query =
         select(transactions).join([
-            innerJoin(
+            leftOuterJoin(
               categories,
               categories.id.equalsExp(transactions.categoryId),
             ),
-            innerJoin(
+            leftOuterJoin(
               db.wallets,
               db.wallets.id.equalsExp(transactions.walletId),
             ),
@@ -214,8 +236,13 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     final result = <TransactionModel>[];
     for (final row in rows) {
       final transactionData = row.readTable(transactions);
-      final categoryData = row.readTable(categories);
-      final walletData = row.readTable(db.wallets);
+      final categoryData = row.readTableOrNull(categories);
+      final walletData = row.readTableOrNull(db.wallets);
+
+      if (categoryData == null || walletData == null) {
+        continue;
+      }
+
       result.add(
         await _mapToTransactionModel(transactionData, categoryData, walletData),
       );
@@ -412,8 +439,8 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     TransactionFilter? filter,
   }) {
     final query = select(transactions).join([
-      innerJoin(categories, categories.id.equalsExp(transactions.categoryId)),
-      innerJoin(db.wallets, db.wallets.id.equalsExp(transactions.walletId)),
+      leftOuterJoin(categories, categories.id.equalsExp(transactions.categoryId)),
+      leftOuterJoin(db.wallets, db.wallets.id.equalsExp(transactions.walletId)),
     ])
       ..where(transactions.walletId.equals(walletId))
       ..orderBy([
@@ -461,8 +488,13 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       final result = <TransactionModel>[];
       for (final row in rows) {
         final transactionData = row.readTable(transactions);
-        final categoryData = row.readTable(categories);
-        final walletData = row.readTable(db.wallets);
+        final categoryData = row.readTableOrNull(categories);
+        final walletData = row.readTableOrNull(db.wallets);
+
+        if (categoryData == null || walletData == null) {
+          continue;
+        }
+
         result.add(
           await _mapToTransactionModel(
             transactionData,
