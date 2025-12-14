@@ -24,6 +24,13 @@ final categoryIntegrityProvider = FutureProvider<bool>((ref) async {
   return await CategoryIntegrityService.validateAndRepair(db);
 });
 
+/// Transaction integrity provider
+/// Cleans up orphaned transactions (missing category or wallet) on first access
+final transactionIntegrityProvider = FutureProvider<int>((ref) async {
+  final db = ref.watch(databaseProvider);
+  return await db.transactionDao.deleteOrphanedTransactions();
+});
+
 /// Wallet DAO provider with sync support
 /// Use this instead of db.walletDao when you need sync functionality
 final walletDaoProvider = Provider<WalletDao>((ref) {
