@@ -45,6 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Export Compliance - App uses standard HTTPS/TLS only -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<!-- Privacy Usage Descriptions -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Bexly needs access to your photo library to let you select profile pictures and attach receipt images to transactions.</string>
