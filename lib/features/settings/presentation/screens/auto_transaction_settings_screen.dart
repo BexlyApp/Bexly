@@ -16,7 +16,6 @@ import 'package:bexly/features/settings/presentation/widgets/sms_scan_results_di
 import 'package:bexly/features/settings/presentation/widgets/sms_permission_dialog.dart';
 import 'package:bexly/features/settings/presentation/widgets/sms_date_range_bottom_sheet.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
-import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 
 /// Auto Transaction settings notifiers
 class AutoTransactionSmsEnabledNotifier extends Notifier<bool> {
@@ -185,7 +184,7 @@ class _AutoTransactionSettingsScreenState
         Log.w('SMS permission denied', label: 'AutoTransaction');
         // Show dialog explaining why permission is needed
         if (mounted) {
-          _showPermissionDeniedDialog(context.l10n.autoTransactionSmsTitle);
+          _showPermissionDeniedBottomSheet(context.l10n.autoTransactionSmsTitle);
         }
         return;
       }
@@ -203,27 +202,14 @@ class _AutoTransactionSettingsScreenState
     await _saveSetting('auto_transaction_sms_enabled', value);
   }
 
-  void _showPermissionDeniedDialog(String feature) {
-    showDialog(
+  Future<void> _showPermissionDeniedBottomSheet(String feature) async {
+    final shouldOpenSettings = await PermissionDeniedBottomSheet.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.autoTransaction),
-        content: Text('Permission required for $feature. Please enable it in Settings.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              openAppSettings();
-            },
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
+      feature: feature,
     );
+    if (shouldOpenSettings == true) {
+      openAppSettings();
+    }
   }
 
   Future<void> _toggleNotificationSetting(bool value) async {
@@ -298,7 +284,7 @@ class _AutoTransactionSettingsScreenState
     final status = await Permission.sms.request();
     if (!status.isGranted) {
       if (mounted) {
-        _showPermissionDeniedDialog(context.l10n.autoTransactionSmsTitle);
+        _showPermissionDeniedBottomSheet(context.l10n.autoTransactionSmsTitle);
       }
       return;
     }
@@ -309,19 +295,16 @@ class _AutoTransactionSettingsScreenState
       _scanTotal = 0;
     });
 
-    // Show scanning dialog
+    // Show scanning bottom sheet
     if (mounted) {
-      showDialog(
+      showModalBottomSheet(
         context: context,
-        barrierDismissible: false,
-        builder: (ctx) => StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return SmsScanningDialog(
-              current: _scanProgress,
-              total: _scanTotal,
-              status: context.l10n.autoTransactionScanning,
-            );
-          },
+        isDismissible: false,
+        enableDrag: false,
+        builder: (ctx) => SmsScanningBottomSheet(
+          current: _scanProgress,
+          total: _scanTotal,
+          status: context.l10n.autoTransactionScanning,
         ),
       );
     }
@@ -348,9 +331,9 @@ class _AutoTransactionSettingsScreenState
       setState(() => _isScanning = false);
 
       if (results.isEmpty) {
-        // Show no results dialog
+        // Show no results bottom sheet
         if (mounted) {
-          _showNoResultsDialog();
+          await NoResultsBottomSheet.show(context);
         }
         return;
       }
@@ -358,9 +341,9 @@ class _AutoTransactionSettingsScreenState
       // Get existing wallets
       final wallets = ref.read(allWalletsStreamProvider).value ?? [];
 
-      // Show results dialog
+      // Show results bottom sheet
       if (mounted) {
-        final selection = await SmsScanResultsDialog.show(
+        final selection = await SmsScanResultsBottomSheet.show(
           context: context,
           scanResults: results,
           existingWallets: wallets,
@@ -424,12 +407,13 @@ class _AutoTransactionSettingsScreenState
         walletsCreated++;
       }
 
-      // Show importing dialog
+      // Show importing bottom sheet
       if (mounted) {
-        showDialog(
+        showModalBottomSheet(
           context: context,
-          barrierDismissible: false,
-          builder: (ctx) => TransactionImportDialog(
+          isDismissible: false,
+          enableDrag: false,
+          builder: (ctx) => TransactionImportBottomSheet(
             current: 0,
             total: sender.messageCount,
             bankName: sender.bankName,
@@ -449,7 +433,7 @@ class _AutoTransactionSettingsScreenState
       totalImported += result.imported;
       totalDuplicates += result.duplicates;
 
-      // Close importing dialog
+      // Close importing bottom sheet
       if (mounted) {
         Navigator.of(context).pop();
       }
@@ -457,29 +441,13 @@ class _AutoTransactionSettingsScreenState
 
     // Show final results
     if (mounted) {
-      await ImportResultsDialog.show(
+      await ImportResultsBottomSheet.show(
         context: context,
         walletsCreated: walletsCreated,
         transactionsImported: totalImported,
         duplicatesSkipped: totalDuplicates,
       );
     }
-  }
-
-  void _showNoResultsDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.autoTransactionNoResults),
-        content: Text(context.l10n.autoTransactionNoResultsDescription),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(context.l10n.ok),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -702,7 +670,7 @@ class _AutoTransactionSettingsScreenState
                   icon: HugeIcons.strokeRoundedArrowRight01,
                   color: AppColors.neutral400,
                 ),
-                onTap: () => _showPendingNotificationsDialog(summary),
+                onTap: () => _showPendingNotificationsBottomSheet(summary),
               ),
               // Show preview of groups
               if (summary.groups.isNotEmpty)
@@ -742,15 +710,13 @@ class _AutoTransactionSettingsScreenState
     );
   }
 
-  Future<void> _showPendingNotificationsDialog(PendingNotificationSummary summary) async {
+  Future<void> _showPendingNotificationsBottomSheet(PendingNotificationSummary summary) async {
     final wallets = ref.read(allWalletsStreamProvider).value ?? [];
 
-    final result = await showDialog<Map<String, int?>>(
+    final result = await PendingNotificationsBottomSheet.show(
       context: context,
-      builder: (context) => _PendingNotificationsDialog(
-        summary: summary,
-        existingWallets: wallets,
-      ),
+      summary: summary,
+      existingWallets: wallets,
     );
 
     if (result != null && result.isNotEmpty) {
@@ -794,21 +760,11 @@ class _AutoTransactionSettingsScreenState
       return;
     }
 
-    // Show processing dialog
+    // Show processing bottom sheet
     if (mounted) {
-      showDialog(
+      ProcessingBottomSheet.show(
         context: context,
-        barrierDismissible: false,
-        builder: (ctx) => const AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: AppSpacing.spacing16),
-              Text('Processing pending notifications...'),
-            ],
-          ),
-        ),
+        message: 'Processing pending notifications...',
       );
     }
 
@@ -858,193 +814,6 @@ class _AutoTransactionSettingsScreenState
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Dialog to manage pending notifications
-class _PendingNotificationsDialog extends StatefulWidget {
-  final PendingNotificationSummary summary;
-  final List<WalletModel> existingWallets;
-
-  const _PendingNotificationsDialog({
-    required this.summary,
-    required this.existingWallets,
-  });
-
-  @override
-  State<_PendingNotificationsDialog> createState() => _PendingNotificationsDialogState();
-}
-
-class _PendingNotificationsDialogState extends State<_PendingNotificationsDialog> {
-  // mappingKey -> walletId (null = create new, 0 = ignore)
-  late Map<String, int?> _decisions;
-
-  @override
-  void initState() {
-    super.initState();
-    _decisions = {};
-    // Default: create new wallet for each group
-    for (final group in widget.summary.groups) {
-      _decisions[group.mappingKey] = group.existingWalletId; // Use existing if already mapped
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Row(
-        children: [
-          HugeIcon(
-            icon: HugeIcons.strokeRoundedNotificationBubble,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: AppSpacing.spacing12),
-          Expanded(
-            child: Text(
-              'Pending Notifications',
-              style: AppTextStyles.heading5,
-            ),
-          ),
-        ],
-      ),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${widget.summary.totalNotifications} transaction(s) from ${widget.summary.groups.length} source(s) are waiting to be processed.',
-              style: AppTextStyles.body4.copyWith(
-                color: AppColors.neutral500,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.spacing16),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: widget.summary.groups.length,
-                itemBuilder: (context, index) {
-                  final group = widget.summary.groups[index];
-                  return _buildGroupItem(group);
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.l10n.cancel),
-        ),
-        FilledButton(
-          onPressed: _decisions.values.any((v) => v != 0)
-              ? () => Navigator.of(context).pop(_decisions)
-              : null,
-          child: const Text('Process'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGroupItem(PendingNotificationGroup group) {
-    final decision = _decisions[group.mappingKey];
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.spacing8),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.spacing12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedBank,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.spacing12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        group.displayName,
-                        style: AppTextStyles.body3.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        '${group.notificationCount} transaction(s)',
-                        style: AppTextStyles.body4.copyWith(
-                          color: AppColors.neutral500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.spacing12),
-            // Action selector
-            DropdownButtonFormField<int?>(
-              initialValue: decision,
-              decoration: InputDecoration(
-                labelText: 'Action',
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.spacing12,
-                  vertical: AppSpacing.spacing8,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              items: [
-                const DropdownMenuItem<int?>(
-                  value: null,
-                  child: Row(
-                    children: [
-                      Icon(Icons.add, size: 18),
-                      SizedBox(width: AppSpacing.spacing8),
-                      Text('Create new wallet'),
-                    ],
-                  ),
-                ),
-                const DropdownMenuItem<int?>(
-                  value: 0,
-                  child: Row(
-                    children: [
-                      Icon(Icons.close, size: 18),
-                      SizedBox(width: AppSpacing.spacing8),
-                      Text('Ignore'),
-                    ],
-                  ),
-                ),
-                ...widget.existingWallets
-                    .where((wallet) => wallet.id != null)
-                    .map((wallet) => DropdownMenuItem<int?>(
-                          value: wallet.id!,
-                          child: Text(
-                            '${wallet.name} (${wallet.currency})',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        )),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _decisions[group.mappingKey] = value;
-                });
-              },
             ),
           ],
         ),
