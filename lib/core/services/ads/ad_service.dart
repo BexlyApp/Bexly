@@ -18,11 +18,11 @@ class AdUnitIds {
 
   // Production Ad Unit IDs
   static const String _prodBannerAndroid = 'ca-app-pub-7528798617302619/4566961191';
-  static const String _prodBannerIos = 'ca-app-pub-7528798617302619/4566961191'; // Same for now, create iOS-specific later
+  static const String _prodBannerIos = 'ca-app-pub-7528798617302619/2721720388';
   static const String _prodInterstitialAndroid = 'ca-app-pub-7528798617302619/4566961191'; // Create interstitial ad unit later
-  static const String _prodInterstitialIos = 'ca-app-pub-7528798617302619/4566961191'; // Create interstitial ad unit later
+  static const String _prodInterstitialIos = 'ca-app-pub-7528798617302619/2721720388'; // Using banner for now
   static const String _prodNativeAndroid = 'ca-app-pub-7528798617302619/4566961191'; // Create native ad unit later
-  static const String _prodNativeIos = 'ca-app-pub-7528798617302619/4566961191'; // Create native ad unit later
+  static const String _prodNativeIos = 'ca-app-pub-7528798617302619/2721720388'; // Using banner for now
 
   /// Get banner ad unit ID based on platform and environment
   static String get bannerAdUnitId {

@@ -53,9 +53,9 @@
 	<string>Bexly needs access to your photo library to let you select profile pictures and attach receipt images to transactions.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Bexly needs camera access to scan receipts and capture images for transactions.</string>
-	<!-- AdMob App ID -->
+	<!-- AdMob App ID for iOS -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-7528798617302619~2461324992</string>
+	<string>ca-app-pub-7528798617302619~5756089592</string>
 	<!-- Enable SKAdNetwork for iOS 14+ -->
 	<key>SKAdNetworkItems</key>
 	<array>
