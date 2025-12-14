@@ -27,23 +27,25 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     Category categoryData,
     Wallet walletData,
   ) async {
+    // Safely convert transaction type with fallback to expense
+    final typeIndex = transactionData.transactionType;
+    final transactionType = (typeIndex >= 0 && typeIndex < TransactionType.values.length)
+        ? TransactionType.values[typeIndex]
+        : TransactionType.expense;
+
     return TransactionModel(
       id: transactionData.id,
       cloudId: transactionData.cloudId,
-      // Use the actual enum value from the database integer
-      // This is safer than relying on index directly if enum order changes
-      transactionType: TransactionType.values.firstWhere(
-        (e) => e.index == transactionData.transactionType,
-      ),
+      transactionType: transactionType,
       amount: transactionData.amount,
       date: transactionData.date,
       title: transactionData.title,
-      category: categoryData.toModel(), // Using CategoryTableExtensions
-      wallet: walletData.toModel(), // Replace with actual fetched WalletModel
+      category: categoryData.toModel(),
+      wallet: walletData.toModel(),
       notes: transactionData.notes,
       imagePath: transactionData.imagePath,
       isRecurring: transactionData.isRecurring,
-      recurringId: transactionData.recurringId, // Link to recurring payment
+      recurringId: transactionData.recurringId,
       createdAt: transactionData.createdAt,
       updatedAt: transactionData.updatedAt,
     );
@@ -143,27 +145,34 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return query.watch().asyncMap((rows) async {
       final result = <TransactionModel>[];
       for (final row in rows) {
-        final transactionData = row.readTable(transactions);
-        final categoryData = row.readTableOrNull(categories);
-        final walletData = row.readTableOrNull(db.wallets);
+        try {
+          final transactionData = row.readTable(transactions);
+          final categoryData = row.readTableOrNull(categories);
+          final walletData = row.readTableOrNull(db.wallets);
 
-        // Skip transactions with missing category or wallet (orphaned data)
-        if (categoryData == null || walletData == null) {
-          Log.w(
-            'Skipping orphaned transaction ID: ${transactionData.id} '
-            '(category: ${categoryData != null}, wallet: ${walletData != null})',
-            label: 'transaction',
+          // Skip transactions with missing category or wallet (orphaned data)
+          if (categoryData == null || walletData == null) {
+            Log.w(
+              'Skipping orphaned transaction ID: ${transactionData.id} '
+              '(category: ${categoryData != null}, wallet: ${walletData != null})',
+              label: 'transaction',
+            );
+            continue;
+          }
+
+          result.add(
+            await _mapToTransactionModel(
+              transactionData,
+              categoryData,
+              walletData,
+            ),
           );
+        } catch (e, stack) {
+          Log.e('Error mapping transaction: $e', label: 'transaction');
+          Log.e('Stack: $stack', label: 'transaction');
+          // Continue processing other transactions
           continue;
         }
-
-        result.add(
-          await _mapToTransactionModel(
-            transactionData,
-            categoryData,
-            walletData,
-          ),
-        );
       }
       return result;
     });
@@ -191,21 +200,26 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return query.watch().asyncMap((rows) async {
       final result = <TransactionModel>[];
       for (final row in rows) {
-        final transactionData = row.readTable(transactions);
-        final categoryData = row.readTableOrNull(categories);
-        final walletData = row.readTableOrNull(db.wallets);
+        try {
+          final transactionData = row.readTable(transactions);
+          final categoryData = row.readTableOrNull(categories);
+          final walletData = row.readTableOrNull(db.wallets);
 
-        if (categoryData == null || walletData == null) {
+          if (categoryData == null || walletData == null) {
+            continue;
+          }
+
+          result.add(
+            await _mapToTransactionModel(
+              transactionData,
+              categoryData,
+              walletData,
+            ),
+          );
+        } catch (e) {
+          Log.e('Error mapping transaction: $e', label: 'transaction');
           continue;
         }
-
-        result.add(
-          await _mapToTransactionModel(
-            transactionData,
-            categoryData,
-            walletData,
-          ),
-        );
       }
       return result;
     });
@@ -231,21 +245,26 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return query.watch().asyncMap((rows) async {
       final result = <TransactionModel>[];
       for (final row in rows) {
-        final transactionData = row.readTable(transactions);
-        final categoryData = row.readTableOrNull(categories);
-        final walletData = row.readTableOrNull(db.wallets);
+        try {
+          final transactionData = row.readTable(transactions);
+          final categoryData = row.readTableOrNull(categories);
+          final walletData = row.readTableOrNull(db.wallets);
 
-        if (categoryData == null || walletData == null) {
+          if (categoryData == null || walletData == null) {
+            continue;
+          }
+
+          result.add(
+            await _mapToTransactionModel(
+              transactionData,
+              categoryData,
+              walletData,
+            ),
+          );
+        } catch (e) {
+          Log.e('Error mapping recurring transaction: $e', label: 'transaction');
           continue;
         }
-
-        result.add(
-          await _mapToTransactionModel(
-            transactionData,
-            categoryData,
-            walletData,
-          ),
-        );
       }
       return result;
     });
@@ -532,21 +551,26 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return query.watch().asyncMap((rows) async {
       final result = <TransactionModel>[];
       for (final row in rows) {
-        final transactionData = row.readTable(transactions);
-        final categoryData = row.readTableOrNull(categories);
-        final walletData = row.readTableOrNull(db.wallets);
+        try {
+          final transactionData = row.readTable(transactions);
+          final categoryData = row.readTableOrNull(categories);
+          final walletData = row.readTableOrNull(db.wallets);
 
-        if (categoryData == null || walletData == null) {
+          if (categoryData == null || walletData == null) {
+            continue;
+          }
+
+          result.add(
+            await _mapToTransactionModel(
+              transactionData,
+              categoryData,
+              walletData,
+            ),
+          );
+        } catch (e) {
+          Log.e('Error mapping filtered transaction: $e', label: 'transaction');
           continue;
         }
-
-        result.add(
-          await _mapToTransactionModel(
-            transactionData,
-            categoryData,
-            walletData,
-          ),
-        );
       }
       return result;
     });
