@@ -17,19 +17,32 @@ import 'package:bexly/features/budget/presentation/screens/budget_filter_dialog.
 import 'package:bexly/features/budget/presentation/screens/budget_screen.dart';
 import 'package:bexly/features/goal/presentation/screens/goal_form_dialog.dart';
 import 'package:bexly/features/goal/presentation/screens/goal_screen.dart';
+import 'package:bexly/features/planning/presentation/riverpod/planning_tab_provider.dart';
 
 class PlanningScreen extends HookConsumerWidget {
   const PlanningScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tabController = useTabController(initialLength: 2);
-    final currentTab = useState(0);
+    // Get initial tab from provider (set by sidebar)
+    final initialTabFromProvider = ref.watch(planningTabProvider);
+    final tabController = useTabController(initialLength: 2, initialIndex: initialTabFromProvider);
+    final currentTab = useState(initialTabFromProvider);
     final l10n = AppLocalizations.of(context)!;
+
+    // Sync tab controller with provider changes (from sidebar)
+    useEffect(() {
+      if (tabController.index != initialTabFromProvider) {
+        tabController.animateTo(initialTabFromProvider);
+      }
+      return null;
+    }, [initialTabFromProvider]);
 
     useEffect(() {
       void listener() {
         currentTab.value = tabController.index;
+        // Sync back to provider
+        ref.read(planningTabProvider.notifier).setTab(tabController.index);
       }
       tabController.addListener(listener);
       return () => tabController.removeListener(listener);
