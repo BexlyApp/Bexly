@@ -98,3 +98,6 @@ upload_cert.ps1
 # Windows temp
 nul
 .claude/settings.local.json
+
+.vercel
+.env*.local
