@@ -1,22 +1,25 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_filter_provider.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/selected_month_provider.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
 
-/// Provider for converted income amount in selected month
-/// Converts all transactions to base currency if "All Wallets" mode
+/// Provider for income amount in selected month
+/// No currency conversion - just sums amounts in their original currency
 final convertedMonthlyIncomeProvider =
     FutureProvider.autoDispose<double>((ref) async {
-  // Use .value with null fallback to handle stream errors gracefully
   final transactionsAsync = ref.watch(allTransactionsProvider);
+
+  // If stream is loading or has error, return 0
+  if (transactionsAsync.isLoading || transactionsAsync.hasError) {
+    return 0.0;
+  }
+
   final transactions = transactionsAsync.value ?? [];
+  if (transactions.isEmpty) return 0.0;
 
   final selectedWallet = ref.watch(dashboardWalletFilterProvider);
   final selectedMonth = ref.watch(selectedMonthProvider);
-  final baseCurrency = ref.watch(baseCurrencyProvider);
-  final exchangeRateService = ref.watch(exchangeRateServiceProvider);
 
   // Filter by wallet if selected
   final filteredTransactions = selectedWallet != null
@@ -32,45 +35,29 @@ final convertedMonthlyIncomeProvider =
     if (t.date.year == currentYear &&
         t.date.month == currentMonth &&
         t.transactionType == TransactionType.income) {
-      // Convert to base currency if "All Wallets" mode
-      if (selectedWallet == null) {
-        if (t.wallet.currency == baseCurrency) {
-          totalIncome += t.amount;
-        } else {
-          try {
-            final converted = await exchangeRateService.convertAmount(
-              amount: t.amount,
-              fromCurrency: t.wallet.currency,
-              toCurrency: baseCurrency,
-            );
-            totalIncome += converted;
-          } catch (e) {
-            // Fallback: use original amount
-            totalIncome += t.amount;
-          }
-        }
-      } else {
-        // Single wallet mode - no conversion needed
-        totalIncome += t.amount;
-      }
+      totalIncome += t.amount;
     }
   }
 
   return totalIncome;
 });
 
-/// Provider for converted expense amount in selected month
-/// Converts all transactions to base currency if "All Wallets" mode
+/// Provider for expense amount in selected month
+/// No currency conversion - just sums amounts in their original currency
 final convertedMonthlyExpenseProvider =
     FutureProvider.autoDispose<double>((ref) async {
-  // Use .value with null fallback to handle stream errors gracefully
   final transactionsAsync = ref.watch(allTransactionsProvider);
+
+  // If stream is loading or has error, return 0
+  if (transactionsAsync.isLoading || transactionsAsync.hasError) {
+    return 0.0;
+  }
+
   final transactions = transactionsAsync.value ?? [];
+  if (transactions.isEmpty) return 0.0;
 
   final selectedWallet = ref.watch(dashboardWalletFilterProvider);
   final selectedMonth = ref.watch(selectedMonthProvider);
-  final baseCurrency = ref.watch(baseCurrencyProvider);
-  final exchangeRateService = ref.watch(exchangeRateServiceProvider);
 
   // Filter by wallet if selected
   final filteredTransactions = selectedWallet != null
@@ -86,44 +73,28 @@ final convertedMonthlyExpenseProvider =
     if (t.date.year == currentYear &&
         t.date.month == currentMonth &&
         t.transactionType == TransactionType.expense) {
-      // Convert to base currency if "All Wallets" mode
-      if (selectedWallet == null) {
-        if (t.wallet.currency == baseCurrency) {
-          totalExpense += t.amount;
-        } else {
-          try {
-            final converted = await exchangeRateService.convertAmount(
-              amount: t.amount,
-              fromCurrency: t.wallet.currency,
-              toCurrency: baseCurrency,
-            );
-            totalExpense += converted;
-          } catch (e) {
-            // Fallback: use original amount
-            totalExpense += t.amount;
-          }
-        }
-      } else {
-        // Single wallet mode - no conversion needed
-        totalExpense += t.amount;
-      }
+      totalExpense += t.amount;
     }
   }
 
   return totalExpense;
 });
 
-/// Provider for last month's converted income
+/// Provider for last month's income
 final convertedLastMonthIncomeProvider =
     FutureProvider.autoDispose<double>((ref) async {
-  // Use .value with null fallback to handle stream errors gracefully
   final transactionsAsync = ref.watch(allTransactionsProvider);
+
+  // If stream is loading or has error, return 0
+  if (transactionsAsync.isLoading || transactionsAsync.hasError) {
+    return 0.0;
+  }
+
   final transactions = transactionsAsync.value ?? [];
+  if (transactions.isEmpty) return 0.0;
 
   final selectedWallet = ref.watch(dashboardWalletFilterProvider);
   final selectedMonth = ref.watch(selectedMonthProvider);
-  final baseCurrency = ref.watch(baseCurrencyProvider);
-  final exchangeRateService = ref.watch(exchangeRateServiceProvider);
 
   // Filter by wallet if selected
   final filteredTransactions = selectedWallet != null
@@ -140,42 +111,28 @@ final convertedLastMonthIncomeProvider =
     if (t.date.year == lastMonthYear &&
         t.date.month == lastMonth &&
         t.transactionType == TransactionType.income) {
-      // Convert to base currency if "All Wallets" mode
-      if (selectedWallet == null) {
-        if (t.wallet.currency == baseCurrency) {
-          totalIncome += t.amount;
-        } else {
-          try {
-            final converted = await exchangeRateService.convertAmount(
-              amount: t.amount,
-              fromCurrency: t.wallet.currency,
-              toCurrency: baseCurrency,
-            );
-            totalIncome += converted;
-          } catch (e) {
-            totalIncome += t.amount;
-          }
-        }
-      } else {
-        totalIncome += t.amount;
-      }
+      totalIncome += t.amount;
     }
   }
 
   return totalIncome;
 });
 
-/// Provider for last month's converted expense
+/// Provider for last month's expense
 final convertedLastMonthExpenseProvider =
     FutureProvider.autoDispose<double>((ref) async {
-  // Use .value with null fallback to handle stream errors gracefully
   final transactionsAsync = ref.watch(allTransactionsProvider);
+
+  // If stream is loading or has error, return 0
+  if (transactionsAsync.isLoading || transactionsAsync.hasError) {
+    return 0.0;
+  }
+
   final transactions = transactionsAsync.value ?? [];
+  if (transactions.isEmpty) return 0.0;
 
   final selectedWallet = ref.watch(dashboardWalletFilterProvider);
   final selectedMonth = ref.watch(selectedMonthProvider);
-  final baseCurrency = ref.watch(baseCurrencyProvider);
-  final exchangeRateService = ref.watch(exchangeRateServiceProvider);
 
   // Filter by wallet if selected
   final filteredTransactions = selectedWallet != null
@@ -192,25 +149,7 @@ final convertedLastMonthExpenseProvider =
     if (t.date.year == lastMonthYear &&
         t.date.month == lastMonth &&
         t.transactionType == TransactionType.expense) {
-      // Convert to base currency if "All Wallets" mode
-      if (selectedWallet == null) {
-        if (t.wallet.currency == baseCurrency) {
-          totalExpense += t.amount;
-        } else {
-          try {
-            final converted = await exchangeRateService.convertAmount(
-              amount: t.amount,
-              fromCurrency: t.wallet.currency,
-              toCurrency: baseCurrency,
-            );
-            totalExpense += converted;
-          } catch (e) {
-            totalExpense += t.amount;
-          }
-        }
-      } else {
-        totalExpense += t.amount;
-      }
+      totalExpense += t.amount;
     }
   }
 
