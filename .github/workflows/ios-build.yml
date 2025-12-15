@@ -1,8 +1,12 @@
 name: iOS Build
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Auto Version Bump"]
+    types:
+      - completed
     branches: [main]
+  push:
     tags:
       - 'v*'
   workflow_dispatch:
@@ -11,6 +15,8 @@ jobs:
   # Signed build using manual certificate (.p12)
   build-ios-signed:
     runs-on: macos-15
+    # Only run if triggered by workflow_dispatch, tag push, or if version-bump succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
