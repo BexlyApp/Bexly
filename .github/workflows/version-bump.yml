@@ -1,0 +1,63 @@
+name: Auto Version Bump
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.github/workflows/version-bump.yml'
+  workflow_dispatch:
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    # Only run if commit message doesn't contain [skip-bump] or isn't a version bump commit
+    if: "!contains(github.event.head_commit.message, '[skip-bump]') && !contains(github.event.head_commit.message, 'chore: auto bump build')"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Get current version
+        id: get_version
+        run: |
+          # Extract current version from pubspec.yaml
+          CURRENT_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //')
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+          # Extract build number (after +)
+          BUILD_NUMBER=$(echo $CURRENT_VERSION | cut -d'+' -f2)
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+
+          # Extract version name (before +)
+          VERSION_NAME=$(echo $CURRENT_VERSION | cut -d'+' -f1)
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+
+          echo "Current: $CURRENT_VERSION (build: $BUILD_NUMBER)"
+
+      - name: Bump build number
+        id: bump
+        run: |
+          OLD_BUILD=${{ steps.get_version.outputs.build_number }}
+          NEW_BUILD=$((OLD_BUILD + 1))
+          VERSION_NAME=${{ steps.get_version.outputs.version_name }}
+          NEW_VERSION="${VERSION_NAME}+${NEW_BUILD}"
+
+          echo "new_build=$NEW_BUILD" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          # Update pubspec.yaml
+          sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
+
+          echo "Bumped: $OLD_BUILD -> $NEW_BUILD"
+          echo "New version: $NEW_VERSION"
+
+      - name: Commit and push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add pubspec.yaml
+          git commit -m "chore: auto bump build ${{ steps.get_version.outputs.build_number }} -> ${{ steps.bump.outputs.new_build }} [skip ci]"
+          git push
