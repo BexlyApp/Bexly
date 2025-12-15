@@ -82,8 +82,10 @@ class _IncomeChartWithConversion extends ConsumerWidget {
           (sum, item) => sum + item.amount,
         );
 
+        // Use fixed height instead of screenSize percentage for consistent rendering
+        // across all platforms (Android, iOS, Web)
         return Container(
-          height: context.screenSize.height * 0.5,
+          height: 400,
           margin: const EdgeInsets.symmetric(horizontal: AppSpacing.spacing20),
           padding: const EdgeInsets.all(AppSpacing.spacing16),
           decoration: BoxDecoration(
@@ -91,7 +93,6 @@ class _IncomeChartWithConversion extends ConsumerWidget {
             borderRadius: BorderRadius.circular(AppRadius.radius12),
           ),
           child: Column(
-            spacing: AppSpacing.spacing12,
             children: [
               Expanded(
                 child: SfCircularChart(
