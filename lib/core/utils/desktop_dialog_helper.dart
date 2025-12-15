@@ -7,6 +7,42 @@ import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 class DesktopDialogHelper {
   DesktopDialogHelper._();
 
+  /// Registry of route to widget builders for settings submenus
+  /// This allows showing submenu screens within the settings dialog on desktop
+  static final Map<String, Widget Function()> _settingsScreenBuilders = {};
+
+  /// Register a settings submenu screen builder
+  static void registerSettingsScreen(String route, Widget Function() builder) {
+    _settingsScreenBuilders[route] = builder;
+  }
+
+  /// Get a registered settings screen widget
+  static Widget? getSettingsScreen(String route) {
+    final builder = _settingsScreenBuilders[route];
+    return builder?.call();
+  }
+
+  /// Navigate to a settings submenu - shows as dialog on desktop, pushes route on mobile
+  static void navigateToSettingsSubmenu(
+    BuildContext context, {
+    required String route,
+    required Widget desktopWidget,
+    Object? extra,
+    double maxWidth = 600,
+    double maxHeight = 800,
+  }) {
+    if (context.isDesktopLayout) {
+      showDialogOnly(
+        context,
+        child: desktopWidget,
+        maxWidth: maxWidth,
+        maxHeight: maxHeight,
+      );
+    } else {
+      context.push(route, extra: extra);
+    }
+  }
+
   /// Shows a widget as a dialog on desktop, or navigates to a route on mobile
   ///
   /// [context] - Build context

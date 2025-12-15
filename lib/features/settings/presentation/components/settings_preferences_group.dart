@@ -13,7 +13,11 @@ class SettingsPreferencesGroup extends ConsumerWidget {
       title: l10n.preferences,
       settingTiles: [
         ListTile(
-          onTap: () => context.push(Routes.languageSettings),
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.languageSettings,
+            desktopWidget: const LanguageSettingsScreen(),
+          ),
           tileColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
@@ -57,19 +61,31 @@ class SettingsPreferencesGroup extends ConsumerWidget {
         MenuTileButton(
           label: l10n.notifications,
           icon: HugeIcons.strokeRoundedNotification01,
-          onTap: () => context.push(Routes.notificationSettings),
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.notificationSettings,
+            desktopWidget: const NotificationSettingsScreen(),
+          ),
         ),
         MenuTileButton(
           label: 'AI Model',
           icon: HugeIcons.strokeRoundedAiBrain01,
-          onTap: () => context.push(Routes.aiModelSettings),
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.aiModelSettings,
+            desktopWidget: const AIModelSettingsScreen(),
+          ),
         ),
         // Auto Transaction only available on Android (requires SMS permission)
         if (!kIsWeb && Platform.isAndroid)
           MenuTileButton(
             label: l10n.autoTransaction,
             icon: HugeIcons.strokeRoundedMessage01,
-            onTap: () => context.push(Routes.autoTransactionSettings),
+            onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+              context,
+              route: Routes.autoTransactionSettings,
+              desktopWidget: const AutoTransactionSettingsScreen(),
+            ),
           ),
       ],
     );

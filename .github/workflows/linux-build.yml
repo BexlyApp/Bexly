@@ -33,8 +33,13 @@ jobs:
 
       - name: Create .env file
         run: |
-          # Create empty .env file for CI build
-          touch .env
+          # Create .env file with Bexly Free AI configuration
+          # These are public free-tier settings, not secrets
+          cat > .env << 'EOF'
+          BEXLY_FREE_AI_URL=https://api.dos.ai/v1
+          BEXLY_FREE_AI_KEY=bexly-free-tier
+          BEXLY_FREE_AI_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
+          EOF
 
       - name: Install dependencies
         run: flutter pub get

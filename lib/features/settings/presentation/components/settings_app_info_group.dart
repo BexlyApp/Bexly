@@ -35,7 +35,11 @@ class SettingsAppInfoGroup extends ConsumerWidget {
           MenuTileButton(
             label: context.l10n.developerPortal,
             icon: HugeIcons.strokeRoundedCode,
-            onTap: () => context.push(Routes.developerPortal),
+            onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+              context,
+              route: Routes.developerPortal,
+              desktopWidget: const DeveloperPortalScreen(),
+            ),
           ),
       ],
     );

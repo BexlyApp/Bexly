@@ -1,10 +1,12 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
@@ -614,9 +616,38 @@ class _ChatInput extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
-    final focusNode = useFocusNode();
     final selectedImage = useState<Uint8List?>(null);
     final imagePicker = ImagePicker();
+
+    // Create focus node with onKeyEvent handler for Enter key on web/desktop
+    final focusNode = useMemoized(() {
+      final node = FocusNode();
+      node.onKeyEvent = (FocusNode node, KeyEvent event) {
+        // Only handle on web/desktop
+        if (kIsWeb || context.isDesktopLayout) {
+          // Check if Enter key pressed without Shift
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.enter &&
+              !HardwareKeyboard.instance.isShiftPressed) {
+            // Send message if can send
+            final hasText = controller.text.trim().isNotEmpty;
+            final hasImage = selectedImage.value != null;
+            if ((hasText || hasImage) && !isLoading) {
+              onSend(controller.text, selectedImage.value);
+              selectedImage.value = null;
+              return KeyEventResult.handled; // Prevent newline
+            }
+          }
+        }
+        return KeyEventResult.ignored; // Let TextField handle other keys
+      };
+      return node;
+    }, []);
+
+    // Dispose focus node when widget is disposed
+    useEffect(() {
+      return () => focusNode.dispose();
+    }, [focusNode]);
 
     // Get bottom padding for safe area (to avoid bottom nav bar overlap)
     final bottomPadding = MediaQuery.of(context).padding.bottom;
@@ -709,6 +740,8 @@ class _ChatInput extends HookWidget {
                   ),
 
                   // Text input with voice/send button inside
+                  // On web/desktop: Enter sends (via FocusNode.onKeyEvent), Shift+Enter adds newline
+                  // On mobile: Enter adds newline (use send button)
                   Expanded(
                     child: TextField(
                       controller: controller,

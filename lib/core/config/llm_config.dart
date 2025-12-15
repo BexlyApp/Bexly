@@ -73,6 +73,10 @@ class LLMDefaultConfig {
   // These use OpenAI-compatible API format
   // IMPORTANT: For mobile apps, user MUST set CUSTOM_LLM_ENDPOINT in .env
   // to a publicly accessible URL (not localhost!)
+
+  // Default endpoint for Bexly Free AI (DOS AI vLLM server)
+  static const String _defaultBexlyFreeEndpoint = 'https://api.dos.ai/v1';
+
   static String get customEndpoint {
     try {
       // Try CUSTOM_LLM_ENDPOINT first, then fall back to BEXLY_FREE_AI_URL
@@ -85,12 +89,15 @@ class LLMDefaultConfig {
       if (bexlyFreeUrl != null && bexlyFreeUrl.isNotEmpty) {
         return bexlyFreeUrl;
       }
-      // No default - user must configure their own endpoint
-      return '';
+      // Fallback to default Bexly Free AI endpoint
+      return _defaultBexlyFreeEndpoint;
     } catch (e) {
-      return '';
+      return _defaultBexlyFreeEndpoint;
     }
   }
+
+  // Default API key for Bexly Free AI
+  static const String _defaultBexlyFreeApiKey = 'bexly-free-tier';
 
   static String get customApiKey {
     try {
@@ -103,11 +110,15 @@ class LLMDefaultConfig {
       if (bexlyFreeKey != null && bexlyFreeKey.isNotEmpty) {
         return bexlyFreeKey;
       }
-      return 'no-key-required';
+      // Fallback to default Bexly Free AI key
+      return _defaultBexlyFreeApiKey;
     } catch (e) {
-      return 'no-key-required';
+      return _defaultBexlyFreeApiKey;
     }
   }
+
+  // Default model for Bexly Free AI (DOS AI vLLM server)
+  static const String _defaultBexlyFreeModel = 'Qwen/Qwen3-VL-30B-A3B-Instruct';
 
   static String get customModel {
     try {
@@ -120,9 +131,10 @@ class LLMDefaultConfig {
       if (bexlyFreeModel != null && bexlyFreeModel.isNotEmpty) {
         return bexlyFreeModel;
       }
-      return 'default';
+      // Fallback to default Bexly Free AI model
+      return _defaultBexlyFreeModel;
     } catch (e) {
-      return 'default';
+      return _defaultBexlyFreeModel;
     }
   }
 

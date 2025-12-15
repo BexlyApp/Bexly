@@ -50,6 +50,7 @@ part '../components/balance_card_v2.dart';
 part '../components/wallet_amount_visibility_button.dart';
 part '../components/wallet_amount_edit_button.dart';
 part '../components/cash_flow_cards.dart';
+part '../components/dashboard_cards_row.dart';
 part '../components/greeting_card.dart';
 part '../components/header.dart';
 part '../components/month_navigator.dart';
@@ -100,9 +101,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   child: const Column(
                     children: [
-                      BalanceCard(),
-                      Gap(AppSpacing.spacing12),
-                      CashFlowCards(),
+                      DashboardCardsRow(),
                       Gap(AppSpacing.spacing12),
                       SpendingProgressChart(),
                     ],
