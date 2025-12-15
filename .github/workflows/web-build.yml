@@ -40,6 +40,13 @@ jobs:
       - name: Build web
         run: flutter build web --release
 
+      - name: Copy SQLite WASM files to build output
+        run: |
+          cp web/sqlite3.wasm build/web/
+          cp web/drift_worker.js build/web/
+          echo "✅ Copied sqlite3.wasm and drift_worker.js to build/web/"
+          ls -la build/web/*.wasm build/web/drift_worker.js
+
       - name: Create Vercel config for Flutter SPA
         run: |
           cat > build/web/vercel.json << 'EOF'
