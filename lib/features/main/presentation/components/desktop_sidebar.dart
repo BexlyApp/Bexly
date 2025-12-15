@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
-import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
 
 class DesktopSidebar extends ConsumerWidget {
@@ -61,7 +60,7 @@ class DesktopSidebar extends ConsumerWidget {
             onTap: () => pageController.jumpToPage(3),
           ),
           const Spacer(),
-          // FAB-style button for New Transaction
+          // FAB-style button - opens action menu popup
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.spacing16,
@@ -70,7 +69,13 @@ class DesktopSidebar extends ConsumerWidget {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => context.push(Routes.transactionForm),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => const TransactionOptionsMenu(),
+                  );
+                },
                 icon: const HugeIcon(
                   icon: HugeIcons.strokeRoundedAdd01,
                   color: Colors.white,
