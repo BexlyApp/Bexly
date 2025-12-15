@@ -1,0 +1,15 @@
+[
+  {
+    "origin": [
+      "https://app.bexly.app",
+      "https://bexly.app",
+      "https://bexly-flutter.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:5000",
+      "http://localhost:8080"
+    ],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length", "X-Requested-With"]
+  }
+]

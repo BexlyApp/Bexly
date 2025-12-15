@@ -51,10 +51,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       },
       children: const [
         DashboardScreen(),    // Page 0: Home
-        TransactionScreen(),  // Page 1: Transactions
-        PlanningScreen(),     // Page 2: Goals
-        RecurringScreen(),    // Page 3: Budgets
-        AIChatScreen(),       // Page 4: AI Chat (accessed via mobile bottom bar)
+        AIChatScreen(),       // Page 1: AI Chat
+        TransactionScreen(),  // Page 2: History (Transactions)
+        RecurringScreen(),    // Page 3: Recurring
+        PlanningScreen(),     // Page 4: Planning (Goals & Budgets)
       ],
     );
 
