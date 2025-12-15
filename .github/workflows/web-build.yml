@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Compile drift_worker.dart for web database
+        run: dart compile js -O4 web/drift_worker.dart -o web/drift_worker.js
+
       - name: Build web
         run: flutter build web --release
 
@@ -35,6 +38,15 @@ jobs:
         run: |
           cat > build/web/vercel.json << 'EOF'
           {
+            "headers": [
+              {
+                "source": "/(.*)",
+                "headers": [
+                  { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+                  { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
+                ]
+              }
+            ],
             "routes": [
               {
                 "src": "/flutter.js",

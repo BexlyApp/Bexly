@@ -62,19 +62,35 @@ class CashFlowCards extends ConsumerWidget {
                     );
                   },
                   loading: () => _buildLoadingRow(),
-                  error: (error, stack) => _buildErrorRow(context),
+                  error: (error, stack) {
+                    debugPrint('❌ [CashFlow] lastMonthExpense error: $error');
+                    debugPrint('❌ [CashFlow] Stack: $stack');
+                    return _buildErrorRow(context);
+                  },
                 );
               },
               loading: () => _buildLoadingRow(),
-              error: (error, stack) => _buildErrorRow(context),
+              error: (error, stack) {
+                debugPrint('❌ [CashFlow] lastMonthIncome error: $error');
+                debugPrint('❌ [CashFlow] Stack: $stack');
+                return _buildErrorRow(context);
+              },
             );
           },
           loading: () => _buildLoadingRow(),
-          error: (error, stack) => _buildErrorRow(context),
+          error: (error, stack) {
+            debugPrint('❌ [CashFlow] currentExpense error: $error');
+            debugPrint('❌ [CashFlow] Stack: $stack');
+            return _buildErrorRow(context);
+          },
         );
       },
       loading: () => _buildLoadingRow(),
-      error: (error, stack) => _buildErrorRow(context),
+      error: (error, stack) {
+        debugPrint('❌ [CashFlow] currentIncome error: $error');
+        debugPrint('❌ [CashFlow] Stack: $stack');
+        return _buildErrorRow(context);
+      },
     );
   }
 
