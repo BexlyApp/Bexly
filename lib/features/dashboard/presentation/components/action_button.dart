@@ -20,14 +20,16 @@ class ActionButton extends ConsumerWidget {
           showBadge: hasUnreadNotifications.value ?? false,
           themeMode: context.themeMode,
         ),
-        CustomIconButton(
-          context,
-          onPressed: () {
-            context.push(Routes.settings);
-          },
-          icon: HugeIcons.strokeRoundedSettings01,
-          themeMode: context.themeMode,
-        ),
+        // Hide Settings icon on desktop - it's in the sidebar
+        if (!context.isDesktopLayout)
+          CustomIconButton(
+            context,
+            onPressed: () {
+              context.push(Routes.settings);
+            },
+            icon: HugeIcons.strokeRoundedSettings01,
+            themeMode: context.themeMode,
+          ),
       ],
     );
   }
