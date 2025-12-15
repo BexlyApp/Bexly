@@ -31,6 +31,42 @@ jobs:
       - name: Build web
         run: flutter build web --release
 
+      - name: Create Vercel config for Flutter SPA
+        run: |
+          cat > build/web/vercel.json << 'EOF'
+          {
+            "routes": [
+              {
+                "src": "/flutter.js",
+                "headers": { "Content-Type": "application/javascript" }
+              },
+              {
+                "src": "/flutter_bootstrap.js",
+                "headers": { "Content-Type": "application/javascript" }
+              },
+              {
+                "src": "/main.dart.js",
+                "headers": { "Content-Type": "application/javascript" }
+              },
+              {
+                "src": "/(.*\\.js)",
+                "headers": { "Content-Type": "application/javascript" }
+              },
+              {
+                "src": "/(.*\\.wasm)",
+                "headers": { "Content-Type": "application/wasm" }
+              },
+              {
+                "handle": "filesystem"
+              },
+              {
+                "src": "/(.*)",
+                "dest": "/index.html"
+              }
+            ]
+          }
+          EOF
+
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
         with:
