@@ -109,9 +109,11 @@ class SettingsDataGroup extends ConsumerWidget {
         MenuTileButton(
           label: context.l10n.backupAndRestore,
           icon: HugeIcons.strokeRoundedDatabaseSync01,
-          onTap: () {
-            context.push(Routes.backupAndRestore);
-          },
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.backupAndRestore,
+            desktopWidget: const BackupRestoreScreen(),
+          ),
         ),
         MenuTileButton(
           label: context.l10n.repopulateCategories,
@@ -121,7 +123,11 @@ class SettingsDataGroup extends ConsumerWidget {
         MenuTileButton(
           label: context.l10n.deleteMyData,
           icon: HugeIcons.strokeRoundedDelete01,
-          onTap: () => context.push(Routes.accountDeletion),
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.accountDeletion,
+            desktopWidget: const AccountDeletionScreen(),
+          ),
         ),
         // Show Sign Out button if authenticated, or Sign In button if guest mode
         if (isAuthenticated)

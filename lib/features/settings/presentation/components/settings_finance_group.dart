@@ -11,12 +11,20 @@ class SettingsFinanceGroup extends StatelessWidget {
         MenuTileButton(
           label: context.l10n.wallets,
           icon: HugeIcons.strokeRoundedWallet03,
-          onTap: () => context.push(Routes.manageWallets),
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.manageWallets,
+            desktopWidget: WalletsScreen(),
+          ),
         ),
         MenuTileButton(
           label: context.l10n.manageCategories,
           icon: HugeIcons.strokeRoundedStructure01,
-          onTap: () => context.push(Routes.manageCategories),
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.manageCategories,
+            desktopWidget: const CategoryPickerScreen(isManageCategories: true),
+          ),
         ),
       ],
     );
