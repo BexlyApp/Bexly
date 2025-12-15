@@ -64,7 +64,8 @@ class SettingsPreferencesGroup extends ConsumerWidget {
           icon: HugeIcons.strokeRoundedAiBrain01,
           onTap: () => context.push(Routes.aiModelSettings),
         ),
-        if (Platform.isAndroid)
+        // Auto Transaction only available on Android (requires SMS permission)
+        if (!kIsWeb && Platform.isAndroid)
           MenuTileButton(
             label: l10n.autoTransaction,
             icon: HugeIcons.strokeRoundedMessage01,
