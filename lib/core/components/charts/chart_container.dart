@@ -25,6 +25,10 @@ class ChartContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Calculate chart height (total height minus padding and text)
+    // Title ~24px + subtitle ~18px + spacing ~8px + padding ~32px = ~82px overhead
+    final chartHeight = height != null ? (height! - 82).clamp(100.0, double.infinity) : null;
+
     return Container(
       height: height,
       margin: margin,
@@ -41,7 +45,7 @@ class ChartContainer extends StatelessWidget {
         ],
       ),
       child: Column(
-        spacing: AppSpacing.spacing4,
+        mainAxisSize: height == null ? MainAxisSize.min : MainAxisSize.max,
         children: [
           Text(
             title,
@@ -50,13 +54,20 @@ class ChartContainer extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(height: AppSpacing.spacing4),
           Text(
             subtitle,
             style: AppTextStyles.body3.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          Expanded(child: chart),
+          const SizedBox(height: AppSpacing.spacing4),
+          // Use SizedBox with explicit height instead of Expanded
+          // This ensures chart renders even on platforms with layout differences
+          if (chartHeight != null)
+            SizedBox(height: chartHeight, child: chart)
+          else
+            Expanded(child: chart),
         ],
       ),
     );
