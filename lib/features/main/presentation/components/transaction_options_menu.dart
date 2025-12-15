@@ -6,8 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
-import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/core/utils/desktop_dialog_helper.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
 import 'package:bexly/features/transaction/presentation/screens/transaction_form.dart';
@@ -21,37 +21,17 @@ class TransactionOptionsMenu extends StatelessWidget {
     int? transactionId,
     ReceiptScanResult? receiptData,
   }) {
-    if (context.isDesktopLayout) {
-      // On desktop, show as dialog
-      showDialog(
-        context: context,
-        builder: (context) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 80,
-            vertical: 40,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.radius16),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
-              color: Theme.of(context).scaffoldBackgroundColor,
-              child: TransactionForm(
-                transactionId: transactionId,
-                receiptData: receiptData,
-              ),
-            ),
-          ),
-        ),
-      );
-    } else {
-      // On mobile, navigate to full page
-      if (transactionId != null) {
-        context.push('/transaction/$transactionId');
-      } else {
-        context.push(Routes.transactionForm, extra: receiptData);
-      }
-    }
+    DesktopDialogHelper.showScreen(
+      context,
+      desktopWidget: TransactionForm(
+        transactionId: transactionId,
+        receiptData: receiptData,
+      ),
+      mobileRoute: transactionId != null
+          ? '/transaction/$transactionId'
+          : Routes.transactionForm,
+      mobileRouteExtra: receiptData,
+    );
   }
 
   @override

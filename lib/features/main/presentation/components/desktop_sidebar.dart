@@ -5,6 +5,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/utils/desktop_dialog_helper.dart';
 import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
 import 'package:bexly/features/planning/presentation/riverpod/planning_tab_provider.dart';
@@ -143,20 +144,9 @@ class DesktopSidebar extends ConsumerWidget {
 
   /// Show Settings screen as a dialog on desktop
   void _showSettingsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 80, vertical: 40),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.radius16),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
-            color: Theme.of(context).scaffoldBackgroundColor,
-            child: const SettingsScreen(),
-          ),
-        ),
-      ),
+    DesktopDialogHelper.showDialogOnly(
+      context,
+      child: const SettingsScreen(),
     );
   }
 
