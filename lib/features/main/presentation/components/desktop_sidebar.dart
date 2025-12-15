@@ -60,15 +60,41 @@ class DesktopSidebar extends ConsumerWidget {
             pageIndex: 3,
             onTap: () => pageController.jumpToPage(3),
           ),
-          Spacer(),
-          _buildSidebarItem(
-            context: context,
-            ref: ref,
-            title: 'New Transaction',
-            icon: HugeIcons.strokeRoundedAdd01,
-            onTap: () {
-              context.push(Routes.transactionForm);
-            },
+          const Spacer(),
+          // FAB-style button for New Transaction
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.spacing16,
+              vertical: AppSpacing.spacing8,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => context.push(Routes.transactionForm),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedAdd01,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                label: const Text(
+                  'New Transaction',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.spacing12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.radius12),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
           ),
         ],
       ),

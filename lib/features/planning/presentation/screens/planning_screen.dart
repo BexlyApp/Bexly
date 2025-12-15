@@ -9,6 +9,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
+import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
@@ -83,27 +84,30 @@ class PlanningScreen extends HookConsumerWidget {
             ],
           ),
       ],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navigate to budget or goal form based on current tab
-          if (currentTab.value == 0) {
-            // Budget tab - navigate to budget form
-            context.push(Routes.budgetForm);
-          } else {
-            // Goals tab - show goal form dialog
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              builder: (context) => const GoalFormDialog(),
-            );
-          }
-        },
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        child: HugeIcon(
-          icon: HugeIcons.strokeRoundedPlusSign as dynamic,
-          color: Theme.of(context).colorScheme.onPrimary,
-        ),
-      ),
+      // Hide FAB on desktop - use sidebar button instead
+      floatingActionButton: context.isDesktopLayout
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                // Navigate to budget or goal form based on current tab
+                if (currentTab.value == 0) {
+                  // Budget tab - navigate to budget form
+                  context.push(Routes.budgetForm);
+                } else {
+                  // Goals tab - show goal form dialog
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (context) => const GoalFormDialog(),
+                  );
+                }
+              },
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedPlusSign as dynamic,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
       body: Column(
         children: [
           Container(

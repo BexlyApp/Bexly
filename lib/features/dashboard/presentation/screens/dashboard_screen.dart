@@ -68,20 +68,23 @@ class DashboardScreen extends StatelessWidget {
         preferredSize: Size.fromHeight(114 + MediaQuery.of(context).padding.top),
         child: const Header(),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            backgroundColor: Colors.transparent,
-            builder: (context) => const TransactionOptionsMenu(),
-          );
-        },
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        child: HugeIcon(
-          icon: HugeIcons.strokeRoundedPlusSign,
-          color: Theme.of(context).colorScheme.onPrimary,
-        ),
-      ),
+      // Hide FAB on desktop - use sidebar button instead
+      floatingActionButton: context.isDesktopLayout
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const TransactionOptionsMenu(),
+                );
+              },
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedPlusSign,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
       body: Column(
         children: [
           Expanded(

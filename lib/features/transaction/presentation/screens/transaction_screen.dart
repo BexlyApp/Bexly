@@ -9,6 +9,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
+import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
@@ -45,20 +46,23 @@ class TransactionScreen extends ConsumerWidget {
           themeMode: context.themeMode,
         ),
       ],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            backgroundColor: Colors.transparent,
-            builder: (context) => const TransactionOptionsMenu(),
-          );
-        },
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        child: HugeIcon(
-          icon: HugeIcons.strokeRoundedPlusSign as dynamic,
-          color: Theme.of(context).colorScheme.onPrimary,
-        ),
-      ),
+      // Hide FAB on desktop - use sidebar button instead
+      floatingActionButton: context.isDesktopLayout
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const TransactionOptionsMenu(),
+                );
+              },
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedPlusSign as dynamic,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
       body: allTransactionsAsyncValue.when(
               data: (allTransactions) {
                 if (allTransactions.isEmpty) {
