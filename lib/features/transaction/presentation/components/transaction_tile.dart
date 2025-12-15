@@ -1,7 +1,6 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
@@ -13,6 +12,7 @@ import 'package:bexly/core/extensions/text_style_extensions.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/category_picker/presentation/components/category_icon.dart';
+import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_ui_extension.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
@@ -35,7 +35,10 @@ class TransactionTile extends ConsumerWidget {
     return InkWell(
       onTap: () {
         // Log.d(transaction.toJson(), label: 'transaction');
-        context.push('/transaction/${transaction.id}');
+        TransactionOptionsMenu.showTransactionForm(
+          context,
+          transactionId: transaction.id,
+        );
       },
       onLongPress: () => Log.d(
         '${transaction.category.iconTypeValue}: icon tapped: ${transaction.category.icon}',
