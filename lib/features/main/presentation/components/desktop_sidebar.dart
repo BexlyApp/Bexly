@@ -7,6 +7,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
+import 'package:bexly/features/planning/presentation/riverpod/planning_tab_provider.dart';
 
 class DesktopSidebar extends ConsumerWidget {
   static const double desktopSidebarWidth = 220.0; // Increased width for text
@@ -62,10 +63,26 @@ class DesktopSidebar extends ConsumerWidget {
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'Planning',
-            icon: HugeIcons.strokeRoundedTarget02,
+            title: 'Goals',
+            icon: HugeIcons.strokeRoundedTarget01,
             pageIndex: 4,
-            onTap: () => pageController.jumpToPage(4),
+            onTap: () {
+              // Set planning tab to Goals (index 1) before navigating
+              ref.read(planningTabProvider.notifier).setTab(1);
+              pageController.jumpToPage(4);
+            },
+          ),
+          _buildSidebarItem(
+            context: context,
+            ref: ref,
+            title: 'Budgets',
+            icon: HugeIcons.strokeRoundedDatabase,
+            pageIndex: 4,
+            onTap: () {
+              // Set planning tab to Budgets (index 0) before navigating
+              ref.read(planningTabProvider.notifier).setTab(0);
+              pageController.jumpToPage(4);
+            },
           ),
           const Spacer(),
           // FAB-style button - opens action menu popup
