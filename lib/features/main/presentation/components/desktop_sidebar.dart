@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
 import 'package:bexly/features/planning/presentation/riverpod/planning_tab_provider.dart';
@@ -85,6 +87,15 @@ class DesktopSidebar extends ConsumerWidget {
             },
           ),
           const Spacer(),
+          // Settings button at bottom
+          _buildSidebarItem(
+            context: context,
+            ref: ref,
+            title: 'Settings',
+            icon: HugeIcons.strokeRoundedSettings02,
+            onTap: () => context.push(Routes.settings),
+          ),
+          const SizedBox(height: AppSpacing.spacing8),
           // FAB-style button - opens action menu popup
           Padding(
             padding: const EdgeInsets.symmetric(
