@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -65,6 +66,33 @@ class LoginScreen extends HookConsumerWidget {
 
             Log.i('✅ Synced profile from Firebase Auth (Email)', label: 'auth');
           }
+
+          // Trigger initial sync to pull data from Firestore
+          if (context.mounted) {
+            final syncService = ref.read(cloudSyncServiceProvider);
+            final localDb = ref.read(databaseProvider);
+            final userId = firebaseUser!.uid;
+
+            Log.i('Starting initial sync for user: $userId', label: 'auth');
+            try {
+              await SyncTriggerService.triggerInitialSyncIfNeeded(
+                syncService,
+                context: context,
+                localDb: localDb,
+                userId: userId,
+                ref: ref,
+              ).timeout(
+                const Duration(seconds: 30),
+                onTimeout: () {
+                  Log.w('⚠️ Sync timeout after 30s, continuing anyway', label: 'auth');
+                },
+              );
+              Log.i('✅ Initial sync completed or skipped', label: 'auth');
+            } catch (e) {
+              Log.e('❌ Sync error (non-fatal): $e', label: 'auth');
+              // Continue even if sync fails
+            }
+          }
         }
 
         if (context.mounted) {
@@ -122,41 +150,51 @@ class LoginScreen extends HookConsumerWidget {
     Future<void> handleGoogleSignIn() async {
       isLoading.value = true;
       try {
-        // google_sign_in 7.x uses singleton pattern
-        final googleSignIn = GoogleSignIn.instance;
-        // Sign out any cached session to force re-consent/account chooser on first attempt
-        try {
-          await googleSignIn.signOut();
-        } catch (_) {}
-        final googleUser = await googleSignIn.authenticate();
-
-        debugPrint('Google Sign In successful for: ${googleUser.email}');
-
-        // Get authentication tokens (google_sign_in 7.x: .authentication is sync, no accessToken)
-        final googleAuth = googleUser.authentication;
-
-        // Create Firebase credential (idToken only in 7.x)
-        if (googleAuth.idToken == null) {
-          throw Exception('Missing ID token from Google. Please try again.');
-        }
-        final credential = GoogleAuthProvider.credential(
-          idToken: googleAuth.idToken,
-        );
-
         // Sign in to Firebase using Bexly app
         final bexlyApp = FirebaseInitService.bexlyApp;
         if (bexlyApp == null) {
           throw Exception('Bexly Firebase not initialized');
         }
 
-        final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
-        await bexlyAuth.signInWithCredential(credential);
+        final bexlyFirebaseAuth = FirebaseAuth.instanceFor(app: bexlyApp);
+
+        if (kIsWeb) {
+          // Web: Use Firebase signInWithPopup directly
+          final googleProvider = GoogleAuthProvider();
+          googleProvider.addScope('email');
+          googleProvider.addScope('profile');
+          await bexlyFirebaseAuth.signInWithPopup(googleProvider);
+          debugPrint('Google Sign In (Web) successful');
+        } else {
+          // Mobile: Use google_sign_in package
+          final googleSignIn = GoogleSignIn.instance;
+          // Sign out any cached session to force re-consent/account chooser on first attempt
+          try {
+            await googleSignIn.signOut();
+          } catch (_) {}
+          final googleUser = await googleSignIn.authenticate();
+
+          debugPrint('Google Sign In successful for: ${googleUser.email}');
+
+          // Get authentication tokens (google_sign_in 7.x: .authentication is sync, no accessToken)
+          final googleAuth = googleUser.authentication;
+
+          // Create Firebase credential (idToken only in 7.x)
+          if (googleAuth.idToken == null) {
+            throw Exception('Missing ID token from Google. Please try again.');
+          }
+          final credential = GoogleAuthProvider.credential(
+            idToken: googleAuth.idToken,
+          );
+
+          await bexlyFirebaseAuth.signInWithCredential(credential);
+        }
 
         Log.i('Firebase authentication successful', label: 'auth');
         print('🔐 Firebase authentication successful');
 
         // Sync user profile from Firebase Auth to local database
-        final firebaseUser = bexlyAuth.currentUser;
+        final firebaseUser = bexlyFirebaseAuth.currentUser;
         if (firebaseUser != null) {
           final authProvider = ref.read(local_auth.authStateProvider.notifier);
           final currentUser = authProvider.getUser();
@@ -176,7 +214,7 @@ class LoginScreen extends HookConsumerWidget {
         if (context.mounted) {
           final syncService = ref.read(cloudSyncServiceProvider);
           final localDb = ref.read(databaseProvider);
-          final userId = bexlyAuth.currentUser?.uid;
+          final userId = bexlyFirebaseAuth.currentUser?.uid;
 
           if (userId != null) {
             Log.i('Starting initial sync for user: $userId', label: 'auth');
