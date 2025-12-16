@@ -1050,15 +1050,23 @@ Please create a transaction based on this receipt data.''';
                 }
 
                 Log.d('🔵 Calling _createRecurringFromAction...', label: 'Chat Provider');
-                final convertedAmount = await _createRecurringFromAction(action);
-                Log.d('✅ _createRecurringFromAction completed', label: 'Chat Provider');
+                double? convertedAmount;
+                try {
+                  convertedAmount = await _createRecurringFromAction(action);
+                  Log.d('✅ _createRecurringFromAction completed', label: 'Chat Provider');
+                } catch (e) {
+                  Log.e('❌ _createRecurringFromAction failed: $e', label: 'Chat Provider');
+                  _addErrorMessage('❌ $e');
+                  displayMessage = ''; // Clear success message, error is already shown
+                  break;
+                }
 
                 // IMPORTANT: Replace "Active Wallet" with actual wallet name in AI response
                 if (usedWallet != null) {
                   displayMessage = displayMessage.replaceAll('Active Wallet', usedWallet.name);
 
                   // Add conversion info if currency was converted
-                  if (aiCurrency != usedWallet.currency) {
+                  if (aiCurrency != usedWallet.currency && convertedAmount != null) {
                     // Format amounts with proper separators
                     final convertedFormatted = _formatAmount(convertedAmount, currency: usedWallet.currency);
                     final originalFormatted = _formatAmount(originalAmount, currency: aiCurrency);
@@ -1250,15 +1258,16 @@ Please create a transaction based on this receipt data.''';
         error: errorString,
       );
 
-      // Update state
+      // Update state - remove typing message first, then add error message
+      final messagesWithoutTyping = state.messages
+          .where((msg) => !msg.isTyping)
+          .toList();
+
       state = state.copyWith(
+        messages: [...messagesWithoutTyping, errorMessage],
         isLoading: false,
         isTyping: false,
         error: errorString,
-      );
-
-      state = state.copyWith(
-        messages: [...state.messages, errorMessage],
       );
 
       // Save error message to database
