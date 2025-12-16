@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.READ_SMS"/>
     <uses-permission android:name="android.permission.RECEIVE_SMS"/>
 
+    <!-- Microphone permission for voice-to-text -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
     <!-- Notification Listener permission for banking notification auto-detection -->
     <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
         tools:ignore="ProtectedPermissions"/>
