@@ -15,7 +15,7 @@ class ActionButton extends ConsumerWidget {
       children: [
         CustomIconButton(
           context,
-          onPressed: () => context.push(Routes.notifications),
+          onPressed: () => _openNotifications(context),
           icon: HugeIcons.strokeRoundedNotification02,
           showBadge: hasUnreadNotifications.value ?? false,
           themeMode: context.themeMode,
@@ -31,6 +31,15 @@ class ActionButton extends ConsumerWidget {
             themeMode: context.themeMode,
           ),
       ],
+    );
+  }
+
+  void _openNotifications(BuildContext context) {
+    // Show as dialog on desktop/web, navigate on mobile
+    DesktopDialogHelper.showScreen(
+      context,
+      desktopWidget: const NotificationListScreen(),
+      mobileRoute: Routes.notifications,
     );
   }
 }
