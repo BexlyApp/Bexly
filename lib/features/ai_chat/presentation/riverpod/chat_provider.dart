@@ -757,13 +757,20 @@ Please create a transaction based on this receipt data.''';
                 // Get the actual amount saved (after currency conversion if needed)
                 final actualAmount = await _createTransactionFromAction(action, wallet: wallet);
 
+                // If transaction creation failed, don't show success message from AI
+                // Error message was already added by _createTransactionFromAction via _addErrorMessage
+                if (actualAmount == null) {
+                  displayMessage = ''; // Clear success message, error is already shown
+                  break;
+                }
+
                 // IMPORTANT: Replace "Active Wallet" with actual wallet name in AI response
                 // AI service was built with potentially stale wallet info, so we fix it here
                 displayMessage = displayMessage.replaceAll('Active Wallet', wallet.name);
 
                 // Add conversion info if currency was converted
                 // Show wallet currency amount first, with note about original amount
-                if (aiCurrency != wallet.currency && actualAmount != null) {
+                if (aiCurrency != wallet.currency) {
                   // Format amounts with proper separators
                   final convertedFormatted = _formatAmount(actualAmount, currency: wallet.currency);
                   final originalFormatted = _formatAmount(amount, currency: aiCurrency);
@@ -1152,6 +1159,26 @@ Please create a transaction based on this receipt data.''';
       print('[CHAT_DEBUG] pendingAction before create message: $pendingAction');
       print('[CHAT_DEBUG] pendingAction buttons: ${pendingAction?.buttons.length ?? 0}');
       print('[CHAT_DEBUG] displayMessage FINAL: $displayMessage');
+
+      // Skip creating AI message if displayMessage is empty
+      // This happens when transaction creation fails and error was already shown via _addErrorMessage
+      if (displayMessage.isEmpty) {
+        print('[CHAT_DEBUG] displayMessage is empty, skipping AI message creation (error already shown)');
+        // Just remove typing indicator and update loading state
+        try {
+          final messagesWithoutTyping = state.messages
+              .where((msg) => !msg.isTyping)
+              .toList();
+          state = state.copyWith(
+            messages: messagesWithoutTyping,
+            isLoading: false,
+            isTyping: false,
+          );
+        } catch (e) {
+          print('[CHAT_DEBUG] ⚠️ Failed to update state: $e');
+        }
+        return;
+      }
 
       final aiMessage = ChatMessage(
         id: _uuid.v4(),
