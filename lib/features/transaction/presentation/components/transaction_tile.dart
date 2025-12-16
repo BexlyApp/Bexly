@@ -16,7 +16,6 @@ import 'package:bexly/features/main/presentation/components/transaction_options_
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_ui_extension.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
-import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 class TransactionTile extends ConsumerWidget {
   final TransactionModel transaction;
@@ -47,13 +46,8 @@ class TransactionTile extends ConsumerWidget {
       ),
       borderRadius: BorderRadius.circular(AppRadius.radius12),
       child: Container(
-        height: 72,
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.spacing8,
-          AppSpacing.spacing8,
-          AppSpacing.spacing16,
-          AppSpacing.spacing8,
-        ),
+        height: 70,
+        padding: const EdgeInsets.only(right: AppSpacing.spacing12),
         decoration: BoxDecoration(
           color: transaction.backgroundColor(context, context.themeMode),
           borderRadius: BorderRadius.circular(AppRadius.radius12),
@@ -64,18 +58,19 @@ class TransactionTile extends ConsumerWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Icon flush with left edge - no padding, border-radius only on left
             Container(
-              width: 54,
-              height: 54,
-              padding: const EdgeInsets.all(AppSpacing.spacing8),
+              width: 70,
+              height: 70,
+              padding: const EdgeInsets.all(AppSpacing.spacing12),
               decoration: BoxDecoration(
                 color: transaction.iconBackgroundColor(
                   context,
                   context.themeMode,
                 ),
-                borderRadius: BorderRadius.circular(AppRadius.radius12),
-                border: Border.all(
-                  color: transaction.iconBorderColor(context.isDarkMode),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppRadius.radius12 - 1),
+                  bottomLeft: Radius.circular(AppRadius.radius12 - 1),
                 ),
               ),
               child: CategoryIcon(

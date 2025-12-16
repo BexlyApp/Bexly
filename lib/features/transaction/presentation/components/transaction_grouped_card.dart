@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:bexly/core/constants/app_colors.dart';
-import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
@@ -78,17 +77,15 @@ class TransactionGroupedCard extends ConsumerWidget {
 
         final String displayDate = dateKey.toRelativeDayFormatted();
 
-        return Container(
-          padding: const EdgeInsets.all(AppSpacing.spacing16),
-          decoration: BoxDecoration(
-            border: Border.all(color: context.purpleBorderLighter),
-            borderRadius: BorderRadius.circular(AppRadius.radius8),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        // No box container - just date header and transactions list
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Date header row
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.spacing8),
+              child: Row(
                 children: [
                   Text(displayDate, style: AppTextStyles.body2.bold),
                   Expanded(
@@ -106,25 +103,24 @@ class TransactionGroupedCard extends ConsumerWidget {
                   ),
                 ],
               ),
-              const Gap(AppSpacing.spacing12),
-              // Transactions list for the day
-              ListView.separated(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: transactionsForDay.length,
-                itemBuilder: (context, itemIndex) {
-                  final transaction = transactionsForDay[itemIndex];
-                  return TransactionTile(
-                    transaction: transaction,
-                    showDate: false, // Date is in the group header
-                  );
-                },
-                separatorBuilder: (context, itemIndex) =>
-                    const Gap(AppSpacing.spacing12),
-              ),
-            ],
-          ),
+            ),
+            // Transactions list for the day
+            ListView.separated(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: transactionsForDay.length,
+              itemBuilder: (context, itemIndex) {
+                final transaction = transactionsForDay[itemIndex];
+                return TransactionTile(
+                  transaction: transaction,
+                  showDate: false, // Date is in the group header
+                );
+              },
+              separatorBuilder: (context, itemIndex) =>
+                  const Gap(AppSpacing.spacing8),
+            ),
+          ],
         );
       },
       separatorBuilder: (context, index) => const Gap(AppSpacing.spacing12),
