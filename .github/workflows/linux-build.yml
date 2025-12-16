@@ -41,13 +41,24 @@ jobs:
           BEXLY_FREE_AI_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
           EOF
 
+      - name: Get version info
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          BUILD_NUMBER=$(echo $VERSION | cut -d'+' -f2)
+          VERSION_NAME=$(echo $VERSION | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Building version: $VERSION_NAME (build $BUILD_NUMBER)"
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Enable Linux desktop
         run: flutter config --enable-linux-desktop
 
-      - name: Build Linux app
+      - name: Build Linux app (${{ steps.version.outputs.build_number }})
         run: flutter build linux --release
 
       - name: Create tarball
@@ -58,6 +69,6 @@ jobs:
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux-build
+          name: linux-build-${{ steps.version.outputs.build_number }}
           path: build/linux/Bexly-linux.tar.gz
           retention-days: 30
