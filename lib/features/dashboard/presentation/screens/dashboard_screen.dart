@@ -43,6 +43,8 @@ import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_
 import 'package:bexly/features/dashboard/presentation/riverpod/selected_month_provider.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/cash_flow_providers.dart';
 import 'package:bexly/features/notification/presentation/riverpod/notification_providers.dart';
+import 'package:bexly/features/notification/presentation/screens/notification_list_screen.dart';
+import 'package:bexly/core/utils/desktop_dialog_helper.dart';
 
 part '../components/action_button.dart';
 // part '../components/balance_card.dart'; // Legacy - using balance_card_v2 instead
