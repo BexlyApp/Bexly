@@ -26,10 +26,92 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Setup Ruby (for CocoaPods)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Install Codemagic CLI Tools
+        run: |
+          brew install pipx
+          pipx ensurepath
+          pipx install codemagic-cli-tools
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Setup keychain and certificate
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.IOS_DIST_CERTIFICATE_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DIST_CERTIFICATE_PASSWORD }}
+        run: |
+          # Decode certificate (same Apple Distribution cert used for iOS)
+          echo "$MACOS_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate to keychain
+          security import certificate.p12 -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # Save keychain path for later cleanup
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
+          echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> $GITHUB_ENV
+
+          # Cleanup certificate file
+          rm certificate.p12
+
+      - name: Setup App Store Connect API Key
+        env:
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+
+      - name: Install provisioning profile
+        env:
+          MACOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.MACOS_PROVISION_PROFILE_BASE64 }}
+        run: |
+          # Decode provisioning profile
+          echo "$MACOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > profile.provisionprofile
+
+          # Extract UUID and install profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< $(security cms -D -i profile.provisionprofile))
+          cp profile.provisionprofile ~/Library/MobileDevice/Provisioning\ Profiles/${UUID}.provisionprofile
+          echo "Installed provisioning profile with UUID: $UUID"
+          echo "PROFILE_UUID=$UUID" >> $GITHUB_ENV
+
+          # Clean up
+          rm profile.provisionprofile
+
       - name: Create .env file
         run: |
-          # Create empty .env file for CI build
-          touch .env
+          # Create .env file with Bexly Free AI configuration
+          cat > .env << 'EOF'
+          BEXLY_FREE_AI_URL=https://api.dos.ai/v1
+          BEXLY_FREE_AI_KEY=bexly-free-tier
+          BEXLY_FREE_AI_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
+          EOF
+
+      - name: Get version info
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          BUILD_NUMBER=$(echo $VERSION | cut -d'+' -f2)
+          VERSION_NAME=$(echo $VERSION | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Building version: $VERSION_NAME (build $BUILD_NUMBER)"
 
       - name: Install dependencies
         run: flutter pub get
@@ -40,12 +122,51 @@ jobs:
       - name: Install CocoaPods dependencies
         run: |
           cd macos
-          pod install --repo-update || true
+          pod install --repo-update
 
-      - name: Build macOS app
-        run: flutter build macos --release
+      - name: Configure code signing
+        run: |
+          # Update Xcode project to use manual signing
+          cd macos
+          /usr/libexec/PlistBuddy -c "Set :objects:33CC10F92044A3C60003C045:buildSettings:CODE_SIGN_STYLE Manual" Runner.xcodeproj/project.pbxproj 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Set :objects:33CC10FA2044A3C60003C045:buildSettings:CODE_SIGN_STYLE Manual" Runner.xcodeproj/project.pbxproj 2>/dev/null || true
 
-      - name: Create DMG
+      - name: Build macOS app (${{ steps.version.outputs.build_number }})
+        run: |
+          flutter build macos --release
+
+      - name: Sign and create PKG for App Store
+        env:
+          TEAM_ID: "U8XAV4YC8V"
+          APP_BUNDLE_ID: "com.joy.bexly"
+        run: |
+          APP_PATH="build/macos/Build/Products/Release/Bexly.app"
+
+          # Find the signing identity
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep "Apple Distribution" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "Using signing identity: $SIGNING_IDENTITY"
+
+          # Sign the app bundle
+          codesign --deep --force --options runtime \
+            --sign "$SIGNING_IDENTITY" \
+            --entitlements macos/Runner/Release.entitlements \
+            "$APP_PATH"
+
+          # Verify signature
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
+          # Create PKG for App Store submission
+          productbuild \
+            --component "$APP_PATH" /Applications \
+            --sign "3rd Party Mac Developer Installer: DOS Labs Pte. Ltd. (U8XAV4YC8V)" \
+            "build/macos/Bexly-${{ steps.version.outputs.version_name }}.pkg" || {
+              echo "⚠️ PKG signing failed, creating unsigned PKG..."
+              productbuild \
+                --component "$APP_PATH" /Applications \
+                "build/macos/Bexly-${{ steps.version.outputs.version_name }}.pkg"
+            }
+
+      - name: Create DMG for direct distribution
         run: |
           # Install create-dmg
           brew install create-dmg
@@ -60,21 +181,61 @@ jobs:
             --icon "Bexly.app" 150 190 \
             --hide-extension "Bexly.app" \
             --app-drop-link 450 185 \
-            "build/macos/Bexly.dmg" \
+            "build/macos/Bexly-${{ steps.version.outputs.version_name }}.dmg" \
             "build/macos/Build/Products/Release/Bexly.app" || true
 
           # If create-dmg fails, just zip the app
-          if [ ! -f "build/macos/Bexly.dmg" ]; then
+          if [ ! -f "build/macos/Bexly-${{ steps.version.outputs.version_name }}.dmg" ]; then
             cd build/macos/Build/Products/Release
-            zip -r ../../../Bexly-macos.zip Bexly.app
+            zip -r "../../../Bexly-${{ steps.version.outputs.version_name }}-macos.zip" Bexly.app
           fi
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-build
+          name: macos-build-${{ steps.version.outputs.build_number }}
           path: |
-            build/macos/Bexly.dmg
-            build/macos/Bexly-macos.zip
+            build/macos/Bexly-*.pkg
+            build/macos/Bexly-*.dmg
+            build/macos/Bexly-*-macos.zip
           retention-days: 30
           if-no-files-found: warn
+
+      - name: Upload to App Store Connect
+        env:
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_USERNAME: ${{ secrets.APP_STORE_CONNECT_USERNAME }}
+          APP_STORE_CONNECT_PASSWORD: ${{ secrets.APP_STORE_CONNECT_PASSWORD }}
+        run: |
+          PKG_PATH=$(ls build/macos/Bexly-*.pkg 2>/dev/null | head -1)
+
+          if [ -z "$PKG_PATH" ]; then
+            echo "⚠️ No PKG file found, skipping App Store upload"
+            exit 0
+          fi
+
+          echo "📦 Uploading $PKG_PATH to App Store Connect..."
+
+          # Try App Store Connect API first
+          if app-store-connect publish \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_ID" \
+            --private-key @file:~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
+            --path "$PKG_PATH"; then
+            echo "✅ Upload successful via App Store Connect API"
+          else
+            echo "⚠️ API upload failed, trying App Password fallback..."
+            xcrun altool --upload-app \
+              --type macos \
+              --file "$PKG_PATH" \
+              --username "$APP_STORE_CONNECT_USERNAME" \
+              --password "$APP_STORE_CONNECT_PASSWORD" || {
+                echo "⚠️ App Store upload failed. PKG is available as artifact."
+              }
+          fi
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $KEYCHAIN_PATH || true
