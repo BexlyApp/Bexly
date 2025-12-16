@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/core/constants/app_colors.dart';
@@ -13,6 +14,7 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/ai_chat/data/services/speech_service.dart';
 import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/presentation/riverpod/chat_provider.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart' as firebase_auth;
@@ -603,7 +605,7 @@ class _TypingDotState extends State<_TypingDot>
   }
 }
 
-class _ChatInput extends HookWidget {
+class _ChatInput extends HookConsumerWidget {
   final TextEditingController controller;
   final Function(String, Uint8List?) onSend;
   final bool isLoading;
@@ -615,9 +617,11 @@ class _ChatInput extends HookWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final selectedImage = useState<Uint8List?>(null);
     final imagePicker = ImagePicker();
+    final speechState = ref.watch(speechStateProvider);
+    final speechNotifier = ref.read(speechStateProvider.notifier);
 
     // Create focus node with onKeyEvent handler for Enter key on web/desktop
     final focusNode = useMemoized(() {
@@ -648,6 +652,26 @@ class _ChatInput extends HookWidget {
     useEffect(() {
       return () => focusNode.dispose();
     }, [focusNode]);
+
+    // Update text field with partial speech results in real-time
+    useEffect(() {
+      if (speechState.isListening && speechState.partialText.isNotEmpty) {
+        controller.text = speechState.partialText;
+        controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: speechState.partialText.length),
+        );
+      }
+      // When final result comes in, update with recognized text
+      if (!speechState.isListening && speechState.recognizedText.isNotEmpty) {
+        controller.text = speechState.recognizedText;
+        controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: speechState.recognizedText.length),
+        );
+        // Clear the speech state after using the text
+        Future.microtask(() => speechNotifier.clearText());
+      }
+      return null;
+    }, [speechState.partialText, speechState.recognizedText, speechState.isListening]);
 
     // Get bottom padding for safe area (to avoid bottom nav bar overlap)
     final bottomPadding = MediaQuery.of(context).padding.bottom;
@@ -814,19 +838,57 @@ class _ChatInput extends HookWidget {
                                     ),
                                   ),
                                 )
-                              // Voice button when empty
+                              // Voice button when empty - shows recording state
                               : GestureDetector(
                                   onTap: isLoading
                                       ? null
-                                      : () {
+                                      : () async {
                                           HapticFeedback.lightImpact();
-                                          // TODO: Implement voice input
+                                          if (speechState.isListening) {
+                                            // Stop listening and use the text
+                                            await speechNotifier.stopListening();
+                                            final text = speechState.recognizedText.isNotEmpty
+                                                ? speechState.recognizedText
+                                                : speechState.partialText;
+                                            if (text.isNotEmpty) {
+                                              controller.text = text;
+                                              controller.selection = TextSelection.fromPosition(
+                                                TextPosition(offset: text.length),
+                                              );
+                                            }
+                                          } else {
+                                            // Request microphone permission and start listening
+                                            final status = await Permission.microphone.request();
+                                            if (status.isGranted) {
+                                              // Get current locale from app settings
+                                              final locale = Localizations.localeOf(context);
+                                              final localeId = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
+                                              await speechNotifier.startListening(localeId: localeId);
+                                            } else {
+                                              // Show permission denied message
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: const Text(
+                                                      'Microphone permission is required for voice input',
+                                                    ),
+                                                    action: SnackBarAction(
+                                                      label: 'Settings',
+                                                      onPressed: () => openAppSettings(),
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          }
                                         },
-                                  child: Icon(
-                                    Icons.mic_none_rounded,
-                                    color: isLoading ? AppColors.neutral300 : AppColors.neutral500,
-                                    size: 24,
-                                  ),
+                                  child: speechState.isListening
+                                      ? _buildRecordingIndicator()
+                                      : Icon(
+                                          Icons.mic_none_rounded,
+                                          color: isLoading ? AppColors.neutral300 : AppColors.neutral500,
+                                          size: 24,
+                                        ),
                                 ),
                         ),
                         suffixIconConstraints: const BoxConstraints(
@@ -847,6 +909,28 @@ class _ChatInput extends HookWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  /// Build animated recording indicator
+  Widget _buildRecordingIndicator() {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: AppColors.red.withAlpha(30),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: AppColors.red,
+            shape: BoxShape.circle,
+          ),
+        ),
       ),
     );
   }

@@ -53,6 +53,10 @@
 	<string>Bexly needs access to your photo library to let you select profile pictures and attach receipt images to transactions.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Bexly needs camera access to scan receipts and capture images for transactions.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Bexly needs microphone access to enable voice-to-text input for the AI assistant.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Bexly uses speech recognition to convert your voice into text for the AI assistant.</string>
 	<!-- AdMob App ID for iOS -->
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-7528798617302619~5756089592</string>
