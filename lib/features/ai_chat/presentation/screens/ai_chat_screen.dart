@@ -725,7 +725,16 @@ class _ChatInput extends HookConsumerWidget {
               ),
             ),
 
-          ValueListenableBuilder<TextEditingValue>(
+          // Show recording UI when listening, otherwise show normal input
+          if (speechState.isListening)
+            _buildRecordingUI(
+              context: context,
+              speechState: speechState,
+              speechNotifier: speechNotifier,
+              controller: controller,
+            )
+          else
+            ValueListenableBuilder<TextEditingValue>(
             valueListenable: controller,
             builder: (context, value, child) {
               final hasText = controller.text.trim().isNotEmpty;
@@ -909,7 +918,119 @@ class _ChatInput extends HookConsumerWidget {
     );
   }
 
-  /// Build animated recording indicator
+  /// Build recording UI with waveform animation and controls
+  Widget _buildRecordingUI({
+    required BuildContext context,
+    required SpeechState speechState,
+    required SpeechStateNotifier speechNotifier,
+    required TextEditingController controller,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.spacing12,
+        vertical: AppSpacing.spacing8,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.red.withAlpha(15),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppColors.red.withAlpha(50),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Cancel button
+          GestureDetector(
+            onTap: () async {
+              HapticFeedback.lightImpact();
+              await speechNotifier.cancelListening();
+            },
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.neutral200,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.close_rounded,
+                color: AppColors.neutral600,
+                size: 20,
+              ),
+            ),
+          ),
+
+          const SizedBox(width: AppSpacing.spacing12),
+
+          // Waveform animation and text
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Animated waveform
+                _AnimatedWaveform(),
+
+                const SizedBox(height: 4),
+
+                // Partial text or listening indicator
+                Text(
+                  speechState.partialText.isNotEmpty
+                      ? speechState.partialText
+                      : 'Đang lắng nghe...',
+                  style: AppTextStyles.body4.copyWith(
+                    color: speechState.partialText.isNotEmpty
+                        ? AppColors.neutral700
+                        : AppColors.neutral500,
+                    fontStyle: speechState.partialText.isEmpty
+                        ? FontStyle.italic
+                        : FontStyle.normal,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: AppSpacing.spacing12),
+
+          // Stop/Done button
+          GestureDetector(
+            onTap: () async {
+              HapticFeedback.mediumImpact();
+              await speechNotifier.stopListening();
+              final text = speechState.recognizedText.isNotEmpty
+                  ? speechState.recognizedText
+                  : speechState.partialText;
+              if (text.isNotEmpty) {
+                controller.text = text;
+                controller.selection = TextSelection.fromPosition(
+                  TextPosition(offset: text.length),
+                );
+              }
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.red,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.stop_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build animated recording indicator (small, for suffix icon)
   Widget _buildRecordingIndicator() {
     return Container(
       width: 24,
@@ -929,5 +1050,69 @@ class _ChatInput extends HookConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// Animated waveform widget for voice recording
+class _AnimatedWaveform extends StatefulWidget {
+  @override
+  State<_AnimatedWaveform> createState() => _AnimatedWaveformState();
+}
+
+class _AnimatedWaveformState extends State<_AnimatedWaveform>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 24,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: List.generate(20, (index) {
+              // Create wave effect with phase offset
+              final phase = (index / 20) * 2 * 3.14159;
+              final animValue = (_controller.value * 2 * 3.14159) + phase;
+              final height = 8 + 12 * ((1 + _sin(animValue)) / 2);
+
+              return Container(
+                width: 3,
+                height: height,
+                margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                decoration: BoxDecoration(
+                  color: AppColors.red.withAlpha((150 + 105 * ((1 + _sin(animValue)) / 2)).toInt()),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              );
+            }),
+          );
+        },
+      ),
+    );
+  }
+
+  double _sin(double x) {
+    // Simple sine approximation
+    x = x % (2 * 3.14159);
+    if (x > 3.14159) x -= 2 * 3.14159;
+    return x - (x * x * x) / 6 + (x * x * x * x * x) / 120;
   }
 }
