@@ -36,13 +36,24 @@ jobs:
           BEXLY_FREE_AI_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
           EOF
 
+      - name: Get version info
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          BUILD_NUMBER=$(echo $VERSION | cut -d'+' -f2)
+          VERSION_NAME=$(echo $VERSION | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Building version: $VERSION_NAME (build $BUILD_NUMBER)"
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Compile drift_worker.dart for web database
         run: dart compile js -O4 web/drift_worker.dart -o web/drift_worker.js
 
-      - name: Build web
+      - name: Build web (${{ steps.version.outputs.build_number }})
         run: flutter build web --release
 
       - name: Copy SQLite WASM files to build output
@@ -87,7 +98,7 @@ jobs:
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
         with:
-          name: web-build
+          name: web-build-${{ steps.version.outputs.build_number }}
           path: build/web
           retention-days: 30
 
