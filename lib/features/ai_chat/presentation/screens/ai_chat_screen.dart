@@ -857,28 +857,24 @@ class _ChatInput extends HookConsumerWidget {
                                               );
                                             }
                                           } else {
-                                            // Request microphone permission and start listening
-                                            final status = await Permission.microphone.request();
-                                            if (status.isGranted) {
-                                              // Get current locale from app settings
-                                              final locale = Localizations.localeOf(context);
-                                              final localeId = '${locale.languageCode}_${locale.countryCode ?? locale.languageCode.toUpperCase()}';
-                                              await speechNotifier.startListening(localeId: localeId);
-                                            } else {
-                                              // Show permission denied message
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    content: const Text(
-                                                      'Microphone permission is required for voice input',
-                                                    ),
-                                                    action: SnackBarAction(
-                                                      label: 'Settings',
-                                                      onPressed: () => openAppSettings(),
-                                                    ),
+                                            // Start listening - speech_to_text handles permissions internally
+                                            // Use Vietnamese locale by default for better recognition
+                                            await speechNotifier.startListening(localeId: 'vi_VN');
+
+                                            // Check if there was an error (permission denied or not available)
+                                            // Need to wait a bit for the state to update
+                                            await Future.delayed(const Duration(milliseconds: 300));
+                                            final currentState = ref.read(speechStateProvider);
+                                            if (currentState.error != null && context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(currentState.error!),
+                                                  action: SnackBarAction(
+                                                    label: 'Settings',
+                                                    onPressed: () => openAppSettings(),
                                                   ),
-                                                );
-                                              }
+                                                ),
+                                              );
                                             }
                                           }
                                         },
