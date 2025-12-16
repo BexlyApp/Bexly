@@ -5,6 +5,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/utils/desktop_dialog_helper.dart';
 import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
@@ -18,22 +19,20 @@ class DesktopSidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Container(
       width: desktopSidebarWidth, // Uses the updated width
       padding: const EdgeInsets.symmetric(
         vertical: AppSpacing.spacing16,
-        // horizontal: AppSpacing.spacing8, // ListTile will handle its own padding
       ),
       decoration: const BoxDecoration(color: AppColors.dark),
       child: Column(
-        // Using ListView for scrollability if items exceed height
-        // mainAxisAlignment: MainAxisAlignment.start, // Align items to the top
-        // crossAxisAlignment: CrossAxisAlignment.stretch, // Make ListTiles fill width
         children: <Widget>[
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'Home',
+            title: l10n.home,
             icon: HugeIcons.strokeRoundedHome01,
             pageIndex: 0,
             onTap: () => pageController.jumpToPage(0),
@@ -41,7 +40,7 @@ class DesktopSidebar extends ConsumerWidget {
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'AI Chat',
+            title: l10n.aiChat,
             icon: HugeIcons.strokeRoundedAiChat01,
             pageIndex: 1,
             onTap: () => pageController.jumpToPage(1),
@@ -49,7 +48,7 @@ class DesktopSidebar extends ConsumerWidget {
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'History',
+            title: l10n.history,
             icon: HugeIcons.strokeRoundedReceiptDollar,
             pageIndex: 2,
             onTap: () => pageController.jumpToPage(2),
@@ -57,7 +56,7 @@ class DesktopSidebar extends ConsumerWidget {
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'Recurring',
+            title: l10n.recurring,
             icon: Icons.repeat,
             pageIndex: 3,
             onTap: () => pageController.jumpToPage(3),
@@ -65,7 +64,7 @@ class DesktopSidebar extends ConsumerWidget {
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'Goals',
+            title: l10n.goals,
             icon: HugeIcons.strokeRoundedTarget01,
             pageIndex: 4,
             onTap: () {
@@ -77,7 +76,7 @@ class DesktopSidebar extends ConsumerWidget {
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'Budgets',
+            title: l10n.budget,
             icon: HugeIcons.strokeRoundedDatabase,
             pageIndex: 4,
             onTap: () {
@@ -91,7 +90,7 @@ class DesktopSidebar extends ConsumerWidget {
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'Settings',
+            title: l10n.settings,
             icon: HugeIcons.strokeRoundedSettings02,
             onTap: () => _showSettingsDialog(context),
           ),
@@ -117,9 +116,9 @@ class DesktopSidebar extends ConsumerWidget {
                   color: Colors.white,
                   size: 20,
                 ),
-                label: const Text(
-                  'New Transaction',
-                  style: TextStyle(
+                label: Text(
+                  l10n.addTransaction,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
