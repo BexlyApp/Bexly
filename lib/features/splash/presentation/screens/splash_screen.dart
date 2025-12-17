@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -62,9 +63,14 @@ class SplashScreen extends HookConsumerWidget {
         if (!context.mounted) return;
 
         try {
-          // Check authentication state - read the actual User value from AsyncValue
-          final authAsyncValue = ref.read(authStateProvider);
-          final currentUser = authAsyncValue.value;
+          // Wait for auth state to be ready (Firebase needs time to restore from keychain)
+          User? currentUser;
+          try {
+            currentUser = await ref.read(authStateProvider.future);
+          } catch (e) {
+            Log.e('Auth state error: $e', label: 'SplashScreen');
+            currentUser = null;
+          }
 
           // Check if user has skipped auth before
           final prefs = await SharedPreferences.getInstance();
