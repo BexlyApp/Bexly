@@ -169,25 +169,423 @@ flutter_notification_listener package
 **⚠️ Note:** Brankas chỉ cung cấp Payment APIs (Direct, Disburse), KHÔNG có Account Information Service (AIS) để pull transaction history cho personal finance apps.
 
 ### 0A.4 Email Transaction Sync (Priority 4)
-**Timeline: 2 weeks | Platform: All**
+**Timeline: 3-4 weeks | Platform: All | Status: 📋 PLANNED**
 
-**How it works:**
-- User authorize Gmail access (OAuth)
-- Cloud Function scan inbox cho banking emails
-- AI parse email → extract transactions
-- Sync to app
+#### Overview
+Scan user's email inbox for banking transaction notifications and automatically extract transaction data using AI. This is a **cross-platform solution** that works regardless of phone manufacturer or bank.
 
-**Banks that send email notifications:**
-- Most international banks (Chase, Citi, HSBC)
-- Some VN banks (Vietcombank, BIDV - if user enabled)
+#### Why Email Sync?
 
-**Technical:**
+| Method | Platform | Coverage | Reliability |
+|--------|----------|----------|-------------|
+| SMS Parsing | Android only | VN banks | High (structured) |
+| FinanceKit | iOS only, US only | Apple Wallet | Limited |
+| Open Banking | Region-specific | Bank dependent | API changes |
+| **Email Sync** | **All platforms** | **All banks** | **Medium-High** |
+
+**Advantages:**
+- ✅ Works on iOS, Android, Web, Desktop
+- ✅ Works globally (any bank that sends email)
+- ✅ User already has email notifications enabled
+- ✅ Historical data (can scan past emails)
+- ✅ No need for bank API integration
+- ✅ Privacy: user controls which emails to scan
+
+**Disadvantages:**
+- ❌ Requires Gmail OAuth (complex setup)
+- ❌ Email format varies by bank (AI parsing needed)
+- ❌ Slight delay (email delivery time)
+- ❌ Some users don't enable email notifications
+
+---
+
+#### Banks That Send Email Notifications
+
+**🇻🇳 Vietnam:**
+| Bank | Email Notifications | Format Quality |
+|------|---------------------|----------------|
+| Vietcombank | ✅ Có (phải bật) | Good - structured |
+| BIDV | ✅ Có (phải bật) | Good |
+| Techcombank | ✅ Có | Medium |
+| VPBank | ✅ Có | Medium |
+| MB Bank | ✅ Có | Good |
+| ACB | ✅ Có | Medium |
+| TPBank | ✅ Có | Good |
+| Sacombank | ✅ Có | Medium |
+
+**🌍 International:**
+| Bank | Email Notifications | Notes |
+|------|---------------------|-------|
+| Chase | ✅ Detailed | Amount, merchant, category |
+| Citi | ✅ Detailed | Real-time alerts |
+| HSBC | ✅ Standard | Basic info |
+| Bank of America | ✅ Detailed | Customizable alerts |
+| Wells Fargo | ✅ Standard | Transaction alerts |
+| Capital One | ✅ Detailed | Instant notifications |
+
+---
+
+#### Technical Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        USER FLOW                             │
+├─────────────────────────────────────────────────────────────┤
+│  1. User taps "Connect Email" in Settings                    │
+│  2. OAuth consent screen (Gmail)                             │
+│  3. Grant read-only access to emails                         │
+│  4. Cloud Function starts scanning                           │
+│  5. Transactions appear in app (with "Email" source tag)     │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                    SYSTEM ARCHITECTURE                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────┐    ┌──────────────┐    ┌─────────────────┐   │
+│  │  Flutter │───▶│   Firebase   │───▶│  Cloud Function │   │
+│  │   App    │    │    Auth      │    │   (scheduled)   │   │
+│  └──────────┘    └──────────────┘    └────────┬────────┘   │
+│       │                                        │            │
+│       │                                        ▼            │
+│       │                               ┌─────────────────┐   │
+│       │                               │   Gmail API     │   │
+│       │                               │  (read-only)    │   │
+│       │                               └────────┬────────┘   │
+│       │                                        │            │
+│       │                                        ▼            │
+│       │                               ┌─────────────────┐   │
+│       │                               │   Gemini AI     │   │
+│       │                               │  (parse email)  │   │
+│       │                               └────────┬────────┘   │
+│       │                                        │            │
+│       │                                        ▼            │
+│       │                               ┌─────────────────┐   │
+│       │                               │   Firestore     │   │
+│       ◀───────────────────────────────│  (transactions) │   │
+│       │                               └─────────────────┘   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### Implementation Details
+
+**Phase 1: Gmail OAuth Setup (Week 1)**
+
+```dart
+// lib/features/email_sync/services/gmail_auth_service.dart
+
+class GmailAuthService {
+  // OAuth 2.0 scopes needed
+  static const scopes = [
+    'https://www.googleapis.com/auth/gmail.readonly',
+  ];
+
+  Future<GoogleSignInAccount?> connectGmail() async {
+    final googleSignIn = GoogleSignIn(
+      scopes: scopes,
+      // Request offline access for Cloud Function
+      serverClientId: 'YOUR_WEB_CLIENT_ID',
+    );
+    return await googleSignIn.signIn();
+  }
+
+  // Get server auth code for Cloud Function
+  Future<String?> getServerAuthCode() async {
+    final account = await googleSignIn.signInSilently();
+    return account?.serverAuthCode;
+  }
+}
+```
+
+**Phase 2: Cloud Function - Email Scanner (Week 2)**
+
 ```typescript
-// Cloud Function
-googleapis/gmail.users.messages.list
-- Filter by sender (banking domains)
-- Parse HTML email body
-- Gemini extract transaction data
+// functions/src/emailSync/scanBankingEmails.ts
+
+import { gmail_v1, google } from 'googleapis';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { VertexAI } from '@google-cloud/vertexai';
+
+// Known banking email domains
+const BANK_DOMAINS = [
+  // Vietnam
+  'vietcombank.com.vn',
+  'bidv.com.vn',
+  'techcombank.com.vn',
+  'vpbank.com.vn',
+  'mbbank.com.vn',
+  'acb.com.vn',
+  'tpb.vn',
+  'sacombank.com.vn',
+  // International
+  'chase.com',
+  'citi.com',
+  'notifications.citi.com',
+  'email.capitalone.com',
+  'alerts.bankofamerica.com',
+];
+
+// Run every 15 minutes
+export const scanBankingEmails = onSchedule('every 15 minutes', async (event) => {
+  const users = await getEmailSyncEnabledUsers();
+
+  for (const user of users) {
+    const gmail = await getGmailClient(user.refreshToken);
+    const emails = await fetchBankingEmails(gmail, user.lastSyncTime);
+
+    for (const email of emails) {
+      const transaction = await parseEmailWithAI(email);
+      if (transaction) {
+        await saveTransaction(user.id, transaction);
+      }
+    }
+  }
+});
+
+async function fetchBankingEmails(gmail: gmail_v1.Gmail, since: Date) {
+  // Build query for banking emails
+  const senderQuery = BANK_DOMAINS.map(d => `from:${d}`).join(' OR ');
+  const query = `(${senderQuery}) after:${formatDate(since)}`;
+
+  const response = await gmail.users.messages.list({
+    userId: 'me',
+    q: query,
+    maxResults: 50,
+  });
+
+  return response.data.messages || [];
+}
+```
+
+**Phase 3: AI Email Parsing (Week 2-3)**
+
+```typescript
+// functions/src/emailSync/parseEmailWithAI.ts
+
+const PARSE_PROMPT = `
+Extract transaction information from this banking email.
+Return JSON with these fields:
+- amount: number (positive for income, negative for expense)
+- currency: string (VND, USD, etc.)
+- merchant: string (who received/sent money)
+- date: ISO date string
+- type: 'expense' | 'income' | 'transfer'
+- category_hint: string (suggested category like 'food', 'shopping', etc.)
+- confidence: number (0-1, how confident you are)
+
+If this is not a transaction email, return { "is_transaction": false }
+
+Email content:
+---
+{EMAIL_BODY}
+---
+`;
+
+async function parseEmailWithAI(emailHtml: string): Promise<Transaction | null> {
+  const vertexai = new VertexAI({ project: 'bexly-app' });
+  const model = vertexai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+  // Convert HTML to plain text
+  const plainText = htmlToText(emailHtml);
+
+  const result = await model.generateContent(
+    PARSE_PROMPT.replace('{EMAIL_BODY}', plainText)
+  );
+
+  const jsonResponse = extractJSON(result.response.text());
+
+  if (!jsonResponse.is_transaction || jsonResponse.confidence < 0.7) {
+    return null;
+  }
+
+  return {
+    amount: jsonResponse.amount,
+    currency: jsonResponse.currency,
+    merchant: jsonResponse.merchant,
+    date: new Date(jsonResponse.date),
+    categoryHint: jsonResponse.category_hint,
+    source: 'email',
+    sourceEmailId: emailId,
+  };
+}
+```
+
+**Phase 4: Flutter UI (Week 3-4)**
+
+```dart
+// lib/features/email_sync/presentation/screens/email_sync_settings_screen.dart
+
+class EmailSyncSettingsScreen extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final syncStatus = ref.watch(emailSyncStatusProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: Text('Email Sync')),
+      body: Column(
+        children: [
+          // Connection status card
+          EmailConnectionCard(
+            isConnected: syncStatus.isConnected,
+            email: syncStatus.connectedEmail,
+            onConnect: () => _connectGmail(context, ref),
+            onDisconnect: () => _disconnectGmail(ref),
+          ),
+
+          // Sync statistics
+          if (syncStatus.isConnected) ...[
+            SyncStatsCard(
+              lastSync: syncStatus.lastSyncTime,
+              transactionsFound: syncStatus.totalTransactions,
+              pendingReview: syncStatus.pendingReview,
+            ),
+
+            // Bank filter settings
+            BankFilterSettings(
+              enabledBanks: syncStatus.enabledBanks,
+              onToggle: (bank, enabled) => _toggleBank(ref, bank, enabled),
+            ),
+
+            // Manual sync button
+            ElevatedButton.icon(
+              icon: Icon(Icons.sync),
+              label: Text('Sync Now'),
+              onPressed: () => _triggerManualSync(ref),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+```
+
+---
+
+#### Database Schema
+
+```dart
+// lib/core/database/tables/email_sync_table.dart
+
+class EmailSyncSettings extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get userId => text()();
+  TextColumn get gmailEmail => text().nullable()();
+  TextColumn get encryptedRefreshToken => text().nullable()();
+  BoolColumn get isEnabled => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get lastSyncTime => dateTime().nullable()();
+  TextColumn get enabledBanks => text().withDefault(const Constant('[]'))(); // JSON array
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+}
+
+// Add to Transaction table
+class Transactions extends Table {
+  // ... existing columns ...
+  TextColumn get source => text().withDefault(const Constant('manual'))(); // 'manual', 'sms', 'email', 'api'
+  TextColumn get sourceEmailId => text().nullable()(); // Gmail message ID
+  BoolColumn get isAutoImported => boolean().withDefault(const Constant(false))();
+  BoolColumn get needsReview => boolean().withDefault(const Constant(false))();
+}
+```
+
+---
+
+#### Privacy & Security
+
+**Data Protection:**
+- ✅ Only request `gmail.readonly` scope (cannot modify/delete emails)
+- ✅ Refresh token encrypted in Firestore
+- ✅ User can disconnect anytime (tokens revoked)
+- ✅ No email content stored, only extracted transaction data
+- ✅ Processing done server-side (Cloud Functions)
+
+**User Control:**
+- Toggle which banks to scan
+- Review auto-imported transactions before confirming
+- Option to delete all synced data
+- View sync history and logs
+
+---
+
+#### Cost Estimation
+
+| Service | Usage | Monthly Cost |
+|---------|-------|--------------|
+| Gmail API | 1M requests/day free | $0 |
+| Cloud Functions | 2M invocations free | ~$5-10 |
+| Gemini Flash | ~$0.075/1M input tokens | ~$10-20 |
+| Firestore | Per user storage | ~$5 |
+| **Total** | | **~$20-40/month** |
+
+*For 1000 active users with email sync enabled*
+
+---
+
+#### Implementation Checklist
+
+- [ ] **Week 1: OAuth Setup**
+  - [ ] Configure Google Cloud OAuth consent screen
+  - [ ] Add gmail.readonly scope
+  - [ ] Implement GmailAuthService in Flutter
+  - [ ] Store refresh token securely in Firestore
+
+- [ ] **Week 2: Cloud Function**
+  - [ ] Create scanBankingEmails scheduled function
+  - [ ] Implement Gmail API client with refresh token
+  - [ ] Build bank domain filter list
+  - [ ] Add email fetching logic
+
+- [ ] **Week 3: AI Parsing**
+  - [ ] Design parsing prompt for Gemini
+  - [ ] Handle multiple email formats (HTML, plain text)
+  - [ ] Add confidence scoring
+  - [ ] Test with VN and international bank emails
+
+- [ ] **Week 4: Flutter UI**
+  - [ ] Email sync settings screen
+  - [ ] Transaction review screen (for auto-imported)
+  - [ ] Sync status indicators
+  - [ ] Error handling and retry logic
+
+---
+
+#### Sample Email Formats
+
+**Vietcombank:**
+```
+Subject: VCB: GD thanh toan the 123456xxxx7890
+
+Quy Khach da thanh toan
+So tien: 150,000 VND
+Tai: GRAB VIETNAM
+Ngay: 18/12/2025 14:30:25
+So du: 5,234,000 VND
+```
+
+**Chase:**
+```
+Subject: Your $45.67 transaction with AMAZON.COM
+
+Transaction Details:
+Amount: $45.67
+Merchant: AMAZON.COM
+Date: December 18, 2025
+Card ending in: 1234
+```
+
+**Techcombank:**
+```
+Subject: TCB - Thong bao giao dich
+
+Tai khoan: 190xxxx1234
+Giao dich: -500,000 VND
+Noi dung: Thanh toan QR
+Thoi gian: 18/12/2025 10:15
+So du: 12,500,000 VND
 ```
 
 ### 0A.5 Apple FinanceKit Integration (Priority 5)
