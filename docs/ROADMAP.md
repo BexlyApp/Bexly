@@ -154,6 +154,50 @@ googleapis/gmail.users.messages.list
 - Gemini extract transaction data
 ```
 
+### 0A.5 Apple FinanceKit Integration (Priority 5)
+**Timeline: 2-4 weeks | Platform: iOS only | Status: 🔬 RESEARCH**
+
+**What is FinanceKit?**
+Apple's native framework (iOS 17.4+) for accessing financial data from Apple Wallet:
+- Apple Card transactions
+- Apple Cash transactions
+- Bank accounts linked to Apple Wallet
+
+**Limitations:**
+- **iOS 17.4+ only** - limited user base
+- **US market only** - Apple Card not available elsewhere
+- **Requires Apple entitlement** - must apply for approval
+- **No Flutter package** - only 1 unofficial package on GitHub ([dasbudget/flutter_financekit](https://github.com/dasbudget/flutter_financekit))
+
+**Technical Implementation:**
+```swift
+// Native Swift code required
+import FinanceKit
+
+// Request authorization
+let store = FinanceStore.shared
+let authStatus = await store.requestAuthorization()
+
+// Fetch transactions
+let transactions = try await store.transactions(query: query)
+```
+
+**Flutter Integration Options:**
+1. Fork & improve `flutter_financekit` package
+2. Write custom platform channel + Swift code
+3. Wait for official/mature package
+
+**When to implement:**
+- After US market expansion
+- When iOS 17.4+ adoption reaches 50%+
+- If Apple Card user base is significant
+
+**References:**
+- [Apple FinanceKit Documentation](https://developer.apple.com/financekit/)
+- [flutter_financekit (GitHub)](https://github.com/dasbudget/flutter_financekit) - 2 stars, last update Aug 2024
+
+---
+
 ### Implementation Roadmap
 
 **Phase 1 (Week 1-2): SMS Parsing MVP**
