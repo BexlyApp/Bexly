@@ -44,8 +44,11 @@ class GoalChecklistFormDialog extends HookConsumerWidget {
     useEffect(() {
       if (isEditing) {
         titleController.text = checklistItemModel!.title;
-        amountController.text =
-            '$defaultCurrency ${checklistItemModel!.amount.toPriceFormat()}';
+        final amount = checklistItemModel!.amount;
+        if (amount > 0) {
+          amountController.text =
+              '${defaultCurrency ?? ''} ${amount.toPriceFormat()}'.trim();
+        }
         linkController.text = checklistItemModel!.link;
         completed = checklistItemModel!.completed;
       }
