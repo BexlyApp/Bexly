@@ -24,8 +24,8 @@ class BudgetCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final wallet = ref.read(activeWalletProvider);
-    final currency = wallet.value?.currencyByIsoCode(ref).symbol;
+    final wallet = ref.watch(activeWalletProvider).value;
+    final currency = wallet?.currencyByIsoCode(ref).symbol ?? 'đ';
 
     Log.d(budget.toJson(), label: 'budget');
     final spentAmountAsync = ref.watch(budgetSpentAmountProvider(budget));

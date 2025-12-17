@@ -131,17 +131,29 @@ class PlanningScreen extends HookConsumerWidget {
               indicatorWeight: 3,
               labelColor: AppColors.primary600,
               unselectedLabelColor: AppColors.neutral400,
-              labelStyle: AppTextStyles.body2.copyWith(
+              labelStyle: AppTextStyles.body3.copyWith(
                 fontWeight: FontWeight.w600,
               ),
               tabs: [
                 Tab(
-                  text: l10n.budget,
-                  icon: const Icon(Icons.account_balance_wallet),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.account_balance_wallet, size: 18),
+                      const SizedBox(width: 6),
+                      Text(l10n.budget),
+                    ],
+                  ),
                 ),
                 Tab(
-                  text: l10n.goals,
-                  icon: const Icon(Icons.flag),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.flag, size: 18),
+                      const SizedBox(width: 6),
+                      Text(l10n.goals),
+                    ],
+                  ),
                 ),
               ],
             ),
