@@ -39,13 +39,16 @@ jobs:
           pipx install codemagic-cli-tools
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Setup keychain and certificate
+      - name: Setup keychain and certificates
         env:
           MACOS_CERTIFICATE_BASE64: ${{ secrets.IOS_DIST_CERTIFICATE_BASE64 }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DIST_CERTIFICATE_PASSWORD }}
+          MACOS_INSTALLER_CERT_BASE64: ${{ secrets.MACOS_INSTALLER_CERT_BASE64 }}
+          MACOS_INSTALLER_CERT_PASSWORD: ${{ secrets.MACOS_INSTALLER_CERT_PASSWORD }}
         run: |
-          # Decode certificate (same Apple Distribution cert used for iOS)
+          # Decode certificates
           echo "$MACOS_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          echo "$MACOS_INSTALLER_CERT_BASE64" | base64 --decode > installer_cert.p12
 
           # Create temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
@@ -55,17 +58,25 @@ jobs:
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-          # Import certificate to keychain
+          # Import Apple Distribution certificate (for signing app)
           security import certificate.p12 -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+
+          # Import Mac Installer Distribution certificate (for signing PKG)
+          security import installer_cert.p12 -P "$MACOS_INSTALLER_CERT_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # List available signing identities
+          echo "Available signing identities:"
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
 
           # Save keychain path for later cleanup
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
           echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> $GITHUB_ENV
 
-          # Cleanup certificate file
-          rm certificate.p12
+          # Cleanup certificate files
+          rm certificate.p12 installer_cert.p12
 
       - name: Setup App Store Connect API Key
         env:
@@ -142,9 +153,13 @@ jobs:
         run: |
           APP_PATH="build/macos/Build/Products/Release/Bexly.app"
 
-          # Find the signing identity
-          SIGNING_IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep "Apple Distribution" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-          echo "Using signing identity: $SIGNING_IDENTITY"
+          # Find the app signing identity (Apple Distribution or 3rd Party Mac Developer Application)
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep -E "(Apple Distribution|3rd Party Mac Developer Application)" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "Using app signing identity: $SIGNING_IDENTITY"
+
+          # Find the installer signing identity (3rd Party Mac Developer Installer)
+          INSTALLER_IDENTITY=$(security find-identity -v $KEYCHAIN_PATH | grep "3rd Party Mac Developer Installer" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "Using installer signing identity: $INSTALLER_IDENTITY"
 
           # Sign the app bundle
           codesign --deep --force --options runtime \
@@ -156,15 +171,18 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 
           # Create PKG for App Store submission
-          productbuild \
-            --component "$APP_PATH" /Applications \
-            --sign "3rd Party Mac Developer Installer: DOS Labs Pte. Ltd. (U8XAV4YC8V)" \
-            "build/macos/Bexly-${{ steps.version.outputs.version_name }}.pkg" || {
-              echo "⚠️ PKG signing failed, creating unsigned PKG..."
-              productbuild \
-                --component "$APP_PATH" /Applications \
-                "build/macos/Bexly-${{ steps.version.outputs.version_name }}.pkg"
-            }
+          if [ -n "$INSTALLER_IDENTITY" ]; then
+            echo "Creating signed PKG..."
+            productbuild \
+              --component "$APP_PATH" /Applications \
+              --sign "$INSTALLER_IDENTITY" \
+              "build/macos/Bexly-${{ steps.version.outputs.version_name }}.pkg"
+          else
+            echo "⚠️ No installer certificate found, creating unsigned PKG..."
+            productbuild \
+              --component "$APP_PATH" /Applications \
+              "build/macos/Bexly-${{ steps.version.outputs.version_name }}.pkg"
+          fi
 
       - name: Create DMG for direct distribution
         run: |
