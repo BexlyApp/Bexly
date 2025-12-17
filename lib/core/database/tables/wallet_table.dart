@@ -30,6 +30,13 @@ class Wallets extends Table {
   /// Annual interest rate in percentage (for credit cards/loans)
   RealColumn get interestRate => real().nullable()();
 
+  /// Firebase UID of the wallet owner (for family sharing - tracks original owner)
+  /// Null for wallets created before family sharing was enabled
+  TextColumn get ownerUserId => text().nullable()();
+
+  /// Whether this wallet is currently shared with a family group
+  BoolColumn get isShared => boolean().withDefault(const Constant(false))();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -49,6 +56,8 @@ extension WalletExtension on Wallet {
       creditLimit: json['creditLimit'] as double?,
       billingDay: json['billingDay'] as int?,
       interestRate: json['interestRate'] as double?,
+      ownerUserId: json['ownerUserId'] as String?,
+      isShared: json['isShared'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -69,6 +78,8 @@ extension WalletTableExtensions on Wallet {
       creditLimit: creditLimit,
       billingDay: billingDay,
       interestRate: interestRate,
+      ownerUserId: ownerUserId,
+      isShared: isShared,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -93,6 +104,8 @@ extension WalletModelExtensions on WalletModel {
       creditLimit: creditLimit == null ? const Value.absent() : Value(creditLimit),
       billingDay: billingDay == null ? const Value.absent() : Value(billingDay),
       interestRate: interestRate == null ? const Value.absent() : Value(interestRate),
+      ownerUserId: ownerUserId == null ? const Value.absent() : Value(ownerUserId),
+      isShared: Value(isShared),
       // createdAt: use provided value or current time on insert
       createdAt: createdAt != null
           ? Value(createdAt!)

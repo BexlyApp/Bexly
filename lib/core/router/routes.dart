@@ -35,4 +35,9 @@ class Routes {
 
   /// Subscription
   static const String subscription = '/subscription';
+
+  /// Family
+  static const String familySettings = '/family-settings';
+  static const String inviteMember = '/family-invite';
+  static const String shareWallet = '/family-share-wallet';
 }

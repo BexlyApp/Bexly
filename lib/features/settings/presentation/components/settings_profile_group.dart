@@ -26,6 +26,15 @@ class SettingsProfileGroup extends ConsumerWidget {
             desktopWidget: const SubscriptionScreen(),
           ),
         ),
+        MenuTileButton(
+          label: 'Family Sharing',
+          icon: HugeIcons.strokeRoundedUserGroup,
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.familySettings,
+            desktopWidget: const FamilySettingsScreen(),
+          ),
+        ),
       ],
     );
   }

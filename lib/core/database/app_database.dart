@@ -11,6 +11,7 @@ import 'package:bexly/core/database/daos/wallet_dao.dart'; // Import new DAO
 import 'package:bexly/core/database/daos/chat_message_dao.dart';
 import 'package:bexly/core/database/daos/recurring_dao.dart';
 import 'package:bexly/core/database/daos/notification_dao.dart';
+import 'package:bexly/core/database/daos/family_dao.dart';
 import 'package:bexly/core/database/tables/budgets_table.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/transaction_table.dart';
@@ -21,6 +22,10 @@ import 'package:bexly/core/database/tables/wallet_table.dart'; // Import new tab
 import 'package:bexly/core/database/tables/chat_messages_table.dart';
 import 'package:bexly/core/database/tables/recurrings_table.dart';
 import 'package:bexly/core/database/tables/notifications_table.dart';
+import 'package:bexly/core/database/tables/family_group_table.dart';
+import 'package:bexly/core/database/tables/family_member_table.dart';
+import 'package:bexly/core/database/tables/family_invitation_table.dart';
+import 'package:bexly/core/database/tables/shared_wallet_table.dart';
 import 'package:bexly/core/services/data_population_service/category_population_service.dart';
 import 'package:bexly/core/services/data_population_service/wallet_population_service.dart'; // Import new population service
 import 'package:bexly/core/utils/logger.dart';
@@ -39,6 +44,10 @@ part 'app_database.g.dart';
     ChatMessages,
     Recurrings,
     Notifications,
+    FamilyGroups,
+    FamilyMembers,
+    FamilyInvitations,
+    SharedWallets,
   ],
   daos: [
     UserDao,
@@ -51,13 +60,14 @@ part 'app_database.g.dart';
     ChatMessageDao,
     RecurringDao,
     NotificationDao,
+    FamilyDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 18; // Add localizedTitles column to categories for multi-language support
+  int get schemaVersion => 19; // Add family sharing tables and columns
 
   @override
   MigrationStrategy get migration {
@@ -232,6 +242,30 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Added localizedTitles column to categories table', label: 'database');
           } catch (e) {
             Log.e('Failed to add localizedTitles column: $e', label: 'database');
+          }
+        }
+
+        // For version 19, add family sharing tables and columns
+        if (from < 19) {
+          try {
+            // Create new family sharing tables
+            await m.createTable(familyGroups);
+            await m.createTable(familyMembers);
+            await m.createTable(familyInvitations);
+            await m.createTable(sharedWallets);
+            Log.i('Created family sharing tables', label: 'database');
+
+            // Add user tracking columns to transactions
+            await m.addColumn(transactions, transactions.createdByUserId);
+            await m.addColumn(transactions, transactions.lastModifiedByUserId);
+            Log.i('Added user tracking columns to transactions', label: 'database');
+
+            // Add sharing columns to wallets
+            await m.addColumn(wallets, wallets.ownerUserId);
+            await m.addColumn(wallets, wallets.isShared);
+            Log.i('Added sharing columns to wallets', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add family sharing schema: $e', label: 'database');
           }
         }
 

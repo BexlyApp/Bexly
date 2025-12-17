@@ -51,6 +51,14 @@ class Transactions extends Table {
   /// Null if this is a manual transaction
   IntColumn get recurringId => integer().nullable()();
 
+  /// Firebase UID of the user who created this transaction (for family sharing)
+  /// Null for transactions created before family sharing was enabled
+  TextColumn get createdByUserId => text().nullable()();
+
+  /// Firebase UID of the user who last modified this transaction (for family sharing)
+  /// Null for transactions not modified after family sharing was enabled
+  TextColumn get lastModifiedByUserId => text().nullable()();
+
   /// Timestamp of when the transaction was created in the database.
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
