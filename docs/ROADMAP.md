@@ -121,16 +121,52 @@ flutter_notification_listener package
 ### 0A.3 Open Banking API Integration (Priority 3)
 **Timeline: 4 weeks | Platform: All**
 
+#### 🇻🇳 Vietnam Open Banking - Thông tư 64/2024/TT-NHNN
+
+**QUAN TRỌNG:** Vietnam đã có Open Banking regulation!
+
+| Mốc thời gian | Nội dung |
+|---------------|----------|
+| 31/12/2024 | Thông tư 64/2024/TT-NHNN được ban hành |
+| **01/03/2025** | **Có hiệu lực** (đã active!) |
+| 01/07/2025 | Banks phải có danh mục API và kế hoạch triển khai |
+| 01/03/2027 | Banks phải tuân thủ đầy đủ |
+
+**Yêu cầu cho bên thứ ba (fintech apps như Bexly):**
+- Tuân thủ quy định về bảo mật dữ liệu cá nhân
+- Xử lý dữ liệu đúng mục đích theo hợp đồng
+- Hệ thống đáp ứng tối thiểu cấp độ 3 về an toàn thông tin
+
+**References:**
+- [Thông tư 64/2024 - LuatVietnam](https://luatvietnam.vn/tin-van-ban-moi/tu-01-3-2025-trien-khai-open-api-trong-nganh-ngan-hang-186-100851-article.html)
+- [Vietnam Open Banking - Brankas Blog](https://blog.brankas.com/Vietnam-Open-Banking-with-Circular64)
+
+---
+
+#### Global Open Banking API Providers
+
 **For US/Canada Market:**
-- **Plaid** - Market leader, $0.30-$0.50/account/month
-- Coverage: 12,000+ banks in US/Canada/UK
+| Provider | Coverage | Price | Notes |
+|----------|----------|-------|-------|
+| **[Plaid](https://plaid.com)** | 12,000+ FIs (US, CA, UK, EU) | $0.30-0.50/account/month | Market leader |
+| **[MX](https://mx.com)** | 13,000+ FIs (US, CA only) | Contact sales | AI-powered categorization |
+| **[Yodlee](https://yodlee.com)** | 17,000+ (US, CA, UK, AU, India) | Contact sales | Acquired by STG 6/2025 |
+| **[Finicity](https://finicity.com)** | US, CA | Contact sales | Mastercard owned, lending focus |
 
-**For Southeast Asia Market:**
-- **[Brick](https://techcrunch.com/2021/03/17/financial-api-provider-brick-is-building-the-infrastructure-for-open-banking-in-southeast-asia/)** - Indonesia focus, 90% bank coverage
-- **[Brankas](https://techcrunch.com/2019/05/07/brankas/)** - Philippines, Indonesia, Vietnam, Thailand
-- **[Ayoconnect](https://www.ayoconnect.com/blog/looking-for-plaid-alternative-indonesia)** - Indonesia's largest open finance platform
+**For Europe:**
+| Provider | Coverage | Notes |
+|----------|----------|-------|
+| **[TrueLayer](https://truelayer.com)** | 16 EU markets, 95%+ coverage | UK/EU only, no Asia |
+| **[Salt Edge](https://saltedge.com)** | 50+ countries, 5,000+ banks | Best global coverage |
+| **[Yapily](https://yapily.com)** | 19 EU countries, 2,000+ FIs | Enterprise focus |
 
-**Note:** Vietnam chưa có open banking regulation, nên SMS parsing là phương pháp khả thi nhất cho VN market.
+**For Southeast Asia:**
+| Provider | Coverage | AIS (Transaction Data) | Notes |
+|----------|----------|------------------------|-------|
+| **[Brankas](https://brankas.com)** | ID, PH, VN, TH | ❌ Payment only | Partnership with Gimasys for VN |
+| **Brick** | Indonesia | ❓ Need verify | - |
+
+**⚠️ Note:** Brankas chỉ cung cấp Payment APIs (Direct, Disburse), KHÔNG có Account Information Service (AIS) để pull transaction history cho personal finance apps.
 
 ### 0A.4 Email Transaction Sync (Priority 4)
 **Timeline: 2 weeks | Platform: All**
