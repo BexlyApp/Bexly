@@ -202,8 +202,10 @@ class _CurrentPlanBanner extends StatelessWidget {
       case SubscriptionTier.free:
         return (AppColors.neutral600, AppColors.neutral800);
       case SubscriptionTier.plus:
+      case SubscriptionTier.plusFamily:
         return (AppColors.primary400, AppColors.primary700);
       case SubscriptionTier.pro:
+      case SubscriptionTier.proFamily:
         return (AppColors.purple400, AppColors.purple700);
     }
   }
@@ -214,8 +216,12 @@ class _CurrentPlanBanner extends StatelessWidget {
         return HugeIcons.strokeRoundedUser as dynamic;
       case SubscriptionTier.plus:
         return HugeIcons.strokeRoundedCrown as dynamic;
+      case SubscriptionTier.plusFamily:
+        return HugeIcons.strokeRoundedUserGroup as dynamic;
       case SubscriptionTier.pro:
         return HugeIcons.strokeRoundedDiamond01 as dynamic;
+      case SubscriptionTier.proFamily:
+        return HugeIcons.strokeRoundedUserGroup as dynamic;
     }
   }
 }
