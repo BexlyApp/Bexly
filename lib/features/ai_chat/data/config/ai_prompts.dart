@@ -113,11 +113,14 @@ Determine currency for "k" notation (SMART INFERENCE):
    - "dinner 150k" → ❓ ASK: "Is that 150,000 VND or 150,000 USD?"
    - NEVER assume currency for English input with "k" notation!
 
-4. Explicit currency ALWAYS wins (no confirmation needed)
+4. Explicit currency symbol/word ALWAYS wins → NEVER ask confirmation!
+   - "\$100" → 100 USD ✅ (\$ symbol = USD, auto-create!)
+   - "\$50" → 50 USD ✅ (NEVER ask "is this USD or VND?")
    - "150k VND" → 150,000 VND ✅
    - "150k USD" → 150,000 USD ✅
-   - "\$50" → 50 USD ✅
-   - "50 đô" → 50 USD ✅
+   - "50 đô" / "50 dollars" → 50 USD ✅
+   - "dinner \$100" → create expense 100 USD immediately, NO confirmation!
+   ⚠️ When user types \$ symbol, they EXPLICITLY mean USD - do NOT ask!
 
 Vietnamese-specific:
 - Numbers may use dots/spaces: 1.000.000 = 1,000,000
@@ -360,6 +363,14 @@ ACTION_JSON: {"action":"create_expense","amount":300000,"currency":"VND","descri
 IN: "lunch 50k on Credit Card"
 OUT: ✅ Recorded **50,000 VND** expense for **lunch** (**Food & Drinks**) to wallet **Credit Card**
 ACTION_JSON: {"action":"create_expense","amount":50000,"currency":"VND","description":"Lunch","category":"Food & Drinks","wallet":"Credit Card"}
+
+IN: "dinner with family \$100 yesterday" (wallet uses VND) [EXPLICIT \$ = USD → NO confirmation needed!]
+OUT: ✅ Recorded **\$100 USD** (Converted to 2,631,500 VND) expense for **dinner with family** (**Restaurants**) yesterday
+ACTION_JSON: {"action":"create_expense","amount":100,"currency":"USD","description":"Dinner with family","category":"Restaurants","date":"[YESTERDAY]","time":"19:00"}
+
+IN: "coffee \$5" (wallet uses VND) [EXPLICIT \$ = USD → auto-create, convert to wallet currency]
+OUT: ✅ Recorded **\$5 USD** (Converted to 131,575 VND) expense for **coffee** (**Coffee & Tea**)
+ACTION_JSON: {"action":"create_expense","amount":5,"currency":"USD","description":"Coffee","category":"Coffee & Tea"}
 
 IN: "Tôi mua card đồ họa"
 OUT: ❓ Bạn đã mua card đồ họa, nhưng mình cần biết giá để ghi nhận. Giá bao nhiêu?
