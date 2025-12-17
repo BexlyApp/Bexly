@@ -20,6 +20,8 @@ _WalletModel _$WalletModelFromJson(Map<String, dynamic> json) => _WalletModel(
   creditLimit: (json['creditLimit'] as num?)?.toDouble(),
   billingDay: (json['billingDay'] as num?)?.toInt(),
   interestRate: (json['interestRate'] as num?)?.toDouble(),
+  ownerUserId: json['ownerUserId'] as String?,
+  isShared: json['isShared'] as bool? ?? false,
   createdAt: json['createdAt'] == null
       ? null
       : DateTime.parse(json['createdAt'] as String),
@@ -41,6 +43,8 @@ Map<String, dynamic> _$WalletModelToJson(_WalletModel instance) =>
       'creditLimit': instance.creditLimit,
       'billingDay': instance.billingDay,
       'interestRate': instance.interestRate,
+      'ownerUserId': instance.ownerUserId,
+      'isShared': instance.isShared,
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
     };

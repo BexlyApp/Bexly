@@ -46,6 +46,12 @@ abstract class WalletModel with _$WalletModel {
     /// Annual interest rate in percentage for credit cards/loans
     double? interestRate,
 
+    /// Firebase UID of the wallet owner (for family sharing)
+    String? ownerUserId,
+
+    /// Whether this wallet is currently shared with a family group
+    @Default(false) bool isShared,
+
     /// Timestamp when wallet was created
     DateTime? createdAt,
 

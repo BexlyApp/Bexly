@@ -16,6 +16,7 @@ import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/router/settings_router.dart';
 import 'package:bexly/core/router/transaction_router.dart';
 import 'package:bexly/core/router/wallet_router.dart';
+import 'package:bexly/core/router/family_router.dart';
 import 'package:bexly/features/splash/presentation/screens/splash_screen.dart';
 
 final rootNavKey = GlobalKey<NavigatorState>();
@@ -47,5 +48,6 @@ final router = GoRouter(
     ...WalletRouter.routes,
     ...ReportRouter.routes,
     ...ReceiptScannerRouter.routes,
+    ...FamilyRouter.routes,
   ],
 );
