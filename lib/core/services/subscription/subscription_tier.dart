@@ -8,6 +8,14 @@ enum SubscriptionTier {
 
   /// Pro tier - $5.99/month or $59.99/year
   pro,
+
+  /// Plus Family tier - $4.99/month or $49.99/year
+  /// Plus features + Family sharing (up to 5 members)
+  plusFamily,
+
+  /// Pro Family tier - $9.99/month or $99.99/year
+  /// Pro features + Family sharing (up to 5 members)
+  proFamily,
 }
 
 /// Extension to add utility methods to SubscriptionTier
@@ -21,17 +29,55 @@ extension SubscriptionTierExtension on SubscriptionTier {
         return 'Plus';
       case SubscriptionTier.pro:
         return 'Pro';
+      case SubscriptionTier.plusFamily:
+        return 'Plus Family';
+      case SubscriptionTier.proFamily:
+        return 'Pro Family';
     }
   }
 
   /// Whether this tier includes the features of another tier
   bool includes(SubscriptionTier other) {
+    // Family tiers include their base tier features
+    if (this == SubscriptionTier.plusFamily) {
+      return other == SubscriptionTier.free || other == SubscriptionTier.plus;
+    }
+    if (this == SubscriptionTier.proFamily) {
+      return other != SubscriptionTier.proFamily;
+    }
     return index >= other.index;
   }
 
   /// Check if user has at least this tier level
   bool hasAccess(SubscriptionTier requiredTier) {
-    return index >= requiredTier.index;
+    return includes(requiredTier);
+  }
+
+  /// Whether this tier has family sharing enabled
+  bool get hasFamily {
+    return this == SubscriptionTier.plusFamily || this == SubscriptionTier.proFamily;
+  }
+
+  /// Get the base tier (without family)
+  SubscriptionTier get baseTier {
+    switch (this) {
+      case SubscriptionTier.plusFamily:
+        return SubscriptionTier.plus;
+      case SubscriptionTier.proFamily:
+        return SubscriptionTier.pro;
+      default:
+        return this;
+    }
+  }
+
+  /// Check if this tier has Pro-level features
+  bool get isProLevel {
+    return this == SubscriptionTier.pro || this == SubscriptionTier.proFamily;
+  }
+
+  /// Check if this tier has Plus-level features (or higher)
+  bool get isPlusLevel {
+    return this != SubscriptionTier.free;
   }
 }
 
@@ -48,6 +94,8 @@ class SubscriptionLimits {
         return 3;
       case SubscriptionTier.plus:
       case SubscriptionTier.pro:
+      case SubscriptionTier.plusFamily:
+      case SubscriptionTier.proFamily:
         return -1; // Unlimited
     }
   }
@@ -59,6 +107,8 @@ class SubscriptionLimits {
         return 2;
       case SubscriptionTier.plus:
       case SubscriptionTier.pro:
+      case SubscriptionTier.plusFamily:
+      case SubscriptionTier.proFamily:
         return -1; // Unlimited
     }
   }
@@ -70,6 +120,8 @@ class SubscriptionLimits {
         return 2;
       case SubscriptionTier.plus:
       case SubscriptionTier.pro:
+      case SubscriptionTier.plusFamily:
+      case SubscriptionTier.proFamily:
         return -1; // Unlimited
     }
   }
@@ -81,6 +133,8 @@ class SubscriptionLimits {
         return 5;
       case SubscriptionTier.plus:
       case SubscriptionTier.pro:
+      case SubscriptionTier.plusFamily:
+      case SubscriptionTier.proFamily:
         return -1; // Unlimited
     }
   }
@@ -91,8 +145,10 @@ class SubscriptionLimits {
       case SubscriptionTier.free:
         return 20;
       case SubscriptionTier.plus:
+      case SubscriptionTier.plusFamily:
         return 60;
       case SubscriptionTier.pro:
+      case SubscriptionTier.proFamily:
         return -1; // Unlimited
     }
   }
@@ -103,8 +159,10 @@ class SubscriptionLimits {
       case SubscriptionTier.free:
         return 'standard';
       case SubscriptionTier.plus:
+      case SubscriptionTier.plusFamily:
         return 'premium';
       case SubscriptionTier.pro:
+      case SubscriptionTier.proFamily:
         return 'flagship';
     }
   }
@@ -115,8 +173,10 @@ class SubscriptionLimits {
       case SubscriptionTier.free:
         return 3;
       case SubscriptionTier.plus:
+      case SubscriptionTier.plusFamily:
         return 6;
       case SubscriptionTier.pro:
+      case SubscriptionTier.proFamily:
         return -1; // All history
     }
   }
@@ -140,6 +200,8 @@ class SubscriptionLimits {
         return false;
       case SubscriptionTier.plus:
       case SubscriptionTier.pro:
+      case SubscriptionTier.plusFamily:
+      case SubscriptionTier.proFamily:
         return true;
     }
   }
@@ -150,21 +212,17 @@ class SubscriptionLimits {
       case SubscriptionTier.free:
         return 0;
       case SubscriptionTier.plus:
+      case SubscriptionTier.plusFamily:
         return 1024; // 1GB
       case SubscriptionTier.pro:
+      case SubscriptionTier.proFamily:
         return 5120; // 5GB
     }
   }
 
   /// Whether OCR receipt scanning is available
   bool get allowReceiptOCR {
-    switch (tier) {
-      case SubscriptionTier.free:
-      case SubscriptionTier.plus:
-        return false;
-      case SubscriptionTier.pro:
-        return true;
-    }
+    return tier.isProLevel;
   }
 
   /// Whether ads should be shown
@@ -174,12 +232,23 @@ class SubscriptionLimits {
 
   /// Whether AI insights/predictions are available
   bool get allowAiInsights {
-    return tier == SubscriptionTier.pro;
+    return tier.isProLevel;
   }
 
   /// Whether priority support is available
   bool get hasPrioritySupport {
-    return tier == SubscriptionTier.pro;
+    return tier.isProLevel;
+  }
+
+  /// Whether family sharing is enabled
+  bool get allowFamilySharing {
+    return tier.hasFamily;
+  }
+
+  /// Maximum number of family members (including owner)
+  int get maxFamilyMembers {
+    if (!allowFamilySharing) return 1;
+    return 5; // Owner + 4 members
   }
 
   /// Check if a count exceeds the limit (-1 means unlimited)
