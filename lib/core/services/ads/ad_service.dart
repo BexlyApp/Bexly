@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/utils/logger.dart';
@@ -24,27 +23,19 @@ class AdUnitIds {
   static const String _prodNativeAndroid = 'ca-app-pub-7528798617302619/4566961191'; // Create native ad unit later
   static const String _prodNativeIos = 'ca-app-pub-7528798617302619/2721720388'; // Using banner for now
 
-  /// Get banner ad unit ID based on platform and environment
+  /// Get banner ad unit ID based on platform
+  /// Always use production ads (test ads only via AdMob test device settings)
   static String get bannerAdUnitId {
-    if (kDebugMode) {
-      return Platform.isAndroid ? _testBannerAndroid : _testBannerIos;
-    }
     return Platform.isAndroid ? _prodBannerAndroid : _prodBannerIos;
   }
 
-  /// Get interstitial ad unit ID based on platform and environment
+  /// Get interstitial ad unit ID based on platform
   static String get interstitialAdUnitId {
-    if (kDebugMode) {
-      return Platform.isAndroid ? _testInterstitialAndroid : _testInterstitialIos;
-    }
     return Platform.isAndroid ? _prodInterstitialAndroid : _prodInterstitialIos;
   }
 
-  /// Get native ad unit ID based on platform and environment
+  /// Get native ad unit ID based on platform
   static String get nativeAdUnitId {
-    if (kDebugMode) {
-      return Platform.isAndroid ? _testNativeAndroid : _testNativeIos;
-    }
     return Platform.isAndroid ? _prodNativeAndroid : _prodNativeIos;
   }
 }
