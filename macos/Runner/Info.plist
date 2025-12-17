@@ -28,5 +28,13 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<!-- App Store Category - Finance -->
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.finance</string>
+	<!-- Privacy Usage Descriptions -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Bexly needs microphone access to enable voice-to-text input for the AI assistant.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Bexly uses speech recognition to convert your voice into text for the AI assistant.</string>
 </dict>
 </plist>
