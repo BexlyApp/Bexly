@@ -52,9 +52,6 @@ app.*.map.json
 /android/app/google-services.json
 keystore.properties
 
-*.freezed.dart
-*.g.dart
-
 # Note: firebase_options.dart is intentionally committed
 # Firebase API keys are designed to be public and protected by:
 # - Firebase Security Rules
