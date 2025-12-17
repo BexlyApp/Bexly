@@ -1,3 +1,5 @@
+import 'package:bexly/features/family/domain/enums/family_role.dart';
+
 /// Subscription tier levels for Bexly
 enum SubscriptionTier {
   /// Free tier - limited features
@@ -53,8 +55,8 @@ extension SubscriptionTierExtension on SubscriptionTier {
     return includes(requiredTier);
   }
 
-  /// Whether this tier has family sharing enabled
-  bool get hasFamily {
+  /// Whether this tier has full family sharing (5 members, unlimited wallets)
+  bool get hasFullFamily {
     return this == SubscriptionTier.plusFamily || this == SubscriptionTier.proFamily;
   }
 
@@ -240,15 +242,80 @@ class SubscriptionLimits {
     return tier.isProLevel;
   }
 
-  /// Whether family sharing is enabled
+  // ============== Family Sharing Limits ==============
+
+  /// Whether family sharing is enabled (all tiers have basic family)
   bool get allowFamilySharing {
-    return tier.hasFamily;
+    return true; // All tiers can use family sharing
   }
 
   /// Maximum number of family members (including owner)
+  /// Free: 2 (owner + 1 member)
+  /// Plus/Pro: 3 members
+  /// Family tiers: 5 members
   int get maxFamilyMembers {
-    if (!allowFamilySharing) return 1;
-    return 5; // Owner + 4 members
+    switch (tier) {
+      case SubscriptionTier.free:
+        return 2; // Owner + 1 member
+      case SubscriptionTier.plus:
+      case SubscriptionTier.pro:
+        return 3; // Owner + 2 members
+      case SubscriptionTier.plusFamily:
+      case SubscriptionTier.proFamily:
+        return 5; // Owner + 4 members
+    }
+  }
+
+  /// Maximum number of wallets that can be shared with family
+  /// Free: 1 wallet
+  /// Plus: 2 wallets
+  /// Pro: 3 wallets
+  /// Family tiers: Unlimited
+  int get maxSharedWallets {
+    switch (tier) {
+      case SubscriptionTier.free:
+        return 1;
+      case SubscriptionTier.plus:
+        return 2;
+      case SubscriptionTier.pro:
+        return 3;
+      case SubscriptionTier.plusFamily:
+      case SubscriptionTier.proFamily:
+        return -1; // Unlimited
+    }
+  }
+
+  /// Available family roles for this tier
+  /// Free: Viewer only (cannot edit)
+  /// Plus: Owner, Viewer
+  /// Pro: Owner, Editor, Viewer
+  /// Family tiers: All roles
+  List<FamilyRole> get availableFamilyRoles {
+    switch (tier) {
+      case SubscriptionTier.free:
+        return [FamilyRole.owner, FamilyRole.viewer];
+      case SubscriptionTier.plus:
+      case SubscriptionTier.plusFamily:
+        return [FamilyRole.owner, FamilyRole.viewer];
+      case SubscriptionTier.pro:
+      case SubscriptionTier.proFamily:
+        return [FamilyRole.owner, FamilyRole.editor, FamilyRole.viewer];
+    }
+  }
+
+  /// Whether members can have Editor role
+  bool get allowEditorRole {
+    return tier.isProLevel;
+  }
+
+  /// Whether user can create a family (all tiers can create)
+  bool get canCreateFamily {
+    return true;
+  }
+
+  /// Whether user can invite members (all tiers can invite up to their limit)
+  bool get canInviteMembers {
+    return true;
   }
 
   /// Check if a count exceeds the limit (-1 means unlimited)

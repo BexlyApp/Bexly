@@ -21,7 +21,7 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 - Contains ads
 - No receipt photo storage
 - DOS AI model only (cannot choose other models)
-- No family sharing
+- Basic family sharing (2 members, 1 shared wallet, viewer-only)
 
 ---
 
@@ -37,6 +37,7 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 - 120 Premium AI messages/month (Gemini 2.5 Pro)
 - Can choose between DOS AI and Gemini
 - Receipt photo storage (1GB)
+- Family sharing (3 members, 2 shared wallets)
 - **No ads**
 
 ---
@@ -51,6 +52,7 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 - 100 Flagship AI messages/month (GPT-4o / Claude)
 - Can choose any AI model
 - Receipt photo storage (5GB)
+- Family sharing (3 members, 3 shared wallets, Editor role)
 - AI insights & predictions
 - Priority support
 - Early access to new features
@@ -109,19 +111,31 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 | Cloud sync | Basic | Full | Full | Full | Full |
 | Ads | Yes | No | No | No | No |
 | Priority support | - | - | Yes | - | Yes |
-| **Family sharing** | - | - | - | **5 members** | **5 members** |
-| **Shared wallets** | - | - | - | **Yes** | **Yes** |
+| **Family members** | 2 | 3 | 3 | **5** | **5** |
+| **Shared wallets** | 1 | 2 | 3 | **Unlimited** | **Unlimited** |
+| **Editor role** | - | - | Yes | - | Yes |
 
 ---
 
 ## Family Sharing Features
 
+**All tiers have access to basic Family Sharing with different limits!**
+
+### Family Limits by Tier
+| Limit | Free | Plus | Pro | Plus Family | Pro Family |
+|-------|------|------|-----|-------------|------------|
+| Max members | 2 | 3 | 3 | 5 | 5 |
+| Shared wallets | 1 | 2 | 3 | Unlimited | Unlimited |
+| Available roles | Owner, Viewer | Owner, Viewer | Owner, Editor, Viewer | Owner, Viewer | Owner, Editor, Viewer |
+| Can create family | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Can invite members | ✅ | ✅ | ✅ | ✅ | ✅ |
+
 ### Member Roles
-| Role | Permissions |
-|------|-------------|
-| **Owner** | Full control - invite/remove members, share/unshare wallets, CRUD all transactions |
-| **Editor** | Can share wallets, create/edit/delete transactions |
-| **Viewer** | Read-only access to shared wallets |
+| Role | Permissions | Available in |
+|------|-------------|--------------|
+| **Owner** | Full control - invite/remove members, share/unshare wallets, CRUD all transactions | All tiers |
+| **Editor** | Can share wallets, create/edit/delete transactions | Pro, Pro Family |
+| **Viewer** | Read-only access to shared wallets | All tiers |
 
 ### How It Works
 1. **Create Family**: Owner creates a family group
@@ -194,8 +208,22 @@ bool canChooseModel() {
   return subscription.isPlusLevel; // Plus, Pro, Plus Family, Pro Family
 }
 
-bool canUseFamily() {
-  return subscription.hasFamily; // Plus Family or Pro Family
+// All tiers can use family, but with different limits
+int getMaxFamilyMembers() {
+  if (subscription.hasFullFamily) return 5; // Plus Family, Pro Family
+  if (subscription.isPlusLevel) return 3;   // Plus, Pro
+  return 2;                                  // Free
+}
+
+int getMaxSharedWallets() {
+  if (subscription.hasFullFamily) return -1; // Unlimited
+  if (subscription.isProLevel) return 3;
+  if (subscription.isPlusLevel) return 2;
+  return 1; // Free
+}
+
+bool canUseEditorRole() {
+  return subscription.isProLevel; // Pro, Pro Family only
 }
 
 List<AIModel> getAvailableModels() {
