@@ -10159,6 +10159,1387 @@ class SharedWalletsCompanion extends UpdateCompanion<SharedWallet> {
   }
 }
 
+class $ParsedEmailTransactionsTable extends ParsedEmailTransactions
+    with TableInfo<$ParsedEmailTransactionsTable, ParsedEmailTransaction> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ParsedEmailTransactionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
+    'cloudId',
+  );
+  @override
+  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
+    'cloud_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _emailIdMeta = const VerificationMeta(
+    'emailId',
+  );
+  @override
+  late final GeneratedColumn<String> emailId = GeneratedColumn<String>(
+    'email_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _emailSubjectMeta = const VerificationMeta(
+    'emailSubject',
+  );
+  @override
+  late final GeneratedColumn<String> emailSubject = GeneratedColumn<String>(
+    'email_subject',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fromEmailMeta = const VerificationMeta(
+    'fromEmail',
+  );
+  @override
+  late final GeneratedColumn<String> fromEmail = GeneratedColumn<String>(
+    'from_email',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('VND'),
+  );
+  static const VerificationMeta _transactionTypeMeta = const VerificationMeta(
+    'transactionType',
+  );
+  @override
+  late final GeneratedColumn<String> transactionType = GeneratedColumn<String>(
+    'transaction_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _merchantMeta = const VerificationMeta(
+    'merchant',
+  );
+  @override
+  late final GeneratedColumn<String> merchant = GeneratedColumn<String>(
+    'merchant',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _accountLast4Meta = const VerificationMeta(
+    'accountLast4',
+  );
+  @override
+  late final GeneratedColumn<String> accountLast4 = GeneratedColumn<String>(
+    'account_last4',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _balanceAfterMeta = const VerificationMeta(
+    'balanceAfter',
+  );
+  @override
+  late final GeneratedColumn<double> balanceAfter = GeneratedColumn<double>(
+    'balance_after',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _transactionDateMeta = const VerificationMeta(
+    'transactionDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> transactionDate =
+      GeneratedColumn<DateTime>(
+        'transaction_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _emailDateMeta = const VerificationMeta(
+    'emailDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> emailDate = GeneratedColumn<DateTime>(
+    'email_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _confidenceMeta = const VerificationMeta(
+    'confidence',
+  );
+  @override
+  late final GeneratedColumn<double> confidence = GeneratedColumn<double>(
+    'confidence',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.8),
+  );
+  static const VerificationMeta _rawAmountTextMeta = const VerificationMeta(
+    'rawAmountText',
+  );
+  @override
+  late final GeneratedColumn<String> rawAmountText = GeneratedColumn<String>(
+    'raw_amount_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryHintMeta = const VerificationMeta(
+    'categoryHint',
+  );
+  @override
+  late final GeneratedColumn<String> categoryHint = GeneratedColumn<String>(
+    'category_hint',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bankNameMeta = const VerificationMeta(
+    'bankName',
+  );
+  @override
+  late final GeneratedColumn<String> bankName = GeneratedColumn<String>(
+    'bank_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending_review'),
+  );
+  static const VerificationMeta _importedTransactionIdMeta =
+      const VerificationMeta('importedTransactionId');
+  @override
+  late final GeneratedColumn<int> importedTransactionId = GeneratedColumn<int>(
+    'imported_transaction_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _targetWalletIdMeta = const VerificationMeta(
+    'targetWalletId',
+  );
+  @override
+  late final GeneratedColumn<int> targetWalletId = GeneratedColumn<int>(
+    'target_wallet_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _selectedCategoryIdMeta =
+      const VerificationMeta('selectedCategoryId');
+  @override
+  late final GeneratedColumn<int> selectedCategoryId = GeneratedColumn<int>(
+    'selected_category_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _userNotesMeta = const VerificationMeta(
+    'userNotes',
+  );
+  @override
+  late final GeneratedColumn<String> userNotes = GeneratedColumn<String>(
+    'user_notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    cloudId,
+    emailId,
+    emailSubject,
+    fromEmail,
+    amount,
+    currency,
+    transactionType,
+    merchant,
+    accountLast4,
+    balanceAfter,
+    transactionDate,
+    emailDate,
+    confidence,
+    rawAmountText,
+    categoryHint,
+    bankName,
+    status,
+    importedTransactionId,
+    targetWalletId,
+    selectedCategoryId,
+    userNotes,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'parsed_email_transactions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ParsedEmailTransaction> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('cloud_id')) {
+      context.handle(
+        _cloudIdMeta,
+        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
+      );
+    }
+    if (data.containsKey('email_id')) {
+      context.handle(
+        _emailIdMeta,
+        emailId.isAcceptableOrUnknown(data['email_id']!, _emailIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_emailIdMeta);
+    }
+    if (data.containsKey('email_subject')) {
+      context.handle(
+        _emailSubjectMeta,
+        emailSubject.isAcceptableOrUnknown(
+          data['email_subject']!,
+          _emailSubjectMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_emailSubjectMeta);
+    }
+    if (data.containsKey('from_email')) {
+      context.handle(
+        _fromEmailMeta,
+        fromEmail.isAcceptableOrUnknown(data['from_email']!, _fromEmailMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fromEmailMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    }
+    if (data.containsKey('transaction_type')) {
+      context.handle(
+        _transactionTypeMeta,
+        transactionType.isAcceptableOrUnknown(
+          data['transaction_type']!,
+          _transactionTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transactionTypeMeta);
+    }
+    if (data.containsKey('merchant')) {
+      context.handle(
+        _merchantMeta,
+        merchant.isAcceptableOrUnknown(data['merchant']!, _merchantMeta),
+      );
+    }
+    if (data.containsKey('account_last4')) {
+      context.handle(
+        _accountLast4Meta,
+        accountLast4.isAcceptableOrUnknown(
+          data['account_last4']!,
+          _accountLast4Meta,
+        ),
+      );
+    }
+    if (data.containsKey('balance_after')) {
+      context.handle(
+        _balanceAfterMeta,
+        balanceAfter.isAcceptableOrUnknown(
+          data['balance_after']!,
+          _balanceAfterMeta,
+        ),
+      );
+    }
+    if (data.containsKey('transaction_date')) {
+      context.handle(
+        _transactionDateMeta,
+        transactionDate.isAcceptableOrUnknown(
+          data['transaction_date']!,
+          _transactionDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transactionDateMeta);
+    }
+    if (data.containsKey('email_date')) {
+      context.handle(
+        _emailDateMeta,
+        emailDate.isAcceptableOrUnknown(data['email_date']!, _emailDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_emailDateMeta);
+    }
+    if (data.containsKey('confidence')) {
+      context.handle(
+        _confidenceMeta,
+        confidence.isAcceptableOrUnknown(data['confidence']!, _confidenceMeta),
+      );
+    }
+    if (data.containsKey('raw_amount_text')) {
+      context.handle(
+        _rawAmountTextMeta,
+        rawAmountText.isAcceptableOrUnknown(
+          data['raw_amount_text']!,
+          _rawAmountTextMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rawAmountTextMeta);
+    }
+    if (data.containsKey('category_hint')) {
+      context.handle(
+        _categoryHintMeta,
+        categoryHint.isAcceptableOrUnknown(
+          data['category_hint']!,
+          _categoryHintMeta,
+        ),
+      );
+    }
+    if (data.containsKey('bank_name')) {
+      context.handle(
+        _bankNameMeta,
+        bankName.isAcceptableOrUnknown(data['bank_name']!, _bankNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bankNameMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('imported_transaction_id')) {
+      context.handle(
+        _importedTransactionIdMeta,
+        importedTransactionId.isAcceptableOrUnknown(
+          data['imported_transaction_id']!,
+          _importedTransactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('target_wallet_id')) {
+      context.handle(
+        _targetWalletIdMeta,
+        targetWalletId.isAcceptableOrUnknown(
+          data['target_wallet_id']!,
+          _targetWalletIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('selected_category_id')) {
+      context.handle(
+        _selectedCategoryIdMeta,
+        selectedCategoryId.isAcceptableOrUnknown(
+          data['selected_category_id']!,
+          _selectedCategoryIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('user_notes')) {
+      context.handle(
+        _userNotesMeta,
+        userNotes.isAcceptableOrUnknown(data['user_notes']!, _userNotesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ParsedEmailTransaction map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ParsedEmailTransaction(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      cloudId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_id'],
+      ),
+      emailId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email_id'],
+      )!,
+      emailSubject: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email_subject'],
+      )!,
+      fromEmail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}from_email'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}amount'],
+      )!,
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      )!,
+      transactionType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transaction_type'],
+      )!,
+      merchant: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}merchant'],
+      ),
+      accountLast4: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_last4'],
+      ),
+      balanceAfter: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}balance_after'],
+      ),
+      transactionDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}transaction_date'],
+      )!,
+      emailDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}email_date'],
+      )!,
+      confidence: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}confidence'],
+      )!,
+      rawAmountText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}raw_amount_text'],
+      )!,
+      categoryHint: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_hint'],
+      ),
+      bankName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bank_name'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      importedTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}imported_transaction_id'],
+      ),
+      targetWalletId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}target_wallet_id'],
+      ),
+      selectedCategoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}selected_category_id'],
+      ),
+      userNotes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_notes'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ParsedEmailTransactionsTable createAlias(String alias) {
+    return $ParsedEmailTransactionsTable(attachedDatabase, alias);
+  }
+}
+
+class ParsedEmailTransaction extends DataClass
+    implements Insertable<ParsedEmailTransaction> {
+  /// Unique identifier (local ID)
+  final int id;
+
+  /// Cloud ID (UUID v7) for syncing
+  final String? cloudId;
+
+  /// Gmail message ID (for deduplication)
+  final String emailId;
+
+  /// Email subject
+  final String emailSubject;
+
+  /// Sender email address
+  final String fromEmail;
+
+  /// Transaction amount (always positive)
+  final double amount;
+
+  /// Currency code (VND, USD, etc.)
+  final String currency;
+
+  /// Transaction type: 'income' or 'expense'
+  final String transactionType;
+
+  /// Merchant or payee name
+  final String? merchant;
+
+  /// Last 4 digits of account number
+  final String? accountLast4;
+
+  /// Balance after transaction
+  final double? balanceAfter;
+
+  /// Date of the transaction
+  final DateTime transactionDate;
+
+  /// Date the email was received
+  final DateTime emailDate;
+
+  /// Confidence score (0-1)
+  final double confidence;
+
+  /// Raw amount text from email
+  final String rawAmountText;
+
+  /// Suggested category
+  final String? categoryHint;
+
+  /// Bank or e-wallet name
+  final String bankName;
+
+  /// Status: 'pending_review', 'approved', 'rejected', 'imported'
+  final String status;
+
+  /// ID of the imported transaction (if imported)
+  final int? importedTransactionId;
+
+  /// User's wallet ID to import to
+  final int? targetWalletId;
+
+  /// User's selected category ID
+  final int? selectedCategoryId;
+
+  /// User's notes/edits
+  final String? userNotes;
+
+  /// Created timestamp
+  final DateTime createdAt;
+
+  /// Updated timestamp
+  final DateTime updatedAt;
+  const ParsedEmailTransaction({
+    required this.id,
+    this.cloudId,
+    required this.emailId,
+    required this.emailSubject,
+    required this.fromEmail,
+    required this.amount,
+    required this.currency,
+    required this.transactionType,
+    this.merchant,
+    this.accountLast4,
+    this.balanceAfter,
+    required this.transactionDate,
+    required this.emailDate,
+    required this.confidence,
+    required this.rawAmountText,
+    this.categoryHint,
+    required this.bankName,
+    required this.status,
+    this.importedTransactionId,
+    this.targetWalletId,
+    this.selectedCategoryId,
+    this.userNotes,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || cloudId != null) {
+      map['cloud_id'] = Variable<String>(cloudId);
+    }
+    map['email_id'] = Variable<String>(emailId);
+    map['email_subject'] = Variable<String>(emailSubject);
+    map['from_email'] = Variable<String>(fromEmail);
+    map['amount'] = Variable<double>(amount);
+    map['currency'] = Variable<String>(currency);
+    map['transaction_type'] = Variable<String>(transactionType);
+    if (!nullToAbsent || merchant != null) {
+      map['merchant'] = Variable<String>(merchant);
+    }
+    if (!nullToAbsent || accountLast4 != null) {
+      map['account_last4'] = Variable<String>(accountLast4);
+    }
+    if (!nullToAbsent || balanceAfter != null) {
+      map['balance_after'] = Variable<double>(balanceAfter);
+    }
+    map['transaction_date'] = Variable<DateTime>(transactionDate);
+    map['email_date'] = Variable<DateTime>(emailDate);
+    map['confidence'] = Variable<double>(confidence);
+    map['raw_amount_text'] = Variable<String>(rawAmountText);
+    if (!nullToAbsent || categoryHint != null) {
+      map['category_hint'] = Variable<String>(categoryHint);
+    }
+    map['bank_name'] = Variable<String>(bankName);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || importedTransactionId != null) {
+      map['imported_transaction_id'] = Variable<int>(importedTransactionId);
+    }
+    if (!nullToAbsent || targetWalletId != null) {
+      map['target_wallet_id'] = Variable<int>(targetWalletId);
+    }
+    if (!nullToAbsent || selectedCategoryId != null) {
+      map['selected_category_id'] = Variable<int>(selectedCategoryId);
+    }
+    if (!nullToAbsent || userNotes != null) {
+      map['user_notes'] = Variable<String>(userNotes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ParsedEmailTransactionsCompanion toCompanion(bool nullToAbsent) {
+    return ParsedEmailTransactionsCompanion(
+      id: Value(id),
+      cloudId: cloudId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudId),
+      emailId: Value(emailId),
+      emailSubject: Value(emailSubject),
+      fromEmail: Value(fromEmail),
+      amount: Value(amount),
+      currency: Value(currency),
+      transactionType: Value(transactionType),
+      merchant: merchant == null && nullToAbsent
+          ? const Value.absent()
+          : Value(merchant),
+      accountLast4: accountLast4 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountLast4),
+      balanceAfter: balanceAfter == null && nullToAbsent
+          ? const Value.absent()
+          : Value(balanceAfter),
+      transactionDate: Value(transactionDate),
+      emailDate: Value(emailDate),
+      confidence: Value(confidence),
+      rawAmountText: Value(rawAmountText),
+      categoryHint: categoryHint == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryHint),
+      bankName: Value(bankName),
+      status: Value(status),
+      importedTransactionId: importedTransactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(importedTransactionId),
+      targetWalletId: targetWalletId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetWalletId),
+      selectedCategoryId: selectedCategoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(selectedCategoryId),
+      userNotes: userNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userNotes),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ParsedEmailTransaction.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ParsedEmailTransaction(
+      id: serializer.fromJson<int>(json['id']),
+      cloudId: serializer.fromJson<String?>(json['cloudId']),
+      emailId: serializer.fromJson<String>(json['emailId']),
+      emailSubject: serializer.fromJson<String>(json['emailSubject']),
+      fromEmail: serializer.fromJson<String>(json['fromEmail']),
+      amount: serializer.fromJson<double>(json['amount']),
+      currency: serializer.fromJson<String>(json['currency']),
+      transactionType: serializer.fromJson<String>(json['transactionType']),
+      merchant: serializer.fromJson<String?>(json['merchant']),
+      accountLast4: serializer.fromJson<String?>(json['accountLast4']),
+      balanceAfter: serializer.fromJson<double?>(json['balanceAfter']),
+      transactionDate: serializer.fromJson<DateTime>(json['transactionDate']),
+      emailDate: serializer.fromJson<DateTime>(json['emailDate']),
+      confidence: serializer.fromJson<double>(json['confidence']),
+      rawAmountText: serializer.fromJson<String>(json['rawAmountText']),
+      categoryHint: serializer.fromJson<String?>(json['categoryHint']),
+      bankName: serializer.fromJson<String>(json['bankName']),
+      status: serializer.fromJson<String>(json['status']),
+      importedTransactionId: serializer.fromJson<int?>(
+        json['importedTransactionId'],
+      ),
+      targetWalletId: serializer.fromJson<int?>(json['targetWalletId']),
+      selectedCategoryId: serializer.fromJson<int?>(json['selectedCategoryId']),
+      userNotes: serializer.fromJson<String?>(json['userNotes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'cloudId': serializer.toJson<String?>(cloudId),
+      'emailId': serializer.toJson<String>(emailId),
+      'emailSubject': serializer.toJson<String>(emailSubject),
+      'fromEmail': serializer.toJson<String>(fromEmail),
+      'amount': serializer.toJson<double>(amount),
+      'currency': serializer.toJson<String>(currency),
+      'transactionType': serializer.toJson<String>(transactionType),
+      'merchant': serializer.toJson<String?>(merchant),
+      'accountLast4': serializer.toJson<String?>(accountLast4),
+      'balanceAfter': serializer.toJson<double?>(balanceAfter),
+      'transactionDate': serializer.toJson<DateTime>(transactionDate),
+      'emailDate': serializer.toJson<DateTime>(emailDate),
+      'confidence': serializer.toJson<double>(confidence),
+      'rawAmountText': serializer.toJson<String>(rawAmountText),
+      'categoryHint': serializer.toJson<String?>(categoryHint),
+      'bankName': serializer.toJson<String>(bankName),
+      'status': serializer.toJson<String>(status),
+      'importedTransactionId': serializer.toJson<int?>(importedTransactionId),
+      'targetWalletId': serializer.toJson<int?>(targetWalletId),
+      'selectedCategoryId': serializer.toJson<int?>(selectedCategoryId),
+      'userNotes': serializer.toJson<String?>(userNotes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ParsedEmailTransaction copyWith({
+    int? id,
+    Value<String?> cloudId = const Value.absent(),
+    String? emailId,
+    String? emailSubject,
+    String? fromEmail,
+    double? amount,
+    String? currency,
+    String? transactionType,
+    Value<String?> merchant = const Value.absent(),
+    Value<String?> accountLast4 = const Value.absent(),
+    Value<double?> balanceAfter = const Value.absent(),
+    DateTime? transactionDate,
+    DateTime? emailDate,
+    double? confidence,
+    String? rawAmountText,
+    Value<String?> categoryHint = const Value.absent(),
+    String? bankName,
+    String? status,
+    Value<int?> importedTransactionId = const Value.absent(),
+    Value<int?> targetWalletId = const Value.absent(),
+    Value<int?> selectedCategoryId = const Value.absent(),
+    Value<String?> userNotes = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => ParsedEmailTransaction(
+    id: id ?? this.id,
+    cloudId: cloudId.present ? cloudId.value : this.cloudId,
+    emailId: emailId ?? this.emailId,
+    emailSubject: emailSubject ?? this.emailSubject,
+    fromEmail: fromEmail ?? this.fromEmail,
+    amount: amount ?? this.amount,
+    currency: currency ?? this.currency,
+    transactionType: transactionType ?? this.transactionType,
+    merchant: merchant.present ? merchant.value : this.merchant,
+    accountLast4: accountLast4.present ? accountLast4.value : this.accountLast4,
+    balanceAfter: balanceAfter.present ? balanceAfter.value : this.balanceAfter,
+    transactionDate: transactionDate ?? this.transactionDate,
+    emailDate: emailDate ?? this.emailDate,
+    confidence: confidence ?? this.confidence,
+    rawAmountText: rawAmountText ?? this.rawAmountText,
+    categoryHint: categoryHint.present ? categoryHint.value : this.categoryHint,
+    bankName: bankName ?? this.bankName,
+    status: status ?? this.status,
+    importedTransactionId: importedTransactionId.present
+        ? importedTransactionId.value
+        : this.importedTransactionId,
+    targetWalletId: targetWalletId.present
+        ? targetWalletId.value
+        : this.targetWalletId,
+    selectedCategoryId: selectedCategoryId.present
+        ? selectedCategoryId.value
+        : this.selectedCategoryId,
+    userNotes: userNotes.present ? userNotes.value : this.userNotes,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ParsedEmailTransaction copyWithCompanion(
+    ParsedEmailTransactionsCompanion data,
+  ) {
+    return ParsedEmailTransaction(
+      id: data.id.present ? data.id.value : this.id,
+      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
+      emailId: data.emailId.present ? data.emailId.value : this.emailId,
+      emailSubject: data.emailSubject.present
+          ? data.emailSubject.value
+          : this.emailSubject,
+      fromEmail: data.fromEmail.present ? data.fromEmail.value : this.fromEmail,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      currency: data.currency.present ? data.currency.value : this.currency,
+      transactionType: data.transactionType.present
+          ? data.transactionType.value
+          : this.transactionType,
+      merchant: data.merchant.present ? data.merchant.value : this.merchant,
+      accountLast4: data.accountLast4.present
+          ? data.accountLast4.value
+          : this.accountLast4,
+      balanceAfter: data.balanceAfter.present
+          ? data.balanceAfter.value
+          : this.balanceAfter,
+      transactionDate: data.transactionDate.present
+          ? data.transactionDate.value
+          : this.transactionDate,
+      emailDate: data.emailDate.present ? data.emailDate.value : this.emailDate,
+      confidence: data.confidence.present
+          ? data.confidence.value
+          : this.confidence,
+      rawAmountText: data.rawAmountText.present
+          ? data.rawAmountText.value
+          : this.rawAmountText,
+      categoryHint: data.categoryHint.present
+          ? data.categoryHint.value
+          : this.categoryHint,
+      bankName: data.bankName.present ? data.bankName.value : this.bankName,
+      status: data.status.present ? data.status.value : this.status,
+      importedTransactionId: data.importedTransactionId.present
+          ? data.importedTransactionId.value
+          : this.importedTransactionId,
+      targetWalletId: data.targetWalletId.present
+          ? data.targetWalletId.value
+          : this.targetWalletId,
+      selectedCategoryId: data.selectedCategoryId.present
+          ? data.selectedCategoryId.value
+          : this.selectedCategoryId,
+      userNotes: data.userNotes.present ? data.userNotes.value : this.userNotes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ParsedEmailTransaction(')
+          ..write('id: $id, ')
+          ..write('cloudId: $cloudId, ')
+          ..write('emailId: $emailId, ')
+          ..write('emailSubject: $emailSubject, ')
+          ..write('fromEmail: $fromEmail, ')
+          ..write('amount: $amount, ')
+          ..write('currency: $currency, ')
+          ..write('transactionType: $transactionType, ')
+          ..write('merchant: $merchant, ')
+          ..write('accountLast4: $accountLast4, ')
+          ..write('balanceAfter: $balanceAfter, ')
+          ..write('transactionDate: $transactionDate, ')
+          ..write('emailDate: $emailDate, ')
+          ..write('confidence: $confidence, ')
+          ..write('rawAmountText: $rawAmountText, ')
+          ..write('categoryHint: $categoryHint, ')
+          ..write('bankName: $bankName, ')
+          ..write('status: $status, ')
+          ..write('importedTransactionId: $importedTransactionId, ')
+          ..write('targetWalletId: $targetWalletId, ')
+          ..write('selectedCategoryId: $selectedCategoryId, ')
+          ..write('userNotes: $userNotes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    cloudId,
+    emailId,
+    emailSubject,
+    fromEmail,
+    amount,
+    currency,
+    transactionType,
+    merchant,
+    accountLast4,
+    balanceAfter,
+    transactionDate,
+    emailDate,
+    confidence,
+    rawAmountText,
+    categoryHint,
+    bankName,
+    status,
+    importedTransactionId,
+    targetWalletId,
+    selectedCategoryId,
+    userNotes,
+    createdAt,
+    updatedAt,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ParsedEmailTransaction &&
+          other.id == this.id &&
+          other.cloudId == this.cloudId &&
+          other.emailId == this.emailId &&
+          other.emailSubject == this.emailSubject &&
+          other.fromEmail == this.fromEmail &&
+          other.amount == this.amount &&
+          other.currency == this.currency &&
+          other.transactionType == this.transactionType &&
+          other.merchant == this.merchant &&
+          other.accountLast4 == this.accountLast4 &&
+          other.balanceAfter == this.balanceAfter &&
+          other.transactionDate == this.transactionDate &&
+          other.emailDate == this.emailDate &&
+          other.confidence == this.confidence &&
+          other.rawAmountText == this.rawAmountText &&
+          other.categoryHint == this.categoryHint &&
+          other.bankName == this.bankName &&
+          other.status == this.status &&
+          other.importedTransactionId == this.importedTransactionId &&
+          other.targetWalletId == this.targetWalletId &&
+          other.selectedCategoryId == this.selectedCategoryId &&
+          other.userNotes == this.userNotes &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ParsedEmailTransactionsCompanion
+    extends UpdateCompanion<ParsedEmailTransaction> {
+  final Value<int> id;
+  final Value<String?> cloudId;
+  final Value<String> emailId;
+  final Value<String> emailSubject;
+  final Value<String> fromEmail;
+  final Value<double> amount;
+  final Value<String> currency;
+  final Value<String> transactionType;
+  final Value<String?> merchant;
+  final Value<String?> accountLast4;
+  final Value<double?> balanceAfter;
+  final Value<DateTime> transactionDate;
+  final Value<DateTime> emailDate;
+  final Value<double> confidence;
+  final Value<String> rawAmountText;
+  final Value<String?> categoryHint;
+  final Value<String> bankName;
+  final Value<String> status;
+  final Value<int?> importedTransactionId;
+  final Value<int?> targetWalletId;
+  final Value<int?> selectedCategoryId;
+  final Value<String?> userNotes;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const ParsedEmailTransactionsCompanion({
+    this.id = const Value.absent(),
+    this.cloudId = const Value.absent(),
+    this.emailId = const Value.absent(),
+    this.emailSubject = const Value.absent(),
+    this.fromEmail = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.transactionType = const Value.absent(),
+    this.merchant = const Value.absent(),
+    this.accountLast4 = const Value.absent(),
+    this.balanceAfter = const Value.absent(),
+    this.transactionDate = const Value.absent(),
+    this.emailDate = const Value.absent(),
+    this.confidence = const Value.absent(),
+    this.rawAmountText = const Value.absent(),
+    this.categoryHint = const Value.absent(),
+    this.bankName = const Value.absent(),
+    this.status = const Value.absent(),
+    this.importedTransactionId = const Value.absent(),
+    this.targetWalletId = const Value.absent(),
+    this.selectedCategoryId = const Value.absent(),
+    this.userNotes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  ParsedEmailTransactionsCompanion.insert({
+    this.id = const Value.absent(),
+    this.cloudId = const Value.absent(),
+    required String emailId,
+    required String emailSubject,
+    required String fromEmail,
+    required double amount,
+    this.currency = const Value.absent(),
+    required String transactionType,
+    this.merchant = const Value.absent(),
+    this.accountLast4 = const Value.absent(),
+    this.balanceAfter = const Value.absent(),
+    required DateTime transactionDate,
+    required DateTime emailDate,
+    this.confidence = const Value.absent(),
+    required String rawAmountText,
+    this.categoryHint = const Value.absent(),
+    required String bankName,
+    this.status = const Value.absent(),
+    this.importedTransactionId = const Value.absent(),
+    this.targetWalletId = const Value.absent(),
+    this.selectedCategoryId = const Value.absent(),
+    this.userNotes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : emailId = Value(emailId),
+       emailSubject = Value(emailSubject),
+       fromEmail = Value(fromEmail),
+       amount = Value(amount),
+       transactionType = Value(transactionType),
+       transactionDate = Value(transactionDate),
+       emailDate = Value(emailDate),
+       rawAmountText = Value(rawAmountText),
+       bankName = Value(bankName);
+  static Insertable<ParsedEmailTransaction> custom({
+    Expression<int>? id,
+    Expression<String>? cloudId,
+    Expression<String>? emailId,
+    Expression<String>? emailSubject,
+    Expression<String>? fromEmail,
+    Expression<double>? amount,
+    Expression<String>? currency,
+    Expression<String>? transactionType,
+    Expression<String>? merchant,
+    Expression<String>? accountLast4,
+    Expression<double>? balanceAfter,
+    Expression<DateTime>? transactionDate,
+    Expression<DateTime>? emailDate,
+    Expression<double>? confidence,
+    Expression<String>? rawAmountText,
+    Expression<String>? categoryHint,
+    Expression<String>? bankName,
+    Expression<String>? status,
+    Expression<int>? importedTransactionId,
+    Expression<int>? targetWalletId,
+    Expression<int>? selectedCategoryId,
+    Expression<String>? userNotes,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (cloudId != null) 'cloud_id': cloudId,
+      if (emailId != null) 'email_id': emailId,
+      if (emailSubject != null) 'email_subject': emailSubject,
+      if (fromEmail != null) 'from_email': fromEmail,
+      if (amount != null) 'amount': amount,
+      if (currency != null) 'currency': currency,
+      if (transactionType != null) 'transaction_type': transactionType,
+      if (merchant != null) 'merchant': merchant,
+      if (accountLast4 != null) 'account_last4': accountLast4,
+      if (balanceAfter != null) 'balance_after': balanceAfter,
+      if (transactionDate != null) 'transaction_date': transactionDate,
+      if (emailDate != null) 'email_date': emailDate,
+      if (confidence != null) 'confidence': confidence,
+      if (rawAmountText != null) 'raw_amount_text': rawAmountText,
+      if (categoryHint != null) 'category_hint': categoryHint,
+      if (bankName != null) 'bank_name': bankName,
+      if (status != null) 'status': status,
+      if (importedTransactionId != null)
+        'imported_transaction_id': importedTransactionId,
+      if (targetWalletId != null) 'target_wallet_id': targetWalletId,
+      if (selectedCategoryId != null)
+        'selected_category_id': selectedCategoryId,
+      if (userNotes != null) 'user_notes': userNotes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  ParsedEmailTransactionsCompanion copyWith({
+    Value<int>? id,
+    Value<String?>? cloudId,
+    Value<String>? emailId,
+    Value<String>? emailSubject,
+    Value<String>? fromEmail,
+    Value<double>? amount,
+    Value<String>? currency,
+    Value<String>? transactionType,
+    Value<String?>? merchant,
+    Value<String?>? accountLast4,
+    Value<double?>? balanceAfter,
+    Value<DateTime>? transactionDate,
+    Value<DateTime>? emailDate,
+    Value<double>? confidence,
+    Value<String>? rawAmountText,
+    Value<String?>? categoryHint,
+    Value<String>? bankName,
+    Value<String>? status,
+    Value<int?>? importedTransactionId,
+    Value<int?>? targetWalletId,
+    Value<int?>? selectedCategoryId,
+    Value<String?>? userNotes,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return ParsedEmailTransactionsCompanion(
+      id: id ?? this.id,
+      cloudId: cloudId ?? this.cloudId,
+      emailId: emailId ?? this.emailId,
+      emailSubject: emailSubject ?? this.emailSubject,
+      fromEmail: fromEmail ?? this.fromEmail,
+      amount: amount ?? this.amount,
+      currency: currency ?? this.currency,
+      transactionType: transactionType ?? this.transactionType,
+      merchant: merchant ?? this.merchant,
+      accountLast4: accountLast4 ?? this.accountLast4,
+      balanceAfter: balanceAfter ?? this.balanceAfter,
+      transactionDate: transactionDate ?? this.transactionDate,
+      emailDate: emailDate ?? this.emailDate,
+      confidence: confidence ?? this.confidence,
+      rawAmountText: rawAmountText ?? this.rawAmountText,
+      categoryHint: categoryHint ?? this.categoryHint,
+      bankName: bankName ?? this.bankName,
+      status: status ?? this.status,
+      importedTransactionId:
+          importedTransactionId ?? this.importedTransactionId,
+      targetWalletId: targetWalletId ?? this.targetWalletId,
+      selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
+      userNotes: userNotes ?? this.userNotes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (cloudId.present) {
+      map['cloud_id'] = Variable<String>(cloudId.value);
+    }
+    if (emailId.present) {
+      map['email_id'] = Variable<String>(emailId.value);
+    }
+    if (emailSubject.present) {
+      map['email_subject'] = Variable<String>(emailSubject.value);
+    }
+    if (fromEmail.present) {
+      map['from_email'] = Variable<String>(fromEmail.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (transactionType.present) {
+      map['transaction_type'] = Variable<String>(transactionType.value);
+    }
+    if (merchant.present) {
+      map['merchant'] = Variable<String>(merchant.value);
+    }
+    if (accountLast4.present) {
+      map['account_last4'] = Variable<String>(accountLast4.value);
+    }
+    if (balanceAfter.present) {
+      map['balance_after'] = Variable<double>(balanceAfter.value);
+    }
+    if (transactionDate.present) {
+      map['transaction_date'] = Variable<DateTime>(transactionDate.value);
+    }
+    if (emailDate.present) {
+      map['email_date'] = Variable<DateTime>(emailDate.value);
+    }
+    if (confidence.present) {
+      map['confidence'] = Variable<double>(confidence.value);
+    }
+    if (rawAmountText.present) {
+      map['raw_amount_text'] = Variable<String>(rawAmountText.value);
+    }
+    if (categoryHint.present) {
+      map['category_hint'] = Variable<String>(categoryHint.value);
+    }
+    if (bankName.present) {
+      map['bank_name'] = Variable<String>(bankName.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (importedTransactionId.present) {
+      map['imported_transaction_id'] = Variable<int>(
+        importedTransactionId.value,
+      );
+    }
+    if (targetWalletId.present) {
+      map['target_wallet_id'] = Variable<int>(targetWalletId.value);
+    }
+    if (selectedCategoryId.present) {
+      map['selected_category_id'] = Variable<int>(selectedCategoryId.value);
+    }
+    if (userNotes.present) {
+      map['user_notes'] = Variable<String>(userNotes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ParsedEmailTransactionsCompanion(')
+          ..write('id: $id, ')
+          ..write('cloudId: $cloudId, ')
+          ..write('emailId: $emailId, ')
+          ..write('emailSubject: $emailSubject, ')
+          ..write('fromEmail: $fromEmail, ')
+          ..write('amount: $amount, ')
+          ..write('currency: $currency, ')
+          ..write('transactionType: $transactionType, ')
+          ..write('merchant: $merchant, ')
+          ..write('accountLast4: $accountLast4, ')
+          ..write('balanceAfter: $balanceAfter, ')
+          ..write('transactionDate: $transactionDate, ')
+          ..write('emailDate: $emailDate, ')
+          ..write('confidence: $confidence, ')
+          ..write('rawAmountText: $rawAmountText, ')
+          ..write('categoryHint: $categoryHint, ')
+          ..write('bankName: $bankName, ')
+          ..write('status: $status, ')
+          ..write('importedTransactionId: $importedTransactionId, ')
+          ..write('targetWalletId: $targetWalletId, ')
+          ..write('selectedCategoryId: $selectedCategoryId, ')
+          ..write('userNotes: $userNotes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -10177,6 +11558,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $FamilyInvitationsTable familyInvitations =
       $FamilyInvitationsTable(this);
   late final $SharedWalletsTable sharedWallets = $SharedWalletsTable(this);
+  late final $ParsedEmailTransactionsTable parsedEmailTransactions =
+      $ParsedEmailTransactionsTable(this);
   late final UserDao userDao = UserDao(this as AppDatabase);
   late final CategoryDao categoryDao = CategoryDao(this as AppDatabase);
   late final GoalDao goalDao = GoalDao(this as AppDatabase);
@@ -10196,6 +11579,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final FamilyDao familyDao = FamilyDao(this as AppDatabase);
+  late final ParsedEmailTransactionDao parsedEmailTransactionDao =
+      ParsedEmailTransactionDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10215,6 +11600,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     familyMembers,
     familyInvitations,
     sharedWallets,
+    parsedEmailTransactions,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -17318,6 +18704,602 @@ typedef $$SharedWalletsTableProcessedTableManager =
       SharedWallet,
       PrefetchHooks Function({bool familyId, bool walletId})
     >;
+typedef $$ParsedEmailTransactionsTableCreateCompanionBuilder =
+    ParsedEmailTransactionsCompanion Function({
+      Value<int> id,
+      Value<String?> cloudId,
+      required String emailId,
+      required String emailSubject,
+      required String fromEmail,
+      required double amount,
+      Value<String> currency,
+      required String transactionType,
+      Value<String?> merchant,
+      Value<String?> accountLast4,
+      Value<double?> balanceAfter,
+      required DateTime transactionDate,
+      required DateTime emailDate,
+      Value<double> confidence,
+      required String rawAmountText,
+      Value<String?> categoryHint,
+      required String bankName,
+      Value<String> status,
+      Value<int?> importedTransactionId,
+      Value<int?> targetWalletId,
+      Value<int?> selectedCategoryId,
+      Value<String?> userNotes,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$ParsedEmailTransactionsTableUpdateCompanionBuilder =
+    ParsedEmailTransactionsCompanion Function({
+      Value<int> id,
+      Value<String?> cloudId,
+      Value<String> emailId,
+      Value<String> emailSubject,
+      Value<String> fromEmail,
+      Value<double> amount,
+      Value<String> currency,
+      Value<String> transactionType,
+      Value<String?> merchant,
+      Value<String?> accountLast4,
+      Value<double?> balanceAfter,
+      Value<DateTime> transactionDate,
+      Value<DateTime> emailDate,
+      Value<double> confidence,
+      Value<String> rawAmountText,
+      Value<String?> categoryHint,
+      Value<String> bankName,
+      Value<String> status,
+      Value<int?> importedTransactionId,
+      Value<int?> targetWalletId,
+      Value<int?> selectedCategoryId,
+      Value<String?> userNotes,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$ParsedEmailTransactionsTableFilterComposer
+    extends Composer<_$AppDatabase, $ParsedEmailTransactionsTable> {
+  $$ParsedEmailTransactionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emailId => $composableBuilder(
+    column: $table.emailId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emailSubject => $composableBuilder(
+    column: $table.emailSubject,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fromEmail => $composableBuilder(
+    column: $table.fromEmail,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get transactionType => $composableBuilder(
+    column: $table.transactionType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get merchant => $composableBuilder(
+    column: $table.merchant,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountLast4 => $composableBuilder(
+    column: $table.accountLast4,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get balanceAfter => $composableBuilder(
+    column: $table.balanceAfter,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get transactionDate => $composableBuilder(
+    column: $table.transactionDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get emailDate => $composableBuilder(
+    column: $table.emailDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get confidence => $composableBuilder(
+    column: $table.confidence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rawAmountText => $composableBuilder(
+    column: $table.rawAmountText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryHint => $composableBuilder(
+    column: $table.categoryHint,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bankName => $composableBuilder(
+    column: $table.bankName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get importedTransactionId => $composableBuilder(
+    column: $table.importedTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get targetWalletId => $composableBuilder(
+    column: $table.targetWalletId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get selectedCategoryId => $composableBuilder(
+    column: $table.selectedCategoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userNotes => $composableBuilder(
+    column: $table.userNotes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ParsedEmailTransactionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ParsedEmailTransactionsTable> {
+  $$ParsedEmailTransactionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emailId => $composableBuilder(
+    column: $table.emailId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emailSubject => $composableBuilder(
+    column: $table.emailSubject,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fromEmail => $composableBuilder(
+    column: $table.fromEmail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get transactionType => $composableBuilder(
+    column: $table.transactionType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get merchant => $composableBuilder(
+    column: $table.merchant,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountLast4 => $composableBuilder(
+    column: $table.accountLast4,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get balanceAfter => $composableBuilder(
+    column: $table.balanceAfter,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get transactionDate => $composableBuilder(
+    column: $table.transactionDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get emailDate => $composableBuilder(
+    column: $table.emailDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get confidence => $composableBuilder(
+    column: $table.confidence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rawAmountText => $composableBuilder(
+    column: $table.rawAmountText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryHint => $composableBuilder(
+    column: $table.categoryHint,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bankName => $composableBuilder(
+    column: $table.bankName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get importedTransactionId => $composableBuilder(
+    column: $table.importedTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get targetWalletId => $composableBuilder(
+    column: $table.targetWalletId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get selectedCategoryId => $composableBuilder(
+    column: $table.selectedCategoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userNotes => $composableBuilder(
+    column: $table.userNotes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ParsedEmailTransactionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ParsedEmailTransactionsTable> {
+  $$ParsedEmailTransactionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudId =>
+      $composableBuilder(column: $table.cloudId, builder: (column) => column);
+
+  GeneratedColumn<String> get emailId =>
+      $composableBuilder(column: $table.emailId, builder: (column) => column);
+
+  GeneratedColumn<String> get emailSubject => $composableBuilder(
+    column: $table.emailSubject,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fromEmail =>
+      $composableBuilder(column: $table.fromEmail, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<String> get transactionType => $composableBuilder(
+    column: $table.transactionType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get merchant =>
+      $composableBuilder(column: $table.merchant, builder: (column) => column);
+
+  GeneratedColumn<String> get accountLast4 => $composableBuilder(
+    column: $table.accountLast4,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get balanceAfter => $composableBuilder(
+    column: $table.balanceAfter,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get transactionDate => $composableBuilder(
+    column: $table.transactionDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get emailDate =>
+      $composableBuilder(column: $table.emailDate, builder: (column) => column);
+
+  GeneratedColumn<double> get confidence => $composableBuilder(
+    column: $table.confidence,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rawAmountText => $composableBuilder(
+    column: $table.rawAmountText,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get categoryHint => $composableBuilder(
+    column: $table.categoryHint,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get bankName =>
+      $composableBuilder(column: $table.bankName, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get importedTransactionId => $composableBuilder(
+    column: $table.importedTransactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get targetWalletId => $composableBuilder(
+    column: $table.targetWalletId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get selectedCategoryId => $composableBuilder(
+    column: $table.selectedCategoryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get userNotes =>
+      $composableBuilder(column: $table.userNotes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ParsedEmailTransactionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ParsedEmailTransactionsTable,
+          ParsedEmailTransaction,
+          $$ParsedEmailTransactionsTableFilterComposer,
+          $$ParsedEmailTransactionsTableOrderingComposer,
+          $$ParsedEmailTransactionsTableAnnotationComposer,
+          $$ParsedEmailTransactionsTableCreateCompanionBuilder,
+          $$ParsedEmailTransactionsTableUpdateCompanionBuilder,
+          (
+            ParsedEmailTransaction,
+            BaseReferences<
+              _$AppDatabase,
+              $ParsedEmailTransactionsTable,
+              ParsedEmailTransaction
+            >,
+          ),
+          ParsedEmailTransaction,
+          PrefetchHooks Function()
+        > {
+  $$ParsedEmailTransactionsTableTableManager(
+    _$AppDatabase db,
+    $ParsedEmailTransactionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ParsedEmailTransactionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ParsedEmailTransactionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ParsedEmailTransactionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
+                Value<String> emailId = const Value.absent(),
+                Value<String> emailSubject = const Value.absent(),
+                Value<String> fromEmail = const Value.absent(),
+                Value<double> amount = const Value.absent(),
+                Value<String> currency = const Value.absent(),
+                Value<String> transactionType = const Value.absent(),
+                Value<String?> merchant = const Value.absent(),
+                Value<String?> accountLast4 = const Value.absent(),
+                Value<double?> balanceAfter = const Value.absent(),
+                Value<DateTime> transactionDate = const Value.absent(),
+                Value<DateTime> emailDate = const Value.absent(),
+                Value<double> confidence = const Value.absent(),
+                Value<String> rawAmountText = const Value.absent(),
+                Value<String?> categoryHint = const Value.absent(),
+                Value<String> bankName = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int?> importedTransactionId = const Value.absent(),
+                Value<int?> targetWalletId = const Value.absent(),
+                Value<int?> selectedCategoryId = const Value.absent(),
+                Value<String?> userNotes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ParsedEmailTransactionsCompanion(
+                id: id,
+                cloudId: cloudId,
+                emailId: emailId,
+                emailSubject: emailSubject,
+                fromEmail: fromEmail,
+                amount: amount,
+                currency: currency,
+                transactionType: transactionType,
+                merchant: merchant,
+                accountLast4: accountLast4,
+                balanceAfter: balanceAfter,
+                transactionDate: transactionDate,
+                emailDate: emailDate,
+                confidence: confidence,
+                rawAmountText: rawAmountText,
+                categoryHint: categoryHint,
+                bankName: bankName,
+                status: status,
+                importedTransactionId: importedTransactionId,
+                targetWalletId: targetWalletId,
+                selectedCategoryId: selectedCategoryId,
+                userNotes: userNotes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
+                required String emailId,
+                required String emailSubject,
+                required String fromEmail,
+                required double amount,
+                Value<String> currency = const Value.absent(),
+                required String transactionType,
+                Value<String?> merchant = const Value.absent(),
+                Value<String?> accountLast4 = const Value.absent(),
+                Value<double?> balanceAfter = const Value.absent(),
+                required DateTime transactionDate,
+                required DateTime emailDate,
+                Value<double> confidence = const Value.absent(),
+                required String rawAmountText,
+                Value<String?> categoryHint = const Value.absent(),
+                required String bankName,
+                Value<String> status = const Value.absent(),
+                Value<int?> importedTransactionId = const Value.absent(),
+                Value<int?> targetWalletId = const Value.absent(),
+                Value<int?> selectedCategoryId = const Value.absent(),
+                Value<String?> userNotes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ParsedEmailTransactionsCompanion.insert(
+                id: id,
+                cloudId: cloudId,
+                emailId: emailId,
+                emailSubject: emailSubject,
+                fromEmail: fromEmail,
+                amount: amount,
+                currency: currency,
+                transactionType: transactionType,
+                merchant: merchant,
+                accountLast4: accountLast4,
+                balanceAfter: balanceAfter,
+                transactionDate: transactionDate,
+                emailDate: emailDate,
+                confidence: confidence,
+                rawAmountText: rawAmountText,
+                categoryHint: categoryHint,
+                bankName: bankName,
+                status: status,
+                importedTransactionId: importedTransactionId,
+                targetWalletId: targetWalletId,
+                selectedCategoryId: selectedCategoryId,
+                userNotes: userNotes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ParsedEmailTransactionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ParsedEmailTransactionsTable,
+      ParsedEmailTransaction,
+      $$ParsedEmailTransactionsTableFilterComposer,
+      $$ParsedEmailTransactionsTableOrderingComposer,
+      $$ParsedEmailTransactionsTableAnnotationComposer,
+      $$ParsedEmailTransactionsTableCreateCompanionBuilder,
+      $$ParsedEmailTransactionsTableUpdateCompanionBuilder,
+      (
+        ParsedEmailTransaction,
+        BaseReferences<
+          _$AppDatabase,
+          $ParsedEmailTransactionsTable,
+          ParsedEmailTransaction
+        >,
+      ),
+      ParsedEmailTransaction,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -17350,4 +19332,9 @@ class $AppDatabaseManager {
       $$FamilyInvitationsTableTableManager(_db, _db.familyInvitations);
   $$SharedWalletsTableTableManager get sharedWallets =>
       $$SharedWalletsTableTableManager(_db, _db.sharedWallets);
+  $$ParsedEmailTransactionsTableTableManager get parsedEmailTransactions =>
+      $$ParsedEmailTransactionsTableTableManager(
+        _db,
+        _db.parsedEmailTransactions,
+      );
 }

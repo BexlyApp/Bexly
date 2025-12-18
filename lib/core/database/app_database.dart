@@ -26,6 +26,8 @@ import 'package:bexly/core/database/tables/family_group_table.dart';
 import 'package:bexly/core/database/tables/family_member_table.dart';
 import 'package:bexly/core/database/tables/family_invitation_table.dart';
 import 'package:bexly/core/database/tables/shared_wallet_table.dart';
+import 'package:bexly/core/database/tables/parsed_email_transaction_table.dart';
+import 'package:bexly/core/database/daos/parsed_email_transaction_dao.dart';
 import 'package:bexly/core/services/data_population_service/category_population_service.dart';
 import 'package:bexly/core/services/data_population_service/wallet_population_service.dart'; // Import new population service
 import 'package:bexly/core/utils/logger.dart';
@@ -48,6 +50,7 @@ part 'app_database.g.dart';
     FamilyMembers,
     FamilyInvitations,
     SharedWallets,
+    ParsedEmailTransactions,
   ],
   daos: [
     UserDao,
@@ -61,13 +64,14 @@ part 'app_database.g.dart';
     RecurringDao,
     NotificationDao,
     FamilyDao,
+    ParsedEmailTransactionDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 19; // Add family sharing tables and columns
+  int get schemaVersion => 20; // Add parsed email transactions table
 
   @override
   MigrationStrategy get migration {
@@ -266,6 +270,16 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Added sharing columns to wallets', label: 'database');
           } catch (e) {
             Log.e('Failed to add family sharing schema: $e', label: 'database');
+          }
+        }
+
+        // For version 20, add parsed email transactions table for email sync
+        if (from < 20) {
+          try {
+            await m.createTable(parsedEmailTransactions);
+            Log.i('Created parsed_email_transactions table for email sync', label: 'database');
+          } catch (e) {
+            Log.e('Failed to create parsed_email_transactions table: $e', label: 'database');
           }
         }
 
