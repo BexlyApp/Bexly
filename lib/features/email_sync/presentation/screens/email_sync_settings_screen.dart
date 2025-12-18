@@ -9,6 +9,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/features/email_sync/riverpod/email_sync_provider.dart';
+import 'package:bexly/features/email_sync/riverpod/email_scan_provider.dart';
 import 'package:bexly/features/email_sync/domain/services/gmail_auth_service.dart';
 import 'package:bexly/features/email_sync/data/models/email_sync_settings_model.dart';
 
@@ -67,6 +68,13 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
               onToggle: (enabled) {
                 ref.read(emailSyncProvider.notifier).setEnabled(enabled);
               },
+            ),
+
+            const Gap(AppSpacing.spacing24),
+
+            // Sync Now Button
+            _SyncNowCard(
+              onSync: () => _syncNow(context, ref),
             ),
 
             const Gap(AppSpacing.spacing24),
@@ -146,6 +154,43 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _syncNow(BuildContext context, WidgetRef ref) async {
+    final scanNotifier = ref.read(emailScanProvider.notifier);
+
+    // Get last sync time to only fetch new emails
+    final settings = ref.read(emailSyncProvider).when(
+      data: (data) => data,
+      loading: () => null,
+      error: (_, __) => null,
+    );
+    final since = settings?.lastSyncTime ?? DateTime.now().subtract(const Duration(days: 7));
+
+    final result = await scanNotifier.scanEmails(since: since);
+
+    if (!context.mounted) return;
+
+    if (result != null) {
+      toastification.show(
+        context: context,
+        title: const Text('Scan Complete'),
+        description: Text('Found ${result.parsedCount} transactions from ${result.totalEmails} emails'),
+        type: ToastificationType.success,
+        style: ToastificationStyle.fillColored,
+        autoCloseDuration: const Duration(seconds: 4),
+      );
+    } else {
+      final error = ref.read(emailScanProvider).error;
+      toastification.show(
+        context: context,
+        title: const Text('Scan Failed'),
+        description: Text(error ?? 'Unknown error'),
+        type: ToastificationType.error,
+        style: ToastificationStyle.fillColored,
+        autoCloseDuration: const Duration(seconds: 4),
+      );
+    }
   }
 }
 
@@ -399,6 +444,86 @@ class _EnableToggleCard extends StatelessWidget {
             value: isEnabled,
             onChanged: onToggle,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Card with sync now button
+class _SyncNowCard extends ConsumerWidget {
+  final VoidCallback onSync;
+
+  const _SyncNowCard({required this.onSync});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scanState = ref.watch(emailScanProvider);
+    final isScanning = scanState.isScanning;
+    final progress = scanState.progress;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.spacing16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.sync,
+                color: isScanning ? AppColors.primary600 : AppColors.neutral500,
+                size: 24,
+              ),
+              const Gap(AppSpacing.spacing12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Manual Sync',
+                      style: AppTextStyles.body2.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Gap(4),
+                    Text(
+                      'Scan your inbox for new banking emails',
+                      style: AppTextStyles.body4.copyWith(
+                        color: AppColors.neutral500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const Gap(AppSpacing.spacing16),
+          if (isScanning) ...[
+            LinearProgressIndicator(
+              value: progress,
+              backgroundColor: AppColors.neutral200,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary600),
+            ),
+            const Gap(AppSpacing.spacing12),
+            Text(
+              'Scanning emails... ${(progress * 100).toInt()}%',
+              style: AppTextStyles.body4.copyWith(
+                color: AppColors.neutral500,
+              ),
+            ),
+          ] else
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onSync,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Sync Now'),
+              ),
+            ),
         ],
       ),
     );
