@@ -23,6 +23,7 @@ class Routes {
   static const String personalDetails = '/personal-details';
   static const String notificationSettings = '/notification-settings';
   static const String autoTransactionSettings = '/auto-transaction-settings';
+  static const String emailSyncSettings = '/email-sync-settings';
   static const String languageSettings = '/language-settings';
   static const String aiModelSettings = '/ai-model-settings';
   static const String notifications = '/notifications';
