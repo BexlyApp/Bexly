@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:toastification/toastification.dart';
 
+import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/constants/app_colors.dart';
@@ -78,6 +80,16 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
             ),
 
             const Gap(AppSpacing.spacing24),
+
+            // Review Pending Transactions
+            if (settings.pendingReview > 0)
+              _ReviewPendingCard(
+                pendingCount: settings.pendingReview,
+                onTap: () => context.push(Routes.emailReview),
+              ),
+
+            if (settings.pendingReview > 0)
+              const Gap(AppSpacing.spacing24),
 
             // Privacy Info
             _PrivacyInfoCard(),
@@ -525,6 +537,76 @@ class _SyncNowCard extends ConsumerWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Card showing pending transactions to review
+class _ReviewPendingCard extends StatelessWidget {
+  final int pendingCount;
+  final VoidCallback onTap;
+
+  const _ReviewPendingCard({
+    required this.pendingCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.spacing16),
+        decoration: BoxDecoration(
+          color: AppColors.tertiary600.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.tertiary600.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.tertiary600.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.pending_actions,
+                color: AppColors.tertiary600,
+                size: 24,
+              ),
+            ),
+            const Gap(AppSpacing.spacing12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$pendingCount Pending Review',
+                    style: AppTextStyles.body2.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Gap(4),
+                  Text(
+                    'Tap to review and approve transactions',
+                    style: AppTextStyles.body4.copyWith(
+                      color: AppColors.neutral500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: AppColors.tertiary600,
+            ),
+          ],
+        ),
       ),
     );
   }
