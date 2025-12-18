@@ -10,6 +10,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/features/email_sync/riverpod/email_scan_provider.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 /// Screen for reviewing and approving parsed email transactions
@@ -132,20 +133,28 @@ class EmailReviewScreen extends HookConsumerWidget {
       return;
     }
 
-    int approved = 0;
+    // First approve all
     for (final tx in pending) {
       await db.parsedEmailTransactionDao.approve(
         tx.id,
         targetWalletId: activeWallet.id,
       );
-      approved++;
     }
+
+    // Then import all approved
+    final importService = ref.read(emailImportServiceProvider);
+    final result = await importService.importAllApproved();
 
     if (context.mounted) {
       toastification.show(
         context: context,
-        title: Text('Approved $approved transactions'),
-        type: ToastificationType.success,
+        title: Text('Imported ${result.successCount} transactions'),
+        description: result.failedCount > 0
+            ? Text('${result.failedCount} failed')
+            : null,
+        type: result.failedCount > 0
+            ? ToastificationType.warning
+            : ToastificationType.success,
         autoCloseDuration: const Duration(seconds: 3),
       );
     }
@@ -176,18 +185,34 @@ class EmailReviewScreen extends HookConsumerWidget {
       return;
     }
 
+    // Approve the transaction
     await db.parsedEmailTransactionDao.approve(
       tx.id,
       targetWalletId: activeWallet.id,
     );
 
-    if (context.mounted) {
-      toastification.show(
-        context: context,
-        title: const Text('Transaction approved'),
-        type: ToastificationType.success,
-        autoCloseDuration: const Duration(seconds: 2),
-      );
+    // Import to main transactions table
+    final importService = ref.read(emailImportServiceProvider);
+    final updatedTx = await db.parsedEmailTransactionDao.getByEmailId(tx.emailId);
+    if (updatedTx != null) {
+      final result = await importService.importTransaction(updatedTx);
+      if (context.mounted) {
+        if (result != null) {
+          toastification.show(
+            context: context,
+            title: const Text('Transaction imported'),
+            type: ToastificationType.success,
+            autoCloseDuration: const Duration(seconds: 2),
+          );
+        } else {
+          toastification.show(
+            context: context,
+            title: const Text('Approved but import failed'),
+            type: ToastificationType.warning,
+            autoCloseDuration: const Duration(seconds: 2),
+          );
+        }
+      }
     }
   }
 
