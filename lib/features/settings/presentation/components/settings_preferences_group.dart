@@ -87,6 +87,16 @@ class SettingsPreferencesGroup extends ConsumerWidget {
               desktopWidget: const AutoTransactionSettingsScreen(),
             ),
           ),
+        // Email Sync - available on all platforms
+        MenuTileButton(
+          label: 'Email Sync',
+          icon: HugeIcons.strokeRoundedMail01,
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.emailSyncSettings,
+            desktopWidget: const EmailSyncSettingsScreen(),
+          ),
+        ),
       ],
     );
   }

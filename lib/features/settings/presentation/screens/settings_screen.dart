@@ -47,6 +47,7 @@ import 'package:bexly/features/subscription/presentation/screens/subscription_sc
 import 'package:bexly/features/theme_switcher/presentation/components/theme_mode_switcher.dart';
 import 'package:bexly/features/wallet/screens/wallets_screen.dart';
 import 'package:bexly/features/family/presentation/screens/family_settings_screen.dart';
+import 'package:bexly/features/email_sync/presentation/screens/email_sync_settings_screen.dart';
 import 'package:bexly/core/services/sync/sync_trigger_service.dart';
 import 'package:bexly/features/settings/presentation/components/bind_account_bottom_sheet.dart';
 import 'package:bexly/core/database/database_provider.dart';
