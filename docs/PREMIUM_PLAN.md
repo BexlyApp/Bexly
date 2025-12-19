@@ -34,7 +34,7 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 - Unlimited recurring transactions
 - 6 months analytics history
 - 120 DOS AI messages/month
-- 120 Premium AI messages/month (Gemini 2.5 Pro)
+- 120 Premium AI messages/month (Gemini 3 Flash)
 - Can choose between DOS AI and Gemini
 - Receipt photo storage (1GB)
 - Family sharing (3 members, 2 shared wallets)
@@ -47,8 +47,8 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 
 **Everything in Plus, plus:**
 - Full analytics history (unlimited)
-- 300 DOS AI messages/month
-- 300 Premium AI messages/month (Gemini 2.5 Pro)
+- **Unlimited** DOS AI messages
+- **Unlimited** Premium AI messages (Gemini 3 Flash)
 - 100 Flagship AI messages/month (GPT-4o / Claude)
 - Can choose any AI model
 - Receipt photo storage (5GB)
@@ -85,11 +85,22 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 
 ## AI Model Tiers
 
-| Tier | Description | Notes |
-|------|-------------|-------|
-| Standard | Free model for all users | Self-hosted, good for simple tasks |
-| Premium | Better accuracy and reasoning | Available for Plus+ subscribers |
-| Flagship | Best AI capabilities | Available for Pro subscribers only |
+| Tier | Model | Description | Available for |
+|------|-------|-------------|---------------|
+| Standard | Self-hosted (api.dos.ai) | Good for simple tasks | All users |
+| Premium | Gemini 3 Flash | 3x faster, better quality | Plus, Pro, Family tiers |
+| Flagship | GPT-4o / Claude | Best AI capabilities | Pro tiers only |
+
+### AI Quota & Fallback Logic
+
+**Quota Behavior:**
+- **Free**: Uses Standard quota → Hết quota = Block (thông báo nâng cấp)
+- **Plus/Plus Family**: Uses Standard → hết thì Premium → Hết cả 2 = Block
+- **Pro/Pro Family**: Uses Standard → Premium → **Unlimited** (không bao giờ hết)
+
+**Fallback (khi lỗi kết nối api.dos.ai):**
+- Nếu còn quota và lỗi connect → Fallback sang Gemini 3 Flash Preview trực tiếp
+- Fallback chỉ xảy ra khi **lỗi kết nối**, không phải khi hết quota
 
 *Specific models are managed internally and may be upgraded over time.*
 
@@ -103,9 +114,9 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 | Budgets & Goals | 2 each | Unlimited | Unlimited | Unlimited | Unlimited |
 | Recurring transactions | 5 | Unlimited | Unlimited | Unlimited | Unlimited |
 | Analytics history | 3 months | 6 months | Unlimited | 6 months | Unlimited |
-| DOS AI messages | 60/month | 120/month | 300/month | 120/month | 300/month |
-| Premium AI (Gemini) | - | 120/month | 300/month | 120/month | 300/month |
-| Flagship AI (GPT-4o) | - | - | 100/month | - | 100/month |
+| DOS AI messages | 60/month | 120/month | **Unlimited** | 120/month | **Unlimited** |
+| Premium AI (Gemini 3 Flash) | - | 120/month | **Unlimited** | 120/month | **Unlimited** |
+| Flagship AI (GPT-4o/Claude) | - | - | 100/month | - | 100/month |
 | Choose AI model | No | Yes | Yes | Yes | Yes |
 | Receipt photos | - | 1GB | 5GB | 1GB | 5GB |
 | Cloud sync | Basic | Full | Full | Full | Full |
@@ -192,12 +203,15 @@ bool canUseAI(AIModel model) {
   final usage = getAIUsage();
   switch (model) {
     case AIModel.dosAI:
-      final limit = subscription.isProLevel ? 300 : subscription.isPlusLevel ? 120 : 60;
+      // Pro = unlimited, Plus = 120, Free = 60
+      if (subscription.isProLevel) return true; // Unlimited
+      final limit = subscription.isPlusLevel ? 120 : 60;
       return usage.dosAI < limit;
     case AIModel.gemini:
       if (subscription.isFree) return false;
-      final limit = subscription.isProLevel ? 300 : 120;
-      return usage.gemini < limit;
+      // Pro = unlimited, Plus = 120
+      if (subscription.isProLevel) return true; // Unlimited
+      return usage.gemini < 120;
     case AIModel.openAI:
       if (!subscription.isProLevel) return false;
       return usage.openAI < 100;
