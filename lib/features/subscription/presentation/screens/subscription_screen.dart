@@ -85,13 +85,7 @@ class SubscriptionScreen extends ConsumerWidget {
                         ? () => _purchase(context, ref, SubscriptionProducts.proYearly)
                         : null,
                   ),
-                  const Gap(AppSpacing.spacing20),
-
-                  // Free tier collapsed
-                  _FreeTierCollapsed(
-                    isCurrentPlan: subscriptionState.tier == SubscriptionTier.free,
-                  ),
-                  const Gap(AppSpacing.spacing20),
+                  const Gap(AppSpacing.spacing16),
 
                   // Restore purchases button
                   Center(
@@ -350,20 +344,22 @@ class _PlanCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ...features.map((feature) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
                             Icons.check_circle_rounded,
                             color: accentColor,
-                            size: 16,
+                            size: 18,
                           ),
                           const Gap(AppSpacing.spacing8),
                           Expanded(
                             child: Text(
                               feature,
-                              style: AppTextStyles.body4,
+                              style: AppTextStyles.body3.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
@@ -431,29 +427,31 @@ class _PriceButton extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Material(
-          color: isPrimary ? accentColor : (isDark ? accentColor.withAlpha(25) : accentColor.withAlpha(15)),
-          borderRadius: BorderRadius.circular(10),
+          color: isPrimary ? accentColor : (isDark ? accentColor.withAlpha(30) : accentColor.withAlpha(20)),
+          borderRadius: BorderRadius.circular(12),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.symmetric(
-                vertical: 10,
-                horizontal: 6,
+                vertical: 12,
+                horizontal: 8,
               ),
               child: Column(
                 children: [
                   Text(
                     price,
-                    style: AppTextStyles.body3.copyWith(
+                    style: AppTextStyles.body2.copyWith(
                       color: isPrimary ? Colors.white : accentColor,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const Gap(2),
                   Text(
                     period,
-                    style: AppTextStyles.body5.copyWith(
-                      color: isPrimary ? Colors.white70 : accentColor.withAlpha(180),
+                    style: AppTextStyles.body4.copyWith(
+                      color: isPrimary ? Colors.white.withAlpha(220) : accentColor,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -463,22 +461,22 @@ class _PriceButton extends StatelessWidget {
         ),
         if (badge != null)
           Positioned(
-            top: -8,
+            top: -10,
             right: 4,
             left: 4,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.tertiary500,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   badge!,
                   style: AppTextStyles.body5.copyWith(
                     color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
                   ),
                 ),
               ),
@@ -489,66 +487,3 @@ class _PriceButton extends StatelessWidget {
   }
 }
 
-class _FreeTierCollapsed extends StatelessWidget {
-  final bool isCurrentPlan;
-
-  const _FreeTierCollapsed({required this.isCurrentPlan});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.spacing12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.neutral900 : AppColors.neutral100,
-        borderRadius: BorderRadius.circular(12),
-        border: isCurrentPlan
-            ? Border.all(color: AppColors.neutral500, width: 2)
-            : null,
-      ),
-      child: Row(
-        children: [
-          HugeIcon(
-            icon: HugeIcons.strokeRoundedUser,
-            color: AppColors.neutral500,
-            size: 20,
-          ),
-          const Gap(10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Free',
-                  style: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  '3 wallets • 60 AI msg/mo • 3 mo history • Ads',
-                  style: AppTextStyles.body5.copyWith(
-                    color: isDark ? AppColors.neutral400 : AppColors.neutral600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (isCurrentPlan)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.neutral500,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                'Current',
-                style: AppTextStyles.body5.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
