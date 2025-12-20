@@ -5,17 +5,65 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:gap/gap.dart';
+
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/services/auto_transaction/auto_transaction_service.dart';
 import 'package:bexly/features/settings/presentation/widgets/sms_scan_results_dialog.dart';
 import 'package:bexly/features/settings/presentation/widgets/sms_permission_dialog.dart';
-import 'package:bexly/features/settings/presentation/widgets/sms_date_range_bottom_sheet.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+
+/// Date range options for SMS scanning
+enum SmsDateRange {
+  last30Days,
+  last90Days,
+  allTime,
+}
+
+extension SmsDateRangeExtension on SmsDateRange {
+  String getTitle(BuildContext context) {
+    switch (this) {
+      case SmsDateRange.last30Days:
+        return 'Last 30 days';
+      case SmsDateRange.last90Days:
+        return 'Last 90 days';
+      case SmsDateRange.allTime:
+        return 'All time';
+    }
+  }
+
+  String getDescription(BuildContext context) {
+    switch (this) {
+      case SmsDateRange.last30Days:
+        return 'Faster scan, recent transactions only';
+      case SmsDateRange.last90Days:
+        return 'Balanced scan with recent history';
+      case SmsDateRange.allTime:
+        return 'Complete history, may take longer';
+    }
+  }
+
+  /// Get the start date for this range
+  DateTime? get startDate {
+    final now = DateTime.now();
+    switch (this) {
+      case SmsDateRange.last30Days:
+        return now.subtract(const Duration(days: 30));
+      case SmsDateRange.last90Days:
+        return now.subtract(const Duration(days: 90));
+      case SmsDateRange.allTime:
+        return null; // No limit
+    }
+  }
+}
 
 /// Auto Transaction settings notifiers
 class AutoTransactionSmsEnabledNotifier extends Notifier<bool> {
@@ -289,7 +337,9 @@ class _AutoTransactionSettingsScreenState
 
   Future<void> _scanSmsForBanks() async {
     // Show date range selection bottom sheet first
-    final dateRange = await SmsDateRangeBottomSheet.show(context);
+    final dateRange = await context.openBottomSheet<SmsDateRange>(
+      child: const _SmsDateRangeBottomSheet(),
+    );
     if (dateRange == null) {
       return; // User cancelled
     }
@@ -830,6 +880,101 @@ class _AutoTransactionSettingsScreenState
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet for selecting SMS scan date range
+class _SmsDateRangeBottomSheet extends StatefulWidget {
+  const _SmsDateRangeBottomSheet();
+
+  @override
+  State<_SmsDateRangeBottomSheet> createState() => _SmsDateRangeBottomSheetState();
+}
+
+class _SmsDateRangeBottomSheetState extends State<_SmsDateRangeBottomSheet> {
+  SmsDateRange _selectedRange = SmsDateRange.last30Days;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomBottomSheet(
+      title: context.l10n.autoTransactionScanSms,
+      subtitle: 'Select how far back to scan for transactions',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Date range options
+          ...SmsDateRange.values.map((range) => _buildRangeOption(range)),
+
+          const Gap(AppSpacing.spacing16),
+
+          // Scan button
+          PrimaryButton(
+            label: context.l10n.autoTransactionScanSms,
+            onPressed: () => Navigator.pop(context, _selectedRange),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRangeOption(SmsDateRange range) {
+    final isSelected = _selectedRange == range;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.spacing12),
+      child: InkWell(
+        onTap: () => setState(() => _selectedRange = range),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.spacing16),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
+                : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      range.getTitle(context),
+                      style: AppTextStyles.body2.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      range.getDescription(context),
+                      style: AppTextStyles.body4.copyWith(
+                        color: AppColors.neutral500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
+            ],
+          ),
         ),
       ),
     );

@@ -62,7 +62,7 @@ class _NativeAdWidgetState extends ConsumerState<NativeAdWidget> {
       ),
       request: const AdRequest(),
       nativeTemplateStyle: NativeTemplateStyle(
-        templateType: TemplateType.small,
+        templateType: TemplateType.medium,
         mainBackgroundColor: Colors.transparent,
         cornerRadius: 12,
         callToActionTextStyle: NativeTemplateTextStyle(
@@ -116,7 +116,7 @@ class _NativeAdWidgetState extends ConsumerState<NativeAdWidget> {
     // Show placeholder while loading
     if (!_isAdLoaded || _nativeAd == null) {
       return Container(
-        height: 100,
+        height: 300,
         margin: const EdgeInsets.only(bottom: AppSpacing.spacing16),
         decoration: BoxDecoration(
           color: isDark ? AppColors.neutral900 : AppColors.neutral100,
@@ -143,7 +143,7 @@ class _NativeAdWidgetState extends ConsumerState<NativeAdWidget> {
     }
 
     return Container(
-      height: 100,
+      height: 300,
       margin: const EdgeInsets.only(bottom: AppSpacing.spacing16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.neutral900 : AppColors.neutral50,

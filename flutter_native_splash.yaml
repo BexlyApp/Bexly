@@ -1,0 +1,17 @@
+flutter_native_splash:
+  color: "#FFFFFF"
+  color_dark: "#1A1A1A"
+  image: assets/icon/Bexly-Logo-no-text-1024.png
+  image_dark: assets/icon/Bexly-Logo-no-text-1024.png
+  branding: assets/icon/Bexly-Logo-no-text-1024.png
+  branding_dark: assets/icon/Bexly-Logo-no-text-1024.png
+
+  android_12:
+    image: assets/icon/Bexly-Logo-no-text-1024.png
+    icon_background_color: "#7C3AED"
+    image_dark: assets/icon/Bexly-Logo-no-text-1024.png
+    icon_background_color_dark: "#7C3AED"
+
+  android: true
+  ios: true
+  web: true

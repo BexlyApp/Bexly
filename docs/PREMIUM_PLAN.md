@@ -1,7 +1,7 @@
 # Bexly Premium Plan
 
 ## Overview
-Bexly operates on a freemium model with cloud sync support. Free users get core functionality with ads. Premium users get more features, better AI, and ad-free experience. Family plans allow sharing wallets with up to 5 members.
+Bexly operates on a freemium model with cloud sync support. Free users get core functionality with ads. Premium users get more features, better AI, ad-free experience, and enhanced family sharing.
 
 ## Tier Structure
 
@@ -13,139 +13,132 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 - 2 budgets & 2 goals
 - 5 recurring transactions
 - 3 months analytics history
-- 60 DOS AI messages/month
+- 60 AI messages/month
 - Cloud sync (basic)
 - Manual export/import (JSON/CSV)
+- Family sharing (2 members, 2 shared wallets, viewer-only)
 
 **Limitations:**
 - Contains ads
 - No receipt photo storage
-- DOS AI model only (cannot choose other models)
-- Basic family sharing (2 members, 1 shared wallet, viewer-only)
 
 ---
 
 ### Plus Tier
-**Price:** $2.99/month or $29.99/year (2 months free)
+**Price:** $1.99/month or $19.99/year (2 months free)
 
 **Everything in Free, plus:**
 - Unlimited wallets
 - Unlimited budgets & goals
 - Unlimited recurring transactions
 - 6 months analytics history
-- 120 DOS AI messages/month
-- 120 Premium AI messages/month (Gemini 3 Flash)
-- Can choose between DOS AI and Gemini
-- Receipt photo storage (1GB)
-- Family sharing (3 members, 2 shared wallets)
+- 240 AI messages/month
+- Scan & store receipts (1 year retention)
+- **Family sharing (3 members, 5 shared wallets)**
+- Priority support
 - **No ads**
 
 ---
 
 ### Pro Tier
-**Price:** $5.99/month or $59.99/year (2 months free)
+**Price:** $3.99/month or $39.99/year (2 months free)
 
 **Everything in Plus, plus:**
 - Full analytics history (unlimited)
-- **Unlimited** DOS AI messages
-- **Unlimited** Premium AI messages (Gemini 3 Flash)
-- 100 Flagship AI messages/month (GPT-4o / Claude)
-- Can choose any AI model
-- Receipt photo storage (5GB)
-- Family sharing (3 members, 3 shared wallets, Editor role)
+- **Unlimited** AI messages
+- Scan & store receipts (3 years retention)
+- **Family sharing (5 members, unlimited shared wallets, Editor role)**
 - AI insights & predictions
-- Priority support
-- Early access to new features
 
 ---
 
-### Plus Family Tier
-**Price:** $4.99/month or $49.99/year (2 months free)
+## AI Quota
 
-**Everything in Plus, plus:**
-- Family sharing (up to 5 members)
-- Shared wallets with role-based access
-- Track who created each transaction
-- Owner/Editor/Viewer roles
-- Invite via link or email
+| Tier | AI Messages |
+|------|-------------|
+| Free | 60/month |
+| Plus | 240/month |
+| Pro | **Unlimited** |
 
----
-
-### Pro Family Tier
-**Price:** $9.99/month or $99.99/year (2 months free)
-
-**Everything in Pro, plus:**
-- Family sharing (up to 5 members)
-- Shared wallets with role-based access
-- Track who created each transaction
-- Owner/Editor/Viewer roles
-- Invite via link or email
-
----
-
-## AI Model Tiers
-
-| Tier | Model | Description | Available for |
-|------|-------|-------------|---------------|
-| Standard | Self-hosted (api.dos.ai) | Good for simple tasks | All users |
-| Premium | Gemini 3 Flash | 3x faster, better quality | Plus, Pro, Family tiers |
-| Flagship | GPT-4o / Claude | Best AI capabilities | Pro tiers only |
-
-### AI Quota & Fallback Logic
-
-**Quota Behavior:**
-- **Free**: Uses Standard quota → Hết quota = Block (thông báo nâng cấp)
-- **Plus/Plus Family**: Uses Standard → hết thì Premium → Hết cả 2 = Block
-- **Pro/Pro Family**: Uses Standard → Premium → **Unlimited** (không bao giờ hết)
-
-**Fallback (khi lỗi kết nối api.dos.ai):**
-- Nếu còn quota và lỗi connect → Fallback sang Gemini 3 Flash Preview trực tiếp
-- Fallback chỉ xảy ra khi **lỗi kết nối**, không phải khi hết quota
-
-*Specific models are managed internally and may be upgraded over time.*
+*AI models are managed internally and may be upgraded over time.*
 
 ---
 
 ## Feature Comparison
 
-| Feature | Free | Plus | Pro | Plus Family | Pro Family |
-|---------|------|------|-----|-------------|------------|
-| Wallets | 3 | Unlimited | Unlimited | Unlimited | Unlimited |
-| Budgets & Goals | 2 each | Unlimited | Unlimited | Unlimited | Unlimited |
-| Recurring transactions | 5 | Unlimited | Unlimited | Unlimited | Unlimited |
-| Analytics history | 3 months | 6 months | Unlimited | 6 months | Unlimited |
-| DOS AI messages | 60/month | 120/month | **Unlimited** | 120/month | **Unlimited** |
-| Premium AI (Gemini 3 Flash) | - | 120/month | **Unlimited** | 120/month | **Unlimited** |
-| Flagship AI (GPT-4o/Claude) | - | - | 100/month | - | 100/month |
-| Choose AI model | No | Yes | Yes | Yes | Yes |
-| Receipt photos | - | 1GB | 5GB | 1GB | 5GB |
-| Cloud sync | Basic | Full | Full | Full | Full |
-| Ads | Yes | No | No | No | No |
-| Priority support | - | - | Yes | - | Yes |
-| **Family members** | 2 | 3 | 3 | **5** | **5** |
-| **Shared wallets** | 1 | 2 | 3 | **Unlimited** | **Unlimited** |
-| **Editor role** | - | - | Yes | - | Yes |
+| Feature | Free | Plus | Pro |
+|---------|------|------|-----|
+| **Price** | $0 | $1.99/mo ($19.99/yr) | $3.99/mo ($39.99/yr) |
+| **Price (VND)** | 0đ | 49k/tháng (490k/năm) | 99k/tháng (990k/năm) |
+| | | | |
+| **Core Features** | | | |
+| Wallets | 3 | Unlimited | Unlimited |
+| Budgets & Goals | 2 each | Unlimited | Unlimited |
+| Recurring transactions | 5 | Unlimited | Unlimited |
+| Analytics history | 3 months | 6 months | Unlimited |
+| Cloud sync | Basic | Full | Full |
+| Ads | Yes | No | No |
+| | | | |
+| **AI Assistant** | | | |
+| AI messages | 60/month | 240/month | **Unlimited** |
+| AI insights & predictions | - | - | Yes |
+| | | | |
+| **Receipt** | | | |
+| Scan receipt (OCR) | - | Yes | Yes |
+| Receipt storage | - | 1 year | 3 years |
+| | | | |
+| **Family Sharing** | | | |
+| Family members | 2 | 3 | **5** |
+| Shared wallets | 2 | 5 | **Unlimited** |
+| Editor role | - | - | Yes |
+| | | | |
+| **Email Sync** | | | |
+| Email accounts | - | 1 | 3 |
+| Scan period | - | 30 days | All time |
+| | | | |
+| **Support** | | | |
+| Priority support | - | Yes | Yes |
+
+---
+
+## Email Sync Feature
+
+Automatically scan and import transactions from banking emails.
+
+### Email Sync Limits by Tier
+| Feature | Free | Plus | Pro |
+|---------|------|------|-----|
+| Email accounts | - | 1 | 3 |
+| Auto-sync | - | ✅ | ✅ |
+| Manual sync | - | ✅ | ✅ |
+| Scan period | - | 30 days | All time |
+
+### Scan Period Options
+- **Last 7 days**: Quick scan for recent transactions
+- **Last 30 days**: Default for Plus tier
+- **Last 90 days**: Extended scan
+- **All time**: Full inbox scan (Pro only)
 
 ---
 
 ## Family Sharing Features
 
-**All tiers have access to basic Family Sharing with different limits!**
+**All tiers have access to Family Sharing with different limits!**
 
 ### Family Limits by Tier
-| Limit | Free | Plus | Pro | Plus Family | Pro Family |
-|-------|------|------|-----|-------------|------------|
-| Max members | 2 | 3 | 3 | 5 | 5 |
-| Shared wallets | 1 | 2 | 3 | Unlimited | Unlimited |
-| Available roles | Owner, Viewer | Owner, Viewer | Owner, Editor, Viewer | Owner, Viewer | Owner, Editor, Viewer |
-| Can create family | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Can invite members | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Limit | Free | Plus | Pro |
+|-------|------|------|-----|
+| Max members | 2 | 3 | **5** |
+| Shared wallets | 2 | 5 | **Unlimited** |
+| Available roles | Owner, Viewer | Owner, Viewer | Owner, Editor, Viewer |
+| Can create family | ✅ | ✅ | ✅ |
+| Can invite members | ✅ | ✅ | ✅ |
 
 ### Member Roles
 | Role | Permissions | Available in |
 |------|-------------|--------------|
 | **Owner** | Full control - invite/remove members, share/unshare wallets, CRUD all transactions | All tiers |
-| **Editor** | Can share wallets, create/edit/delete transactions | Pro, Pro Family |
+| **Editor** | Can share wallets, create/edit/delete transactions | Pro only |
 | **Viewer** | Read-only access to shared wallets | All tiers |
 
 ### How It Works
@@ -170,14 +163,10 @@ join.bexly.app/f/u_abc123   → Family invite via user ID (default, before usern
 
 | Plan | Product ID | Price (USD) | Price (VND) |
 |------|------------|-------------|-------------|
-| Plus Monthly | `bexly_plus_monthly` | $2.99/month | 79,000đ/tháng |
-| Plus Yearly | `bexly_plus_yearly` | $29.99/year | 790,000đ/năm |
-| Pro Monthly | `bexly_pro_monthly` | $5.99/month | 149,000đ/tháng |
-| Pro Yearly | `bexly_pro_yearly` | $59.99/year | 1,490,000đ/năm |
-| Plus Family Monthly | `bexly_plus_family_monthly` | $4.99/month | 129,000đ/tháng |
-| Plus Family Yearly | `bexly_plus_family_yearly` | $49.99/year | 1,290,000đ/năm |
-| Pro Family Monthly | `bexly_pro_family_monthly` | $9.99/month | 249,000đ/tháng |
-| Pro Family Yearly | `bexly_pro_family_yearly` | $99.99/year | 2,490,000đ/năm |
+| Plus Monthly | `bexly_plus_monthly` | $1.99/month | 49,000đ/tháng |
+| Plus Yearly | `bexly_plus_yearly` | $19.99/year | 490,000đ/năm |
+| Pro Monthly | `bexly_pro_monthly` | $3.99/month | 99,000đ/tháng |
+| Pro Yearly | `bexly_pro_yearly` | $39.99/year | 990,000đ/năm |
 
 **Subscription Group:** `Bexly Premium`
 
@@ -199,51 +188,29 @@ bool canCreateWallet() {
   return currentWalletCount < 3;
 }
 
-bool canUseAI(AIModel model) {
+bool canUseAI() {
   final usage = getAIUsage();
-  switch (model) {
-    case AIModel.dosAI:
-      // Pro = unlimited, Plus = 120, Free = 60
-      if (subscription.isProLevel) return true; // Unlimited
-      final limit = subscription.isPlusLevel ? 120 : 60;
-      return usage.dosAI < limit;
-    case AIModel.gemini:
-      if (subscription.isFree) return false;
-      // Pro = unlimited, Plus = 120
-      if (subscription.isProLevel) return true; // Unlimited
-      return usage.gemini < 120;
-    case AIModel.openAI:
-      if (!subscription.isProLevel) return false;
-      return usage.openAI < 100;
-  }
-}
-
-bool canChooseModel() {
-  return subscription.isPlusLevel; // Plus, Pro, Plus Family, Pro Family
+  // Pro = unlimited, Plus = 240, Free = 60
+  if (subscription.isPro) return true; // Unlimited
+  final limit = subscription.isPlus ? 240 : 60;
+  return usage.messages < limit;
 }
 
 // All tiers can use family, but with different limits
 int getMaxFamilyMembers() {
-  if (subscription.hasFullFamily) return 5; // Plus Family, Pro Family
-  if (subscription.isPlusLevel) return 3;   // Plus, Pro
-  return 2;                                  // Free
+  if (subscription.isPro) return 5;
+  if (subscription.isPlus) return 3;
+  return 2; // Free
 }
 
 int getMaxSharedWallets() {
-  if (subscription.hasFullFamily) return -1; // Unlimited
-  if (subscription.isProLevel) return 3;
-  if (subscription.isPlusLevel) return 2;
-  return 1; // Free
+  if (subscription.isPro) return -1; // Unlimited
+  if (subscription.isPlus) return 5;
+  return 2; // Free
 }
 
 bool canUseEditorRole() {
-  return subscription.isProLevel; // Pro, Pro Family only
-}
-
-List<AIModel> getAvailableModels() {
-  if (subscription.isProLevel) return [AIModel.dosAI, AIModel.gemini, AIModel.openAI];
-  if (subscription.isPlusLevel) return [AIModel.dosAI, AIModel.gemini];
-  return [AIModel.dosAI];
+  return subscription.isPro;
 }
 ```
 
@@ -259,16 +226,14 @@ List<AIModel> getAvailableModels() {
 ### Regional Pricing (VND)
 | Plan | Monthly | Yearly |
 |------|---------|--------|
-| Plus | 79,000đ | 790,000đ |
-| Pro | 149,000đ | 1,490,000đ |
-| Plus Family | 129,000đ | 1,290,000đ |
-| Pro Family | 249,000đ | 2,490,000đ |
+| Plus | 49,000đ | 490,000đ |
+| Pro | 99,000đ | 990,000đ |
 
 ### Conversion Tactics
 1. **Soft limits**: Show upgrade prompt when hitting limits
 2. **Trial period**: 7-day free trial for Plus
 3. **Upgrade prompts**: After 30 days of active use
-4. **Value highlight**: "Unlock Premium AI" when using Standard
+4. **Value highlight**: "Get more AI messages" when quota low
 5. **Family upsell**: "Share with family" prompt when adding multiple wallets
 
 ---

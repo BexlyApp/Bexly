@@ -12,7 +12,7 @@ class Logo extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Image.asset('assets/icon/Bexly-Logo-1024.png', width: size),
+          Image.asset('assets/icon/Bexly-Logo-no-text-1024.png', width: size),
           const Gap(AppSpacing.spacing12),
         ],
       ),

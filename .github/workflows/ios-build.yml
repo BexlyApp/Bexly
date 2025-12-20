@@ -100,12 +100,13 @@ jobs:
           xcode-project use-profiles || true
 
       - name: Create .env file
+        env:
+          BEXLY_FREE_AI_KEY: ${{ secrets.BEXLY_FREE_AI_KEY }}
         run: |
           # Create .env file with Bexly Free AI configuration
-          # These are public free-tier settings, not secrets
-          cat > .env << 'EOF'
+          cat > .env << EOF
           BEXLY_FREE_AI_URL=https://api.dos.ai/v1
-          BEXLY_FREE_AI_KEY=bexly-free-tier
+          BEXLY_FREE_AI_KEY=${BEXLY_FREE_AI_KEY}
           BEXLY_FREE_AI_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
           EOF
 

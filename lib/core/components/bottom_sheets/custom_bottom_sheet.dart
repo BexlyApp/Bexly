@@ -32,9 +32,9 @@ class CustomBottomSheet extends StatelessWidget {
             ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(title, style: AppTextStyles.body1),
+            Text(title, style: AppTextStyles.body1, textAlign: TextAlign.center),
             if (subtitle != null) ...[
               const Gap(AppSpacing.spacing8),
               Text(
@@ -42,6 +42,7 @@ class CustomBottomSheet extends StatelessWidget {
                 style: AppTextStyles.body3.copyWith(
                   color: Colors.grey,
                 ),
+                textAlign: TextAlign.center,
               ),
             ],
             const Gap(AppSpacing.spacing32),

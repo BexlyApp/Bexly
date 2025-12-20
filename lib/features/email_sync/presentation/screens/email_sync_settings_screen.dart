@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:toastification/toastification.dart';
 
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
+import 'package:bexly/core/components/buttons/button_state.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/features/email_sync/riverpod/email_sync_provider.dart';
 import 'package:bexly/features/email_sync/riverpod/email_scan_provider.dart';
 import 'package:bexly/features/email_sync/domain/services/gmail_auth_service.dart';
@@ -76,7 +80,7 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
 
             // Sync Now Button
             _SyncNowCard(
-              onSync: () => _syncNow(context, ref),
+              onSync: () => _showScanPeriodSheet(context, ref),
             ),
 
             const Gap(AppSpacing.spacing24),
@@ -168,16 +172,31 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
     );
   }
 
-  Future<void> _syncNow(BuildContext context, WidgetRef ref) async {
+  void _showScanPeriodSheet(BuildContext context, WidgetRef ref) {
+    context.openBottomSheet<ScanPeriod>(
+      child: const _ScanPeriodBottomSheet(),
+    ).then((period) {
+      if (period != null) {
+        _performScan(context, ref, period);
+      }
+    });
+  }
+
+  Future<void> _performScan(BuildContext context, WidgetRef ref, ScanPeriod period) async {
     final scanNotifier = ref.read(emailScanProvider.notifier);
 
-    // Get last sync time to only fetch new emails
-    final settings = ref.read(emailSyncProvider).when(
-      data: (data) => data,
-      loading: () => null,
-      error: (_, __) => null,
-    );
-    final since = settings?.lastSyncTime ?? DateTime.now().subtract(const Duration(days: 7));
+    // Calculate since date based on selected period
+    final DateTime? since;
+    switch (period) {
+      case ScanPeriod.last7Days:
+        since = DateTime.now().subtract(const Duration(days: 7));
+      case ScanPeriod.last30Days:
+        since = DateTime.now().subtract(const Duration(days: 30));
+      case ScanPeriod.last90Days:
+        since = DateTime.now().subtract(const Duration(days: 90));
+      case ScanPeriod.allTime:
+        since = null; // No limit
+    }
 
     final result = await scanNotifier.scanEmails(since: since);
 
@@ -202,6 +221,29 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
         style: ToastificationStyle.fillColored,
         autoCloseDuration: const Duration(seconds: 4),
       );
+    }
+  }
+}
+
+/// Scan period options
+enum ScanPeriod {
+  last7Days,
+  last30Days,
+  last90Days,
+  allTime,
+}
+
+extension ScanPeriodExt on ScanPeriod {
+  String get label {
+    switch (this) {
+      case ScanPeriod.last7Days:
+        return 'Last 7 days';
+      case ScanPeriod.last30Days:
+        return 'Last 30 days';
+      case ScanPeriod.last90Days:
+        return 'Last 90 days';
+      case ScanPeriod.allTime:
+        return 'All time';
     }
   }
 }
@@ -539,6 +581,164 @@ class _SyncNowCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// Bottom sheet for selecting scan period - uses CustomBottomSheet standard
+class _ScanPeriodBottomSheet extends StatefulWidget {
+  const _ScanPeriodBottomSheet();
+
+  @override
+  State<_ScanPeriodBottomSheet> createState() => _ScanPeriodBottomSheetState();
+}
+
+class _ScanPeriodBottomSheetState extends State<_ScanPeriodBottomSheet> {
+  ScanPeriod _selectedPeriod = ScanPeriod.last30Days;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: MediaQuery.of(context).viewInsets,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.spacing20,
+          AppSpacing.spacing16,
+          AppSpacing.spacing20,
+          AppSpacing.spacing20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Title centered
+            Text('Scan Email', style: AppTextStyles.body1),
+            const Gap(AppSpacing.spacing8),
+            Text(
+              'Select how far back to scan for transactions',
+              style: AppTextStyles.body3.copyWith(color: Colors.grey),
+            ),
+            const Gap(AppSpacing.spacing24),
+
+            // Period options (exclude last7Days to match SMS)
+            ...ScanPeriod.values.where((p) => p != ScanPeriod.last7Days).map(
+              (period) => _buildPeriodOption(context, period),
+            ),
+
+            const Gap(AppSpacing.spacing24),
+
+            // Scan button using PrimaryButton
+            PrimaryButton(
+              label: 'Scan Email',
+              state: ButtonState.active,
+              themeMode: theme.brightness == Brightness.dark
+                  ? ThemeMode.dark
+                  : ThemeMode.light,
+              onPressed: () => Navigator.pop(context, _selectedPeriod),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPeriodOption(BuildContext context, ScanPeriod period) {
+    final theme = Theme.of(context);
+    final isSelected = _selectedPeriod == period;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.spacing12),
+      child: InkWell(
+        onTap: () => setState(() => _selectedPeriod = period),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.spacing16),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
+                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.spacing8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                      : AppColors.neutral200,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: HugeIcon(
+                  icon: _getIconForPeriod(period),
+                  size: 24,
+                  color: isSelected ? theme.colorScheme.primary : AppColors.neutral500,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.spacing16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      period.label,
+                      style: AppTextStyles.body2.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? theme.colorScheme.primary : null,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _getDescriptionForPeriod(period),
+                      style: AppTextStyles.body4.copyWith(
+                        color: AppColors.neutral500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                  color: theme.colorScheme.primary,
+                  size: 24,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<List> _getIconForPeriod(ScanPeriod period) {
+    switch (period) {
+      case ScanPeriod.last7Days:
+        return HugeIcons.strokeRoundedCalendar01;
+      case ScanPeriod.last30Days:
+        return HugeIcons.strokeRoundedCalendar01;
+      case ScanPeriod.last90Days:
+        return HugeIcons.strokeRoundedCalendar03;
+      case ScanPeriod.allTime:
+        return HugeIcons.strokeRoundedCalendarCheckIn01;
+    }
+  }
+
+  String _getDescriptionForPeriod(ScanPeriod period) {
+    switch (period) {
+      case ScanPeriod.last7Days:
+        return 'Quick scan, recent only';
+      case ScanPeriod.last30Days:
+        return 'Faster scan, recent transactions only';
+      case ScanPeriod.last90Days:
+        return 'Balanced scan with recent history';
+      case ScanPeriod.allTime:
+        return 'Complete history, may take longer';
+    }
   }
 }
 
