@@ -120,17 +120,19 @@ class GmailApiService {
   }
 
   /// Fetch banking emails from Gmail
+  /// Throws exception if authentication fails
   Future<List<GmailMessage>> fetchBankingEmails({
     DateTime? since,
     List<String>? filterDomains,
     int maxResults = 50,
   }) async {
+    final accessToken = await _getAccessToken();
+    if (accessToken == null) {
+      Log.w('No access token available', label: _label);
+      throw Exception('Gmail not authorized. Please reconnect your Gmail account.');
+    }
+
     try {
-      final accessToken = await _getAccessToken();
-      if (accessToken == null) {
-        Log.w('No access token available', label: _label);
-        return [];
-      }
 
       // Build query
       final query = buildBankEmailQuery(
@@ -369,38 +371,73 @@ class GmailApiService {
     'https://www.googleapis.com/auth/gmail.readonly',
   ];
 
+  // Cache the access token to avoid repeated auth prompts
+  String? _cachedAccessToken;
+  DateTime? _tokenExpiry;
+
   /// Get access token from Google Sign In
   ///
   /// In google_sign_in 7.x:
   /// - Authentication and authorization are separate steps
-  /// - Use `authorizationClient.authorizationForScopes()` to get access token
-  /// - Access token is obtained via authorization, not authentication
-  Future<String?> _getAccessToken() async {
+  /// - `authorizationForScopes()` returns null if UI needed (silent only)
+  /// - `authorizeScopes()` shows UI if needed
+  Future<String?> _getAccessToken({bool forceRefresh = false}) async {
     try {
+      // Return cached token if still valid (not expired and not forcing refresh)
+      if (!forceRefresh &&
+          _cachedAccessToken != null &&
+          _tokenExpiry != null &&
+          DateTime.now().isBefore(_tokenExpiry!)) {
+        Log.d('Using cached access token', label: _label);
+        return _cachedAccessToken;
+      }
+
       final signIn = GoogleSignIn.instance;
 
       // Try lightweight auth first (similar to old signInSilently)
       final user = await signIn.attemptLightweightAuthentication();
       if (user == null) {
         Log.w('No lightweight auth, user needs to sign in', label: _label);
+        _cachedAccessToken = null;
+        _tokenExpiry = null;
         return null;
       }
 
-      // In google_sign_in 7.x, get authorization for Gmail scopes
+      // In google_sign_in 7.x:
+      // - authorizationForScopes() returns null if UI would be needed (silent only)
+      // - authorizeScopes() shows UI if needed
       final authorization = await user.authorizationClient.authorizationForScopes(
         _gmailScopes,
       );
 
-      if (authorization == null) {
-        Log.w('No authorization for Gmail scopes', label: _label);
-        return null;
+      if (authorization != null) {
+        _cachedAccessToken = authorization.accessToken;
+        // Token typically valid for 1 hour, cache for 50 minutes to be safe
+        _tokenExpiry = DateTime.now().add(const Duration(minutes: 50));
+        return _cachedAccessToken;
       }
 
-      return authorization.accessToken;
+      // authorizationForScopes returned null, meaning UI is needed
+      // This happens when scopes haven't been granted yet
+      Log.w('No silent authorization for Gmail scopes, may need interactive auth', label: _label);
+
+      // Don't automatically show UI here - let the caller decide
+      // The user should use connectGmail() first to grant permissions
+      _cachedAccessToken = null;
+      _tokenExpiry = null;
+      return null;
     } catch (e) {
       Log.e('Error getting access token: $e', label: _label);
+      _cachedAccessToken = null;
+      _tokenExpiry = null;
       return null;
     }
+  }
+
+  /// Clear cached token (call when disconnecting)
+  void clearCachedToken() {
+    _cachedAccessToken = null;
+    _tokenExpiry = null;
   }
 
   /// Check if Gmail is connected (has valid token)

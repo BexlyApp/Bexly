@@ -26,34 +26,28 @@ class SubscriptionScreen extends ConsumerWidget {
       body: subscriptionState.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.spacing20),
+              padding: const EdgeInsets.all(AppSpacing.spacing16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Current plan banner
                   _CurrentPlanBanner(tier: subscriptionState.tier),
-                  const Gap(AppSpacing.spacing24),
+                  const Gap(AppSpacing.spacing20),
 
-                  // Free tier info (always show)
-                  _FreeTierCard(
-                    isCurrentPlan: subscriptionState.tier == SubscriptionTier.free,
-                  ),
-                  const Gap(AppSpacing.spacing16),
-
-                  // Plan cards
+                  // Plus plan
                   _PlanCard(
                     title: 'Plus',
-                    monthlyPrice: notifier.getPrice(SubscriptionProducts.plusMonthly) ?? '\$2.99',
-                    yearlyPrice: notifier.getPrice(SubscriptionProducts.plusYearly) ?? '\$29.99',
-                    features: [
-                      l10n.unlimitedWallets,
-                      l10n.unlimitedBudgetsGoals,
-                      l10n.unlimitedRecurring,
-                      l10n.aiMessagesPerMonth,
-                      l10n.sixMonthsAnalytics,
-                      l10n.multiCurrencySupport,
-                      l10n.cloudSync,
-                      l10n.receiptPhotos1GB,
+                    subtitle: 'All Free features, plus:',
+                    monthlyPrice: notifier.getPrice(SubscriptionProducts.plusMonthly) ?? '\$1.99',
+                    yearlyPrice: notifier.getPrice(SubscriptionProducts.plusYearly) ?? '\$19.99',
+                    features: const [
+                      'Unlimited wallets, budgets & goals',
+                      '240 AI messages/month',
+                      '6 months analytics',
+                      'Receipt scanning (1 year storage)',
+                      'Email sync (1 account, 30 days)',
+                      'Family sharing (3 members)',
+                      'No ads',
                     ],
                     isCurrentPlan: subscriptionState.tier == SubscriptionTier.plus,
                     accentColor: AppColors.primary500,
@@ -66,17 +60,20 @@ class SubscriptionScreen extends ConsumerWidget {
                   ),
                   const Gap(AppSpacing.spacing16),
 
+                  // Pro plan
                   _PlanCard(
                     title: 'Pro',
-                    monthlyPrice: notifier.getPrice(SubscriptionProducts.proMonthly) ?? '\$5.99',
-                    yearlyPrice: notifier.getPrice(SubscriptionProducts.proYearly) ?? '\$59.99',
-                    features: [
-                      l10n.everythingInPlus,
-                      l10n.unlimitedAiMessages,
-                      l10n.fullAnalyticsHistory,
-                      l10n.unlimitedReceiptStorage,
-                      l10n.ocrReceiptScanning,
-                      l10n.prioritySupport,
+                    subtitle: 'All Plus features, plus:',
+                    monthlyPrice: notifier.getPrice(SubscriptionProducts.proMonthly) ?? '\$3.99',
+                    yearlyPrice: notifier.getPrice(SubscriptionProducts.proYearly) ?? '\$39.99',
+                    features: const [
+                      'Unlimited AI messages',
+                      'Full analytics history',
+                      'Receipt scanning (3 years storage)',
+                      'Email sync (3 accounts, all time)',
+                      'Family sharing (5 members, Editor role)',
+                      'AI insights & predictions',
+                      'Priority support',
                     ],
                     isCurrentPlan: subscriptionState.tier == SubscriptionTier.pro,
                     accentColor: AppColors.purple,
@@ -88,7 +85,13 @@ class SubscriptionScreen extends ConsumerWidget {
                         ? () => _purchase(context, ref, SubscriptionProducts.proYearly)
                         : null,
                   ),
-                  const Gap(AppSpacing.spacing24),
+                  const Gap(AppSpacing.spacing20),
+
+                  // Free tier collapsed
+                  _FreeTierCollapsed(
+                    isCurrentPlan: subscriptionState.tier == SubscriptionTier.free,
+                  ),
+                  const Gap(AppSpacing.spacing20),
 
                   // Restore purchases button
                   Center(
@@ -97,10 +100,10 @@ class SubscriptionScreen extends ConsumerWidget {
                       child: Text(l10n.restorePurchases),
                     ),
                   ),
-                  const Gap(AppSpacing.spacing16),
 
                   // Error message
-                  if (subscriptionState.error != null)
+                  if (subscriptionState.error != null) ...[
+                    const Gap(AppSpacing.spacing12),
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.spacing12),
                       decoration: BoxDecoration(
@@ -109,17 +112,19 @@ class SubscriptionScreen extends ConsumerWidget {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: AppColors.red),
+                          const Icon(Icons.error_outline, color: AppColors.red, size: 18),
                           const Gap(AppSpacing.spacing8),
                           Expanded(
                             child: Text(
                               subscriptionState.error!,
-                              style: AppTextStyles.body3.copyWith(color: AppColors.red),
+                              style: AppTextStyles.body4.copyWith(color: AppColors.red),
                             ),
                           ),
                         ],
                       ),
                     ),
+                  ],
+                  const Gap(AppSpacing.spacing16),
                 ],
               ),
             ),
@@ -166,31 +171,26 @@ class _CurrentPlanBanner extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
+          HugeIcon(
+            icon: _getTierIcon(tier),
+            color: Colors.white,
+            size: 24,
+          ),
+          const Gap(AppSpacing.spacing12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              HugeIcon(
-                icon: _getTierIcon(tier),
-                color: Colors.white,
-                size: 20,
-              ),
-              const Gap(AppSpacing.spacing8),
               Text(
                 l10n.currentPlan,
-                style: AppTextStyles.body4.copyWith(
-                  color: Colors.white70,
-                ),
+                style: AppTextStyles.body5.copyWith(color: Colors.white70),
+              ),
+              Text(
+                'Bexly ${tier.displayName}',
+                style: AppTextStyles.heading6.copyWith(color: Colors.white),
               ),
             ],
-          ),
-          const Gap(AppSpacing.spacing4),
-          Text(
-            'Bexly ${tier.displayName}',
-            style: AppTextStyles.heading5.copyWith(
-              color: Colors.white,
-            ),
           ),
         ],
       ),
@@ -213,21 +213,20 @@ class _CurrentPlanBanner extends StatelessWidget {
   dynamic _getTierIcon(SubscriptionTier tier) {
     switch (tier) {
       case SubscriptionTier.free:
-        return HugeIcons.strokeRoundedUser as dynamic;
+        return HugeIcons.strokeRoundedUser;
       case SubscriptionTier.plus:
-        return HugeIcons.strokeRoundedCrown as dynamic;
       case SubscriptionTier.plusFamily:
-        return HugeIcons.strokeRoundedUserGroup as dynamic;
+        return HugeIcons.strokeRoundedCrown;
       case SubscriptionTier.pro:
-        return HugeIcons.strokeRoundedDiamond01 as dynamic;
       case SubscriptionTier.proFamily:
-        return HugeIcons.strokeRoundedUserGroup as dynamic;
+        return HugeIcons.strokeRoundedDiamond01;
     }
   }
 }
 
 class _PlanCard extends StatelessWidget {
   final String title;
+  final String subtitle;
   final String monthlyPrice;
   final String yearlyPrice;
   final List<String> features;
@@ -239,6 +238,7 @@ class _PlanCard extends StatelessWidget {
 
   const _PlanCard({
     required this.title,
+    required this.subtitle,
     required this.monthlyPrice,
     required this.yearlyPrice,
     required this.features,
@@ -256,12 +256,20 @@ class _PlanCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.neutral950 : Colors.white,
+        color: isDark ? AppColors.neutral900 : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isCurrentPlan ? accentColor : (isDark ? AppColors.neutral800 : AppColors.neutral200),
           width: isCurrentPlan ? 2 : 1,
         ),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withAlpha(10),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,19 +277,31 @@ class _PlanCard extends StatelessWidget {
           // Header
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(AppSpacing.spacing16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.spacing16,
+              vertical: AppSpacing.spacing12,
+            ),
             decoration: BoxDecoration(
-              color: accentColor.withAlpha(isDark ? 40 : 20),
+              color: accentColor.withAlpha(isDark ? 30 : 15),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  style: AppTextStyles.heading6.copyWith(
-                    color: accentColor,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.heading6.copyWith(color: accentColor),
+                    ),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.body5.copyWith(
+                        color: isDark ? AppColors.neutral400 : AppColors.neutral600,
+                      ),
+                    ),
+                  ],
                 ),
                 if (isRecommended)
                   Container(
@@ -291,12 +311,13 @@ class _PlanCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: accentColor,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       l10n.bestValue,
                       style: AppTextStyles.body5.copyWith(
                         color: Colors.white,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -308,12 +329,13 @@ class _PlanCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: accentColor,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       l10n.current,
                       style: AppTextStyles.body5.copyWith(
                         color: Colors.white,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -328,29 +350,29 @@ class _PlanCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ...features.map((feature) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.spacing8),
+                      padding: const EdgeInsets.only(bottom: 6),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          HugeIcon(
-                            icon: HugeIcons.strokeRoundedCheckmarkCircle02 as dynamic,
+                          Icon(
+                            Icons.check_circle_rounded,
                             color: accentColor,
-                            size: 18,
+                            size: 16,
                           ),
                           const Gap(AppSpacing.spacing8),
                           Expanded(
                             child: Text(
                               feature,
-                              style: AppTextStyles.body3,
+                              style: AppTextStyles.body4,
                             ),
                           ),
                         ],
                       ),
                     )),
-                const Gap(AppSpacing.spacing12),
 
                 // Price buttons
                 if (!isCurrentPlan) ...[
+                  const Gap(AppSpacing.spacing12),
                   Row(
                     children: [
                       Expanded(
@@ -361,7 +383,7 @@ class _PlanCard extends StatelessWidget {
                           accentColor: accentColor,
                         ),
                       ),
-                      const Gap(AppSpacing.spacing12),
+                      const Gap(10),
                       Expanded(
                         child: _PriceButton(
                           price: yearlyPrice,
@@ -369,6 +391,7 @@ class _PlanCard extends StatelessWidget {
                           onTap: onYearlyTap,
                           accentColor: accentColor,
                           isPrimary: true,
+                          badge: '2 months free',
                         ),
                       ),
                     ],
@@ -389,6 +412,7 @@ class _PriceButton extends StatelessWidget {
   final VoidCallback? onTap;
   final Color accentColor;
   final bool isPrimary;
+  final String? badge;
 
   const _PriceButton({
     required this.price,
@@ -396,210 +420,133 @@ class _PriceButton extends StatelessWidget {
     required this.accentColor,
     this.onTap,
     this.isPrimary = false,
+    this.badge,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Material(
-      color: isPrimary ? accentColor : (isDark ? accentColor.withAlpha(30) : accentColor.withAlpha(20)),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            vertical: AppSpacing.spacing12,
-            horizontal: AppSpacing.spacing8,
-          ),
-          child: Column(
-            children: [
-              Text(
-                price,
-                style: AppTextStyles.body2.copyWith(
-                  color: isPrimary ? Colors.white : accentColor,
-                ),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: isPrimary ? accentColor : (isDark ? accentColor.withAlpha(25) : accentColor.withAlpha(15)),
+          borderRadius: BorderRadius.circular(10),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                vertical: 10,
+                horizontal: 6,
               ),
-              Text(
-                period,
-                style: AppTextStyles.body5.copyWith(
-                  color: isPrimary ? Colors.white70 : accentColor.withAlpha(180),
-                ),
+              child: Column(
+                children: [
+                  Text(
+                    price,
+                    style: AppTextStyles.body3.copyWith(
+                      color: isPrimary ? Colors.white : accentColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    period,
+                    style: AppTextStyles.body5.copyWith(
+                      color: isPrimary ? Colors.white70 : accentColor.withAlpha(180),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+        if (badge != null)
+          Positioned(
+            top: -8,
+            right: 4,
+            left: 4,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.tertiary500,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  badge!,
+                  style: AppTextStyles.body5.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 9,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
 
-class _FreeTierCard extends StatelessWidget {
+class _FreeTierCollapsed extends StatelessWidget {
   final bool isCurrentPlan;
 
-  const _FreeTierCard({required this.isCurrentPlan});
+  const _FreeTierCollapsed({required this.isCurrentPlan});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final l10n = context.l10n;
-    const accentColor = AppColors.neutral500;
 
     return Container(
+      padding: const EdgeInsets.all(AppSpacing.spacing12),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.neutral950 : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isCurrentPlan ? accentColor : (isDark ? AppColors.neutral800 : AppColors.neutral200),
-          width: isCurrentPlan ? 2 : 1,
-        ),
+        color: isDark ? AppColors.neutral900 : AppColors.neutral100,
+        borderRadius: BorderRadius.circular(12),
+        border: isCurrentPlan
+            ? Border.all(color: AppColors.neutral500, width: 2)
+            : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          // Header
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(AppSpacing.spacing16),
-            decoration: BoxDecoration(
-              color: accentColor.withAlpha(isDark ? 40 : 20),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    HugeIcon(
-                      icon: HugeIcons.strokeRoundedUser as dynamic,
-                      color: accentColor,
-                      size: 20,
-                    ),
-                    const Gap(AppSpacing.spacing8),
-                    Text(
-                      'Free',
-                      style: AppTextStyles.heading6.copyWith(
-                        color: accentColor,
-                      ),
-                    ),
-                  ],
-                ),
-                if (isCurrentPlan)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.spacing8,
-                      vertical: AppSpacing.spacing4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: accentColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      l10n.current,
-                      style: AppTextStyles.body5.copyWith(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedUser,
+            color: AppColors.neutral500,
+            size: 20,
           ),
-
-          // Features
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.spacing16),
+          const Gap(10),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedWallet01 as dynamic,
-                  text: '3 wallets',
+                Text(
+                  'Free',
+                  style: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w600),
                 ),
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedChartRose as dynamic,
-                  text: '2 budgets & 2 goals',
-                ),
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedRepeat as dynamic,
-                  text: '5 recurring transactions',
-                ),
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedAiBrain01 as dynamic,
-                  text: '20 AI messages/month (Standard)',
-                ),
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedAnalytics01 as dynamic,
-                  text: '3 months analytics history',
-                ),
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedCloud as dynamic,
-                  text: 'Basic cloud sync',
-                ),
-                const Gap(AppSpacing.spacing8),
-                // Ads notice
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.spacing12),
-                  decoration: BoxDecoration(
-                    color: AppColors.tertiaryAlpha10,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      HugeIcon(
-                        icon: HugeIcons.strokeRoundedNotification03 as dynamic,
-                        color: AppColors.tertiary700,
-                        size: 18,
-                      ),
-                      const Gap(AppSpacing.spacing8),
-                      Expanded(
-                        child: Text(
-                          'Contains ads',
-                          style: AppTextStyles.body4.copyWith(
-                            color: AppColors.tertiary700,
-                          ),
-                        ),
-                      ),
-                    ],
+                Text(
+                  '3 wallets • 60 AI msg/mo • 3 mo history • Ads',
+                  style: AppTextStyles.body5.copyWith(
+                    color: isDark ? AppColors.neutral400 : AppColors.neutral600,
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FreeTierFeatureRow extends StatelessWidget {
-  final dynamic icon;
-  final String text;
-
-  const _FreeTierFeatureRow({
-    required this.icon,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.spacing8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          HugeIcon(
-            icon: icon,
-            color: AppColors.neutral500,
-            size: 18,
-          ),
-          const Gap(AppSpacing.spacing8),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTextStyles.body3,
+          if (isCurrentPlan)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.neutral500,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'Current',
+                style: AppTextStyles.body5.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );

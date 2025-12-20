@@ -15,7 +15,7 @@ class OnboardingSlide1 extends StatelessWidget {
         children: [
           // Logo
           Image.asset(
-            'assets/icon/Bexly-Logo-1024.png',
+            'assets/icon/Bexly-Logo-no-text-1024.png',
             width: 200,
             height: 200,
           ),
