@@ -58,12 +58,12 @@ class SubscriptionNotifier extends Notifier<SubscriptionState> {
   @override
   SubscriptionState build() {
     _service = ref.watch(subscriptionServiceProvider);
-    _initialize();
-    return const SubscriptionState();
+    // Use Future.microtask to avoid accessing state before build() returns
+    Future.microtask(() => _initialize());
+    return const SubscriptionState(isLoading: true);
   }
 
   Future<void> _initialize() async {
-    state = state.copyWith(isLoading: true);
 
     // Set callback for subscription changes
     _service.onSubscriptionChanged = (tier) {
