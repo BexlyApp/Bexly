@@ -94,7 +94,6 @@ Bexly operates on a freemium model with cloud sync support. Free users get core 
 | | | | |
 | **Email Sync** | | | |
 | Email accounts | - | 1 | 3 |
-| Scan period | - | 30 days | All time |
 | | | | |
 | **Support** | | | |
 | Priority support | - | Yes | Yes |
@@ -111,13 +110,14 @@ Automatically scan and import transactions from banking emails.
 | Email accounts | - | 1 | 3 |
 | Auto-sync | - | ✅ | ✅ |
 | Manual sync | - | ✅ | ✅ |
-| Scan period | - | 30 days | All time |
+| Scan period | - | All time | All time |
 
 ### Scan Period Options
+All paid tiers can scan emails from any time period:
 - **Last 7 days**: Quick scan for recent transactions
-- **Last 30 days**: Default for Plus tier
+- **Last 30 days**: Standard scan
 - **Last 90 days**: Extended scan
-- **All time**: Full inbox scan (Pro only)
+- **All time**: Full inbox scan
 
 ---
 
