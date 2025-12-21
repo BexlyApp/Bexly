@@ -81,9 +81,18 @@ class SubscriptionNotifier extends Notifier<SubscriptionState> {
 
   /// Purchase a subscription
   Future<bool> purchase(String productId) async {
-    final product = _service.getProduct(productId);
+    var product = _service.getProduct(productId);
+
+    // If product not found, try reloading products
     if (product == null) {
-      state = state.copyWith(error: 'Product not found');
+      state = state.copyWith(isLoading: true, error: null);
+      await _service.loadProducts();
+      state = state.copyWith(products: _service.products);
+      product = _service.getProduct(productId);
+    }
+
+    if (product == null) {
+      state = state.copyWith(isLoading: false, error: 'Product not found. Please check your internet connection and try again.');
       return false;
     }
 
