@@ -45,17 +45,16 @@ class SubscriptionScreen extends ConsumerWidget {
                       '240 AI messages/month',
                       '6 months analytics',
                       'Receipt scanning (1 year storage)',
-                      'Email sync (1 account, 30 days)',
+                      'Email sync (1 account)',
                       'Family sharing (3 members)',
-                      'No ads',
+                      'Ad-free',
                     ],
                     isCurrentPlan: subscriptionState.tier == SubscriptionTier.plus,
                     accentColor: AppColors.primary500,
-                    onMonthlyTap: subscriptionState.tier.index < SubscriptionTier.plus.index
-                        ? () => _purchase(context, ref, SubscriptionProducts.plusMonthly)
-                        : null,
-                    onYearlyTap: subscriptionState.tier.index < SubscriptionTier.plus.index
-                        ? () => _purchase(context, ref, SubscriptionProducts.plusYearly)
+                    monthlyProductId: SubscriptionProducts.plusMonthly,
+                    yearlyProductId: SubscriptionProducts.plusYearly,
+                    onPurchase: subscriptionState.tier.index < SubscriptionTier.plus.index
+                        ? (productId) => _purchase(context, ref, productId)
                         : null,
                   ),
                   const Gap(AppSpacing.spacing16),
@@ -70,7 +69,7 @@ class SubscriptionScreen extends ConsumerWidget {
                       'Unlimited AI messages',
                       'Full analytics history',
                       'Receipt scanning (3 years storage)',
-                      'Email sync (3 accounts, all time)',
+                      'Email sync (3 accounts)',
                       'Family sharing (5 members, Editor role)',
                       'AI insights & predictions',
                       'Priority support',
@@ -78,11 +77,10 @@ class SubscriptionScreen extends ConsumerWidget {
                     isCurrentPlan: subscriptionState.tier == SubscriptionTier.pro,
                     accentColor: AppColors.purple,
                     isRecommended: true,
-                    onMonthlyTap: subscriptionState.tier.index < SubscriptionTier.pro.index
-                        ? () => _purchase(context, ref, SubscriptionProducts.proMonthly)
-                        : null,
-                    onYearlyTap: subscriptionState.tier.index < SubscriptionTier.pro.index
-                        ? () => _purchase(context, ref, SubscriptionProducts.proYearly)
+                    monthlyProductId: SubscriptionProducts.proMonthly,
+                    yearlyProductId: SubscriptionProducts.proYearly,
+                    onPurchase: subscriptionState.tier.index < SubscriptionTier.pro.index
+                        ? (productId) => _purchase(context, ref, productId)
                         : null,
                   ),
                   const Gap(AppSpacing.spacing16),
@@ -126,12 +124,11 @@ class SubscriptionScreen extends ConsumerWidget {
   }
 
   Future<void> _purchase(BuildContext context, WidgetRef ref, String productId) async {
-    final success = await ref.read(subscriptionProvider.notifier).purchase(productId);
-    if (success && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.purchaseSuccessful)),
-      );
-    }
+    // Note: purchase() returns true when Google Play sheet is opened, not when purchase completes
+    // The actual purchase result comes through the purchaseStream in SubscriptionService
+    // UI will auto-update when subscription tier changes via the provider
+    await ref.read(subscriptionProvider.notifier).purchase(productId);
+    // Don't show success here - wait for actual purchase confirmation via stream
   }
 
   Future<void> _restorePurchases(BuildContext context, WidgetRef ref) async {
@@ -218,7 +215,7 @@ class _CurrentPlanBanner extends StatelessWidget {
   }
 }
 
-class _PlanCard extends StatelessWidget {
+class _PlanCard extends StatefulWidget {
   final String title;
   final String subtitle;
   final String monthlyPrice;
@@ -227,8 +224,9 @@ class _PlanCard extends StatelessWidget {
   final bool isCurrentPlan;
   final bool isRecommended;
   final Color accentColor;
-  final VoidCallback? onMonthlyTap;
-  final VoidCallback? onYearlyTap;
+  final String monthlyProductId;
+  final String yearlyProductId;
+  final void Function(String productId)? onPurchase;
 
   const _PlanCard({
     required this.title,
@@ -237,11 +235,19 @@ class _PlanCard extends StatelessWidget {
     required this.yearlyPrice,
     required this.features,
     required this.accentColor,
+    required this.monthlyProductId,
+    required this.yearlyProductId,
     this.isCurrentPlan = false,
     this.isRecommended = false,
-    this.onMonthlyTap,
-    this.onYearlyTap,
+    this.onPurchase,
   });
+
+  @override
+  State<_PlanCard> createState() => _PlanCardState();
+}
+
+class _PlanCardState extends State<_PlanCard> {
+  bool _isYearly = true; // Default to yearly (better value)
 
   @override
   Widget build(BuildContext context) {
@@ -253,8 +259,8 @@ class _PlanCard extends StatelessWidget {
         color: isDark ? AppColors.neutral900 : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isCurrentPlan ? accentColor : (isDark ? AppColors.neutral800 : AppColors.neutral200),
-          width: isCurrentPlan ? 2 : 1,
+          color: widget.isCurrentPlan ? widget.accentColor : (isDark ? AppColors.neutral800 : AppColors.neutral200),
+          width: widget.isCurrentPlan ? 2 : 1,
         ),
         boxShadow: [
           if (!isDark)
@@ -276,7 +282,7 @@ class _PlanCard extends StatelessWidget {
               vertical: AppSpacing.spacing12,
             ),
             decoration: BoxDecoration(
-              color: accentColor.withAlpha(isDark ? 30 : 15),
+              color: widget.accentColor.withAlpha(isDark ? 30 : 15),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
             ),
             child: Row(
@@ -286,25 +292,25 @@ class _PlanCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
-                      style: AppTextStyles.heading6.copyWith(color: accentColor),
+                      widget.title,
+                      style: AppTextStyles.heading6.copyWith(color: widget.accentColor),
                     ),
                     Text(
-                      subtitle,
+                      widget.subtitle,
                       style: AppTextStyles.body5.copyWith(
                         color: isDark ? AppColors.neutral400 : AppColors.neutral600,
                       ),
                     ),
                   ],
                 ),
-                if (isRecommended)
+                if (widget.isRecommended)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.spacing8,
                       vertical: AppSpacing.spacing4,
                     ),
                     decoration: BoxDecoration(
-                      color: accentColor,
+                      color: widget.accentColor,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -315,14 +321,14 @@ class _PlanCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (isCurrentPlan)
+                if (widget.isCurrentPlan)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.spacing8,
                       vertical: AppSpacing.spacing4,
                     ),
                     decoration: BoxDecoration(
-                      color: accentColor,
+                      color: widget.accentColor,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -343,14 +349,14 @@ class _PlanCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ...features.map((feature) => Padding(
+                ...widget.features.map((feature) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
                             Icons.check_circle_rounded,
-                            color: accentColor,
+                            color: widget.accentColor,
                             size: 18,
                           ),
                           const Gap(AppSpacing.spacing8),
@@ -366,31 +372,146 @@ class _PlanCard extends StatelessWidget {
                       ),
                     )),
 
-                // Price buttons
-                if (!isCurrentPlan) ...[
+                // Price section with toggle
+                if (!widget.isCurrentPlan) ...[
                   const Gap(AppSpacing.spacing12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _PriceButton(
-                          price: monthlyPrice,
-                          period: l10n.perMonth,
-                          onTap: onMonthlyTap,
-                          accentColor: accentColor,
+                  // Monthly/Yearly toggle
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.neutral800 : AppColors.neutral100,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isYearly = false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: !_isYearly
+                                    ? (isDark ? AppColors.neutral700 : Colors.white)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: !_isYearly
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(10),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Monthly',
+                                  style: AppTextStyles.body4.copyWith(
+                                    fontWeight: !_isYearly ? FontWeight.w600 : FontWeight.w400,
+                                    color: !_isYearly
+                                        ? (isDark ? Colors.white : AppColors.neutral900)
+                                        : AppColors.neutral500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isYearly = true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: _isYearly
+                                    ? (isDark ? AppColors.neutral700 : Colors.white)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: _isYearly
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(10),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Yearly',
+                                      style: AppTextStyles.body4.copyWith(
+                                        fontWeight: _isYearly ? FontWeight.w600 : FontWeight.w400,
+                                        color: _isYearly
+                                            ? (isDark ? Colors.white : AppColors.neutral900)
+                                            : AppColors.neutral500,
+                                      ),
+                                    ),
+                                    if (_isYearly) ...[
+                                      const Gap(4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.tertiary500,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          '-17%',
+                                          style: AppTextStyles.body5.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 9,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Gap(AppSpacing.spacing12),
+
+                  // Single purchase button
+                  Material(
+                    color: widget.accentColor,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      onTap: widget.onPurchase != null
+                          ? () => widget.onPurchase!(
+                              _isYearly ? widget.yearlyProductId : widget.monthlyProductId)
+                          : null,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Column(
+                          children: [
+                            Text(
+                              _isYearly ? widget.yearlyPrice : widget.monthlyPrice,
+                              style: AppTextStyles.heading6.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              _isYearly ? l10n.perYear : l10n.perMonth,
+                              style: AppTextStyles.body5.copyWith(
+                                color: Colors.white.withAlpha(200),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const Gap(10),
-                      Expanded(
-                        child: _PriceButton(
-                          price: yearlyPrice,
-                          period: l10n.perYear,
-                          onTap: onYearlyTap,
-                          accentColor: accentColor,
-                          isPrimary: true,
-                          badge: '2 months free',
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ],
@@ -398,91 +519,6 @@ class _PlanCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _PriceButton extends StatelessWidget {
-  final String price;
-  final String period;
-  final VoidCallback? onTap;
-  final Color accentColor;
-  final bool isPrimary;
-  final String? badge;
-
-  const _PriceButton({
-    required this.price,
-    required this.period,
-    required this.accentColor,
-    this.onTap,
-    this.isPrimary = false,
-    this.badge,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Material(
-          color: isPrimary ? accentColor : (isDark ? accentColor.withAlpha(30) : accentColor.withAlpha(20)),
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                vertical: 12,
-                horizontal: 8,
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    price,
-                    style: AppTextStyles.body2.copyWith(
-                      color: isPrimary ? Colors.white : accentColor,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Gap(2),
-                  Text(
-                    period,
-                    style: AppTextStyles.body4.copyWith(
-                      color: isPrimary ? Colors.white.withAlpha(220) : accentColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (badge != null)
-          Positioned(
-            top: -10,
-            right: 4,
-            left: 4,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.tertiary500,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  badge!,
-                  style: AppTextStyles.body5.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
     );
   }
 }
