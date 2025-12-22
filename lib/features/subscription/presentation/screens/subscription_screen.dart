@@ -34,19 +34,40 @@ class SubscriptionScreen extends ConsumerWidget {
                   _CurrentPlanBanner(tier: subscriptionState.tier),
                   const Gap(AppSpacing.spacing20),
 
+                  // Free plan
+                  _PlanCard(
+                    title: 'Free',
+                    subtitle: 'Get started for free',
+                    monthlyPrice: '\$0',
+                    yearlyPrice: '\$0',
+                    features: const [
+                      '2 wallets, 2 budgets, 2 goals',
+                      '20 AI messages/month',
+                      '30 days analytics',
+                      'Basic reports',
+                      'Contains ads',
+                    ],
+                    isCurrentPlan: subscriptionState.tier == SubscriptionTier.free,
+                    accentColor: AppColors.neutral500,
+                    monthlyProductId: '',
+                    yearlyProductId: '',
+                  ),
+                  const Gap(AppSpacing.spacing16),
+
                   // Plus plan
                   _PlanCard(
                     title: 'Plus',
-                    subtitle: 'All Free features, plus:',
+                    subtitle: 'Best for couples',
                     monthlyPrice: notifier.getPrice(SubscriptionProducts.plusMonthly) ?? '\$1.99',
                     yearlyPrice: notifier.getPrice(SubscriptionProducts.plusYearly) ?? '\$19.99',
                     features: const [
+                      '✨ All Free features, plus:',
                       'Unlimited wallets, budgets & goals',
                       '240 AI messages/month',
                       '6 months analytics',
                       'Receipt scanning (1 year storage)',
                       'Email sync (1 account)',
-                      'Family sharing (3 members)',
+                      'Family sharing (2 members)',
                       'Ad-free',
                     ],
                     isCurrentPlan: subscriptionState.tier == SubscriptionTier.plus,
@@ -62,10 +83,11 @@ class SubscriptionScreen extends ConsumerWidget {
                   // Pro plan
                   _PlanCard(
                     title: 'Pro',
-                    subtitle: 'All Plus features, plus:',
+                    subtitle: 'Best for power users',
                     monthlyPrice: notifier.getPrice(SubscriptionProducts.proMonthly) ?? '\$3.99',
                     yearlyPrice: notifier.getPrice(SubscriptionProducts.proYearly) ?? '\$39.99',
                     features: const [
+                      '✨ All Plus features, plus:',
                       'Unlimited AI messages',
                       'Full analytics history',
                       'Receipt scanning (3 years storage)',
@@ -451,24 +473,22 @@ class _PlanCardState extends State<_PlanCard> {
                                             : AppColors.neutral500,
                                       ),
                                     ),
-                                    if (_isYearly) ...[
-                                      const Gap(4),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.tertiary500,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          '-17%',
-                                          style: AppTextStyles.body5.copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 9,
-                                          ),
+                                    const Gap(4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.tertiary500,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '-17%',
+                                        style: AppTextStyles.body5.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 9,
                                         ),
                                       ),
-                                    ],
+                                    ),
                                   ],
                                 ),
                               ),
@@ -493,7 +513,8 @@ class _PlanCardState extends State<_PlanCard> {
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        child: Column(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
                               _isYearly ? widget.yearlyPrice : widget.monthlyPrice,
@@ -503,8 +524,8 @@ class _PlanCardState extends State<_PlanCard> {
                               ),
                             ),
                             Text(
-                              _isYearly ? l10n.perYear : l10n.perMonth,
-                              style: AppTextStyles.body5.copyWith(
+                              _isYearly ? ' ${l10n.perYear}' : ' ${l10n.perMonth}',
+                              style: AppTextStyles.body4.copyWith(
                                 color: Colors.white.withAlpha(200),
                               ),
                             ),
