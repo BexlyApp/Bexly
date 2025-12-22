@@ -209,7 +209,7 @@ class _InfoCard extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            HugeIcons.strokeRoundedBank,
+            HugeIcons.strokeRoundedBank as dynamic,
             color: AppColors.primary600,
             size: 32,
           ),
@@ -254,7 +254,7 @@ class _LinkAccountCard extends StatelessWidget {
     return PrimaryButton(
       onPressed: onLink,
       label: 'Link Bank Account',
-      icon: HugeIcons.strokeRoundedAdd01,
+      icon: HugeIcons.strokeRoundedAdd01 as dynamic,
       isLoading: isLinking,
     );
   }
@@ -295,7 +295,7 @@ class _LinkedAccountCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
-              HugeIcons.strokeRoundedBank,
+              HugeIcons.strokeRoundedBank as dynamic,
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
@@ -337,7 +337,7 @@ class _LinkedAccountCard extends StatelessWidget {
           // Actions
           PopupMenuButton<String>(
             icon: Icon(
-              HugeIcons.strokeRoundedMoreVertical,
+              HugeIcons.strokeRoundedMoreVertical as dynamic,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             onSelected: (value) {
@@ -355,7 +355,7 @@ class _LinkedAccountCard extends StatelessWidget {
                 value: 'sync',
                 child: Row(
                   children: [
-                    Icon(HugeIcons.strokeRoundedRefresh),
+                    Icon(HugeIcons.strokeRoundedRefresh as dynamic),
                     const Gap(8),
                     const Text('Sync Transactions'),
                   ],
@@ -400,7 +400,7 @@ class _SyncAllCard extends StatelessWidget {
     return PrimaryButton(
       onPressed: onSync,
       label: 'Sync All Accounts',
-      icon: HugeIcons.strokeRoundedRefresh,
+      icon: HugeIcons.strokeRoundedRefresh as dynamic,
       isLoading: isSyncing,
       state: ButtonState.outlinedActive,
     );
@@ -427,7 +427,7 @@ class _ErrorCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(HugeIcons.strokeRoundedAlert02, color: AppColors.red600, size: 20),
+          Icon(HugeIcons.strokeRoundedAlert02 as dynamic, color: AppColors.red600, size: 20),
           const Gap(8),
           Expanded(
             child: Text(
@@ -436,7 +436,7 @@ class _ErrorCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: Icon(HugeIcons.strokeRoundedCancel01, color: AppColors.red600, size: 18),
+            icon: Icon(HugeIcons.strokeRoundedCancel01 as dynamic, color: AppColors.red600, size: 18),
             onPressed: onDismiss,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -462,7 +462,7 @@ class _PrivacyCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            HugeIcons.strokeRoundedSecurityCheck,
+            HugeIcons.strokeRoundedSecurityCheck as dynamic,
             color: AppColors.green200,
             size: 20,
           ),
