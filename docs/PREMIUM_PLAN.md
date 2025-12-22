@@ -262,3 +262,61 @@ bool canUseEditorRole() {
 - Ad tracking can be disabled (limited ads still shown)
 - Family data isolated per family group
 - Members only see shared wallets, not personal data
+
+---
+
+## Database Architecture
+
+### Multi-Region Strategy
+Bexly uses a multi-database architecture for compliance and performance:
+
+| Database | Location | Purpose |
+|----------|----------|---------|
+| `bexly` | asia-southeast1 (Singapore) | Main app data - wallets, transactions, budgets, chat, etc. |
+| `bexly-us` | nam5 (US) | Financial provider raw data (Stripe, Plaid, etc.) |
+
+### Data Flow
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        User's App                                │
+│                            │                                     │
+│                    Query main data                               │
+│                            ▼                                     │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │           bexly (Singapore) - Main Database                 ││
+│  │  • users/         • wallets/       • transactions/          ││
+│  │  • categories/    • budgets/       • goals/                 ││
+│  │  • chat_messages/ • family_groups/ • recurring_transactions/││
+│  └─────────────────────────────────────────────────────────────┘│
+│                            ▲                                     │
+│                   Processed data                                 │
+│                            │                                     │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │           bexly-us (US) - Financial Connections             ││
+│  │  • stripe_connections/{userId}/accounts/                    ││
+│  │  • stripe_connections/{userId}/raw_transactions/            ││
+│  │  • plaid_connections/{userId}/...  (future)                 ││
+│  │  • paypal_connections/{userId}/... (future)                 ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                            ▲                                     │
+│                     Raw bank data                                │
+│                            │                                     │
+│              ┌─────────────┴─────────────┐                      │
+│              │    Financial Providers     │                      │
+│              │  Stripe • Plaid • PayPal   │                      │
+│              └───────────────────────────┘                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Why Separate Databases?
+1. **Compliance**: Stripe Financial Connections requires US data residency
+2. **Performance**: Main data stays close to majority users (Asia)
+3. **Security**: Raw financial data isolated from main app data
+4. **Scalability**: Easy to add new providers with their own requirements
+
+### Data Sync Process
+1. User connects bank via Stripe → raw data saved to `bexly-us`
+2. Cloud Function processes raw transactions
+3. Processed transactions saved to `bexly` (main database)
+4. App queries only `bexly` for daily use
+5. Raw data in `bexly-us` used for refresh/sync only
