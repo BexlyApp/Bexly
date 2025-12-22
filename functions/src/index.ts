@@ -9,6 +9,7 @@ import { Bot, webhookCallback, InlineKeyboard } from "grammy";
 // import { GoogleGenerativeAI } from "@google/generative-ai";
 import { v7 as uuidv7 } from "uuid";
 import * as crypto from "crypto";
+import Stripe from "stripe";
 
 // Define secrets
 const telegramBotToken = defineSecret("TELEGRAM_BOT_TOKEN");
@@ -18,6 +19,7 @@ const openaiApiKey = defineSecret("OPENAI_API_KEY");
 const messengerPageToken = defineSecret("MESSENGER_PAGE_TOKEN");
 const messengerAppSecret = defineSecret("MESSENGER_APP_SECRET");
 const messengerVerifyToken = defineSecret("MESSENGER_VERIFY_TOKEN");
+const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 
 // AI Provider configuration - can be changed here
 type AIProvider = "gemini" | "openai" | "claude";
@@ -40,6 +42,12 @@ admin.initializeApp();
 const bexlyDb = new admin.firestore.Firestore({
   projectId: "bexly-app",
   databaseId: "bexly",
+});
+
+// Get reference to US database for Financial Connections data (Stripe compliance)
+const bexlyUsDb = new admin.firestore.Firestore({
+  projectId: "bexly-app",
+  databaseId: "bexly-us",
 });
 
 // Bot instance cache
@@ -3474,3 +3482,419 @@ export const onUserCreated = beforeUserCreated(async (event) => {
   }
   // Return nothing to allow user creation to proceed
 });
+
+// ============================================================================
+// STRIPE FINANCIAL CONNECTIONS
+// ============================================================================
+
+// Stripe instance cache
+let stripeInstance: Stripe | null = null;
+let lastStripeKey: string = "";
+
+function getStripe(): Stripe {
+  const key = stripeSecretKey.value();
+  if (!key) {
+    throw new Error("Stripe secret key not configured");
+  }
+  if (!stripeInstance || key !== lastStripeKey) {
+    stripeInstance = new Stripe(key);
+    lastStripeKey = key;
+  }
+  return stripeInstance;
+}
+
+/**
+ * Create a Financial Connections session for linking bank accounts
+ * This allows users to connect their bank accounts for transaction import
+ */
+export const createFinancialConnectionSession = onCall(
+  {
+    secrets: [stripeSecretKey],
+    region: "us-central1", // US region for Financial Connections compliance
+  },
+  async (request) => {
+    // Verify user is authenticated
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const userId = request.auth.uid;
+    const { returnUrl } = request.data as { returnUrl?: string };
+
+    console.log(`Creating Financial Connection session for user ${userId}`);
+
+    try {
+      const stripe = getStripe();
+
+      // Check if user already has a Stripe customer ID
+      const userDoc = await bexlyDb.collection("users").doc(userId).get();
+      const userData = userDoc.data();
+      let customerId = userData?.stripeCustomerId;
+
+      // Create Stripe customer if not exists
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          metadata: {
+            firebaseUserId: userId,
+          },
+        });
+        customerId = customer.id;
+
+        // Save customer ID to user document
+        await bexlyDb.collection("users").doc(userId).update({
+          stripeCustomerId: customerId,
+        });
+        console.log(`Created Stripe customer ${customerId} for user ${userId}`);
+      }
+
+      // Create Financial Connections session
+      const session = await stripe.financialConnections.sessions.create({
+        account_holder: {
+          type: "customer",
+          customer: customerId,
+        },
+        permissions: ["balances", "transactions", "ownership"],
+        filters: {
+          countries: ["US"],
+        },
+        return_url: returnUrl || "bexly://financial-connections/callback",
+      });
+
+      console.log(`Created Financial Connection session ${session.id} for user ${userId}`);
+
+      return {
+        clientSecret: session.client_secret,
+        sessionId: session.id,
+      };
+    } catch (error) {
+      console.error(`Failed to create Financial Connection session for user ${userId}:`, error);
+      if (error instanceof Stripe.errors.StripeError) {
+        throw new HttpsError("internal", `Stripe error: ${error.message}`);
+      }
+      throw new HttpsError("internal", "Failed to create Financial Connection session");
+    }
+  }
+);
+
+/**
+ * Complete Financial Connection and fetch linked accounts
+ * Called after user completes the Financial Connections flow
+ */
+export const completeFinancialConnection = onCall(
+  {
+    secrets: [stripeSecretKey],
+    region: "us-central1",
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const userId = request.auth.uid;
+    const { sessionId } = request.data as { sessionId: string };
+
+    if (!sessionId) {
+      throw new HttpsError("invalid-argument", "Session ID is required");
+    }
+
+    console.log(`Completing Financial Connection session ${sessionId} for user ${userId}`);
+
+    try {
+      const stripe = getStripe();
+
+      // Retrieve the session to get linked accounts
+      const session = await stripe.financialConnections.sessions.retrieve(sessionId);
+
+      if (!session.accounts || session.accounts.data.length === 0) {
+        throw new HttpsError("failed-precondition", "No accounts were linked");
+      }
+
+      const accounts = session.accounts.data;
+      console.log(`User ${userId} linked ${accounts.length} accounts`);
+
+      // Store linked accounts in bexly-us database
+      const batch = bexlyUsDb.batch();
+      const now = admin.firestore.Timestamp.now();
+
+      for (const account of accounts) {
+        const accountRef = bexlyUsDb
+          .collection(`stripe_connections/${userId}/accounts`)
+          .doc(account.id);
+
+        batch.set(accountRef, {
+          accountId: account.id,
+          institutionName: account.institution_name,
+          displayName: account.display_name,
+          last4: account.last4,
+          category: account.category, // checking, savings, etc.
+          subcategory: account.subcategory,
+          status: account.status,
+          balance: account.balance,
+          balanceRefresh: account.balance_refresh,
+          ownership: account.ownership,
+          supportedPaymentMethodTypes: account.supported_payment_method_types,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      await batch.commit();
+      console.log(`Saved ${accounts.length} accounts to bexly-us for user ${userId}`);
+
+      // Return simplified account info
+      return {
+        success: true,
+        accounts: accounts.map((acc) => ({
+          id: acc.id,
+          institutionName: acc.institution_name,
+          displayName: acc.display_name,
+          last4: acc.last4,
+          category: acc.category,
+        })),
+      };
+    } catch (error) {
+      console.error(`Failed to complete Financial Connection for user ${userId}:`, error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      if (error instanceof Stripe.errors.StripeError) {
+        throw new HttpsError("internal", `Stripe error: ${error.message}`);
+      }
+      throw new HttpsError("internal", "Failed to complete Financial Connection");
+    }
+  }
+);
+
+/**
+ * Fetch transactions from linked Financial Connections accounts
+ * Syncs transactions from Stripe to bexly-us database
+ */
+export const syncFinancialConnectionTransactions = onCall(
+  {
+    secrets: [stripeSecretKey],
+    region: "us-central1",
+    timeoutSeconds: 300, // 5 minutes for large transaction fetches
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const userId = request.auth.uid;
+    const { accountId, startDate, endDate } = request.data as {
+      accountId?: string;
+      startDate?: string;
+      endDate?: string;
+    };
+
+    console.log(`Syncing Financial Connection transactions for user ${userId}`);
+
+    try {
+      const stripe = getStripe();
+
+      // Get user's linked accounts
+      const accountsSnapshot = await bexlyUsDb
+        .collection(`stripe_connections/${userId}/accounts`)
+        .get();
+
+      if (accountsSnapshot.empty) {
+        throw new HttpsError("failed-precondition", "No linked accounts found");
+      }
+
+      const accountIds = accountId
+        ? [accountId]
+        : accountsSnapshot.docs.map((doc) => doc.id);
+
+      let totalTransactions = 0;
+
+      for (const accId of accountIds) {
+        // Fetch transactions from Stripe
+        const params: Stripe.FinancialConnections.TransactionListParams = {
+          account: accId,
+          limit: 100,
+        };
+
+        // Add date filters if provided
+        if (startDate && endDate) {
+          params.transacted_at = {
+            gte: Math.floor(new Date(startDate).getTime() / 1000),
+            lte: Math.floor(new Date(endDate).getTime() / 1000),
+          };
+        } else if (startDate) {
+          params.transacted_at = { gte: Math.floor(new Date(startDate).getTime() / 1000) };
+        } else if (endDate) {
+          params.transacted_at = { lte: Math.floor(new Date(endDate).getTime() / 1000) };
+        }
+
+        let hasMore = true;
+        let startingAfter: string | undefined;
+
+        while (hasMore) {
+          const transactions = await stripe.financialConnections.transactions.list({
+            ...params,
+            starting_after: startingAfter,
+          });
+
+          if (transactions.data.length > 0) {
+            const batch = bexlyUsDb.batch();
+            const now = admin.firestore.Timestamp.now();
+
+            for (const txn of transactions.data) {
+              const txnRef = bexlyUsDb
+                .collection(`stripe_connections/${userId}/raw_transactions`)
+                .doc(txn.id);
+
+              // Type assertion for additional properties that may exist
+              const txnAny = txn as Stripe.FinancialConnections.Transaction & {
+                posted_at?: number;
+                category?: string;
+                subcategory?: string;
+              };
+
+              batch.set(txnRef, {
+                transactionId: txn.id,
+                accountId: accId,
+                amount: txn.amount,
+                currency: txn.currency,
+                description: txn.description,
+                status: txn.status,
+                transactedAt: admin.firestore.Timestamp.fromMillis(txn.transacted_at * 1000),
+                postedAt: txnAny.posted_at
+                  ? admin.firestore.Timestamp.fromMillis(txnAny.posted_at * 1000)
+                  : null,
+                category: txnAny.category || null,
+                subcategory: txnAny.subcategory || null,
+                rawData: JSON.stringify(txn), // Store full transaction for debugging
+                syncedAt: now,
+              });
+
+              totalTransactions++;
+            }
+
+            await batch.commit();
+            startingAfter = transactions.data[transactions.data.length - 1].id;
+          }
+
+          hasMore = transactions.has_more;
+        }
+      }
+
+      console.log(`Synced ${totalTransactions} transactions for user ${userId}`);
+
+      return {
+        success: true,
+        transactionCount: totalTransactions,
+      };
+    } catch (error) {
+      console.error(`Failed to sync transactions for user ${userId}:`, error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      if (error instanceof Stripe.errors.StripeError) {
+        throw new HttpsError("internal", `Stripe error: ${error.message}`);
+      }
+      throw new HttpsError("internal", "Failed to sync transactions");
+    }
+  }
+);
+
+/**
+ * Get user's linked Financial Connections accounts
+ */
+export const getLinkedAccounts = onCall(
+  {
+    secrets: [stripeSecretKey],
+    region: "us-central1",
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const userId = request.auth.uid;
+
+    try {
+      const accountsSnapshot = await bexlyUsDb
+        .collection(`stripe_connections/${userId}/accounts`)
+        .get();
+
+      const accounts = accountsSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          institutionName: data.institutionName,
+          displayName: data.displayName,
+          last4: data.last4,
+          category: data.category,
+          status: data.status,
+          balance: data.balance,
+        };
+      });
+
+      return { accounts };
+    } catch (error) {
+      console.error(`Failed to get linked accounts for user ${userId}:`, error);
+      throw new HttpsError("internal", "Failed to get linked accounts");
+    }
+  }
+);
+
+/**
+ * Disconnect a linked Financial Connections account
+ */
+export const disconnectFinancialAccount = onCall(
+  {
+    secrets: [stripeSecretKey],
+    region: "us-central1",
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const userId = request.auth.uid;
+    const { accountId } = request.data as { accountId: string };
+
+    if (!accountId) {
+      throw new HttpsError("invalid-argument", "Account ID is required");
+    }
+
+    console.log(`Disconnecting account ${accountId} for user ${userId}`);
+
+    try {
+      const stripe = getStripe();
+
+      // Disconnect from Stripe
+      await stripe.financialConnections.accounts.disconnect(accountId);
+
+      // Delete from bexly-us database
+      await bexlyUsDb
+        .collection(`stripe_connections/${userId}/accounts`)
+        .doc(accountId)
+        .delete();
+
+      // Optionally delete associated transactions
+      const transactionsSnapshot = await bexlyUsDb
+        .collection(`stripe_connections/${userId}/raw_transactions`)
+        .where("accountId", "==", accountId)
+        .get();
+
+      if (!transactionsSnapshot.empty) {
+        const batch = bexlyUsDb.batch();
+        transactionsSnapshot.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+        console.log(`Deleted ${transactionsSnapshot.size} transactions for account ${accountId}`);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error(`Failed to disconnect account ${accountId} for user ${userId}:`, error);
+      if (error instanceof Stripe.errors.StripeError) {
+        throw new HttpsError("internal", `Stripe error: ${error.message}`);
+      }
+      throw new HttpsError("internal", "Failed to disconnect account");
+    }
+  }
+);

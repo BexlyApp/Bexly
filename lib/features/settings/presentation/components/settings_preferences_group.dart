@@ -97,6 +97,16 @@ class SettingsPreferencesGroup extends ConsumerWidget {
             desktopWidget: const EmailSyncSettingsScreen(),
           ),
         ),
+        // Bank Connections (Stripe Financial Connections) - US only
+        MenuTileButton(
+          label: 'Bank Connections',
+          icon: HugeIcons.strokeRoundedBank,
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.bankConnections,
+            desktopWidget: const BankConnectionsScreen(),
+          ),
+        ),
       ],
     );
   }

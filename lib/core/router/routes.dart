@@ -25,6 +25,7 @@ class Routes {
   static const String autoTransactionSettings = '/auto-transaction-settings';
   static const String emailSyncSettings = '/email-sync-settings';
   static const String emailReview = '/email-review';
+  static const String bankConnections = '/bank-connections';
   static const String languageSettings = '/language-settings';
   static const String aiModelSettings = '/ai-model-settings';
   static const String notifications = '/notifications';
