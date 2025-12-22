@@ -36,8 +36,9 @@ class BankConnectionState {
 }
 
 /// Provider for managing bank connections
-class BankConnectionNotifier extends StateNotifier<BankConnectionState> {
-  BankConnectionNotifier() : super(const BankConnectionState());
+class BankConnectionNotifier extends Notifier<BankConnectionState> {
+  @override
+  BankConnectionState build() => const BankConnectionState();
 
   /// Load linked accounts
   Future<void> loadAccounts() async {
@@ -126,6 +127,6 @@ class BankConnectionNotifier extends StateNotifier<BankConnectionState> {
 
 /// Provider for bank connection state
 final bankConnectionProvider =
-    StateNotifierProvider<BankConnectionNotifier, BankConnectionState>((ref) {
+    NotifierProvider<BankConnectionNotifier, BankConnectionState>(() {
   return BankConnectionNotifier();
 });
