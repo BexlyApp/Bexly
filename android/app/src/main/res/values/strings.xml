@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Bexly</string>
-    <!-- Web Client ID from Firebase Console (Bexly project) -->
-    <string name="default_web_client_id">657555385291-gao6kfsqni6su6qrmebrh9h2vt1tk39b.apps.googleusercontent.com</string>
+    <!-- Web Client ID from Firebase Console (dos-me project for Auth) -->
+    <string name="default_web_client_id">368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com</string>
 
     <!-- Facebook Configuration (Bexly app) -->
     <string name="facebook_app_id">1583820202985076</string>
