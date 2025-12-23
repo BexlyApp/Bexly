@@ -119,14 +119,39 @@ class SubscriptionService {
     }
   }
 
+  /// Track if we're in a restore operation
+  bool _isRestoring = false;
+  SubscriptionTier _restoredTier = SubscriptionTier.free;
+
   /// Restore previous purchases
+  /// This will reset tier to free if no valid purchases are found (e.g., after refund)
   Future<void> restorePurchases() async {
     if (!_isAvailable) return;
 
     try {
+      _isRestoring = true;
+      _restoredTier = SubscriptionTier.free;
+
       await _inAppPurchase.restorePurchases();
       Log.i('Restore purchases initiated', label: 'Subscription');
+
+      // Give time for restore callbacks to complete
+      await Future.delayed(const Duration(seconds: 2));
+
+      // After restore completes, update tier to what was actually restored
+      // If no valid purchases were restored, _restoredTier stays at free
+      if (_currentTier != _restoredTier) {
+        Log.i(
+          'Subscription changed after restore: ${_currentTier.displayName} -> ${_restoredTier.displayName}',
+          label: 'Subscription',
+        );
+        _currentTier = _restoredTier;
+        onSubscriptionChanged?.call(_currentTier);
+      }
+
+      _isRestoring = false;
     } catch (e) {
+      _isRestoring = false;
       Log.e('Error restoring purchases: $e', label: 'Subscription');
     }
   }
@@ -186,12 +211,20 @@ class SubscriptionService {
       newTier = SubscriptionTier.plus;
     }
 
-    // Update tier if higher than current
-    if (newTier.index > _currentTier.index) {
-      _currentTier = newTier;
-      onSubscriptionChanged?.call(_currentTier);
-      Log.i('Subscription tier updated to: ${_currentTier.displayName}',
-          label: 'Subscription');
+    // If restoring, track the highest tier found
+    if (_isRestoring) {
+      if (newTier.index > _restoredTier.index) {
+        _restoredTier = newTier;
+        Log.i('Restored tier: ${_restoredTier.displayName}', label: 'Subscription');
+      }
+    } else {
+      // Normal purchase - update tier immediately if higher
+      if (newTier.index > _currentTier.index) {
+        _currentTier = newTier;
+        onSubscriptionChanged?.call(_currentTier);
+        Log.i('Subscription tier updated to: ${_currentTier.displayName}',
+            label: 'Subscription');
+      }
     }
 
     // Complete the purchase

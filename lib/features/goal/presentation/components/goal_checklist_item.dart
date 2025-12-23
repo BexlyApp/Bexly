@@ -31,7 +31,7 @@ class GoalChecklistItem extends ConsumerWidget {
         .read(activeWalletProvider)
         .value
         ?.currencyByIsoCode(ref)
-        .symbol;
+        .symbol ?? '';
 
     // Odd-even background
     final bgColor = isOdd
