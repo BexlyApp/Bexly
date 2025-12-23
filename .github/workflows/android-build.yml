@@ -127,6 +127,34 @@ jobs:
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
 
+      - name: Verify Service Account JSON
+        env:
+          SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          # Check if secret exists and is valid JSON
+          if [ -z "$SERVICE_ACCOUNT_JSON" ]; then
+            echo "❌ GOOGLE_PLAY_SERVICE_ACCOUNT_JSON secret is empty!"
+            exit 1
+          fi
+
+          # Try to parse as JSON and check required fields
+          echo "$SERVICE_ACCOUNT_JSON" | python3 -c "
+          import json, sys
+          try:
+              data = json.load(sys.stdin)
+              required = ['type', 'project_id', 'private_key', 'client_email']
+              missing = [f for f in required if f not in data]
+              if missing:
+                  print(f'❌ Missing fields: {missing}')
+                  sys.exit(1)
+              print(f'✅ Service account: {data.get(\"client_email\")}')
+              print(f'✅ Project: {data.get(\"project_id\")}')
+              print(f'✅ Type: {data.get(\"type\")}')
+          except json.JSONDecodeError as e:
+              print(f'❌ Invalid JSON: {e}')
+              sys.exit(1)
+          "
+
       - name: Upload to Google Play Internal
         uses: r0adkll/upload-google-play@v1
         with:
