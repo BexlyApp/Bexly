@@ -6,7 +6,6 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:toastification/toastification.dart';
 
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
-import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/components/buttons/button_state.dart';
 import 'package:bexly/core/constants/app_colors.dart';
@@ -34,9 +33,7 @@ class BankConnectionsScreen extends HookConsumerWidget {
       context: context,
       title: 'Bank Connections',
       showBalance: false,
-      body: state.isLoading
-          ? const Center(child: LoadingIndicator())
-          : _buildContent(context, ref, state),
+      body: _buildContent(context, ref, state),
     );
   }
 
@@ -57,7 +54,7 @@ class BankConnectionsScreen extends HookConsumerWidget {
 
           // Link Account Button
           _LinkAccountCard(
-            isLinking: state.isLinking,
+            isLinking: state.isLinking || state.isLoading,
             onLink: () => _linkAccounts(context, ref),
           ),
 
