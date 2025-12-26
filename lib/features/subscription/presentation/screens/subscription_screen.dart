@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
+import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
@@ -14,9 +15,21 @@ class SubscriptionScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final subscriptionState = ref.watch(subscriptionProvider);
-    final notifier = ref.read(subscriptionProvider.notifier);
     final l10n = context.l10n;
     final currentTier = subscriptionState.tier;
+
+    // Show loading indicator while initializing
+    if (subscriptionState.isLoading) {
+      return CustomScaffold(
+        context: context,
+        title: l10n.subscription,
+        showBackButton: true,
+        showBalance: false,
+        body: const Center(child: LoadingIndicator()),
+      );
+    }
+
+    final notifier = ref.read(subscriptionProvider.notifier);
 
     // Build plan data list
     final plans = [
