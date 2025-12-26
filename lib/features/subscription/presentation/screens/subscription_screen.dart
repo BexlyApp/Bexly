@@ -92,9 +92,7 @@ class SubscriptionScreen extends ConsumerWidget {
       title: l10n.subscription,
       showBackButton: true,
       showBalance: false,
-      body: subscriptionState.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+      body: SingleChildScrollView(
               padding: const EdgeInsets.all(AppSpacing.spacing16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
