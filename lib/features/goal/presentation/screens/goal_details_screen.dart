@@ -166,8 +166,9 @@ class GoalDetailsScreen extends ConsumerWidget {
                         0.0,
                         (sum, item) => sum + item.amount,
                       );
+                      final currencySymbol = wallet.value?.currencyByIsoCode(ref).symbol ?? '';
                       return Text(
-                        '${wallet.value?.currencyByIsoCode(ref).symbol} ${total.toPriceFormat()}',
+                        '$currencySymbol ${total.toPriceFormat()}',
                         style: AppTextStyles.numericLarge,
                       );
                     },
