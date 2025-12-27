@@ -148,7 +148,38 @@ class SplashScreen extends HookConsumerWidget {
       return null;
     }, const []);
 
-    // Return empty container - native splash will be shown instead
-    return const SizedBox.shrink();
+    // Show splash UI (needed for web where native splash doesn't persist)
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/icon/Bexly-logo-no-bg.png',
+              width: 150,
+              height: 150,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Bexly',
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Personal Finance Manager',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 48),
+            const CircularProgressIndicator(),
+          ],
+        ),
+      ),
+    );
   }
 }
