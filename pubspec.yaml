@@ -100,6 +100,7 @@ dependencies:
   notification_listener_service: ^0.3.1
   flutter_stripe: ^12.1.1
   cloud_functions: ^6.0.5
+  flutter_native_splash: ^2.4.7
 
 dev_dependencies:
   flutter_test:
@@ -119,7 +120,6 @@ dev_dependencies:
   # riverpod_generator: ^2.6.4
   # riverpod_lint: ^2.6.4
   drift_dev: ^2.26.1
-  flutter_native_splash: ^2.4.7
 
 # The following section is specific to Flutter packages.
 flutter:
