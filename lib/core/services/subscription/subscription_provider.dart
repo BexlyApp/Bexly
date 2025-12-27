@@ -64,19 +64,27 @@ class SubscriptionNotifier extends Notifier<SubscriptionState> {
   }
 
   Future<void> _initialize() async {
+    try {
+      // Set callback for subscription changes
+      _service.onSubscriptionChanged = (tier) {
+        state = state.copyWith(tier: tier);
+      };
 
-    // Set callback for subscription changes
-    _service.onSubscriptionChanged = (tier) {
-      state = state.copyWith(tier: tier);
-    };
+      await _service.initialize();
 
-    await _service.initialize();
-
-    state = state.copyWith(
-      isLoading: false,
-      tier: _service.currentTier,
-      products: _service.products,
-    );
+      state = state.copyWith(
+        isLoading: false,
+        tier: _service.currentTier,
+        products: _service.products,
+      );
+    } catch (e) {
+      // If initialization fails, still show the screen with free tier
+      state = state.copyWith(
+        isLoading: false,
+        tier: SubscriptionTier.free,
+        error: 'Failed to load subscription info',
+      );
+    }
   }
 
   /// Purchase a subscription

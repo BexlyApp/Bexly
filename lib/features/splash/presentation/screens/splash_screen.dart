@@ -152,10 +152,10 @@ class SplashScreen extends HookConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.account_balance_wallet,
-              size: 120,
-              color: Theme.of(context).colorScheme.primary,
+            Image.asset(
+              'assets/icon/Bexly-logo-no-bg.png',
+              width: 150,
+              height: 150,
             ),
             const SizedBox(height: 24),
             Text(
