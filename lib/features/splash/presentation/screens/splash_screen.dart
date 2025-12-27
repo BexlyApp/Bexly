@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -57,9 +58,6 @@ class SplashScreen extends HookConsumerWidget {
           Log.e('Failed to create due transactions: $e', label: 'SplashScreen');
         }
 
-        // Small delay for splash screen visibility
-        await Future.delayed(const Duration(seconds: 2));
-
         if (!context.mounted) return;
 
         try {
@@ -77,6 +75,9 @@ class SplashScreen extends HookConsumerWidget {
           final hasSkippedAuth = prefs.getBool('hasSkippedAuth') ?? false;
 
           if (!context.mounted) return;
+
+          // Remove native splash before navigating
+          FlutterNativeSplash.remove();
 
           if (currentUser != null) {
             // User is authenticated with Firebase
@@ -136,7 +137,8 @@ class SplashScreen extends HookConsumerWidget {
           }
         } catch (e) {
           Log.e('Navigation error: $e', label: 'SplashScreen');
-          // Error during initialization, go to login
+          // Remove splash and go to login on error
+          FlutterNativeSplash.remove();
           if (context.mounted) {
             context.go('/login');
           }
@@ -146,37 +148,7 @@ class SplashScreen extends HookConsumerWidget {
       return null;
     }, const []);
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/icon/Bexly-logo-no-bg.png',
-              width: 150,
-              height: 150,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Bexly',
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Personal Finance Manager',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 48),
-            const CircularProgressIndicator(),
-          ],
-        ),
-      ),
-    );
+    // Return empty container - native splash will be shown instead
+    return const SizedBox.shrink();
   }
 }
