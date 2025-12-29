@@ -17,6 +17,29 @@ class SplashScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Use useState to track theme after loading from SharedPreferences
+    final isDark = useState<bool?>(null);
+    final systemBrightness = MediaQuery.platformBrightnessOf(context);
+
+    useEffect(() {
+      // Load theme from SharedPreferences directly
+      SharedPreferences.getInstance().then((prefs) {
+        final savedThemeMode = prefs.getString('themeMode');
+        if (savedThemeMode != null) {
+          if (savedThemeMode == 'ThemeMode.dark') {
+            isDark.value = true;
+          } else if (savedThemeMode == 'ThemeMode.system') {
+            isDark.value = systemBrightness == Brightness.dark;
+          } else {
+            isDark.value = false;
+          }
+        } else {
+          isDark.value = false; // Default to light
+        }
+      });
+      return null;
+    }, const []);
+
     useEffect(() {
       // Schedule navigation after frame is built
       WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -149,8 +172,12 @@ class SplashScreen extends HookConsumerWidget {
     }, const []);
 
     // Show splash UI (needed for web where native splash doesn't persist)
+    final darkMode = isDark.value ?? false;
+    final bgColor = darkMode ? const Color(0xFF1A1A1A) : Colors.white;
+    final textColor = darkMode ? Colors.white70 : Colors.black54;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: bgColor,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -161,22 +188,26 @@ class SplashScreen extends HookConsumerWidget {
               height: 150,
             ),
             const SizedBox(height: 24),
-            Text(
+            const Text(
               'Bexly',
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF7C3AED), // Primary purple
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'Personal Finance Manager',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              style: TextStyle(
+                fontSize: 16,
+                color: textColor,
+              ),
             ),
             const SizedBox(height: 48),
-            const CircularProgressIndicator(),
+            const CircularProgressIndicator(
+              color: Color(0xFF7C3AED),
+            ),
           ],
         ),
       ),
