@@ -55,6 +55,13 @@ class BankConnectionsScreen extends HookConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // DEBUG: Test if Column renders
+          Container(
+            color: Colors.green,
+            padding: const EdgeInsets.all(20),
+            child: const Text('DEBUG: Column is rendering!', style: TextStyle(color: Colors.white, fontSize: 20)),
+          ),
+          const Gap(AppSpacing.spacing16),
           // Info Card
           _InfoCard(),
 

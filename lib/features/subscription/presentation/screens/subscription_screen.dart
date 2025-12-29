@@ -102,6 +102,13 @@ class SubscriptionScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // DEBUG: Test if Column renders
+                  Container(
+                    color: Colors.green,
+                    padding: const EdgeInsets.all(20),
+                    child: const Text('DEBUG: Column is rendering!', style: TextStyle(color: Colors.white, fontSize: 20)),
+                  ),
+                  const Gap(AppSpacing.spacing16),
                   // Plans
                   ...plans.map((plan) {
                     final isCurrentPlan = plan.tier == currentTier;
