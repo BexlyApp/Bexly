@@ -183,9 +183,10 @@ class SplashScreen extends HookConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
-              'assets/icon/Bexly-logo-no-bg.png',
+              'assets/icon/icon-transparent-full.png',
               width: 150,
               height: 150,
+              fit: BoxFit.contain,
             ),
             const SizedBox(height: 24),
             const Text(
