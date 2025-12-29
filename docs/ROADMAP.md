@@ -1086,9 +1086,173 @@ Features:
 
 ---
 
-## Phase 6: Social & Collaboration (Q4 2025)
+## Phase 6: Gamification & Engagement (Q3-Q4 2025) 🎮
 
-### 6.1 Family Sharing
+> **Goal:** Biến việc quản lý tài chính thành trải nghiệm thú vị và gây nghiện thông qua game mechanics.
+
+### 6.0 Achievement System
+**Priority: HIGH | Timeline: 2 weeks**
+
+**Badges & Achievements:**
+- 🏅 **First Steps** - Tạo giao dịch đầu tiên
+- 💰 **Saver** - Tiết kiệm được 10% thu nhập trong tháng
+- 🔥 **Streak Master** - Ghi chép liên tục 7/30/100 ngày
+- 📊 **Budget Pro** - Không vượt ngân sách 3 tháng liên tiếp
+- 🎯 **Goal Crusher** - Hoàn thành mục tiêu tiết kiệm đầu tiên
+- 🤖 **AI Friend** - Sử dụng AI Chat 50 lần
+- 📸 **Receipt Collector** - Scan 100 hóa đơn
+- 🌍 **Globe Trotter** - Sử dụng 5+ loại tiền tệ khác nhau
+- 👨‍👩‍👧‍👦 **Family Manager** - Mời 3 thành viên gia đình
+
+**Unlock Rewards:**
+- Custom themes/colors khi đạt milestone
+- Special app icons
+- Priority support access
+- Early access to beta features
+
+### 6.1 Streak & Daily Check-in
+**Priority: HIGH | Timeline: 1 week**
+
+**Features:**
+- Daily streak counter (giống Duolingo)
+- Streak freeze (bảo vệ streak 1 ngày)
+- Weekly recap với celebration animation
+- Streak milestones (7, 30, 100, 365 ngày)
+- Push notification nhắc nhở check-in
+
+**UI Elements:**
+- 🔥 Fire icon với số ngày streak
+- Calendar view hiển thị các ngày active
+- Streak recovery option (xem quảng cáo để khôi phục)
+
+### 6.2 Leaderboards & Challenges
+**Priority: MEDIUM | Timeline: 2 weeks**
+
+**Weekly Challenges:**
+- "No Eating Out Week" - Không chi tiêu ăn ngoài
+- "Save $50 Challenge" - Tiết kiệm được $50 trong tuần
+- "Track Everything" - Ghi chép 100% giao dịch
+- "Budget Warrior" - Giữ 5 ngân sách dưới limit
+
+**Leaderboards:**
+- Anonymous ranking (chỉ hiện username)
+- Categories: Savings rate, Streak, Transactions logged
+- Weekly/Monthly/All-time rankings
+- Friend leaderboards (opt-in)
+
+**Rewards:**
+- Top 10% nhận badge đặc biệt
+- Winner tuần được highlight
+- Virtual currency/points để unlock features
+
+### 6.3 Progress & Levels
+**Priority: MEDIUM | Timeline: 1 week**
+
+**XP System:**
+- +10 XP: Thêm giao dịch
+- +20 XP: Thêm giao dịch với receipt
+- +50 XP: Hoàn thành daily goal
+- +100 XP: Duy trì ngân sách cả tuần
+- +500 XP: Hoàn thành savings goal
+
+**Level Progression:**
+- Level 1-10: Newbie → Beginner → Learner
+- Level 11-25: Tracker → Planner → Organizer
+- Level 26-50: Saver → Investor → Wealthy
+- Level 51-100: Expert → Master → Legend
+
+**Level Benefits:**
+- Unlock new themes tại certain levels
+- Unlock advanced analytics
+- Unlock custom categories/icons
+- Special badge next to username
+
+### 6.4 Virtual Rewards & Shop
+**Priority: LOW | Timeline: 2 weeks**
+
+**Virtual Currency: "Bexly Coins"**
+- Earn coins from achievements, streaks, challenges
+- Spend coins on:
+  - Premium themes
+  - Custom app icons
+  - Profile decorations
+  - Streak freezes
+  - Double XP boosts
+
+**Premium Store:**
+- Exclusive themes (purchasable hoặc high coin cost)
+- Limited edition badges
+- Custom category icons
+- Avatar frames
+
+### 6.5 Social Sharing
+**Priority: LOW | Timeline: 1 week**
+
+**Features:**
+- Share achievements to social media
+- Monthly recap cards (Instagram story style)
+- "I saved $X this month" shareable
+- Referral program với rewards
+- Invite friends challenges
+
+**Privacy:**
+- All social features opt-in
+- No real financial data exposed
+- Only share percentages/achievements
+
+---
+
+### Gamification Technical Implementation
+
+**Database Schema:**
+```sql
+user_progress:
+  - user_id (PK)
+  - xp_total
+  - level
+  - current_streak
+  - longest_streak
+  - coins_balance
+  - last_active_date
+  - streak_freeze_count
+
+achievements:
+  - id (PK)
+  - user_id (FK)
+  - achievement_type
+  - unlocked_at
+  - progress (0-100%)
+
+challenges:
+  - id (PK)
+  - name
+  - description
+  - start_date
+  - end_date
+  - goal_type
+  - goal_value
+  - reward_coins
+  - reward_xp
+
+user_challenges:
+  - user_id (FK)
+  - challenge_id (FK)
+  - progress
+  - completed_at
+```
+
+**Implementation Phases:**
+1. Week 1-2: Achievement system + badges UI
+2. Week 3: Streak system + daily check-in
+3. Week 4: XP + Levels + Progress bars
+4. Week 5-6: Challenges + Leaderboards
+5. Week 7-8: Virtual shop + Social sharing
+
+---
+
+## Phase 7: Social & Collaboration (Q4 2025)
+
+### 7.1 Family Sharing
 **Priority: MEDIUM | Timeline: 2 weeks**
 
 Features:
@@ -1098,7 +1262,7 @@ Features:
 - Approval workflows
 - Child accounts with limits
 
-### 6.2 Bill Splitting
+### 7.2 Bill Splitting
 **Priority: MEDIUM | Timeline: 1 week**
 
 Features:
@@ -1108,7 +1272,7 @@ Features:
 - Payment reminders
 - Integration with payment apps
 
-### 6.3 Financial Goals
+### 7.3 Financial Goals
 **Priority: LOW | Timeline: 2 weeks**
 
 Features:
