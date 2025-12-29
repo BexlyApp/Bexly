@@ -33,7 +33,9 @@ class BankConnectionsScreen extends HookConsumerWidget {
       context: context,
       title: 'Bank Connections',
       showBalance: false,
-      body: _buildContent(context, ref, state),
+      body: const Center(
+        child: Text('Bank Connections Screen - Test'),
+      ),
     );
   }
 
