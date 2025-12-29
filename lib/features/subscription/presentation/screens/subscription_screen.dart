@@ -92,6 +92,17 @@ class SubscriptionScreen extends ConsumerWidget {
       title: l10n.subscription,
       showBackButton: true,
       showBalance: false,
+      body: const Center(
+        child: Text('Subscription Screen - Test'),
+      ),
+    );
+
+    // ignore: dead_code
+    return CustomScaffold(
+      context: context,
+      title: l10n.subscription,
+      showBackButton: true,
+      showBalance: false,
       body: SingleChildScrollView(
               padding: const EdgeInsets.all(AppSpacing.spacing16),
               child: Column(
