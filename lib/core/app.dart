@@ -48,6 +48,7 @@ class MyApp extends ConsumerWidget {
         tertiary: AppColors.tertiary,
         tertiaryContainer: AppColors.tertiary100,
         error: AppColors.red,
+        surface: AppColors.light,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
@@ -112,6 +113,7 @@ class MyApp extends ConsumerWidget {
         tertiary: AppColors.tertiary400,
         tertiaryContainer: AppColors.tertiary900,
         error: AppColors.red400,
+        surface: AppColors.dark,
       ),
       appBarTheme: const AppBarTheme(backgroundColor: AppColors.dark),
       inputDecorationTheme: InputDecorationTheme(
