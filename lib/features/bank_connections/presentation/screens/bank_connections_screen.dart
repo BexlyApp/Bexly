@@ -19,22 +19,27 @@ class BankConnectionsScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    debugPrint('🏦 [BankConnections] build() called');
     final state = ref.watch(bankConnectionProvider);
+    debugPrint('🏦 [BankConnections] state: isLoading=${state.isLoading}, accounts=${state.accounts.length}, error=${state.error}');
 
     // Load accounts on first build
     useEffect(() {
+      debugPrint('🏦 [BankConnections] useEffect - loading accounts');
       Future.microtask(() {
         ref.read(bankConnectionProvider.notifier).loadAccounts();
       });
       return null;
     }, const []);
 
+    debugPrint('🏦 [BankConnections] returning CustomScaffold');
     return CustomScaffold(
       context: context,
       title: 'Bank Connections',
       showBalance: false,
-      body: const Center(
-        child: Text('Bank Connections Screen - Test'),
+      body: ColoredBox(
+        color: Colors.blue.withValues(alpha: 0.3), // DEBUG: Blue overlay to confirm body renders
+        child: _buildContent(context, ref, state),
       ),
     );
   }
@@ -44,6 +49,7 @@ class BankConnectionsScreen extends HookConsumerWidget {
     WidgetRef ref,
     BankConnectionState state,
   ) {
+    debugPrint('🏦 [BankConnections] _buildContent() called');
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.spacing20),
       child: Column(

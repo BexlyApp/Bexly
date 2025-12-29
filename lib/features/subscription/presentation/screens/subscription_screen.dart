@@ -13,7 +13,9 @@ class SubscriptionScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    debugPrint('💰 [Subscription] build() called');
     final subscriptionState = ref.watch(subscriptionProvider);
+    debugPrint('💰 [Subscription] state: tier=${subscriptionState.tier}, isLoading=${subscriptionState.isLoading}, error=${subscriptionState.error}');
     final l10n = context.l10n;
     final currentTier = subscriptionState.tier;
     final notifier = ref.read(subscriptionProvider.notifier);
@@ -87,23 +89,15 @@ class SubscriptionScreen extends ConsumerWidget {
       return a.tier.index.compareTo(b.tier.index);
     });
 
+    debugPrint('💰 [Subscription] returning CustomScaffold with body');
     return CustomScaffold(
       context: context,
       title: l10n.subscription,
       showBackButton: true,
       showBalance: false,
-      body: const Center(
-        child: Text('Subscription Screen - Test'),
-      ),
-    );
-
-    // ignore: dead_code
-    return CustomScaffold(
-      context: context,
-      title: l10n.subscription,
-      showBackButton: true,
-      showBalance: false,
-      body: SingleChildScrollView(
+      body: ColoredBox(
+        color: Colors.red.withValues(alpha: 0.3), // DEBUG: Red overlay to confirm body renders
+        child: SingleChildScrollView(
               padding: const EdgeInsets.all(AppSpacing.spacing16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,6 +163,7 @@ class SubscriptionScreen extends ConsumerWidget {
                 ],
               ),
             ),
+      ), // Close ColoredBox
     );
   }
 
