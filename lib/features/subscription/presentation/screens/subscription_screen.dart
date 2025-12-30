@@ -100,6 +100,7 @@ class SubscriptionScreen extends ConsumerWidget {
         child: SingleChildScrollView(
               padding: const EdgeInsets.all(AppSpacing.spacing16),
               child: Column(
+                mainAxisSize: MainAxisSize.min, // FIX: Prevent infinite expansion
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // DEBUG: Test if Column renders
@@ -287,6 +288,7 @@ class _PlanCardState extends State<_PlanCard> {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min, // FIX: Prevent infinite expansion
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header with title, subtitle, and price
