@@ -106,7 +106,14 @@ class SubscriptionScreen extends ConsumerWidget {
                   Container(
                     color: Colors.green,
                     padding: const EdgeInsets.all(20),
-                    child: const Text('DEBUG: Column is rendering!', style: TextStyle(color: Colors.white, fontSize: 20)),
+                    child: Text('DEBUG: Column rendering! Plans count: ${plans.length}', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                  ),
+                  const Gap(AppSpacing.spacing16),
+                  // DEBUG: Simple test widget
+                  Container(
+                    color: Colors.orange,
+                    padding: const EdgeInsets.all(20),
+                    child: const Text('DEBUG: After Gap', style: TextStyle(color: Colors.white, fontSize: 16)),
                   ),
                   const Gap(AppSpacing.spacing16),
                   // Plans
