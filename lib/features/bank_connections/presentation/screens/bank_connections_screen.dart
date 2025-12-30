@@ -53,6 +53,7 @@ class BankConnectionsScreen extends HookConsumerWidget {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.spacing20),
       child: Column(
+        mainAxisSize: MainAxisSize.min, // FIX: Prevent infinite expansion
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // DEBUG: Test if Column renders
