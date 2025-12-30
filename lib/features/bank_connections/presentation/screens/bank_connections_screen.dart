@@ -208,6 +208,7 @@ class BankConnectionsScreen extends HookConsumerWidget {
 class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    debugPrint('📋 [InfoCard] Building');
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -216,7 +217,8 @@ class _InfoCard extends StatelessWidget {
         color: isDark ? AppColors.primary900.withValues(alpha: 0.3) : AppColors.primary50,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? AppColors.primary700 : AppColors.primary200,
+          color: Colors.red, // DEBUG: Red border
+          width: 3,
         ),
       ),
       child: Row(

@@ -268,15 +268,14 @@ class _PlanCardState extends State<_PlanCard> {
     final displayPrice = _isYearly ? widget.yearlyPrice : widget.monthlyPrice;
     final priceSuffix = _isYearly ? l10n.perYear : l10n.perMonth;
 
+    debugPrint('🎴 [PlanCard] Building ${widget.title}');
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.neutral900 : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: widget.isCurrentPlan
-              ? widget.accentColor
-              : (isDark ? AppColors.neutral800 : AppColors.neutral200),
-          width: widget.isCurrentPlan ? 2 : 1,
+          color: Colors.red, // DEBUG: Red border to identify PlanCard
+          width: 3,
         ),
         boxShadow: [
           if (!isDark)
