@@ -17,6 +17,11 @@ class LanguageSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentLanguage = ref.watch(languageProvider);
     final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Sort languages alphabetically by name
+    final sortedLanguages = List<Language>.from(availableLanguages)
+      ..sort((a, b) => a.name.compareTo(b.name));
 
     return CustomScaffold(
       context: context,
@@ -29,10 +34,10 @@ class LanguageSettingsScreen extends ConsumerWidget {
           AppSpacing.spacing20,
           AppSpacing.spacing20,
         ),
-        itemCount: availableLanguages.length,
+        itemCount: sortedLanguages.length,
         separatorBuilder: (context, index) => const Gap(AppSpacing.spacing12),
         itemBuilder: (context, index) {
-          final language = availableLanguages[index];
+          final language = sortedLanguages[index];
           final isSelected = language.code == currentLanguage.code;
 
           return InkWell(
@@ -58,12 +63,16 @@ class LanguageSettingsScreen extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: isSelected
                     ? Theme.of(context).colorScheme.primaryContainer
-                    : AppColors.purple50,
+                    : isDark
+                        ? AppColors.neutral800
+                        : AppColors.purple50,
                 borderRadius: BorderRadius.circular(AppRadius.radius8),
                 border: Border.all(
                   color: isSelected
                       ? Theme.of(context).colorScheme.primary
-                      : AppColors.purpleAlpha10,
+                      : isDark
+                          ? AppColors.neutral700
+                          : AppColors.purpleAlpha10,
                 ),
               ),
               child: Row(
@@ -74,9 +83,11 @@ class LanguageSettingsScreen extends ConsumerWidget {
                     width: 50,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: AppColors.purple50,
+                      color: isDark ? AppColors.neutral700 : AppColors.purple50,
                       borderRadius: BorderRadius.circular(AppRadius.radius8),
-                      border: Border.all(color: AppColors.purpleAlpha10),
+                      border: Border.all(
+                        color: isDark ? AppColors.neutral600 : AppColors.purpleAlpha10,
+                      ),
                     ),
                     child: Text(
                       language.flag,
@@ -106,7 +117,7 @@ class LanguageSettingsScreen extends ConsumerWidget {
                             style: AppTextStyles.body4.copyWith(
                               color: isSelected
                                   ? Theme.of(context).colorScheme.primary
-                                  : AppColors.neutral500,
+                                  : Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                       ],
