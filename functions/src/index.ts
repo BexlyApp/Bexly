@@ -3,7 +3,7 @@ import { onRequest, onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { beforeUserCreated } from "firebase-functions/v2/identity";
-import * as admin from "firebase-admin";
+import admin from "firebase-admin";
 import { Bot, webhookCallback, InlineKeyboard } from "grammy";
 // Using REST API directly instead of SDK for better control
 // import { GoogleGenerativeAI } from "@google/generative-ai";

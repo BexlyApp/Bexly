@@ -53,10 +53,49 @@ class BankConnectionsScreen extends HookConsumerWidget {
 
           const Gap(AppSpacing.spacing24),
 
-          // Link Account Button
-          _LinkAccountCard(
-            isLinking: state.isLinking || state.isLoading,
-            onLink: () => _linkAccounts(context, ref),
+          // Available Providers Section
+          Text(
+            'Available Providers',
+            style: AppTextStyles.body1.copyWith(
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+
+          const Gap(AppSpacing.spacing12),
+
+          // Stripe Provider (US only)
+          _ProviderCard(
+            name: 'Stripe',
+            description: 'Connect US bank accounts via Stripe Financial Connections',
+            icon: HugeIcons.strokeRoundedCreditCard,
+            color: const Color(0xFF635BFF),
+            isLoading: state.isLinking || state.isLoading,
+            isAvailable: true,
+            onTap: () => _linkAccounts(context, ref),
+          ),
+
+          const Gap(AppSpacing.spacing12),
+
+          // Plaid Provider (Coming Soon)
+          _ProviderCard(
+            name: 'Plaid',
+            description: 'Connect bank accounts worldwide',
+            icon: HugeIcons.strokeRoundedBank,
+            color: const Color(0xFF00D09C),
+            isLoading: false,
+            isAvailable: false,
+          ),
+
+          const Gap(AppSpacing.spacing12),
+
+          // MX Provider (Coming Soon)
+          _ProviderCard(
+            name: 'MX',
+            description: 'Financial data aggregation for North America',
+            icon: HugeIcons.strokeRoundedChartLineData02,
+            color: const Color(0xFF0077B5),
+            isLoading: false,
+            isAvailable: false,
           ),
 
           if (state.accounts.isNotEmpty) ...[
@@ -217,14 +256,14 @@ class _InfoCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Connect Your Bank',
+                  'Connect Your Accounts',
                   style: AppTextStyles.body1.copyWith(
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const Gap(4),
                 Text(
-                  'Automatically import transactions from your US bank accounts via Stripe.',
+                  'Automatically import transactions from your bank accounts and financial services.',
                   style: AppTextStyles.body4.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -238,21 +277,130 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-class _LinkAccountCard extends StatelessWidget {
-  final bool isLinking;
-  final VoidCallback onLink;
+class _ProviderCard extends StatelessWidget {
+  final String name;
+  final String description;
+  final dynamic icon;
+  final Color color;
+  final bool isLoading;
+  final bool isAvailable;
+  final VoidCallback? onTap;
 
-  const _LinkAccountCard({
-    required this.isLinking,
-    required this.onLink,
+  const _ProviderCard({
+    required this.name,
+    required this.description,
+    required this.icon,
+    required this.color,
+    required this.isLoading,
+    required this.isAvailable,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return PrimaryButton(
-      onPressed: onLink,
-      label: 'Link Bank Account',
-      isLoading: isLinking,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Opacity(
+      opacity: isAvailable ? 1.0 : 0.5,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.neutral800 : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? AppColors.neutral700 : AppColors.neutral200,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: isAvailable && !isLoading ? onTap : null,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.spacing16),
+              child: Row(
+                children: [
+                  // Provider Icon
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: isDark ? 0.2 : 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: HugeIcon(
+                        icon: icon,
+                        color: color,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                  const Gap(AppSpacing.spacing12),
+
+                  // Provider Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              name,
+                              style: AppTextStyles.body1.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            if (!isAvailable) ...[
+                              const Gap(8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.neutral700 : AppColors.neutral200,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Coming Soon',
+                                  style: AppTextStyles.body5.copyWith(
+                                    color: isDark ? AppColors.neutral400 : AppColors.neutral500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const Gap(2),
+                        Text(
+                          description,
+                          style: AppTextStyles.body4.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Action indicator
+                  if (isLoading)
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else if (isAvailable)
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedArrowRight01,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 20,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -477,7 +625,7 @@ class _PrivacyCard extends StatelessWidget {
                 ),
                 const Gap(4),
                 Text(
-                  'Your bank credentials are never stored. We use Stripe\'s secure Financial Connections service. You can disconnect at any time.',
+                  'Your bank credentials are never stored. All connections use secure, industry-standard protocols. You can disconnect at any time.',
                   style: AppTextStyles.body4.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),

@@ -17,6 +17,7 @@ abstract class AIService {
     double? exchangeRate,
   }); // Update wallet context dynamically
   void clearHistory(); // Clear conversation history
+  String get modelName; // Get current model name for display
 }
 
 /// Mixin for shared prompt generation logic across AI services
@@ -84,6 +85,9 @@ class OpenAIService with AIServicePromptMixin implements AIService {
 
   @override
   String get budgetsContext => _budgetsContext;
+
+  @override
+  String get modelName => model;
 
   // Conversation history for context
   final List<Map<String, String>> _conversationHistory = [];
@@ -295,6 +299,9 @@ class GeminiService with AIServicePromptMixin implements AIService {
 
   @override
   String get budgetsContext => _budgetsContext;
+
+  @override
+  String get modelName => model;
 
   // Conversation history for context (using Gemini's Content format)
   final List<Content> _conversationHistory = [];
@@ -529,6 +536,9 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
   @override
   String get budgetsContext => _budgetsContext;
 
+  @override
+  String get modelName => model;
+
   // Conversation history for context
   final List<Map<String, String>> _conversationHistory = [];
 
@@ -619,10 +629,10 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
             }),
           )
           .timeout(
-            const Duration(seconds: 60), // Longer timeout for self-hosted
+            const Duration(seconds: 5), // Quick timeout for fast fallback
             onTimeout: () {
-              Log.e('Custom LLM request timed out after 60 seconds', label: 'Custom LLM');
-              throw Exception('Request timed out. Please check your self-hosted LLM server.');
+              Log.e('Custom LLM request timed out after 5 seconds', label: 'Custom LLM');
+              throw Exception('DOS_AI_TIMEOUT');
             },
           );
 
