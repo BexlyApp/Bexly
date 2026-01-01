@@ -325,6 +325,76 @@ class ChatNotifier extends Notifier<ChatState> {
   // Get AI service when needed to avoid provider rebuilds
   AIService get _aiService => ref.read(aiServiceProvider);
 
+  // Track if we're using fallback model
+  bool _usingFallback = false;
+  String? _fallbackModelName;
+
+  /// Send message with fallback: Try DOS AI first, fallback to Gemini if fails
+  Future<String> _sendMessageWithFallback(String message) async {
+    final selectedModel = ref.read(aiModelProvider);
+
+    // If using DOS AI, try with fallback
+    if (selectedModel == AIModel.dosAI) {
+      try {
+        Log.d('🚀 Trying DOS AI first...', label: 'AI_FALLBACK');
+        _usingFallback = false;
+        _fallbackModelName = null;
+        return await _aiService.sendMessage(message);
+      } catch (e) {
+        // DOS AI failed - fallback to Gemini
+        Log.w('⚠️ DOS AI failed: $e, falling back to Gemini...', label: 'AI_FALLBACK');
+        _usingFallback = true;
+
+        // Create Gemini service for fallback
+        final geminiService = _createFallbackGeminiService();
+        _fallbackModelName = geminiService.modelName;
+
+        // Copy context from primary service
+        geminiService.updateContext(
+          walletName: _aiService is CustomLLMService ? (_aiService as CustomLLMService).walletName : null,
+          walletCurrency: _aiService is CustomLLMService ? (_aiService as CustomLLMService).walletCurrency : null,
+        );
+
+        Log.d('✅ Using Gemini fallback: ${geminiService.modelName}', label: 'AI_FALLBACK');
+        return await geminiService.sendMessage(message);
+      }
+    }
+
+    // Not DOS AI - use primary service directly
+    _usingFallback = false;
+    _fallbackModelName = null;
+    return await _aiService.sendMessage(message);
+  }
+
+  /// Create Gemini service for fallback
+  GeminiService _createFallbackGeminiService() {
+    final categoriesAsync = ref.read(hierarchicalCategoriesProvider);
+    final categories = categoriesAsync.when(
+      data: (cats) => cats.expand((c) {
+        if (c.subCategories != null && c.subCategories!.isNotEmpty) {
+          return c.subCategories!.map((sub) => sub.title);
+        }
+        return [c.title];
+      }).toList(),
+      loading: () => <String>[],
+      error: (_, _) => <String>[],
+    );
+
+    return GeminiService(
+      apiKey: LLMDefaultConfig.geminiApiKey,
+      model: LLMDefaultConfig.geminiModel,
+      categories: categories,
+    );
+  }
+
+  /// Get the actual model name used (considering fallback)
+  String get _actualModelName {
+    if (_usingFallback && _fallbackModelName != null) {
+      return _fallbackModelName!;
+    }
+    return _aiService.modelName;
+  }
+
   // Helper method to unwrap AsyncValue
   T? _unwrapAsyncValue<T>(AsyncValue<T> asyncValue) {
     return asyncValue.when(
@@ -585,10 +655,11 @@ Please create a transaction based on this receipt data.''';
       // Start typing indicator
       _startTypingEffect();
 
-      // Get AI response (use enhancedContent if receipt was analyzed)
-      final response = await _aiService.sendMessage(enhancedContent);
+      // Get AI response with fallback (DOS AI -> Gemini if timeout)
+      final response = await _sendMessageWithFallback(enhancedContent);
 
       print('📱 [DEBUG] AI Response received, length: ${response.length}');
+      print('📱 [DEBUG] Used fallback: $_usingFallback, model: $_actualModelName');
       print('📱 [DEBUG] Response FULL: $response');
       print('📱 [DEBUG] Contains ACTION_JSON: ${response.contains('ACTION_JSON')}');
       Log.d('AI Response: $response', label: 'Chat Provider');
@@ -1194,10 +1265,11 @@ Please create a transaction based on this receipt data.''';
         isFromUser: false,
         timestamp: DateTime.now(),
         pendingAction: pendingAction,
+        modelName: _actualModelName, // Use actual model (considering fallback)
       );
 
       print('[CHAT_DEBUG] Created AI message: ${aiMessage.content.length > 50 ? aiMessage.content.substring(0, 50) + '...' : aiMessage.content}');
-      print('[CHAT_DEBUG] AI message hasPendingAction: ${aiMessage.hasPendingAction}');
+      print('[CHAT_DEBUG] AI message hasPendingAction: ${aiMessage.hasPendingAction}, model: ${aiMessage.modelName}, fallback: $_usingFallback');
 
       // Update state - wrap ALL state access in try-catch to handle dispose
       try {

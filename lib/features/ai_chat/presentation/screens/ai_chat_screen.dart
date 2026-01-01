@@ -491,11 +491,33 @@ class _MessageBubble extends ConsumerWidget {
 
                 const SizedBox(height: AppSpacing.spacing4),
 
-                Text(
-                  _formatTime(context, message.timestamp),
-                  style: AppTextStyles.body5.copyWith(
-                    color: AppColors.neutral400,
-                  ),
+                // Timestamp and model name row
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _formatTime(context, message.timestamp),
+                      style: AppTextStyles.body5.copyWith(
+                        color: AppColors.neutral400,
+                      ),
+                    ),
+                    // Show model name for AI messages
+                    if (!isUser && message.modelName != null) ...[
+                      Text(
+                        ' · ',
+                        style: AppTextStyles.body5.copyWith(
+                          color: AppColors.neutral400,
+                        ),
+                      ),
+                      Text(
+                        _formatModelName(message.modelName!),
+                        style: AppTextStyles.body5.copyWith(
+                          color: AppColors.primary400,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -547,6 +569,27 @@ class _MessageBubble extends ConsumerWidget {
     } else {
       return '${dateTime.day}/${dateTime.month} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     }
+  }
+
+  /// Format model name for display (e.g., "gemini-2.5-flash" -> "Gemini 2.5 Flash")
+  String _formatModelName(String modelName) {
+    // Common model name mappings
+    final mappings = {
+      'gemini-2.5-flash': 'Gemini 2.5 Flash',
+      'gemini-2.0-flash': 'Gemini 2.0 Flash',
+      'gemini-1.5-flash': 'Gemini 1.5 Flash',
+      'gemini-1.5-pro': 'Gemini 1.5 Pro',
+      'gpt-4o': 'GPT-4o',
+      'gpt-4o-mini': 'GPT-4o Mini',
+      'gpt-4-turbo': 'GPT-4 Turbo',
+      'gpt-3.5-turbo': 'GPT-3.5 Turbo',
+      'claude-sonnet-4-20250514': 'Claude Sonnet 4',
+      'claude-3-opus': 'Claude 3 Opus',
+      'claude-3-sonnet': 'Claude 3 Sonnet',
+      'claude-3-haiku': 'Claude 3 Haiku',
+    };
+
+    return mappings[modelName] ?? modelName;
   }
 }
 

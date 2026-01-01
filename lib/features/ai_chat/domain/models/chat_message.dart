@@ -66,6 +66,7 @@ class ChatMessage {
   final Uint8List? imageBytes;
   final PendingAction? pendingAction; // Action awaiting confirmation
   final bool isActionHandled; // Whether pending action has been handled
+  final String? modelName; // AI model name (e.g., "gemini-2.5-flash", "gpt-4o-mini")
 
   ChatMessage({
     required this.id,
@@ -77,6 +78,7 @@ class ChatMessage {
     this.imageBytes,
     this.pendingAction,
     this.isActionHandled = false,
+    this.modelName,
   });
 
   ChatMessage copyWith({
@@ -89,6 +91,7 @@ class ChatMessage {
     Uint8List? imageBytes,
     PendingAction? pendingAction,
     bool? isActionHandled,
+    String? modelName,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -100,6 +103,7 @@ class ChatMessage {
       imageBytes: imageBytes ?? this.imageBytes,
       pendingAction: pendingAction ?? this.pendingAction,
       isActionHandled: isActionHandled ?? this.isActionHandled,
+      modelName: modelName ?? this.modelName,
     );
   }
 

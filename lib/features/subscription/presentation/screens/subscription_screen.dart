@@ -330,8 +330,7 @@ class _PlanCardState extends State<_PlanCard> {
                 // Right: Price (for non-free plans)
                 if (widget.title != 'Free')
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
                         displayPrice,
@@ -340,10 +339,13 @@ class _PlanCardState extends State<_PlanCard> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      Text(
-                        priceSuffix,
-                        style: AppTextStyles.body5.copyWith(
-                          color: isDark ? AppColors.neutral400 : AppColors.neutral500,
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Text(
+                          priceSuffix,
+                          style: AppTextStyles.body3.copyWith(
+                            color: isDark ? AppColors.neutral400 : AppColors.neutral500,
+                          ),
                         ),
                       ),
                     ],
