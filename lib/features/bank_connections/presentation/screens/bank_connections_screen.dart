@@ -19,28 +19,21 @@ class BankConnectionsScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    debugPrint('🏦 [BankConnections] build() called');
     final state = ref.watch(bankConnectionProvider);
-    debugPrint('🏦 [BankConnections] state: isLoading=${state.isLoading}, accounts=${state.accounts.length}, error=${state.error}');
 
     // Load accounts on first build
     useEffect(() {
-      debugPrint('🏦 [BankConnections] useEffect - loading accounts');
       Future.microtask(() {
         ref.read(bankConnectionProvider.notifier).loadAccounts();
       });
       return null;
     }, const []);
 
-    debugPrint('🏦 [BankConnections] returning CustomScaffold');
     return CustomScaffold(
       context: context,
       title: 'Bank Connections',
       showBalance: false,
-      body: ColoredBox(
-        color: Colors.blue.withValues(alpha: 0.3), // DEBUG: Blue overlay to confirm body renders
-        child: _buildContent(context, ref, state),
-      ),
+      body: _buildContent(context, ref, state),
     );
   }
 
@@ -49,20 +42,12 @@ class BankConnectionsScreen extends HookConsumerWidget {
     WidgetRef ref,
     BankConnectionState state,
   ) {
-    debugPrint('🏦 [BankConnections] _buildContent() called');
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.spacing20),
       child: Column(
-        mainAxisSize: MainAxisSize.min, // FIX: Prevent infinite expansion
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // DEBUG: Test if Column renders
-          Container(
-            color: Colors.green,
-            padding: const EdgeInsets.all(20),
-            child: const Text('DEBUG: Column is rendering!', style: TextStyle(color: Colors.white, fontSize: 20)),
-          ),
-          const Gap(AppSpacing.spacing16),
           // Info Card
           _InfoCard(),
 
@@ -208,7 +193,6 @@ class BankConnectionsScreen extends HookConsumerWidget {
 class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    debugPrint('📋 [InfoCard] Building');
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -217,14 +201,13 @@ class _InfoCard extends StatelessWidget {
         color: isDark ? AppColors.primary900.withValues(alpha: 0.3) : AppColors.primary50,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.red, // DEBUG: Red border
-          width: 3,
+          color: isDark ? AppColors.primary800 : AppColors.primary100,
         ),
       ),
       child: Row(
         children: [
-          Icon(
-            HugeIcons.strokeRoundedBank as dynamic,
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedBank,
             color: AppColors.primary600,
             size: 32,
           ),
@@ -269,7 +252,6 @@ class _LinkAccountCard extends StatelessWidget {
     return PrimaryButton(
       onPressed: onLink,
       label: 'Link Bank Account',
-      icon: HugeIcons.strokeRoundedAdd01 as dynamic,
       isLoading: isLinking,
     );
   }
@@ -309,9 +291,10 @@ class _LinkedAccountCard extends StatelessWidget {
               color: isDark ? AppColors.neutral700 : AppColors.neutral100,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              HugeIcons.strokeRoundedBank as dynamic,
+            child: HugeIcon(
+              icon: HugeIcons.strokeRoundedBank,
               color: Theme.of(context).colorScheme.primary,
+              size: 24,
             ),
           ),
           const Gap(AppSpacing.spacing12),
@@ -351,9 +334,10 @@ class _LinkedAccountCard extends StatelessWidget {
 
           // Actions
           PopupMenuButton<String>(
-            icon: Icon(
-              HugeIcons.strokeRoundedMoreVertical as dynamic,
+            icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedMoreVertical,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
+              size: 24,
             ),
             onSelected: (value) {
               switch (value) {
@@ -370,7 +354,7 @@ class _LinkedAccountCard extends StatelessWidget {
                 value: 'sync',
                 child: Row(
                   children: [
-                    Icon(HugeIcons.strokeRoundedRefresh as dynamic),
+                    HugeIcon(icon: HugeIcons.strokeRoundedRefresh, color: Theme.of(context).colorScheme.onSurface, size: 20),
                     const Gap(8),
                     const Text('Sync Transactions'),
                   ],
@@ -380,7 +364,7 @@ class _LinkedAccountCard extends StatelessWidget {
                 value: 'disconnect',
                 child: Row(
                   children: [
-                    Icon(HugeIcons.strokeRoundedLink01 as dynamic, color: AppColors.red600),
+                    HugeIcon(icon: HugeIcons.strokeRoundedLink01, color: AppColors.red600, size: 20),
                     const Gap(8),
                     Text('Disconnect', style: TextStyle(color: AppColors.red600)),
                   ],
@@ -415,7 +399,6 @@ class _SyncAllCard extends StatelessWidget {
     return PrimaryButton(
       onPressed: onSync,
       label: 'Sync All Accounts',
-      icon: HugeIcons.strokeRoundedRefresh as dynamic,
       isLoading: isSyncing,
       state: ButtonState.outlinedActive,
     );
@@ -442,7 +425,7 @@ class _ErrorCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(HugeIcons.strokeRoundedAlert02 as dynamic, color: AppColors.red600, size: 20),
+          HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: AppColors.red600, size: 20),
           const Gap(8),
           Expanded(
             child: Text(
@@ -451,7 +434,7 @@ class _ErrorCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: Icon(HugeIcons.strokeRoundedCancel01 as dynamic, color: AppColors.red600, size: 18),
+            icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: AppColors.red600, size: 18),
             onPressed: onDismiss,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -476,8 +459,8 @@ class _PrivacyCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            HugeIcons.strokeRoundedSecurityCheck as dynamic,
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedSecurityCheck,
             color: AppColors.green200,
             size: 20,
           ),

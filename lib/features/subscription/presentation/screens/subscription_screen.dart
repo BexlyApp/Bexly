@@ -13,9 +13,7 @@ class SubscriptionScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    debugPrint('💰 [Subscription] build() called');
     final subscriptionState = ref.watch(subscriptionProvider);
-    debugPrint('💰 [Subscription] state: tier=${subscriptionState.tier}, isLoading=${subscriptionState.isLoading}, error=${subscriptionState.error}');
     final l10n = context.l10n;
     final currentTier = subscriptionState.tier;
     final notifier = ref.read(subscriptionProvider.notifier);
@@ -89,34 +87,17 @@ class SubscriptionScreen extends ConsumerWidget {
       return a.tier.index.compareTo(b.tier.index);
     });
 
-    debugPrint('💰 [Subscription] returning CustomScaffold with body');
     return CustomScaffold(
       context: context,
       title: l10n.subscription,
       showBackButton: true,
       showBalance: false,
-      body: ColoredBox(
-        color: Colors.red.withValues(alpha: 0.3), // DEBUG: Red overlay to confirm body renders
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
               padding: const EdgeInsets.all(AppSpacing.spacing16),
               child: Column(
-                mainAxisSize: MainAxisSize.min, // FIX: Prevent infinite expansion
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // DEBUG: Test if Column renders
-                  Container(
-                    color: Colors.green,
-                    padding: const EdgeInsets.all(20),
-                    child: Text('DEBUG: Column rendering! Plans count: ${plans.length}', style: const TextStyle(color: Colors.white, fontSize: 16)),
-                  ),
-                  const Gap(AppSpacing.spacing16),
-                  // DEBUG: Simple test widget
-                  Container(
-                    color: Colors.orange,
-                    padding: const EdgeInsets.all(20),
-                    child: const Text('DEBUG: After Gap', style: TextStyle(color: Colors.white, fontSize: 16)),
-                  ),
-                  const Gap(AppSpacing.spacing16),
                   // Plans
                   ...plans.map((plan) {
                     final isCurrentPlan = plan.tier == currentTier;
@@ -178,7 +159,6 @@ class SubscriptionScreen extends ConsumerWidget {
                 ],
               ),
             ),
-      ), // Close ColoredBox
     );
   }
 
@@ -268,14 +248,12 @@ class _PlanCardState extends State<_PlanCard> {
     final displayPrice = _isYearly ? widget.yearlyPrice : widget.monthlyPrice;
     final priceSuffix = _isYearly ? l10n.perYear : l10n.perMonth;
 
-    debugPrint('🎴 [PlanCard] Building ${widget.title}');
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.neutral900 : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.red, // DEBUG: Red border to identify PlanCard
-          width: 3,
+          color: isDark ? AppColors.neutral800 : AppColors.neutral200,
         ),
         boxShadow: [
           if (!isDark)
@@ -287,7 +265,7 @@ class _PlanCardState extends State<_PlanCard> {
         ],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min, // FIX: Prevent infinite expansion
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header with title, subtitle, and price
@@ -306,7 +284,7 @@ class _PlanCardState extends State<_PlanCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Left: Title and subtitle
-                Expanded(
+                Flexible(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -351,8 +329,9 @@ class _PlanCardState extends State<_PlanCard> {
 
                 // Right: Price (for non-free plans)
                 if (widget.title != 'Free')
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
                         displayPrice,
@@ -368,6 +347,14 @@ class _PlanCardState extends State<_PlanCard> {
                         ),
                       ),
                     ],
+                  )
+                else
+                  Text(
+                    '\$0',
+                    style: AppTextStyles.heading5.copyWith(
+                      color: widget.accentColor,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
               ],
             ),
@@ -531,7 +518,7 @@ class _PlanCardState extends State<_PlanCard> {
         ),
         child: Center(
           child: Text(
-            l10n.yourCurrentPlan,
+            'Your Current Plan',
             style: AppTextStyles.body2.copyWith(
               color: isDark ? AppColors.neutral400 : AppColors.neutral500,
               fontWeight: FontWeight.w600,
