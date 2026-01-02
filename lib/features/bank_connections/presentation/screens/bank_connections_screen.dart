@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -11,6 +12,7 @@ import 'package:bexly/core/components/buttons/button_state.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/features/bank_connections/riverpod/bank_connection_provider.dart';
 import 'package:bexly/features/bank_connections/data/models/linked_account_model.dart';
 
@@ -20,20 +22,86 @@ class BankConnectionsScreen extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(bankConnectionProvider);
+    final isAuthenticated = ref.watch(isAuthenticatedProvider);
 
-    // Load accounts on first build
+    // Load accounts on first build only if authenticated
     useEffect(() {
-      Future.microtask(() {
-        ref.read(bankConnectionProvider.notifier).loadAccounts();
-      });
+      if (isAuthenticated) {
+        Future.microtask(() {
+          ref.read(bankConnectionProvider.notifier).loadAccounts();
+        });
+      }
       return null;
-    }, const []);
+    }, [isAuthenticated]);
 
     return CustomScaffold(
       context: context,
       title: 'Bank Connections',
       showBalance: false,
-      body: _buildContent(context, ref, state),
+      body: isAuthenticated
+          ? _buildContent(context, ref, state)
+          : _buildLoginRequired(context),
+    );
+  }
+
+  Widget _buildLoginRequired(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.spacing24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.primary900.withValues(alpha: 0.3)
+                    : AppColors.primary50,
+                shape: BoxShape.circle,
+              ),
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedLock,
+                color: AppColors.primary600,
+                size: 40,
+              ),
+            ),
+            const Gap(AppSpacing.spacing24),
+            Text(
+              'Login Required',
+              style: AppTextStyles.heading2.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const Gap(AppSpacing.spacing12),
+            Text(
+              'You need to sign in to connect your bank accounts and sync transactions securely.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.body3.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Gap(AppSpacing.spacing32),
+            PrimaryButton(
+              onPressed: () => context.push('/login'),
+              label: 'Sign In',
+              state: ButtonState.active,
+            ),
+            const Gap(AppSpacing.spacing16),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Go Back',
+                style: AppTextStyles.body3.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
