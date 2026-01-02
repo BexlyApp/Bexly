@@ -2,13 +2,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
 
-// Provider for Bexly Firebase Auth instance
+// Provider for DOS-Me Firebase Auth instance (matches google-services.json)
 final bexlyAuthProvider = Provider<FirebaseAuth>((ref) {
-  final bexlyApp = FirebaseInitService.bexlyApp;
-  if (bexlyApp == null) {
-    throw Exception('Bexly Firebase not initialized');
+  final dosmeApp = FirebaseInitService.dosmeApp;
+  if (dosmeApp == null) {
+    throw Exception('DOS-Me Firebase not initialized');
   }
-  return FirebaseAuth.instanceFor(app: bexlyApp);
+  return FirebaseAuth.instanceFor(app: dosmeApp);
 });
 
 final authStateProvider = StreamProvider<User?>((ref) {

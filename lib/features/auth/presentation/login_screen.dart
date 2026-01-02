@@ -16,6 +16,7 @@ import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/services/sync/sync_trigger_service.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/package_info/package_info_provider.dart';
+import 'package:bexly/core/services/auth/dos_me_api_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
@@ -50,9 +51,9 @@ class LoginScreen extends HookConsumerWidget {
         );
 
         // Sync user profile from Firebase Auth to local database
-        final bexlyApp = FirebaseInitService.bexlyApp;
-        if (bexlyApp != null) {
-          final firebaseAuth = FirebaseAuth.instanceFor(app: bexlyApp);
+        final dosmeApp = FirebaseInitService.dosmeApp;
+        if (dosmeApp != null) {
+          final firebaseAuth = FirebaseAuth.instanceFor(app: dosmeApp);
           final firebaseUser = firebaseAuth.currentUser;
           if (firebaseUser != null) {
             final authProvider = ref.read(local_auth.authStateProvider.notifier);
@@ -150,20 +151,20 @@ class LoginScreen extends HookConsumerWidget {
     Future<void> handleGoogleSignIn() async {
       isLoading.value = true;
       try {
-        // Sign in to Firebase using Bexly app
-        final bexlyApp = FirebaseInitService.bexlyApp;
-        if (bexlyApp == null) {
-          throw Exception('Bexly Firebase not initialized');
+        // Sign in to Firebase using DOS-Me app (matches google-services.json)
+        final dosmeApp = FirebaseInitService.dosmeApp;
+        if (dosmeApp == null) {
+          throw Exception('DOS-Me Firebase not initialized');
         }
 
-        final bexlyFirebaseAuth = FirebaseAuth.instanceFor(app: bexlyApp);
+        final dosmeFirebaseAuth = FirebaseAuth.instanceFor(app: dosmeApp);
 
         if (kIsWeb) {
           // Web: Use Firebase signInWithPopup directly
           final googleProvider = GoogleAuthProvider();
           googleProvider.addScope('email');
           googleProvider.addScope('profile');
-          await bexlyFirebaseAuth.signInWithPopup(googleProvider);
+          await dosmeFirebaseAuth.signInWithPopup(googleProvider);
           debugPrint('Google Sign In (Web) successful');
         } else {
           // Mobile: Use google_sign_in package
@@ -187,14 +188,29 @@ class LoginScreen extends HookConsumerWidget {
             idToken: googleAuth.idToken,
           );
 
-          await bexlyFirebaseAuth.signInWithCredential(credential);
+          await dosmeFirebaseAuth.signInWithCredential(credential);
         }
 
         Log.i('Firebase authentication successful', label: 'auth');
         print('🔐 Firebase authentication successful');
 
+        // Get ID token and sync with DOS-Me API
+        final idToken = await dosmeFirebaseAuth.currentUser?.getIdToken();
+        if (idToken != null) {
+          Log.i('Syncing with DOS-Me API...', label: 'auth');
+          final dosMeApi = DosMeApiService();
+          final result = await dosMeApi.login(idToken);
+          if (result.success && result.customToken != null) {
+            // Sign in with custom token to get updated claims
+            await dosmeFirebaseAuth.signInWithCustomToken(result.customToken!);
+            Log.i('DOS-Me sync successful, signed in with custom token', label: 'auth');
+          } else {
+            Log.w('DOS-Me sync: ${result.message ?? "no custom token"}', label: 'auth');
+          }
+        }
+
         // Sync user profile from Firebase Auth to local database
-        final firebaseUser = bexlyFirebaseAuth.currentUser;
+        final firebaseUser = dosmeFirebaseAuth.currentUser;
         if (firebaseUser != null) {
           final authProvider = ref.read(local_auth.authStateProvider.notifier);
           final currentUser = authProvider.getUser();
@@ -214,7 +230,7 @@ class LoginScreen extends HookConsumerWidget {
         if (context.mounted) {
           final syncService = ref.read(cloudSyncServiceProvider);
           final localDb = ref.read(databaseProvider);
-          final userId = bexlyFirebaseAuth.currentUser?.uid;
+          final userId = dosmeFirebaseAuth.currentUser?.uid;
 
           if (userId != null) {
             Log.i('Starting initial sync for user: $userId', label: 'auth');
@@ -312,19 +328,31 @@ class LoginScreen extends HookConsumerWidget {
               accessToken.tokenString,
             );
 
-            // Sign in to Firebase using Bexly app
-            final bexlyApp = FirebaseInitService.bexlyApp;
-            if (bexlyApp == null) {
-              throw Exception('Bexly Firebase not initialized');
+            // Sign in to Firebase using DOS-Me app
+            final dosmeApp = FirebaseInitService.dosmeApp;
+            if (dosmeApp == null) {
+              throw Exception('DOS-Me Firebase not initialized');
             }
 
-            final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
-            await bexlyAuth.signInWithCredential(credential);
+            final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
+            await dosmeAuth.signInWithCredential(credential);
 
             debugPrint('Firebase authentication with Facebook successful');
 
+            // Get ID token and sync with DOS-Me API
+            final idToken = await dosmeAuth.currentUser?.getIdToken();
+            if (idToken != null) {
+              Log.i('Syncing with DOS-Me API...', label: 'auth');
+              final dosMeApi = DosMeApiService();
+              final result = await dosMeApi.login(idToken);
+              if (result.success && result.customToken != null) {
+                await dosmeAuth.signInWithCustomToken(result.customToken!);
+                Log.i('DOS-Me sync successful (Facebook)', label: 'auth');
+              }
+            }
+
             // Sync user profile from Firebase Auth
-            final firebaseUser = bexlyAuth.currentUser;
+            final firebaseUser = dosmeAuth.currentUser;
             if (firebaseUser != null) {
               final authProvider = ref.read(local_auth.authStateProvider.notifier);
               final currentUser = authProvider.getUser();
@@ -342,7 +370,7 @@ class LoginScreen extends HookConsumerWidget {
             if (context.mounted) {
               final syncService = ref.read(cloudSyncServiceProvider);
               final localDb = ref.read(databaseProvider);
-              final userId = bexlyAuth.currentUser?.uid;
+              final userId = dosmeAuth.currentUser?.uid;
 
               if (userId != null) {
                 await SyncTriggerService.triggerInitialSyncIfNeeded(
@@ -418,14 +446,14 @@ class LoginScreen extends HookConsumerWidget {
           accessToken: credential.authorizationCode,
         );
 
-        // Sign in to Firebase using Bexly app
-        final bexlyApp = FirebaseInitService.bexlyApp;
-        if (bexlyApp == null) {
-          throw Exception('Bexly Firebase not initialized');
+        // Sign in to Firebase using DOS-Me app
+        final dosmeApp = FirebaseInitService.dosmeApp;
+        if (dosmeApp == null) {
+          throw Exception('DOS-Me Firebase not initialized');
         }
 
-        final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
-        final userCredential = await bexlyAuth.signInWithCredential(authCredential);
+        final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
+        final userCredential = await dosmeAuth.signInWithCredential(authCredential);
 
         // If this is the first time, save the user info
         if (credential.email != null || credential.givenName != null) {
@@ -435,8 +463,20 @@ class LoginScreen extends HookConsumerWidget {
 
         debugPrint('Firebase authentication with Apple successful');
 
+        // Get ID token and sync with DOS-Me API
+        final idToken = await dosmeAuth.currentUser?.getIdToken();
+        if (idToken != null) {
+          Log.i('Syncing with DOS-Me API...', label: 'auth');
+          final dosMeApi = DosMeApiService();
+          final result = await dosMeApi.login(idToken);
+          if (result.success && result.customToken != null) {
+            await dosmeAuth.signInWithCustomToken(result.customToken!);
+            Log.i('DOS-Me sync successful (Apple)', label: 'auth');
+          }
+        }
+
         // Sync user profile from Firebase Auth
-        final firebaseUser = bexlyAuth.currentUser;
+        final firebaseUser = dosmeAuth.currentUser;
         if (firebaseUser != null) {
           final authProvider = ref.read(local_auth.authStateProvider.notifier);
           final currentUser = authProvider.getUser();
@@ -460,7 +500,7 @@ class LoginScreen extends HookConsumerWidget {
         if (context.mounted) {
           final syncService = ref.read(cloudSyncServiceProvider);
           final localDb = ref.read(databaseProvider);
-          final userId = bexlyAuth.currentUser?.uid;
+          final userId = dosmeAuth.currentUser?.uid;
 
           if (userId != null) {
             await SyncTriggerService.triggerInitialSyncIfNeeded(
@@ -524,9 +564,9 @@ class LoginScreen extends HookConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                   Image.asset(
-                    'assets/icon/icon-transparent-full.png',
-                    width: 100,
-                    height: 100,
+                    'assets/icon/Bexly-logo-no-bg.png',
+                    width: 80,
+                    height: 80,
                   ),
                   const Gap(16),
                   Text(

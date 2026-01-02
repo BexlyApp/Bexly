@@ -15,6 +15,7 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/features/bank_connections/riverpod/bank_connection_provider.dart';
 import 'package:bexly/features/bank_connections/data/models/linked_account_model.dart';
+import 'package:bexly/features/settings/presentation/components/bind_account_bottom_sheet.dart';
 
 class BankConnectionsScreen extends HookConsumerWidget {
   const BankConnectionsScreen({super.key});
@@ -70,14 +71,14 @@ class BankConnectionsScreen extends HookConsumerWidget {
             ),
             const Gap(AppSpacing.spacing24),
             Text(
-              'Login Required',
+              'Account Required',
               style: AppTextStyles.heading2.copyWith(
                 color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const Gap(AppSpacing.spacing12),
             Text(
-              'You need to sign in to connect your bank accounts and sync transactions securely.',
+              'You need to bind your account to connect your bank accounts and sync transactions securely.',
               textAlign: TextAlign.center,
               style: AppTextStyles.body3.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -85,8 +86,18 @@ class BankConnectionsScreen extends HookConsumerWidget {
             ),
             const Gap(AppSpacing.spacing32),
             PrimaryButton(
-              onPressed: () => context.push('/login'),
-              label: 'Sign In',
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  builder: (context) => const BindAccountBottomSheet(),
+                );
+              },
+              label: 'Bind Account',
               state: ButtonState.active,
             ),
             const Gap(AppSpacing.spacing16),

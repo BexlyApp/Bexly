@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/auth/dos_me_api_service.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
 
 enum AuthStatus {
   uninitialized,
@@ -97,14 +98,23 @@ class DOSAuthService extends Notifier<DOSAuthState> {
     }
   }
 
-  /// Sync user data with DOS-Me API (non-blocking)
+  /// Sync user data with DOS-Me API and sign in with custom token
   Future<void> _syncWithDosMeApi(String idToken) async {
     try {
       final result = await _dosMeApi.login(idToken);
       if (result.success) {
         Log.i('DOS-Me sync successful: ${result.user?.uid}', label: 'dos-auth');
-        // If custom token returned, could sign in with it for updated claims
-        // But for now we just sync user data
+
+        // Sign in with custom token if returned (updates claims)
+        if (result.customToken != null) {
+          try {
+            await _auth.signInWithCustomToken(result.customToken!);
+            Log.i('Signed in with DOS-Me custom token', label: 'dos-auth');
+          } catch (e) {
+            Log.w('Failed to sign in with custom token: $e', label: 'dos-auth');
+            // Continue anyway, initial sign-in is still valid
+          }
+        }
       } else {
         Log.w('DOS-Me sync failed: ${result.message}', label: 'dos-auth');
       }
@@ -309,7 +319,12 @@ class DOSAuthService extends Notifier<DOSAuthState> {
 
 // Providers
 final dosAuthProvider = Provider<FirebaseAuth>((ref) {
-  return FirebaseAuth.instance;
+  // Use DOS-Me Firebase app for authentication (matches google-services.json)
+  final dosmeApp = FirebaseInitService.dosmeApp;
+  if (dosmeApp == null) {
+    throw Exception('DOS-Me Firebase not initialized');
+  }
+  return FirebaseAuth.instanceFor(app: dosmeApp);
 });
 
 final dosAuthServiceProvider = NotifierProvider<DOSAuthService, DOSAuthState>(
