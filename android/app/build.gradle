@@ -51,13 +51,9 @@ android {
     }
 
     signingConfigs {
+        // Debug uses default debug keystore (SHA-1: 79:CF:10:6C:1D:4C:E7:B1:7D:6C:CF:FC:25:E5:E1:DE:18:C1:59:C7)
+        // which is registered in dos-me Firebase project
         if (keystorePropertiesFile.exists()) {
-            debug {
-                storeFile file(keystoreProperties['storeFile'])
-                storePassword keystoreProperties['storePassword']
-                keyAlias keystoreProperties['keyAlias']
-                keyPassword keystoreProperties['keyPassword']
-            }
             release {
                 storeFile file(keystoreProperties['storeFile'])
                 storePassword keystoreProperties['storePassword']
@@ -69,9 +65,7 @@ android {
 
     buildTypes {
         debug {
-            if (keystorePropertiesFile.exists()) {
-                signingConfig = signingConfigs.debug
-            }
+            // Uses default debug keystore automatically
         }
         release {
             // TODO: Add your own signing config for the release build.

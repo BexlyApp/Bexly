@@ -49,9 +49,11 @@ Future<void> main() async {
   }
 
   // Initialize Google Sign-In (google_sign_in 7.x requires explicit initialization)
-  // On Android, serverClientId is read from google-services.json automatically
+  // serverClientId must be provided explicitly for debug builds to work
   try {
-    await GoogleSignIn.instance.initialize();
+    await GoogleSignIn.instance.initialize(
+      serverClientId: '368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com',
+    );
   } catch (e) {
     print('Google Sign-In init error: $e');
     // Continue without Google Sign-In if init fails

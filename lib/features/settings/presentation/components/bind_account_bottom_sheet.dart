@@ -9,10 +9,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/services/sync/sync_trigger_service.dart';
 import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/services/auth/dos_me_api_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart' as local_auth;
 
@@ -46,18 +48,30 @@ class _BindAccountBottomSheetState extends ConsumerState<BindAccountBottomSheet>
         idToken: googleAuth.idToken,
       );
 
-      final bexlyApp = FirebaseInitService.bexlyApp;
-      if (bexlyApp == null) {
-        throw Exception('Bexly Firebase not initialized');
+      final dosmeApp = FirebaseInitService.dosmeApp;
+      if (dosmeApp == null) {
+        throw Exception('DOS-Me Firebase not initialized');
       }
 
-      final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
-      await bexlyAuth.signInWithCredential(credential);
+      final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
+      await dosmeAuth.signInWithCredential(credential);
 
       Log.i('Firebase authentication successful', label: 'auth');
 
+      // Get ID token and sync with DOS-Me API
+      final idToken = await dosmeAuth.currentUser?.getIdToken();
+      if (idToken != null) {
+        Log.i('Syncing with DOS-Me API...', label: 'auth');
+        final dosMeApi = DosMeApiService();
+        final result = await dosMeApi.login(idToken);
+        if (result.success && result.customToken != null) {
+          await dosmeAuth.signInWithCustomToken(result.customToken!);
+          Log.i('DOS-Me sync successful (Google)', label: 'auth');
+        }
+      }
+
       // Sync user profile
-      final firebaseUser = bexlyAuth.currentUser;
+      final firebaseUser = dosmeAuth.currentUser;
       if (firebaseUser != null) {
         final authProvider = ref.read(local_auth.authStateProvider.notifier);
         final currentUser = authProvider.getUser();
@@ -73,7 +87,7 @@ class _BindAccountBottomSheetState extends ConsumerState<BindAccountBottomSheet>
       if (mounted) {
         final syncService = ref.read(cloudSyncServiceProvider);
         final localDb = ref.read(databaseProvider);
-        final userId = bexlyAuth.currentUser?.uid;
+        final userId = dosmeAuth.currentUser?.uid;
 
         if (userId != null) {
           await SyncTriggerService.triggerInitialSyncIfNeeded(
@@ -132,16 +146,28 @@ class _BindAccountBottomSheetState extends ConsumerState<BindAccountBottomSheet>
             accessToken.tokenString,
           );
 
-          final bexlyApp = FirebaseInitService.bexlyApp;
-          if (bexlyApp == null) {
-            throw Exception('Bexly Firebase not initialized');
+          final dosmeApp = FirebaseInitService.dosmeApp;
+          if (dosmeApp == null) {
+            throw Exception('DOS-Me Firebase not initialized');
           }
 
-          final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
-          await bexlyAuth.signInWithCredential(credential);
+          final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
+          await dosmeAuth.signInWithCredential(credential);
+
+          // Get ID token and sync with DOS-Me API
+          final idToken = await dosmeAuth.currentUser?.getIdToken();
+          if (idToken != null) {
+            Log.i('Syncing with DOS-Me API...', label: 'auth');
+            final dosMeApi = DosMeApiService();
+            final apiResult = await dosMeApi.login(idToken);
+            if (apiResult.success && apiResult.customToken != null) {
+              await dosmeAuth.signInWithCustomToken(apiResult.customToken!);
+              Log.i('DOS-Me sync successful (Facebook)', label: 'auth');
+            }
+          }
 
           // Sync user profile
-          final firebaseUser = bexlyAuth.currentUser;
+          final firebaseUser = dosmeAuth.currentUser;
           if (firebaseUser != null) {
             final authProvider = ref.read(local_auth.authStateProvider.notifier);
             final currentUser = authProvider.getUser();
@@ -157,7 +183,7 @@ class _BindAccountBottomSheetState extends ConsumerState<BindAccountBottomSheet>
           if (mounted) {
             final syncService = ref.read(cloudSyncServiceProvider);
             final localDb = ref.read(databaseProvider);
-            final userId = bexlyAuth.currentUser?.uid;
+            final userId = dosmeAuth.currentUser?.uid;
 
             if (userId != null) {
               await SyncTriggerService.triggerInitialSyncIfNeeded(
@@ -216,16 +242,28 @@ class _BindAccountBottomSheetState extends ConsumerState<BindAccountBottomSheet>
         accessToken: credential.authorizationCode,
       );
 
-      final bexlyApp = FirebaseInitService.bexlyApp;
-      if (bexlyApp == null) {
-        throw Exception('Bexly Firebase not initialized');
+      final dosmeApp = FirebaseInitService.dosmeApp;
+      if (dosmeApp == null) {
+        throw Exception('DOS-Me Firebase not initialized');
       }
 
-      final bexlyAuth = FirebaseAuth.instanceFor(app: bexlyApp);
-      await bexlyAuth.signInWithCredential(authCredential);
+      final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
+      await dosmeAuth.signInWithCredential(authCredential);
+
+      // Get ID token and sync with DOS-Me API
+      final idToken = await dosmeAuth.currentUser?.getIdToken();
+      if (idToken != null) {
+        Log.i('Syncing with DOS-Me API...', label: 'auth');
+        final dosMeApi = DosMeApiService();
+        final apiResult = await dosMeApi.login(idToken);
+        if (apiResult.success && apiResult.customToken != null) {
+          await dosmeAuth.signInWithCustomToken(apiResult.customToken!);
+          Log.i('DOS-Me sync successful (Apple)', label: 'auth');
+        }
+      }
 
       // Sync user profile
-      final firebaseUser = bexlyAuth.currentUser;
+      final firebaseUser = dosmeAuth.currentUser;
       if (firebaseUser != null) {
         final authProvider = ref.read(local_auth.authStateProvider.notifier);
         final currentUser = authProvider.getUser();
@@ -246,7 +284,7 @@ class _BindAccountBottomSheetState extends ConsumerState<BindAccountBottomSheet>
       if (mounted) {
         final syncService = ref.read(cloudSyncServiceProvider);
         final localDb = ref.read(databaseProvider);
-        final userId = bexlyAuth.currentUser?.uid;
+        final userId = dosmeAuth.currentUser?.uid;
 
         if (userId != null) {
           await SyncTriggerService.triggerInitialSyncIfNeeded(
@@ -360,8 +398,94 @@ class _BindAccountBottomSheetState extends ConsumerState<BindAccountBottomSheet>
               onPressed: () => context.pop(),
               child: const Text('Cancel'),
             ),
+          const Gap(16),
+          const Divider(),
+          const Gap(8),
+          TextButton.icon(
+            onPressed: _isLoading ? null : _handleSwitchAccount,
+            icon: const Icon(Icons.swap_horiz, size: 20),
+            label: const Text('Switch to another account'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _handleSwitchAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Switch Account?'),
+        content: const Text(
+          'This will delete all your local data and return to the login screen. '
+          'Make sure you have synced your data before switching accounts.\n\n'
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Switch Account'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      setState(() => _isLoading = true);
+      try {
+        // Clear SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+
+        // Sign out from Firebase
+        final dosmeApp = FirebaseInitService.dosmeApp;
+        if (dosmeApp != null) {
+          final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
+          await dosmeAuth.signOut();
+        }
+
+        // Sign out from Google
+        try {
+          await GoogleSignIn.instance.signOut();
+        } catch (_) {}
+
+        // Sign out from Facebook
+        try {
+          await FacebookAuth.instance.logOut();
+        } catch (_) {}
+
+        // Clear local database
+        final db = ref.read(databaseProvider);
+        await db.clearAllDataAndReset();
+
+        if (mounted) {
+          context.pop(); // Close bottom sheet
+          context.go('/login'); // Navigate to login
+        }
+      } catch (e) {
+        if (mounted) {
+          toastification.show(
+            context: context,
+            title: const Text('Error'),
+            description: Text('Failed to switch account: $e'),
+            type: ToastificationType.error,
+            style: ToastificationStyle.fillColored,
+            autoCloseDuration: const Duration(seconds: 4),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
   }
 }
