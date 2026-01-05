@@ -1,5 +1,49 @@
 # Development Log
 
+## 2026-01-05: Bank Connections & Email Sync Improvements
+
+### Changes Made
+
+#### Bank Connections
+1. **Local Cache for Linked Accounts**
+   - Added SharedPreferences cache for linked accounts
+   - Shows cached data immediately on screen load
+   - Fetches fresh data from API in background
+   - Better UX - no loading delay when entering screen
+
+2. **Institution Icon Support**
+   - Added `institutionIcon` field to `LinkedAccount` model
+   - UI displays bank logo from Stripe when available
+   - Falls back to default bank icon if no logo
+
+3. **Disconnect Dialog → Bottom Sheet**
+   - Changed from AlertDialog to bottom sheet (consistent with app design)
+   - Added warning icon and better styling
+
+4. **Stripe Badge**
+   - Shows "Stripe" badge next to bank name to indicate provider
+
+#### Email Sync
+1. **Fixed Gmail Re-authentication Issue**
+   - Problem: "Sync Now" required login twice
+   - Root cause: `attemptLightweightAuthentication()` returned null, but code didn't call `authenticate()`
+   - Solution: Call `authenticate(scopeHint: _gmailScopes)` when lightweight auth fails
+   - Then call `authorizeScopes()` if silent authorization fails
+
+### Pending Issues
+1. **Bank Logo Not Showing**
+   - Backend needs to populate `institutionIcon` for existing accounts
+   - New accounts should get icon from Stripe's `institution.icon.default` field
+   - May need backend migration to update existing records
+
+### Related Files
+- `lib/features/bank_connections/riverpod/bank_connection_provider.dart` - Cache logic
+- `lib/features/bank_connections/data/models/linked_account_model.dart` - institutionIcon field
+- `lib/features/bank_connections/presentation/screens/bank_connections_screen.dart` - UI changes
+- `lib/features/email_sync/domain/services/gmail_api_service.dart` - Token flow fix
+
+---
+
 ## 2026-01-02: Google Sign-In Debug Build Fix
 
 ### Problem
