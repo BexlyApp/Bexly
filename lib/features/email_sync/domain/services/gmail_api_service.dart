@@ -395,18 +395,16 @@ class GmailApiService {
       final signIn = GoogleSignIn.instance;
 
       // Try lightweight auth first (similar to old signInSilently)
-      final user = await signIn.attemptLightweightAuthentication();
+      var user = await signIn.attemptLightweightAuthentication();
+
       if (user == null) {
-        Log.w('No lightweight auth, user needs to sign in', label: _label);
-        _cachedAccessToken = null;
-        _tokenExpiry = null;
-        return null;
+        // No cached session, need full authentication with scopes
+        Log.i('No lightweight auth, requesting full authentication', label: _label);
+        user = await signIn.authenticate(scopeHint: _gmailScopes);
       }
 
-      // In google_sign_in 7.x:
-      // - authorizationForScopes() returns null if UI would be needed (silent only)
-      // - authorizeScopes() shows UI if needed
-      final authorization = await user.authorizationClient.authorizationForScopes(
+      // Try silent authorization first
+      var authorization = await user.authorizationClient.authorizationForScopes(
         _gmailScopes,
       );
 
@@ -418,14 +416,16 @@ class GmailApiService {
       }
 
       // authorizationForScopes returned null, meaning UI is needed
-      // This happens when scopes haven't been granted yet
-      Log.w('No silent authorization for Gmail scopes, may need interactive auth', label: _label);
+      // This happens when scopes haven't been granted yet or token expired
+      Log.i('Silent authorization failed, requesting interactive auth', label: _label);
 
-      // Don't automatically show UI here - let the caller decide
-      // The user should use connectGmail() first to grant permissions
-      _cachedAccessToken = null;
-      _tokenExpiry = null;
-      return null;
+      // Show Google Sign-In UI to re-authorize scopes
+      final newAuth = await user.authorizationClient.authorizeScopes(_gmailScopes);
+
+      _cachedAccessToken = newAuth.accessToken;
+      _tokenExpiry = DateTime.now().add(const Duration(minutes: 50));
+      Log.i('Interactive authorization successful', label: _label);
+      return _cachedAccessToken;
     } catch (e) {
       Log.e('Error getting access token: $e', label: _label);
       _cachedAccessToken = null;

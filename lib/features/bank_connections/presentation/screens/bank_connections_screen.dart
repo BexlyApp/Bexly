@@ -270,39 +270,112 @@ class BankConnectionsScreen extends HookConsumerWidget {
   }
 
   void _showDisconnectDialog(BuildContext context, WidgetRef ref, LinkedAccount account) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Disconnect Account'),
-        content: Text(
-          'Are you sure you want to disconnect ${account.institutionName}? '
-          'Your synced transactions will remain in Bexly.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final success = await ref
-                  .read(bankConnectionProvider.notifier)
-                  .disconnectAccount(account.id);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-              if (context.mounted && success) {
-                toastification.show(
-                  context: context,
-                  type: ToastificationType.success,
-                  title: const Text('Account disconnected'),
-                  autoCloseDuration: const Duration(seconds: 3),
-                );
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: AppColors.red600),
-            child: const Text('Disconnect'),
-          ),
-        ],
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.spacing24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.neutral600 : AppColors.neutral300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Gap(AppSpacing.spacing20),
+
+            // Warning icon
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.red100,
+                shape: BoxShape.circle,
+              ),
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedAlert02,
+                color: AppColors.red600,
+                size: 32,
+              ),
+            ),
+            const Gap(AppSpacing.spacing16),
+
+            // Title
+            Text(
+              'Disconnect Account',
+              style: AppTextStyles.heading3.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const Gap(AppSpacing.spacing8),
+
+            // Description
+            Text(
+              'Are you sure you want to disconnect ${account.institutionName}? Your synced transactions will remain in Bexly.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.body3.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Gap(AppSpacing.spacing24),
+
+            // Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: PrimaryButton(
+                    onPressed: () => Navigator.pop(context),
+                    label: 'Cancel',
+                    state: ButtonState.outlinedActive,
+                  ),
+                ),
+                const Gap(AppSpacing.spacing12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      final success = await ref
+                          .read(bankConnectionProvider.notifier)
+                          .disconnectAccount(account.id);
+
+                      if (context.mounted && success) {
+                        toastification.show(
+                          context: context,
+                          type: ToastificationType.success,
+                          title: const Text('Account disconnected'),
+                          autoCloseDuration: const Duration(seconds: 3),
+                        );
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.red600,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Disconnect',
+                      style: AppTextStyles.body1.copyWith(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Gap(AppSpacing.spacing16),
+          ],
+        ),
       ),
     );
   }
@@ -518,11 +591,30 @@ class _LinkedAccountCard extends StatelessWidget {
               color: isDark ? AppColors.neutral700 : AppColors.neutral100,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: HugeIcon(
-              icon: HugeIcons.strokeRoundedBank,
-              color: Theme.of(context).colorScheme.primary,
-              size: 24,
-            ),
+            child: account.institutionIcon != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      account.institutionIcon!,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedBank,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  )
+                : Center(
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedBank,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 24,
+                    ),
+                  ),
           ),
           const Gap(AppSpacing.spacing12),
 
@@ -531,11 +623,30 @@ class _LinkedAccountCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  account.institutionName,
-                  style: AppTextStyles.body1.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      account.institutionName,
+                      style: AppTextStyles.body1.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const Gap(6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF635BFF).withValues(alpha: isDark ? 0.2 : 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Stripe',
+                        style: AppTextStyles.body5.copyWith(
+                          color: const Color(0xFF635BFF),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if (account.displayName != null || account.last4 != null) ...[
                   const Gap(2),
