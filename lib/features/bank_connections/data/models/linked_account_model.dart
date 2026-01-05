@@ -2,6 +2,7 @@
 class LinkedAccount {
   final String id;
   final String institutionName;
+  final String? institutionIcon;
   final String? displayName;
   final String? last4;
   final String? category; // checking, savings, credit_card, etc.
@@ -11,6 +12,7 @@ class LinkedAccount {
   const LinkedAccount({
     required this.id,
     required this.institutionName,
+    this.institutionIcon,
     this.displayName,
     this.last4,
     this.category,
@@ -22,6 +24,7 @@ class LinkedAccount {
     return LinkedAccount(
       id: json['id'] as String,
       institutionName: json['institutionName'] as String,
+      institutionIcon: json['institutionIcon'] as String?,
       displayName: json['displayName'] as String?,
       last4: json['last4'] as String?,
       category: json['category'] as String?,
@@ -36,6 +39,7 @@ class LinkedAccount {
     return {
       'id': id,
       'institutionName': institutionName,
+      'institutionIcon': institutionIcon,
       'displayName': displayName,
       'last4': last4,
       'category': category,
@@ -47,6 +51,7 @@ class LinkedAccount {
   LinkedAccount copyWith({
     String? id,
     String? institutionName,
+    String? institutionIcon,
     String? displayName,
     String? last4,
     String? category,
@@ -56,6 +61,7 @@ class LinkedAccount {
     return LinkedAccount(
       id: id ?? this.id,
       institutionName: institutionName ?? this.institutionName,
+      institutionIcon: institutionIcon ?? this.institutionIcon,
       displayName: displayName ?? this.displayName,
       last4: last4 ?? this.last4,
       category: category ?? this.category,
