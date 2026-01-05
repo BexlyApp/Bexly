@@ -14,24 +14,28 @@ extension DoubleFormattingExtensions on double {
   /// - `412340.0` becomes `"412,340"` (auto or decimalDigits: 0)
   /// - `111762340.75` with decimalDigits: 0 becomes `"111,762,341"` (rounded)
   String toPriceFormat({String locale = 'en_US', int? decimalDigits}) {
+    // Handle negative zero (-0.0) and very small values near zero
+    // If value rounds to 0 when displayed, show as positive 0
+    final value = abs() < 0.005 ? 0.0 : this;
+
     // If decimalDigits is explicitly provided, use it
     if (decimalDigits != null) {
       if (decimalDigits == 0) {
         // Round to nearest integer and format without decimals
-        return NumberFormat("#,##0", locale).format(round());
+        return NumberFormat("#,##0", locale).format(value.round());
       } else {
         // Format with specified decimal places
-        return NumberFormat("#,##0.${'0' * decimalDigits}", locale).format(this);
+        return NumberFormat("#,##0.${'0' * decimalDigits}", locale).format(value);
       }
     }
 
     // Auto-detect: check if the double is effectively an integer (e.g., 123.0)
-    if (this % 1 == 0) {
+    if (value % 1 == 0) {
       // Format as an integer with thousand separators
-      return NumberFormat("#,##0", locale).format(this);
+      return NumberFormat("#,##0", locale).format(value);
     } else {
       // Format with two decimal places and thousand separators
-      return NumberFormat("#,##0.00", locale).format(this);
+      return NumberFormat("#,##0.00", locale).format(value);
     }
   }
 

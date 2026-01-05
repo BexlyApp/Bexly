@@ -25,6 +25,10 @@ abstract class WalletModel with _$WalletModel {
     /// The current balance of the wallet.
     @Default(0.0) double balance,
 
+    /// Initial balance when wallet was created (for tracking purposes)
+    /// This value should never change after wallet creation
+    @Default(0.0) double initialBalance,
+
     /// The currency code for the wallet's balance (e.g., "USD", "EUR", "NGN").
     @Default('IDR') String currency,
 

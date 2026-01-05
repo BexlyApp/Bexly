@@ -14,24 +14,27 @@ class StripeService {
     }
 
     final publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';
+    Log.d('STRIPE_PUBLISHABLE_KEY length: ${publishableKey.length}, isEmpty: ${publishableKey.isEmpty}', label: 'Stripe');
 
     if (publishableKey.isEmpty || publishableKey.contains('your_')) {
-      Log.w('Stripe publishable key not configured', label: 'Stripe');
+      Log.w('Stripe publishable key not configured or invalid', label: 'Stripe');
       return;
     }
 
     try {
+      Log.d('Setting Stripe publishable key...', label: 'Stripe');
       Stripe.publishableKey = publishableKey;
 
-      // Optional: Set merchant identifier for Apple Pay
-      // Stripe.merchantIdentifier = 'merchant.com.bexly';
-
+      Log.d('Applying Stripe settings...', label: 'Stripe');
       await Stripe.instance.applySettings();
-      _initialized = true;
 
-      Log.d('Stripe initialized successfully', label: 'Stripe');
-    } catch (e) {
+      _initialized = true;
+      Log.i('Stripe initialized successfully', label: 'Stripe');
+    } catch (e, stackTrace) {
       Log.e('Failed to initialize Stripe: $e', label: 'Stripe');
+      Log.e('Stack trace: $stackTrace', label: 'Stripe');
+      // Still mark as initialized so we can show proper error
+      _initialized = true;
     }
   }
 

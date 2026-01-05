@@ -1,6 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:bexly/core/services/notification_service.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:drift/drift.dart';
@@ -192,7 +193,11 @@ class FirebaseMessagingService {
     }
 
     try {
-      await FirebaseFirestore.instance
+      final firestore = FirebaseFirestore.instanceFor(
+        app: FirebaseInitService.bexlyApp,
+        databaseId: 'bexly',
+      );
+      await firestore
           .collection('users')
           .doc(userId)
           .set({
@@ -223,7 +228,11 @@ class FirebaseMessagingService {
   /// Delete FCM token from Firestore (for logout)
   static Future<void> deleteTokenFromFirestore(String userId) async {
     try {
-      await FirebaseFirestore.instance
+      final firestore = FirebaseFirestore.instanceFor(
+        app: FirebaseInitService.bexlyApp,
+        databaseId: 'bexly',
+      );
+      await firestore
           .collection('users')
           .doc(userId)
           .update({

@@ -13,6 +13,11 @@ class Wallets extends Table {
 
   TextColumn get name => text().withDefault(const Constant('My Wallet')).unique()();
   RealColumn get balance => real().withDefault(const Constant(0.0))();
+
+  /// Initial balance when wallet was created (for tracking purposes)
+  /// This value should never change after wallet creation
+  RealColumn get initialBalance => real().withDefault(const Constant(0.0))();
+
   TextColumn get currency => text().withDefault(const Constant('IDR'))();
   TextColumn get iconName => text().nullable()();
   TextColumn get colorHex => text().nullable()();
@@ -49,6 +54,7 @@ extension WalletExtension on Wallet {
       cloudId: json['cloudId'] as String?,
       name: json['name'] as String,
       balance: json['balance'] as double,
+      initialBalance: json['initialBalance'] as double? ?? 0.0,
       currency: json['currency'] as String,
       iconName: json['iconName'] as String?,
       colorHex: json['colorHex'] as String?,
@@ -71,6 +77,7 @@ extension WalletTableExtensions on Wallet {
       cloudId: cloudId,
       name: name,
       balance: balance,
+      initialBalance: initialBalance,
       currency: currency,
       iconName: iconName,
       colorHex: colorHex,
@@ -97,6 +104,7 @@ extension WalletModelExtensions on WalletModel {
       cloudId: cloudId == null ? const Value.absent() : Value(cloudId),
       name: Value(name),
       balance: Value(balance),
+      initialBalance: Value(initialBalance),
       currency: Value(currency),
       iconName: Value(iconName),
       colorHex: Value(colorHex),
