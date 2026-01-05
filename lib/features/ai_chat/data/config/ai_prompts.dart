@@ -99,19 +99,24 @@ Shorthand notation (CONTEXT-AWARE):
 Determine currency for "k" notation (SMART INFERENCE):
 
 ⚠️ CRITICAL CURRENCY CONFIRMATION RULES:
-1. Vietnamese input + "k" + VND wallet → VND (no confirmation needed)
-   - "ăn sáng 150k" + VND wallet → 150,000 VND ✅
-   - "mua laptop 15tr" + VND wallet → 15,000,000 VND ✅
 
-2. Vietnamese input + "k" + USD wallet → MUST CONFIRM! (wallet mismatch)
-   - "ăn tối 150k" + USD wallet → ❓ ASK: "Bạn đang dùng ví USD. 150k là 150,000 VND hay 150,000 USD?"
-   - Response must include options for user to choose
-   - DO NOT auto-create transaction without confirmation!
+1. User specifies wallet explicitly → Use THAT WALLET's currency (no confirmation!)
+   - "ăn sáng 50k ví My VND" + any default → 50,000 VND ✅
+   - "lunch 50k on USD wallet" + any default → 50,000 USD ✅
+   - Explicit wallet overrides everything!
 
-3. English input + "k" → ALWAYS CONFIRM regardless of wallet!
-   - "lunch 50k" + ANY wallet → ❓ ASK: "Do you mean 50,000 VND or 50,000 USD?"
-   - "dinner 150k" → ❓ ASK: "Is that 150,000 VND or 150,000 USD?"
-   - NEVER assume currency for English input with "k" notation!
+2. Language MATCHES default wallet currency → Use default currency (no confirmation!)
+   - Default USD + English "lunch 50k" → 50,000 USD ✅ (check sanity if unreasonable)
+   - Default VND + Vietnamese "ăn sáng 50k" → 50,000 VND ✅
+   - Default CNY + Chinese "午餐 50k" → 50,000 CNY ✅
+   - Default JPY + Japanese "ランチ 50k" → 50,000 JPY ✅
+   - Language-currency mapping: English↔USD, Vietnamese↔VND, Chinese↔CNY, Japanese↔JPY, Korean↔KRW, Thai↔THB
+
+3. Language DIFFERS from default wallet currency → MUST CONFIRM!
+   - Default USD + Vietnamese "ăn sáng 50k" → ❓ "VND hay USD?"
+   - Default VND + English "lunch 50k" → ❓ "VND or USD?"
+   - Default USD + Chinese "午餐 50k" → ❓ "CNY or USD?"
+   - User chose wallet in one currency but speaks another language = ambiguous!
 
 4. Explicit currency symbol/word ALWAYS wins → NEVER ask confirmation!
    - "\$100" → 100 USD ✅ (\$ symbol = USD, auto-create!)
@@ -380,21 +385,21 @@ User: "265tr"
 OUT: ✅ Đã ghi nhận chi tiêu **265,000,000 VND** cho **card đồ họa** (**Electronics**)
 ACTION_JSON: {"action":"create_expense","amount":265000000,"currency":"VND","description":"Graphics card","category":"Electronics"}
 
-IN: "Ăn sáng 55k" (wallet uses USD) [Vietnamese input + USD wallet → MUST CONFIRM]
+IN: "Ăn sáng 55k" (default wallet USD) [Vietnamese + USD wallet → language differs from currency → CONFIRM]
 OUT: ❓ Bạn đang dùng ví **USD**. 55k là **55,000 VND** hay **55,000 USD**?
 (no ACTION_JSON - waiting for currency confirmation)
 
 User: "VND"
-OUT: ✅ Đã ghi nhận chi tiêu **55,000 VND** (Quy đổi: 55,000 đ → \$2.09) cho **bữa sáng** (**Food & Drinks**) vào ví **My Wallet**
+OUT: ✅ Đã ghi nhận chi tiêu **55,000 VND** (quy đổi thành \$2.09 USD) cho **bữa sáng** (**Food & Drinks**) vào ví **My Wallet**
 ACTION_JSON: {"action":"create_expense","amount":55000,"currency":"VND","description":"Ăn sáng","category":"Food & Drinks"}
 
-IN: "breakfast 55k" (wallet uses USD) [English input + "k" → MUST CONFIRM]
-OUT: ❓ Do you mean **55,000 VND** or **55,000 USD** for breakfast?
-(no ACTION_JSON - waiting for currency confirmation)
+IN: "breakfast 55k" (default wallet USD) [English + USD wallet → language matches currency → use USD, but sanity check!]
+OUT: ❓ \$55,000 USD for breakfast seems very high. Did you mean a different amount?
+(no ACTION_JSON - waiting for confirmation due to unreasonable amount)
 
-User: "VND"
-OUT: ✅ Recorded expense **55,000 VND** (Converted: 55,000 VND → \$2.09) for **breakfast** (**Food & Drinks**) to wallet **My Wallet**
-ACTION_JSON: {"action":"create_expense","amount":55000,"currency":"VND","description":"breakfast","category":"Food & Drinks"}
+IN: "ăn sáng 55k ví My VND" (default wallet USD) [explicit wallet specified → use that wallet's currency]
+OUT: ✅ Đã ghi nhận chi tiêu **55,000 VND** cho **bữa sáng** (**Food & Drinks**) vào ví **My VND**
+ACTION_JSON: {"action":"create_expense","amount":55000,"currency":"VND","description":"Ăn sáng","category":"Food & Drinks","wallet":"My VND"}
 
 IN: "Ăn sáng 55k" (wallet uses VND) [Vietnamese input + VND wallet → NO confirmation needed]
 OUT: ✅ Đã ghi nhận chi tiêu **55,000 VND** cho **bữa sáng** (**Food & Drinks**) vào ví **My Wallet**
@@ -412,21 +417,21 @@ IN: "lunch 10AM yesterday 100k VND" [explicit time overrides meal default]
 OUT: ✅ Recorded expense **100,000 VND** for **lunch** (**Food & Drinks**) on yesterday at 10:00
 ACTION_JSON: {"action":"create_expense","amount":100000,"currency":"VND","description":"Lunch","category":"Food & Drinks","date":"[YESTERDAY]","time":"10:00"}
 
-IN: "ăn tối hôm qua 150k" (wallet uses USD) [Vietnamese + USD wallet → MUST CONFIRM]
+IN: "ăn tối hôm qua 150k" (default wallet USD) [Vietnamese + USD → language differs → CONFIRM]
 OUT: ❓ Bạn đang dùng ví **USD**. 150k là **150,000 VND** hay **150,000 USD**?
 (no ACTION_JSON - waiting for currency confirmation)
 
-IN: "dinner yesterday 50k" [English + "k" → MUST CONFIRM regardless of wallet]
-OUT: ❓ Do you mean **50,000 VND** or **50,000 USD** for dinner yesterday?
+IN: "dinner yesterday 50k" (default wallet USD) [English + USD → language matches → use USD, but sanity check!]
+OUT: ❓ \$50,000 USD for dinner seems very high. Did you mean a different amount?
+(no ACTION_JSON - waiting for confirmation due to unreasonable amount)
+
+IN: "dinner yesterday 50k" (default wallet VND) [English + VND → language differs → CONFIRM]
+OUT: ❓ You're using a **VND** wallet. Is 50k **50,000 VND** or **50,000 USD**?
 (no ACTION_JSON - waiting for currency confirmation)
 
-IN: "Netflix 300k hàng tháng từ hôm nay" (wallet uses USD) [Vietnamese + USD wallet → MUST CONFIRM]
+IN: "Netflix 300k hàng tháng từ hôm nay" (default wallet USD) [Vietnamese + USD → language differs → CONFIRM]
 OUT: ❓ Bạn đang dùng ví **USD**. 300k là **300,000 VND** hay **300,000 USD**?
 (no ACTION_JSON - waiting for currency confirmation)
-
-User: "VND"
-OUT: ✅ Đã ghi nhận chi tiêu định kỳ **300,000 VND** (Quy đổi: 300,000 đ → \$11.40) cho **Netflix** (**Streaming**) vào ví **My Wallet**. Sẽ tự động trừ tiền hàng tháng từ hôm nay
-ACTION_JSON: {"action":"create_recurring","name":"Netflix","amount":300000,"currency":"VND","category":"Streaming","frequency":"monthly","nextDueDate":"[TODAY]","autoCreate":true}
 
 IN: "Netflix 300k hàng tháng" (wallet uses VND) [Vietnamese + VND wallet → no confirm needed]
 OUT: ✅ Đã ghi nhận chi tiêu định kỳ **300,000 VND** cho **Netflix** (**Streaming**) vào ví **My Wallet**. Sẽ tự động trừ tiền hàng tháng từ hôm nay

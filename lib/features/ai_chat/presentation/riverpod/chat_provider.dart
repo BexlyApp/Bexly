@@ -329,6 +329,9 @@ class ChatNotifier extends Notifier<ChatState> {
   bool _usingFallback = false;
   String? _fallbackModelName;
 
+  // Cache fallback Gemini service to preserve conversation history
+  GeminiService? _fallbackGeminiService;
+
   /// Send message with fallback: Try DOS AI first, fallback to Gemini if fails
   Future<String> _sendMessageWithFallback(String message) async {
     final selectedModel = ref.read(aiModelProvider);
@@ -345,14 +348,23 @@ class ChatNotifier extends Notifier<ChatState> {
         Log.w('⚠️ DOS AI failed: $e, falling back to Gemini...', label: 'AI_FALLBACK');
         _usingFallback = true;
 
-        // Create Gemini service for fallback
-        final geminiService = _createFallbackGeminiService();
+        // Get or create cached fallback service (preserves conversation history)
+        final geminiService = _getOrCreateFallbackGeminiService();
         _fallbackModelName = geminiService.modelName;
 
-        // Copy context from primary service
+        // Update context for current wallet
+        final activeWallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+        final allWalletsAsync = ref.read(allWalletsStreamProvider);
+        final allWallets = _unwrapAsyncValue(allWalletsAsync) ?? [];
+        final walletNames = allWallets.map((w) => '${w.name} (${w.currency}, ${w.walletType.displayName})').toList();
+        final exchangeRateCache = ref.read(exchangeRateCacheProvider);
+        final cachedRate = exchangeRateCache['VND_USD'];
+
         geminiService.updateContext(
-          walletName: _aiService is CustomLLMService ? (_aiService as CustomLLMService).walletName : null,
-          walletCurrency: _aiService is CustomLLMService ? (_aiService as CustomLLMService).walletCurrency : null,
+          walletName: activeWallet?.name,
+          walletCurrency: activeWallet?.currency,
+          wallets: walletNames,
+          exchangeRate: cachedRate?.rate,
         );
 
         Log.d('✅ Using Gemini fallback: ${geminiService.modelName}', label: 'AI_FALLBACK');
@@ -366,8 +378,12 @@ class ChatNotifier extends Notifier<ChatState> {
     return await _aiService.sendMessage(message);
   }
 
-  /// Create Gemini service for fallback
-  GeminiService _createFallbackGeminiService() {
+  /// Get or create cached fallback Gemini service (preserves conversation history)
+  GeminiService _getOrCreateFallbackGeminiService() {
+    if (_fallbackGeminiService != null) {
+      return _fallbackGeminiService!;
+    }
+
     final categoriesAsync = ref.read(hierarchicalCategoriesProvider);
     final categories = categoriesAsync.when(
       data: (cats) => cats.expand((c) {
@@ -380,11 +396,13 @@ class ChatNotifier extends Notifier<ChatState> {
       error: (_, _) => <String>[],
     );
 
-    return GeminiService(
+    _fallbackGeminiService = GeminiService(
       apiKey: LLMDefaultConfig.geminiApiKey,
       model: LLMDefaultConfig.geminiModel,
       categories: categories,
     );
+
+    return _fallbackGeminiService!;
   }
 
   /// Get the actual model name used (considering fallback)
@@ -514,19 +532,32 @@ class ChatNotifier extends Notifier<ChatState> {
 
     // Sync to cloud (if authenticated)
     // Don't sync typing messages or welcome messages
+    // Use fire-and-forget with timeout to prevent blocking
     if (shouldSync && !message.isTyping) {
-      final syncService = ref.read(chatMessageSyncServiceProvider);
-      final dbMessage = db.ChatMessage(
-        id: 0, // Not used for Firestore sync
-        messageId: message.id,
-        content: message.content,
-        isFromUser: message.isFromUser,
-        timestamp: message.timestamp,
-        error: message.error,
-        isTyping: message.isTyping,
-        createdAt: message.timestamp,
-      );
-      await syncService.syncMessage(dbMessage);
+      try {
+        final syncService = ref.read(chatMessageSyncServiceProvider);
+        final dbMessage = db.ChatMessage(
+          id: 0, // Not used for Firestore sync
+          messageId: message.id,
+          content: message.content,
+          isFromUser: message.isFromUser,
+          timestamp: message.timestamp,
+          error: message.error,
+          isTyping: message.isTyping,
+          createdAt: message.timestamp,
+        );
+        // Don't await - fire and forget to prevent blocking
+        syncService.syncMessage(dbMessage).timeout(
+          const Duration(seconds: 3),
+          onTimeout: () {
+            print('[CHAT_SYNC] Sync timeout, continuing without sync');
+          },
+        ).catchError((e) {
+          print('[CHAT_SYNC] Sync failed: $e');
+        });
+      } catch (e) {
+        print('[CHAT_SYNC] Sync error: $e');
+      }
     }
   }
 
@@ -1399,6 +1430,8 @@ Please create a transaction based on this receipt data.''';
 
     // Clear AI conversation history
     _aiService.clearHistory();
+    _fallbackGeminiService?.clearHistory();
+    _fallbackGeminiService = null; // Reset fallback service
     Log.d('AI conversation history cleared', label: 'Chat Provider');
 
     // Reset state
@@ -1680,21 +1713,23 @@ Please create a transaction based on this receipt data.''';
         }
       }
 
-      // Adjust wallet balance
-      Log.d('Adjusting wallet balance...', label: 'TRANSACTION_DEBUG');
-      await _adjustWalletBalanceAfterCreate(transaction);
-      Log.d('Wallet balance adjusted', label: 'TRANSACTION_DEBUG');
+      // NOTE: Wallet balance is already adjusted inside transactionDao.addTransaction()
+      // Do NOT call _adjustWalletBalanceAfterCreate() here - it would cause double deduction!
+      Log.d('Wallet balance already adjusted by DAO', label: 'TRANSACTION_DEBUG');
 
-      // IMPORTANT: Force refresh transaction providers to update UI
-      // This ensures the transaction list is refreshed after insert
-      Log.d('Forcing transaction provider refresh...', label: 'TRANSACTION_DEBUG');
+      // IMPORTANT: Force refresh providers to update UI
+      // This ensures the transaction list and wallet balance are refreshed after insert
+      Log.d('Forcing provider refresh...', label: 'TRANSACTION_DEBUG');
 
-      // Invalidate both transaction providers to update UI
-      // Wallet balance is already updated via _adjustWalletBalanceAfterCreate
+      // Invalidate transaction providers
       ref.invalidate(transactionListProvider);
       ref.invalidate(allTransactionsProvider);
 
-      Log.d('Transaction list provider invalidated, UI should update', label: 'TRANSACTION_DEBUG');
+      // Invalidate wallet providers to refresh balance in UI (dashboard, wallet selector, etc.)
+      ref.invalidate(activeWalletProvider);
+      ref.invalidate(allWalletsStreamProvider);
+
+      Log.d('Transaction and wallet providers invalidated, UI should update', label: 'TRANSACTION_DEBUG');
 
       // Note: Success message is NOT added here because AI already provides
       // natural language confirmation in its response (e.g., "Đã ghi nhận chi tiêu...")
@@ -2256,25 +2291,6 @@ Please create a transaction based on this receipt data.''';
     }
   }
 
-  Future<void> _adjustWalletBalanceAfterCreate(TransactionModel newTransaction) async {
-    try {
-      final walletDao = ref.read(walletDaoProvider);
-      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
-      if (wallet == null || wallet.id == null) return;
-      double balanceChange = 0.0;
-      if (newTransaction.transactionType == TransactionType.income) {
-        balanceChange += newTransaction.amount;
-      } else if (newTransaction.transactionType == TransactionType.expense) {
-        balanceChange -= newTransaction.amount;
-      }
-      final updatedWallet = wallet.copyWith(balance: wallet.balance + balanceChange);
-      await walletDao.updateWallet(updatedWallet);
-      ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
-    } catch (e) {
-      Log.e('adjust wallet after create failed: $e', label: 'Chat Provider');
-    }
-  }
-
   Future<String> _updateTransactionFromAction(Map<String, dynamic> action) async {
     try {
       final transactionId = (action['transactionId'] as num).toInt();
@@ -2760,18 +2776,25 @@ Please create a transaction based on this receipt data.''';
   /// Update AI service with recent transactions context
   Future<void> _updateRecentTransactionsContext() async {
     try {
+      print('[AI_CONTEXT] _updateRecentTransactionsContext START');
       final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       if (wallet == null || wallet.id == null) {
+        print('[AI_CONTEXT] No active wallet, skipping');
         Log.d('No active wallet or wallet ID is null, skipping transaction context update', label: 'Chat Provider');
         return;
       }
 
+      print('[AI_CONTEXT] Getting transactions for wallet: ${wallet.id}');
       // Get recent 10 transactions
       final db = ref.read(databaseProvider);
       final transactions = await db.transactionDao.watchFilteredTransactionsWithDetails(
         walletId: wallet.id!,
         filter: null,
-      ).first;
+      ).first.timeout(const Duration(seconds: 5), onTimeout: () {
+        print('[AI_CONTEXT] Transaction fetch TIMEOUT');
+        return [];
+      });
+      print('[AI_CONTEXT] Got ${transactions.length} transactions');
 
       // Take only the 10 most recent
       final recentTransactions = transactions.take(10).toList();
@@ -3019,12 +3042,21 @@ Please create a transaction based on this receipt data.''';
   /// Update AI with current budgets context
   Future<void> _updateBudgetsContext() async {
     try {
-      final budgets = await ref.read(budgetListProvider.future);
+      print('[AI_CONTEXT] _updateBudgetsContext START');
+      final budgets = await ref.read(budgetListProvider.future).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          print('[AI_CONTEXT] Budget fetch TIMEOUT');
+          return [];
+        },
+      );
+      print('[AI_CONTEXT] Got ${budgets.length} budgets');
       final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       final currency = wallet?.currency ?? 'VND';
 
       if (budgets.isEmpty) {
         _aiService.updateBudgetsContext('');
+        print('[AI_CONTEXT] _updateBudgetsContext END (empty)');
         return;
       }
 

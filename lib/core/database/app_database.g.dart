@@ -2538,6 +2538,18 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0.0),
   );
+  static const VerificationMeta _initialBalanceMeta = const VerificationMeta(
+    'initialBalance',
+  );
+  @override
+  late final GeneratedColumn<double> initialBalance = GeneratedColumn<double>(
+    'initial_balance',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
   static const VerificationMeta _currencyMeta = const VerificationMeta(
     'currency',
   );
@@ -2673,6 +2685,7 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
     cloudId,
     name,
     balance,
+    initialBalance,
     currency,
     iconName,
     colorHex,
@@ -2716,6 +2729,15 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
       context.handle(
         _balanceMeta,
         balance.isAcceptableOrUnknown(data['balance']!, _balanceMeta),
+      );
+    }
+    if (data.containsKey('initial_balance')) {
+      context.handle(
+        _initialBalanceMeta,
+        initialBalance.isAcceptableOrUnknown(
+          data['initial_balance']!,
+          _initialBalanceMeta,
+        ),
       );
     }
     if (data.containsKey('currency')) {
@@ -2818,6 +2840,10 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
         DriftSqlType.double,
         data['${effectivePrefix}balance'],
       )!,
+      initialBalance: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}initial_balance'],
+      )!,
       currency: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}currency'],
@@ -2879,6 +2905,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
   final String? cloudId;
   final String name;
   final double balance;
+
+  /// Initial balance when wallet was created (for tracking purposes)
+  /// This value should never change after wallet creation
+  final double initialBalance;
   final String currency;
   final String? iconName;
   final String? colorHex;
@@ -2908,6 +2938,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     this.cloudId,
     required this.name,
     required this.balance,
+    required this.initialBalance,
     required this.currency,
     this.iconName,
     this.colorHex,
@@ -2929,6 +2960,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     }
     map['name'] = Variable<String>(name);
     map['balance'] = Variable<double>(balance);
+    map['initial_balance'] = Variable<double>(initialBalance);
     map['currency'] = Variable<String>(currency);
     if (!nullToAbsent || iconName != null) {
       map['icon_name'] = Variable<String>(iconName);
@@ -2963,6 +2995,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           : Value(cloudId),
       name: Value(name),
       balance: Value(balance),
+      initialBalance: Value(initialBalance),
       currency: Value(currency),
       iconName: iconName == null && nullToAbsent
           ? const Value.absent()
@@ -2999,6 +3032,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       cloudId: serializer.fromJson<String?>(json['cloudId']),
       name: serializer.fromJson<String>(json['name']),
       balance: serializer.fromJson<double>(json['balance']),
+      initialBalance: serializer.fromJson<double>(json['initialBalance']),
       currency: serializer.fromJson<String>(json['currency']),
       iconName: serializer.fromJson<String?>(json['iconName']),
       colorHex: serializer.fromJson<String?>(json['colorHex']),
@@ -3020,6 +3054,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       'cloudId': serializer.toJson<String?>(cloudId),
       'name': serializer.toJson<String>(name),
       'balance': serializer.toJson<double>(balance),
+      'initialBalance': serializer.toJson<double>(initialBalance),
       'currency': serializer.toJson<String>(currency),
       'iconName': serializer.toJson<String?>(iconName),
       'colorHex': serializer.toJson<String?>(colorHex),
@@ -3039,6 +3074,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     Value<String?> cloudId = const Value.absent(),
     String? name,
     double? balance,
+    double? initialBalance,
     String? currency,
     Value<String?> iconName = const Value.absent(),
     Value<String?> colorHex = const Value.absent(),
@@ -3055,6 +3091,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     cloudId: cloudId.present ? cloudId.value : this.cloudId,
     name: name ?? this.name,
     balance: balance ?? this.balance,
+    initialBalance: initialBalance ?? this.initialBalance,
     currency: currency ?? this.currency,
     iconName: iconName.present ? iconName.value : this.iconName,
     colorHex: colorHex.present ? colorHex.value : this.colorHex,
@@ -3073,6 +3110,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
       name: data.name.present ? data.name.value : this.name,
       balance: data.balance.present ? data.balance.value : this.balance,
+      initialBalance: data.initialBalance.present
+          ? data.initialBalance.value
+          : this.initialBalance,
       currency: data.currency.present ? data.currency.value : this.currency,
       iconName: data.iconName.present ? data.iconName.value : this.iconName,
       colorHex: data.colorHex.present ? data.colorHex.value : this.colorHex,
@@ -3104,6 +3144,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           ..write('cloudId: $cloudId, ')
           ..write('name: $name, ')
           ..write('balance: $balance, ')
+          ..write('initialBalance: $initialBalance, ')
           ..write('currency: $currency, ')
           ..write('iconName: $iconName, ')
           ..write('colorHex: $colorHex, ')
@@ -3125,6 +3166,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     cloudId,
     name,
     balance,
+    initialBalance,
     currency,
     iconName,
     colorHex,
@@ -3145,6 +3187,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           other.cloudId == this.cloudId &&
           other.name == this.name &&
           other.balance == this.balance &&
+          other.initialBalance == this.initialBalance &&
           other.currency == this.currency &&
           other.iconName == this.iconName &&
           other.colorHex == this.colorHex &&
@@ -3163,6 +3206,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
   final Value<String?> cloudId;
   final Value<String> name;
   final Value<double> balance;
+  final Value<double> initialBalance;
   final Value<String> currency;
   final Value<String?> iconName;
   final Value<String?> colorHex;
@@ -3179,6 +3223,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.cloudId = const Value.absent(),
     this.name = const Value.absent(),
     this.balance = const Value.absent(),
+    this.initialBalance = const Value.absent(),
     this.currency = const Value.absent(),
     this.iconName = const Value.absent(),
     this.colorHex = const Value.absent(),
@@ -3196,6 +3241,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.cloudId = const Value.absent(),
     this.name = const Value.absent(),
     this.balance = const Value.absent(),
+    this.initialBalance = const Value.absent(),
     this.currency = const Value.absent(),
     this.iconName = const Value.absent(),
     this.colorHex = const Value.absent(),
@@ -3213,6 +3259,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     Expression<String>? cloudId,
     Expression<String>? name,
     Expression<double>? balance,
+    Expression<double>? initialBalance,
     Expression<String>? currency,
     Expression<String>? iconName,
     Expression<String>? colorHex,
@@ -3230,6 +3277,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       if (cloudId != null) 'cloud_id': cloudId,
       if (name != null) 'name': name,
       if (balance != null) 'balance': balance,
+      if (initialBalance != null) 'initial_balance': initialBalance,
       if (currency != null) 'currency': currency,
       if (iconName != null) 'icon_name': iconName,
       if (colorHex != null) 'color_hex': colorHex,
@@ -3249,6 +3297,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     Value<String?>? cloudId,
     Value<String>? name,
     Value<double>? balance,
+    Value<double>? initialBalance,
     Value<String>? currency,
     Value<String?>? iconName,
     Value<String?>? colorHex,
@@ -3266,6 +3315,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       cloudId: cloudId ?? this.cloudId,
       name: name ?? this.name,
       balance: balance ?? this.balance,
+      initialBalance: initialBalance ?? this.initialBalance,
       currency: currency ?? this.currency,
       iconName: iconName ?? this.iconName,
       colorHex: colorHex ?? this.colorHex,
@@ -3294,6 +3344,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     }
     if (balance.present) {
       map['balance'] = Variable<double>(balance.value);
+    }
+    if (initialBalance.present) {
+      map['initial_balance'] = Variable<double>(initialBalance.value);
     }
     if (currency.present) {
       map['currency'] = Variable<String>(currency.value);
@@ -3338,6 +3391,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
           ..write('cloudId: $cloudId, ')
           ..write('name: $name, ')
           ..write('balance: $balance, ')
+          ..write('initialBalance: $initialBalance, ')
           ..write('currency: $currency, ')
           ..write('iconName: $iconName, ')
           ..write('colorHex: $colorHex, ')
@@ -13435,6 +13489,7 @@ typedef $$WalletsTableCreateCompanionBuilder =
       Value<String?> cloudId,
       Value<String> name,
       Value<double> balance,
+      Value<double> initialBalance,
       Value<String> currency,
       Value<String?> iconName,
       Value<String?> colorHex,
@@ -13453,6 +13508,7 @@ typedef $$WalletsTableUpdateCompanionBuilder =
       Value<String?> cloudId,
       Value<String> name,
       Value<double> balance,
+      Value<double> initialBalance,
       Value<String> currency,
       Value<String?> iconName,
       Value<String?> colorHex,
@@ -13570,6 +13626,11 @@ class $$WalletsTableFilterComposer
 
   ColumnFilters<double> get balance => $composableBuilder(
     column: $table.balance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get initialBalance => $composableBuilder(
+    column: $table.initialBalance,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13758,6 +13819,11 @@ class $$WalletsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get initialBalance => $composableBuilder(
+    column: $table.initialBalance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get currency => $composableBuilder(
     column: $table.currency,
     builder: (column) => ColumnOrderings(column),
@@ -13834,6 +13900,11 @@ class $$WalletsTableAnnotationComposer
 
   GeneratedColumn<double> get balance =>
       $composableBuilder(column: $table.balance, builder: (column) => column);
+
+  GeneratedColumn<double> get initialBalance => $composableBuilder(
+    column: $table.initialBalance,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get currency =>
       $composableBuilder(column: $table.currency, builder: (column) => column);
@@ -14016,6 +14087,7 @@ class $$WalletsTableTableManager
                 Value<String?> cloudId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<double> balance = const Value.absent(),
+                Value<double> initialBalance = const Value.absent(),
                 Value<String> currency = const Value.absent(),
                 Value<String?> iconName = const Value.absent(),
                 Value<String?> colorHex = const Value.absent(),
@@ -14032,6 +14104,7 @@ class $$WalletsTableTableManager
                 cloudId: cloudId,
                 name: name,
                 balance: balance,
+                initialBalance: initialBalance,
                 currency: currency,
                 iconName: iconName,
                 colorHex: colorHex,
@@ -14050,6 +14123,7 @@ class $$WalletsTableTableManager
                 Value<String?> cloudId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<double> balance = const Value.absent(),
+                Value<double> initialBalance = const Value.absent(),
                 Value<String> currency = const Value.absent(),
                 Value<String?> iconName = const Value.absent(),
                 Value<String?> colorHex = const Value.absent(),
@@ -14066,6 +14140,7 @@ class $$WalletsTableTableManager
                 cloudId: cloudId,
                 name: name,
                 balance: balance,
+                initialBalance: initialBalance,
                 currency: currency,
                 iconName: iconName,
                 colorHex: colorHex,

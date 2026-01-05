@@ -71,7 +71,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 20; // Add parsed email transactions table
+  int get schemaVersion => 21; // Add initialBalance to wallets
 
   @override
   MigrationStrategy get migration {
@@ -280,6 +280,16 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Created parsed_email_transactions table for email sync', label: 'database');
           } catch (e) {
             Log.e('Failed to create parsed_email_transactions table: $e', label: 'database');
+          }
+        }
+
+        // For version 21, add initialBalance column to wallets for tracking
+        if (from < 21) {
+          try {
+            await m.addColumn(wallets, wallets.initialBalance);
+            Log.i('Added initialBalance column to wallets', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add initialBalance column: $e', label: 'database');
           }
         }
 

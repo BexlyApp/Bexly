@@ -19,7 +19,9 @@ mixin _$WalletModel {
  int? get id;/// Cloud ID (UUID v7) for syncing with Firestore
  String? get cloudId;/// The name of the wallet (e.g., "Primary Checking", "Savings").
  String get name;/// The current balance of the wallet.
- double get balance;/// The currency code for the wallet's balance (e.g., "USD", "EUR", "NGN").
+ double get balance;/// Initial balance when wallet was created (for tracking purposes)
+/// This value should never change after wallet creation
+ double get initialBalance;/// The currency code for the wallet's balance (e.g., "USD", "EUR", "NGN").
  String get currency;/// Optional: The identifier or name of the icon associated with this wallet.
  String? get iconName;/// Optional: The color associated with this wallet, stored as a hex string or int.
  String? get colorHex;// Or int colorValue
@@ -44,16 +46,16 @@ $WalletModelCopyWith<WalletModel> get copyWith => _$WalletModelCopyWithImpl<Wall
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is WalletModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.walletType, walletType) || other.walletType == walletType)&&(identical(other.creditLimit, creditLimit) || other.creditLimit == creditLimit)&&(identical(other.billingDay, billingDay) || other.billingDay == billingDay)&&(identical(other.interestRate, interestRate) || other.interestRate == interestRate)&&(identical(other.ownerUserId, ownerUserId) || other.ownerUserId == ownerUserId)&&(identical(other.isShared, isShared) || other.isShared == isShared)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is WalletModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.initialBalance, initialBalance) || other.initialBalance == initialBalance)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.walletType, walletType) || other.walletType == walletType)&&(identical(other.creditLimit, creditLimit) || other.creditLimit == creditLimit)&&(identical(other.billingDay, billingDay) || other.billingDay == billingDay)&&(identical(other.interestRate, interestRate) || other.interestRate == interestRate)&&(identical(other.ownerUserId, ownerUserId) || other.ownerUserId == ownerUserId)&&(identical(other.isShared, isShared) || other.isShared == isShared)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,name,balance,currency,iconName,colorHex,walletType,creditLimit,billingDay,interestRate,ownerUserId,isShared,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,name,balance,initialBalance,currency,iconName,colorHex,walletType,creditLimit,billingDay,interestRate,ownerUserId,isShared,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'WalletModel(id: $id, cloudId: $cloudId, name: $name, balance: $balance, currency: $currency, iconName: $iconName, colorHex: $colorHex, walletType: $walletType, creditLimit: $creditLimit, billingDay: $billingDay, interestRate: $interestRate, ownerUserId: $ownerUserId, isShared: $isShared, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'WalletModel(id: $id, cloudId: $cloudId, name: $name, balance: $balance, initialBalance: $initialBalance, currency: $currency, iconName: $iconName, colorHex: $colorHex, walletType: $walletType, creditLimit: $creditLimit, billingDay: $billingDay, interestRate: $interestRate, ownerUserId: $ownerUserId, isShared: $isShared, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -64,7 +66,7 @@ abstract mixin class $WalletModelCopyWith<$Res>  {
   factory $WalletModelCopyWith(WalletModel value, $Res Function(WalletModel) _then) = _$WalletModelCopyWithImpl;
 @useResult
 $Res call({
- int? id, String? cloudId, String name, double balance, String currency, String? iconName, String? colorHex, WalletType walletType, double? creditLimit, int? billingDay, double? interestRate, String? ownerUserId, bool isShared, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, String name, double balance, double initialBalance, String currency, String? iconName, String? colorHex, WalletType walletType, double? creditLimit, int? billingDay, double? interestRate, String? ownerUserId, bool isShared, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -81,12 +83,13 @@ class _$WalletModelCopyWithImpl<$Res>
 
 /// Create a copy of WalletModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? balance = null,Object? currency = null,Object? iconName = freezed,Object? colorHex = freezed,Object? walletType = null,Object? creditLimit = freezed,Object? billingDay = freezed,Object? interestRate = freezed,Object? ownerUserId = freezed,Object? isShared = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? balance = null,Object? initialBalance = null,Object? currency = null,Object? iconName = freezed,Object? colorHex = freezed,Object? walletType = null,Object? creditLimit = freezed,Object? billingDay = freezed,Object? interestRate = freezed,Object? ownerUserId = freezed,Object? isShared = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
 as String?,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,balance: null == balance ? _self.balance : balance // ignore: cast_nullable_to_non_nullable
+as double,initialBalance: null == initialBalance ? _self.initialBalance : initialBalance // ignore: cast_nullable_to_non_nullable
 as double,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,iconName: freezed == iconName ? _self.iconName : iconName // ignore: cast_nullable_to_non_nullable
 as String?,colorHex: freezed == colorHex ? _self.colorHex : colorHex // ignore: cast_nullable_to_non_nullable
@@ -183,10 +186,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  double balance,  String currency,  String? iconName,  String? colorHex,  WalletType walletType,  double? creditLimit,  int? billingDay,  double? interestRate,  String? ownerUserId,  bool isShared,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  double balance,  double initialBalance,  String currency,  String? iconName,  String? colorHex,  WalletType walletType,  double? creditLimit,  int? billingDay,  double? interestRate,  String? ownerUserId,  bool isShared,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _WalletModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_that.iconName,_that.colorHex,_that.walletType,_that.creditLimit,_that.billingDay,_that.interestRate,_that.ownerUserId,_that.isShared,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.initialBalance,_that.currency,_that.iconName,_that.colorHex,_that.walletType,_that.creditLimit,_that.billingDay,_that.interestRate,_that.ownerUserId,_that.isShared,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -204,10 +207,10 @@ return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  double balance,  String currency,  String? iconName,  String? colorHex,  WalletType walletType,  double? creditLimit,  int? billingDay,  double? interestRate,  String? ownerUserId,  bool isShared,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String name,  double balance,  double initialBalance,  String currency,  String? iconName,  String? colorHex,  WalletType walletType,  double? creditLimit,  int? billingDay,  double? interestRate,  String? ownerUserId,  bool isShared,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _WalletModel():
-return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_that.iconName,_that.colorHex,_that.walletType,_that.creditLimit,_that.billingDay,_that.interestRate,_that.ownerUserId,_that.isShared,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.initialBalance,_that.currency,_that.iconName,_that.colorHex,_that.walletType,_that.creditLimit,_that.billingDay,_that.interestRate,_that.ownerUserId,_that.isShared,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -224,10 +227,10 @@ return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String name,  double balance,  String currency,  String? iconName,  String? colorHex,  WalletType walletType,  double? creditLimit,  int? billingDay,  double? interestRate,  String? ownerUserId,  bool isShared,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String name,  double balance,  double initialBalance,  String currency,  String? iconName,  String? colorHex,  WalletType walletType,  double? creditLimit,  int? billingDay,  double? interestRate,  String? ownerUserId,  bool isShared,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _WalletModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_that.iconName,_that.colorHex,_that.walletType,_that.creditLimit,_that.billingDay,_that.interestRate,_that.ownerUserId,_that.isShared,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.initialBalance,_that.currency,_that.iconName,_that.colorHex,_that.walletType,_that.creditLimit,_that.billingDay,_that.interestRate,_that.ownerUserId,_that.isShared,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -239,7 +242,7 @@ return $default(_that.id,_that.cloudId,_that.name,_that.balance,_that.currency,_
 @JsonSerializable()
 
 class _WalletModel implements WalletModel {
-  const _WalletModel({this.id, this.cloudId, this.name = 'My Wallet', this.balance = 0.0, this.currency = 'IDR', this.iconName, this.colorHex, this.walletType = WalletType.cash, this.creditLimit, this.billingDay, this.interestRate, this.ownerUserId, this.isShared = false, this.createdAt, this.updatedAt});
+  const _WalletModel({this.id, this.cloudId, this.name = 'My Wallet', this.balance = 0.0, this.initialBalance = 0.0, this.currency = 'IDR', this.iconName, this.colorHex, this.walletType = WalletType.cash, this.creditLimit, this.billingDay, this.interestRate, this.ownerUserId, this.isShared = false, this.createdAt, this.updatedAt});
   factory _WalletModel.fromJson(Map<String, dynamic> json) => _$WalletModelFromJson(json);
 
 /// The unique identifier for the wallet.
@@ -250,6 +253,9 @@ class _WalletModel implements WalletModel {
 @override@JsonKey() final  String name;
 /// The current balance of the wallet.
 @override@JsonKey() final  double balance;
+/// Initial balance when wallet was created (for tracking purposes)
+/// This value should never change after wallet creation
+@override@JsonKey() final  double initialBalance;
 /// The currency code for the wallet's balance (e.g., "USD", "EUR", "NGN").
 @override@JsonKey() final  String currency;
 /// Optional: The identifier or name of the icon associated with this wallet.
@@ -287,16 +293,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _WalletModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.walletType, walletType) || other.walletType == walletType)&&(identical(other.creditLimit, creditLimit) || other.creditLimit == creditLimit)&&(identical(other.billingDay, billingDay) || other.billingDay == billingDay)&&(identical(other.interestRate, interestRate) || other.interestRate == interestRate)&&(identical(other.ownerUserId, ownerUserId) || other.ownerUserId == ownerUserId)&&(identical(other.isShared, isShared) || other.isShared == isShared)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _WalletModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.name, name) || other.name == name)&&(identical(other.balance, balance) || other.balance == balance)&&(identical(other.initialBalance, initialBalance) || other.initialBalance == initialBalance)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.colorHex, colorHex) || other.colorHex == colorHex)&&(identical(other.walletType, walletType) || other.walletType == walletType)&&(identical(other.creditLimit, creditLimit) || other.creditLimit == creditLimit)&&(identical(other.billingDay, billingDay) || other.billingDay == billingDay)&&(identical(other.interestRate, interestRate) || other.interestRate == interestRate)&&(identical(other.ownerUserId, ownerUserId) || other.ownerUserId == ownerUserId)&&(identical(other.isShared, isShared) || other.isShared == isShared)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,name,balance,currency,iconName,colorHex,walletType,creditLimit,billingDay,interestRate,ownerUserId,isShared,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,name,balance,initialBalance,currency,iconName,colorHex,walletType,creditLimit,billingDay,interestRate,ownerUserId,isShared,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'WalletModel(id: $id, cloudId: $cloudId, name: $name, balance: $balance, currency: $currency, iconName: $iconName, colorHex: $colorHex, walletType: $walletType, creditLimit: $creditLimit, billingDay: $billingDay, interestRate: $interestRate, ownerUserId: $ownerUserId, isShared: $isShared, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'WalletModel(id: $id, cloudId: $cloudId, name: $name, balance: $balance, initialBalance: $initialBalance, currency: $currency, iconName: $iconName, colorHex: $colorHex, walletType: $walletType, creditLimit: $creditLimit, billingDay: $billingDay, interestRate: $interestRate, ownerUserId: $ownerUserId, isShared: $isShared, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -307,7 +313,7 @@ abstract mixin class _$WalletModelCopyWith<$Res> implements $WalletModelCopyWith
   factory _$WalletModelCopyWith(_WalletModel value, $Res Function(_WalletModel) _then) = __$WalletModelCopyWithImpl;
 @override @useResult
 $Res call({
- int? id, String? cloudId, String name, double balance, String currency, String? iconName, String? colorHex, WalletType walletType, double? creditLimit, int? billingDay, double? interestRate, String? ownerUserId, bool isShared, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, String name, double balance, double initialBalance, String currency, String? iconName, String? colorHex, WalletType walletType, double? creditLimit, int? billingDay, double? interestRate, String? ownerUserId, bool isShared, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -324,12 +330,13 @@ class __$WalletModelCopyWithImpl<$Res>
 
 /// Create a copy of WalletModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? balance = null,Object? currency = null,Object? iconName = freezed,Object? colorHex = freezed,Object? walletType = null,Object? creditLimit = freezed,Object? billingDay = freezed,Object? interestRate = freezed,Object? ownerUserId = freezed,Object? isShared = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? name = null,Object? balance = null,Object? initialBalance = null,Object? currency = null,Object? iconName = freezed,Object? colorHex = freezed,Object? walletType = null,Object? creditLimit = freezed,Object? billingDay = freezed,Object? interestRate = freezed,Object? ownerUserId = freezed,Object? isShared = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_WalletModel(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
 as String?,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,balance: null == balance ? _self.balance : balance // ignore: cast_nullable_to_non_nullable
+as double,initialBalance: null == initialBalance ? _self.initialBalance : initialBalance // ignore: cast_nullable_to_non_nullable
 as double,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,iconName: freezed == iconName ? _self.iconName : iconName // ignore: cast_nullable_to_non_nullable
 as String?,colorHex: freezed == colorHex ? _self.colorHex : colorHex // ignore: cast_nullable_to_non_nullable

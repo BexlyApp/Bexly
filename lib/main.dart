@@ -25,8 +25,11 @@ Future<void> main() async {
   // Load environment variables
   try {
     await dotenv.load(fileName: ".env");
+    print('✅ .env loaded successfully');
+    print('STRIPE_PUBLISHABLE_KEY exists: ${dotenv.env.containsKey('STRIPE_PUBLISHABLE_KEY')}');
+    print('STRIPE_PUBLISHABLE_KEY length: ${(dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '').length}');
   } catch (e) {
-    print('Warning: Could not load .env file: $e');
+    print('❌ Could not load .env file: $e');
     // App can continue without .env file
   }
 
