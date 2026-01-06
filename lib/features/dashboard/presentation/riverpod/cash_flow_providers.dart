@@ -1,11 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_filter_provider.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/selected_month_provider.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
 
 /// Provider for income amount in selected month
-/// No currency conversion - just sums amounts in their original currency
+/// Converts all transactions to the target currency (selected wallet or base currency)
 final convertedMonthlyIncomeProvider =
     FutureProvider.autoDispose<double>((ref) async {
   final transactionsAsync = ref.watch(allTransactionsProvider);
@@ -20,6 +21,11 @@ final convertedMonthlyIncomeProvider =
 
   final selectedWallet = ref.watch(dashboardWalletFilterProvider);
   final selectedMonth = ref.watch(selectedMonthProvider);
+  final baseCurrency = ref.watch(baseCurrencyProvider);
+  final exchangeRateCache = ref.read(exchangeRateCacheProvider.notifier);
+
+  // Target currency: selected wallet's currency, or base currency for "All Wallets"
+  final targetCurrency = selectedWallet?.currency ?? baseCurrency;
 
   // Filter by wallet if selected
   final filteredTransactions = selectedWallet != null
@@ -35,7 +41,13 @@ final convertedMonthlyIncomeProvider =
     if (t.date.year == currentYear &&
         t.date.month == currentMonth &&
         t.transactionType == TransactionType.income) {
-      totalIncome += t.amount;
+      // Convert to target currency if different
+      if (t.wallet.currency != targetCurrency) {
+        final rate = await exchangeRateCache.getRate(t.wallet.currency, targetCurrency);
+        totalIncome += t.amount * rate;
+      } else {
+        totalIncome += t.amount;
+      }
     }
   }
 
@@ -43,7 +55,7 @@ final convertedMonthlyIncomeProvider =
 });
 
 /// Provider for expense amount in selected month
-/// No currency conversion - just sums amounts in their original currency
+/// Converts all transactions to the target currency (selected wallet or base currency)
 final convertedMonthlyExpenseProvider =
     FutureProvider.autoDispose<double>((ref) async {
   final transactionsAsync = ref.watch(allTransactionsProvider);
@@ -58,6 +70,11 @@ final convertedMonthlyExpenseProvider =
 
   final selectedWallet = ref.watch(dashboardWalletFilterProvider);
   final selectedMonth = ref.watch(selectedMonthProvider);
+  final baseCurrency = ref.watch(baseCurrencyProvider);
+  final exchangeRateCache = ref.read(exchangeRateCacheProvider.notifier);
+
+  // Target currency: selected wallet's currency, or base currency for "All Wallets"
+  final targetCurrency = selectedWallet?.currency ?? baseCurrency;
 
   // Filter by wallet if selected
   final filteredTransactions = selectedWallet != null
@@ -73,7 +90,13 @@ final convertedMonthlyExpenseProvider =
     if (t.date.year == currentYear &&
         t.date.month == currentMonth &&
         t.transactionType == TransactionType.expense) {
-      totalExpense += t.amount;
+      // Convert to target currency if different
+      if (t.wallet.currency != targetCurrency) {
+        final rate = await exchangeRateCache.getRate(t.wallet.currency, targetCurrency);
+        totalExpense += t.amount * rate;
+      } else {
+        totalExpense += t.amount;
+      }
     }
   }
 
@@ -95,6 +118,11 @@ final convertedLastMonthIncomeProvider =
 
   final selectedWallet = ref.watch(dashboardWalletFilterProvider);
   final selectedMonth = ref.watch(selectedMonthProvider);
+  final baseCurrency = ref.watch(baseCurrencyProvider);
+  final exchangeRateCache = ref.read(exchangeRateCacheProvider.notifier);
+
+  // Target currency: selected wallet's currency, or base currency for "All Wallets"
+  final targetCurrency = selectedWallet?.currency ?? baseCurrency;
 
   // Filter by wallet if selected
   final filteredTransactions = selectedWallet != null
@@ -111,7 +139,13 @@ final convertedLastMonthIncomeProvider =
     if (t.date.year == lastMonthYear &&
         t.date.month == lastMonth &&
         t.transactionType == TransactionType.income) {
-      totalIncome += t.amount;
+      // Convert to target currency if different
+      if (t.wallet.currency != targetCurrency) {
+        final rate = await exchangeRateCache.getRate(t.wallet.currency, targetCurrency);
+        totalIncome += t.amount * rate;
+      } else {
+        totalIncome += t.amount;
+      }
     }
   }
 
@@ -133,6 +167,11 @@ final convertedLastMonthExpenseProvider =
 
   final selectedWallet = ref.watch(dashboardWalletFilterProvider);
   final selectedMonth = ref.watch(selectedMonthProvider);
+  final baseCurrency = ref.watch(baseCurrencyProvider);
+  final exchangeRateCache = ref.read(exchangeRateCacheProvider.notifier);
+
+  // Target currency: selected wallet's currency, or base currency for "All Wallets"
+  final targetCurrency = selectedWallet?.currency ?? baseCurrency;
 
   // Filter by wallet if selected
   final filteredTransactions = selectedWallet != null
@@ -149,7 +188,13 @@ final convertedLastMonthExpenseProvider =
     if (t.date.year == lastMonthYear &&
         t.date.month == lastMonth &&
         t.transactionType == TransactionType.expense) {
-      totalExpense += t.amount;
+      // Convert to target currency if different
+      if (t.wallet.currency != targetCurrency) {
+        final rate = await exchangeRateCache.getRate(t.wallet.currency, targetCurrency);
+        totalExpense += t.amount * rate;
+      } else {
+        totalExpense += t.amount;
+      }
     }
   }
 
