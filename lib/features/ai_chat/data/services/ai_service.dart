@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/features/ai_chat/data/config/ai_prompts.dart';
 
 abstract class AIService {
@@ -308,15 +309,15 @@ class GeminiService with AIServicePromptMixin implements AIService {
 
   GeminiService({
     required this.apiKey,
-    this.model = 'gemini-2.5-flash',
+    String? model,
     this.categories = const [],
     this.categoryHierarchy,
     this.walletCurrency,
     this.walletName,
     this.exchangeRateVndToUsd,
     this.wallets,
-  }) {
-    Log.d('GeminiService initialized with model: $model, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}', label: 'AI Service');
+  }) : model = model ?? LLMDefaultConfig.geminiModel {
+    Log.d('GeminiService initialized with model: ${this.model}, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}', label: 'AI Service');
   }
 
   @override

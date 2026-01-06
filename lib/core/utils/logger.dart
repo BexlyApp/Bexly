@@ -12,6 +12,9 @@ class Log {
     String trimmedLabel = label.toLowerCase().replaceAll(' ', '_');
     if (kDebugMode) {
       log('$message', name: trimmedLabel);
+      // Also print to stdout so it shows in logcat
+      // ignore: avoid_print
+      print('[$trimmedLabel] $message');
     }
 
     if (logToFile) {

@@ -63,9 +63,9 @@ class LLMDefaultConfig {
 
   static String get geminiModel {
     try {
-      return dotenv.env['GEMINI_MODEL'] ?? 'gemini-2.5-flash';
+      return dotenv.env['GEMINI_MODEL'] ?? 'gemini-3-flash-preview';
     } catch (e) {
-      return 'gemini-2.5-flash';
+      return 'gemini-3-flash-preview';
     }
   }
 

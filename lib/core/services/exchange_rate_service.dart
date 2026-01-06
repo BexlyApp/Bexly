@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/config/llm_config.dart';
 
 /// Service to fetch and cache exchange rates
 /// Priority: Free API (cached 24h) → Gemini AI → Emergency fallback
@@ -20,7 +21,7 @@ class ExchangeRateService {
 
   ExchangeRateService({required this.geminiApiKey}) {
     _model = GenerativeModel(
-      model: 'gemini-2.5-flash',
+      model: LLMDefaultConfig.geminiModel,
       apiKey: geminiApiKey,
       generationConfig: GenerationConfig(
         temperature: 0.0,

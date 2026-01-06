@@ -66,10 +66,17 @@ class StripeService {
         clientSecret: clientSecret,
       );
 
-      Log.d('Financial Connections completed: ${result.session.accounts.length} accounts linked', label: 'Stripe');
+      Log.i('Financial Connections completed successfully', label: 'Stripe');
+      Log.i('Session ID: ${result.session.id}', label: 'Stripe');
+      Log.i('Accounts count: ${result.session.accounts.length}', label: 'Stripe');
+      for (final account in result.session.accounts) {
+        Log.i('Account: ${account.id} - ${account.institutionName} - ${account.displayName}', label: 'Stripe');
+      }
       return result;
     } on StripeException catch (e) {
       Log.e('Stripe error: ${e.error.localizedMessage}', label: 'Stripe');
+      Log.e('Stripe error code: ${e.error.code}', label: 'Stripe');
+      Log.e('Stripe error details: ${e.error.message}', label: 'Stripe');
       rethrow;
     } catch (e) {
       Log.e('Failed to collect bank accounts: $e', label: 'Stripe');

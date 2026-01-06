@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -16,6 +16,74 @@ import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/features/bank_connections/riverpod/bank_connection_provider.dart';
 import 'package:bexly/features/bank_connections/data/models/linked_account_model.dart';
 import 'package:bexly/features/settings/presentation/components/bind_account_bottom_sheet.dart';
+
+/// Map institution name to domain for Clearbit Logo API
+const _bankDomains = <String, String>{
+  'mercury': 'mercury.com',
+  'chase': 'chase.com',
+  'bank of america': 'bankofamerica.com',
+  'wells fargo': 'wellsfargo.com',
+  'citi': 'citi.com',
+  'capital one': 'capitalone.com',
+  'us bank': 'usbank.com',
+  'pnc': 'pnc.com',
+  'td bank': 'td.com',
+  'truist': 'truist.com',
+  'ally': 'ally.com',
+  'schwab': 'schwab.com',
+  'fidelity': 'fidelity.com',
+  'vanguard': 'vanguard.com',
+  'paypal': 'paypal.com',
+  'stripe': 'stripe.com',
+  'american express': 'americanexpress.com',
+  'discover': 'discover.com',
+  'navy federal': 'navyfederal.org',
+  'usaa': 'usaa.com',
+  'sofi': 'sofi.com',
+  'chime': 'chime.com',
+  'robinhood': 'robinhood.com',
+  'coinbase': 'coinbase.com',
+};
+
+/// Get logo URL for a bank institution using Google Favicon API
+String? _getBankLogoUrl(String? institutionIcon, String institutionName) {
+  // If API provides icon URL, use it
+  if (institutionIcon != null && institutionIcon.isNotEmpty) {
+    debugPrint('🏦 Using API icon for $institutionName: $institutionIcon');
+    return institutionIcon;
+  }
+
+  // Try to find domain based on institution name
+  final nameLower = institutionName.toLowerCase();
+  String? domain;
+
+  for (final entry in _bankDomains.entries) {
+    if (nameLower.contains(entry.key)) {
+      domain = entry.value;
+      break;
+    }
+  }
+
+  // If no mapping found, try to guess domain from name
+  if (domain == null) {
+    // Convert "Some Bank Name" to "somebankname.com" as fallback
+    final simplified = nameLower.replaceAll(RegExp(r'[^a-z0-9]'), '');
+    if (simplified.isNotEmpty) {
+      domain = '$simplified.com';
+    }
+  }
+
+  if (domain != null) {
+    // Use DuckDuckGo Icons API - better quality than Google Favicon
+    // Returns high-res icons when available
+    final logoUrl = 'https://icons.duckduckgo.com/ip3/$domain.ico';
+    debugPrint('🏦 Using DuckDuckGo icon for $institutionName: $logoUrl');
+    return logoUrl;
+  }
+
+  debugPrint('🏦 No logo URL for $institutionName (icon was: $institutionIcon)');
+  return null;
+}
 
 class BankConnectionsScreen extends HookConsumerWidget {
   const BankConnectionsScreen({super.key});
@@ -146,7 +214,7 @@ class BankConnectionsScreen extends HookConsumerWidget {
           _ProviderCard(
             name: 'Stripe',
             description: 'Connect US bank accounts via Stripe Financial Connections',
-            icon: HugeIcons.strokeRoundedCreditCard,
+            iconWidget: const FaIcon(FontAwesomeIcons.stripe, size: 24),
             color: const Color(0xFF635BFF),
             isLoading: state.isLinking || state.isLoading,
             isAvailable: true,
@@ -246,6 +314,9 @@ class BankConnectionsScreen extends HookConsumerWidget {
       accountId: accountId,
     );
 
+    // Reload accounts to refresh any updated data (e.g., institution icon)
+    await ref.read(bankConnectionProvider.notifier).loadAccounts();
+
     if (context.mounted) {
       toastification.show(
         context: context,
@@ -258,6 +329,9 @@ class BankConnectionsScreen extends HookConsumerWidget {
 
   Future<void> _syncAllAccounts(BuildContext context, WidgetRef ref) async {
     final count = await ref.read(bankConnectionProvider.notifier).syncTransactions();
+
+    // Reload accounts to refresh any updated data (e.g., institution icon)
+    await ref.read(bankConnectionProvider.notifier).loadAccounts();
 
     if (context.mounted) {
       toastification.show(
@@ -433,6 +507,7 @@ class _ProviderCard extends StatelessWidget {
   final String name;
   final String description;
   final dynamic icon;
+  final Widget? iconWidget;
   final Color color;
   final bool isLoading;
   final bool isAvailable;
@@ -441,7 +516,8 @@ class _ProviderCard extends StatelessWidget {
   const _ProviderCard({
     required this.name,
     required this.description,
-    required this.icon,
+    this.icon,
+    this.iconWidget,
     required this.color,
     required this.isLoading,
     required this.isAvailable,
@@ -480,11 +556,16 @@ class _ProviderCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
-                      child: HugeIcon(
-                        icon: icon,
-                        color: color,
-                        size: 24,
-                      ),
+                      child: iconWidget != null
+                          ? IconTheme(
+                              data: IconThemeData(color: color, size: 24),
+                              child: iconWidget!,
+                            )
+                          : HugeIcon(
+                              icon: icon,
+                              color: color,
+                              size: 24,
+                            ),
                     ),
                   ),
                   const Gap(AppSpacing.spacing12),
@@ -568,6 +649,125 @@ class _LinkedAccountCard extends StatelessWidget {
     required this.onDisconnect,
   });
 
+  void _showActionsSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.spacing20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.neutral600 : AppColors.neutral300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Gap(AppSpacing.spacing16),
+
+            // Account info header
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.neutral700 : AppColors.neutral100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Builder(
+                    builder: (context) {
+                      final logoUrl = _getBankLogoUrl(account.institutionIcon, account.institutionName);
+                      if (logoUrl != null) {
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            logoUrl,
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: HugeIcon(
+                                icon: HugeIcons.strokeRoundedBank,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedBank,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 20,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const Gap(AppSpacing.spacing12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        account.institutionName,
+                        style: AppTextStyles.body1.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                      if (account.displayName != null)
+                        Text(
+                          account.displayName!,
+                          style: AppTextStyles.body4.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Gap(AppSpacing.spacing20),
+
+            // Sync option
+            _ActionTile(
+              icon: HugeIcons.strokeRoundedRefresh,
+              label: 'Sync Transactions',
+              onTap: () {
+                Navigator.pop(context);
+                onSync();
+              },
+            ),
+            const Gap(AppSpacing.spacing8),
+
+            // Disconnect option
+            _ActionTile(
+              icon: HugeIcons.strokeRoundedLinkSquare02,
+              label: 'Disconnect',
+              isDestructive: true,
+              onTap: () {
+                Navigator.pop(context);
+                onDisconnect();
+              },
+            ),
+            const Gap(AppSpacing.spacing16),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -591,14 +791,17 @@ class _LinkedAccountCard extends StatelessWidget {
               color: isDark ? AppColors.neutral700 : AppColors.neutral100,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: account.institutionIcon != null
-                ? ClipRRect(
+            child: Builder(
+              builder: (context) {
+                final logoUrl = _getBankLogoUrl(account.institutionIcon, account.institutionName);
+                if (logoUrl != null) {
+                  return ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(
-                      account.institutionIcon!,
+                      logoUrl,
                       width: 48,
                       height: 48,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) => Center(
                         child: HugeIcon(
                           icon: HugeIcons.strokeRoundedBank,
@@ -607,14 +810,17 @@ class _LinkedAccountCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  )
-                : Center(
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedBank,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 24,
-                    ),
+                  );
+                }
+                return Center(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedBank,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 24,
                   ),
+                );
+              },
+            ),
           ),
           const Gap(AppSpacing.spacing12),
 
@@ -671,44 +877,13 @@ class _LinkedAccountCard extends StatelessWidget {
           ),
 
           // Actions
-          PopupMenuButton<String>(
+          IconButton(
             icon: HugeIcon(
               icon: HugeIcons.strokeRoundedMoreVertical,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
               size: 24,
             ),
-            onSelected: (value) {
-              switch (value) {
-                case 'sync':
-                  onSync();
-                  break;
-                case 'disconnect':
-                  onDisconnect();
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'sync',
-                child: Row(
-                  children: [
-                    HugeIcon(icon: HugeIcons.strokeRoundedRefresh, color: Theme.of(context).colorScheme.onSurface, size: 20),
-                    const Gap(8),
-                    const Text('Sync Transactions'),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'disconnect',
-                child: Row(
-                  children: [
-                    HugeIcon(icon: HugeIcons.strokeRoundedLink01, color: AppColors.red600, size: 20),
-                    const Gap(8),
-                    Text('Disconnect', style: TextStyle(color: AppColors.red600)),
-                  ],
-                ),
-              ),
-            ],
+            onPressed: () => _showActionsSheet(context),
           ),
         ],
       ),
@@ -824,6 +999,61 @@ class _PrivacyCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Action tile for bottom sheet actions
+class _ActionTile extends StatelessWidget {
+  final dynamic icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isDestructive
+        ? AppColors.red600
+        : Theme.of(context).colorScheme.onSurface;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.spacing16,
+            vertical: 14,
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.neutral800 : AppColors.neutral50,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              HugeIcon(
+                icon: icon,
+                color: color,
+                size: 22,
+              ),
+              const Gap(AppSpacing.spacing12),
+              Text(
+                label,
+                style: AppTextStyles.body2.copyWith(color: color),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
