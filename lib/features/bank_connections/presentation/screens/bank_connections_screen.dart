@@ -74,10 +74,10 @@ String? _getBankLogoUrl(String? institutionIcon, String institutionName) {
   }
 
   if (domain != null) {
-    // Use DuckDuckGo Icons API - better quality than Google Favicon
-    // Returns high-res icons when available
-    final logoUrl = 'https://icons.duckduckgo.com/ip3/$domain.ico';
-    debugPrint('🏦 Using DuckDuckGo icon for $institutionName: $logoUrl');
+    // Use Brandfetch CDN for high-quality brand icons
+    // c= parameter is the client ID for tracking
+    final logoUrl = 'https://cdn.brandfetch.io/$domain/icon?c=1id9hV9VaF2uP13sMW-';
+    debugPrint('🏦 Using Brandfetch icon for $institutionName: $logoUrl');
     return logoUrl;
   }
 
@@ -677,25 +677,25 @@ class _LinkedAccountCard extends StatelessWidget {
             // Account info header
             Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.neutral700 : AppColors.neutral100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Builder(
-                    builder: (context) {
-                      final logoUrl = _getBankLogoUrl(account.institutionIcon, account.institutionName);
-                      if (logoUrl != null) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            logoUrl,
+                Builder(
+                  builder: (context) {
+                    final logoUrl = _getBankLogoUrl(account.institutionIcon, account.institutionName);
+                    if (logoUrl != null) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          logoUrl,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
                             width: 40,
                             height: 40,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Center(
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.neutral700 : AppColors.neutral100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
                               child: HugeIcon(
                                 icon: HugeIcons.strokeRoundedBank,
                                 color: Theme.of(context).colorScheme.primary,
@@ -703,17 +703,25 @@ class _LinkedAccountCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                        );
-                      }
-                      return Center(
+                        ),
+                      );
+                    }
+                    return Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.neutral700 : AppColors.neutral100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
                         child: HugeIcon(
                           icon: HugeIcons.strokeRoundedBank,
                           color: Theme.of(context).colorScheme.primary,
                           size: 20,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
                 const Gap(AppSpacing.spacing12),
                 Expanded(
@@ -784,25 +792,25 @@ class _LinkedAccountCard extends StatelessWidget {
       child: Row(
         children: [
           // Bank Icon
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.neutral700 : AppColors.neutral100,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Builder(
-              builder: (context) {
-                final logoUrl = _getBankLogoUrl(account.institutionIcon, account.institutionName);
-                if (logoUrl != null) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      logoUrl,
+          Builder(
+            builder: (context) {
+              final logoUrl = _getBankLogoUrl(account.institutionIcon, account.institutionName);
+              if (logoUrl != null) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    logoUrl,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
                       width: 48,
                       height: 48,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => Center(
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.neutral700 : AppColors.neutral100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
                         child: HugeIcon(
                           icon: HugeIcons.strokeRoundedBank,
                           color: Theme.of(context).colorScheme.primary,
@@ -810,17 +818,25 @@ class _LinkedAccountCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  );
-                }
-                return Center(
+                  ),
+                );
+              }
+              return Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.neutral700 : AppColors.neutral100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
                   child: HugeIcon(
                     icon: HugeIcons.strokeRoundedBank,
                     color: Theme.of(context).colorScheme.primary,
                     size: 24,
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
           const Gap(AppSpacing.spacing12),
 
