@@ -2023,21 +2023,72 @@ Please create a transaction based on this receipt data.''';
     }
   }
 
+  /// Detect language from user's last message
+  /// Returns 'vi' for Vietnamese, 'en' for English (default)
+  String _detectUserLanguage() {
+    // Find last user message
+    final userMessages = state.messages.where((m) => m.isFromUser).toList();
+    if (userMessages.isEmpty) return 'en';
+
+    final lastUserMessage = userMessages.last.content.toLowerCase();
+
+    // Vietnamese character patterns
+    final vietnamesePattern = RegExp(r'[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]');
+
+    // Vietnamese common words
+    final vietnameseWords = ['tháng', 'năm', 'tuần', 'hôm', 'ngày', 'tiền', 'chi', 'thu', 'ví', 'của', 'trong', 'cho', 'với', 'và', 'là', 'có', 'không', 'được', 'này', 'đó', 'tôi', 'mình', 'bạn', 'xem', 'kiểm', 'tra'];
+
+    // Check for Vietnamese characters
+    if (vietnamesePattern.hasMatch(lastUserMessage)) {
+      return 'vi';
+    }
+
+    // Check for Vietnamese words
+    for (final word in vietnameseWords) {
+      if (lastUserMessage.contains(word)) {
+        return 'vi';
+      }
+    }
+
+    return 'en';
+  }
+
   Future<String> _getActiveWalletBalanceText() async {
+    final lang = _detectUserLanguage();
     final walletState = ref.read(activeWalletProvider);
     final wallet = _unwrapAsyncValue(walletState);
     if (wallet == null) {
-      return 'No active wallet selected.';
+      return lang == 'vi' ? 'Chưa chọn ví.' : 'No active wallet selected.';
     }
     final amount = (wallet.balance).toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => m.group(1)! + '.');
-    return 'Current balance in "' + wallet.name + '": ' + amount + ' ' + wallet.currency;
+    return lang == 'vi'
+        ? 'Số dư ví "${wallet.name}": $amount ${wallet.currency}'
+        : 'Current balance in "${wallet.name}": $amount ${wallet.currency}';
   }
 
   Future<String> _getSummaryText(Map<String, dynamic> action) async {
+    final lang = _detectUserLanguage();
     try {
       final db = ref.read(databaseProvider);
-      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
-      if (wallet == null || wallet.id == null) return 'No active wallet selected.';
+      WalletModel? wallet = ref.read(activeWalletProvider).value;
+
+      // Fallback to default wallet or first available wallet
+      if (wallet == null || wallet.id == null) {
+        final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+        if (defaultWallet != null) {
+          wallet = defaultWallet;
+        } else {
+          final walletsAsync = ref.read(allWalletsStreamProvider);
+          final allWallets = _unwrapAsyncValue(walletsAsync) ?? [];
+          if (allWallets.isNotEmpty) {
+            wallet = allWallets.first;
+          }
+        }
+      }
+
+      if (wallet == null || wallet.id == null) {
+        return lang == 'vi' ? 'Chưa chọn ví.' : 'No active wallet selected.';
+      }
 
       final now = DateTime.now();
       final String range = (action['range'] ?? 'month').toString();
@@ -2084,21 +2135,54 @@ Please create a transaction based on this receipt data.''';
       final net = income - expense;
 
       String fmt(num v) => v.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
-      return 'Summary $range (${start.toIso8601String().substring(0,10)} → ${end.toIso8601String().substring(0,10)}):\n'
-          '• Income: ${fmt(income)} ${wallet.currency}\n'
-          '• Expense: ${fmt(expense)} ${wallet.currency}\n'
-          '• Net: ${fmt(net)} ${wallet.currency}';
+
+      // Localized range labels
+      final rangeLabels = {
+        'vi': {'today': 'hôm nay', 'week': 'tuần này', 'month': 'tháng này', 'quarter': 'quý này', 'year': 'năm nay', 'custom': 'tùy chỉnh'},
+        'en': {'today': 'today', 'week': 'this week', 'month': 'this month', 'quarter': 'this quarter', 'year': 'this year', 'custom': 'custom'},
+      };
+      final rangeLabel = rangeLabels[lang]?[range] ?? range;
+
+      if (lang == 'vi') {
+        return 'Tổng kết $rangeLabel (${start.toIso8601String().substring(0,10)} → ${end.toIso8601String().substring(0,10)}):\n'
+            '• Thu nhập: ${fmt(income)} ${wallet.currency}\n'
+            '• Chi tiêu: ${fmt(expense)} ${wallet.currency}\n'
+            '• Còn lại: ${fmt(net)} ${wallet.currency}';
+      } else {
+        return 'Summary $rangeLabel (${start.toIso8601String().substring(0,10)} → ${end.toIso8601String().substring(0,10)}):\n'
+            '• Income: ${fmt(income)} ${wallet.currency}\n'
+            '• Expense: ${fmt(expense)} ${wallet.currency}\n'
+            '• Net: ${fmt(net)} ${wallet.currency}';
+      }
     } catch (e) {
       Log.e('Summary error: $e', label: 'Chat Provider');
-      return 'Could not generate summary.';
+      return lang == 'vi' ? 'Không thể tạo báo cáo tổng kết.' : 'Could not generate summary.';
     }
   }
 
   Future<String> _getTransactionsListText(Map<String, dynamic> action) async {
+    final lang = _detectUserLanguage();
     try {
       final db = ref.read(databaseProvider);
-      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
-      if (wallet == null || wallet.id == null) return 'No active wallet selected.';
+      WalletModel? wallet = ref.read(activeWalletProvider).value;
+
+      // Fallback to default wallet or first available wallet
+      if (wallet == null || wallet.id == null) {
+        final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+        if (defaultWallet != null) {
+          wallet = defaultWallet;
+        } else {
+          final walletsAsync = ref.read(allWalletsStreamProvider);
+          final allWallets = _unwrapAsyncValue(walletsAsync) ?? [];
+          if (allWallets.isNotEmpty) {
+            wallet = allWallets.first;
+          }
+        }
+      }
+
+      if (wallet == null || wallet.id == null) {
+        return lang == 'vi' ? 'Chưa chọn ví.' : 'No active wallet selected.';
+      }
 
       final now = DateTime.now();
       final String range = (action['range'] ?? 'month').toString();
@@ -2133,15 +2217,18 @@ Please create a transaction based on this receipt data.''';
       filtered.sort((a, b) => b.date.compareTo(a.date));
       final int limit = (action['limit'] is num) ? (action['limit'] as num).toInt() : 5;
       final take = filtered.take(limit).toList();
-      if (take.isEmpty) return 'No transactions found in this time period.';
+      if (take.isEmpty) {
+        return lang == 'vi' ? 'Không có giao dịch nào trong khoảng thời gian này.' : 'No transactions found in this time period.';
+      }
 
       String fmt(num v) => v.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
       final lines = take.map((t) =>
           '- ${t.title} • ${(t.transactionType == TransactionType.expense ? '-' : '+')}${fmt(t.amount)} ${t.wallet.currency} • ${t.category.title}');
-      return 'Recent transactions:\n' + lines.join('\n');
+      final header = lang == 'vi' ? 'Giao dịch gần đây:' : 'Recent transactions:';
+      return '$header\n${lines.join('\n')}';
     } catch (e) {
       Log.e('List tx error: $e', label: 'Chat Provider');
-      return 'Unable to retrieve transaction list.';
+      return lang == 'vi' ? 'Không thể lấy danh sách giao dịch.' : 'Unable to retrieve transaction list.';
     }
   }
 
