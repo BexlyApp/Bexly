@@ -23,6 +23,17 @@
 4. **Stripe Badge**
    - Shows "Stripe" badge next to bank name to indicate provider
 
+5. **Account Actions → Bottom Sheet**
+   - Changed PopupMenuButton (context menu) to bottom sheet
+   - Shows account info header with icon
+   - Options: Sync Transactions, Disconnect
+   - Sync also reloads account data to refresh icon
+
+6. **Currency Conversion Fix**
+   - Fixed daily totals mixing currencies (VND + USD)
+   - Now converts all transactions to base currency before summing
+   - Uses `ExchangeRateCacheNotifier` for conversion
+
 #### Email Sync
 1. **Fixed Gmail Re-authentication Issue**
    - Problem: "Sync Now" required login twice
@@ -39,8 +50,10 @@
 ### Related Files
 - `lib/features/bank_connections/riverpod/bank_connection_provider.dart` - Cache logic
 - `lib/features/bank_connections/data/models/linked_account_model.dart` - institutionIcon field
-- `lib/features/bank_connections/presentation/screens/bank_connections_screen.dart` - UI changes
+- `lib/features/bank_connections/presentation/screens/bank_connections_screen.dart` - UI changes, bottom sheets
 - `lib/features/email_sync/domain/services/gmail_api_service.dart` - Token flow fix
+- `lib/features/transaction/presentation/components/transaction_grouped_card.dart` - Currency conversion
+- `lib/features/transaction/presentation/components/transaction_summary_card.dart` - Currency conversion
 
 ---
 

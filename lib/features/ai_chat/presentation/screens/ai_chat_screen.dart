@@ -575,6 +575,7 @@ class _MessageBubble extends ConsumerWidget {
   String _formatModelName(String modelName) {
     // Common model name mappings
     final mappings = {
+      'gemini-3-flash-preview': 'Gemini 3 Flash',
       'gemini-2.5-flash': 'Gemini 2.5 Flash',
       'gemini-2.0-flash': 'Gemini 2.0 Flash',
       'gemini-1.5-flash': 'Gemini 1.5 Flash',

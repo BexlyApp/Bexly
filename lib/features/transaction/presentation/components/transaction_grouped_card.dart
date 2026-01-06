@@ -8,22 +8,56 @@ import 'package:bexly/core/extensions/date_time_extension.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/text_style_extensions.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
+import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/transaction/presentation/components/transaction_tile.dart';
-import 'package:bexly/features/wallet/data/model/wallet_model.dart';
-import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 class TransactionGroupedCard extends ConsumerWidget {
   final List<TransactionModel> transactions;
   const TransactionGroupedCard({super.key, required this.transactions});
 
+  /// Calculate day total with currency conversion to base currency
+  Future<double> _calculateDayTotal(
+    List<TransactionModel> transactionsForDay,
+    String baseCurrency,
+    ExchangeRateCacheNotifier rateCache,
+  ) async {
+    double total = 0;
+
+    for (final t in transactionsForDay) {
+      final txCurrency = t.wallet.currency;
+      double amount = t.amount;
+
+      // Convert to base currency if different
+      if (txCurrency != baseCurrency) {
+        try {
+          final rate = await rateCache.getRate(txCurrency, baseCurrency);
+          amount = t.amount * rate;
+        } catch (e) {
+          // If conversion fails, skip this transaction in total
+          continue;
+        }
+      }
+
+      if (t.transactionType == TransactionType.income) {
+        total += amount;
+      } else if (t.transactionType == TransactionType.expense) {
+        total -= amount;
+      }
+    }
+
+    return total;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currency = ref
-        .read(activeWalletProvider)
-        .value
-        ?.currencyByIsoCode(ref)
-        .symbol ?? '\$'; // Default to $ if no wallet selected
+    // Use base currency for display (consistent across all wallets)
+    final baseCurrency = ref.read(baseCurrencyProvider);
+    final currencies = ref.read(currenciesStaticProvider);
+    final currency = currencies.fromIsoCode(baseCurrency)?.symbol ?? '\$';
+    final rateCache = ref.read(exchangeRateCacheProvider.notifier);
 
     if (transactions.isEmpty) {
       return Padding(
@@ -66,15 +100,6 @@ class TransactionGroupedCard extends ConsumerWidget {
         final transactionsForDay = groupedByDate[dateKey]!
           ..sort((a, b) => b.date.compareTo(a.date)); // Sort transactions within each day (newest first)
 
-        final double dayTotal = transactionsForDay.fold(0.0, (sum, item) {
-          if (item.transactionType == TransactionType.income) {
-            return sum + item.amount;
-          } else if (item.transactionType == TransactionType.expense) {
-            return sum - item.amount;
-          }
-          return sum;
-        });
-
         final String displayDate = dateKey.toRelativeDayFormatted();
 
         // No box container - just date header and transactions list
@@ -82,23 +107,29 @@ class TransactionGroupedCard extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Date header row
+            // Date header row with async total calculation
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.spacing8),
               child: Row(
                 children: [
                   Text(displayDate, style: AppTextStyles.body2.bold),
                   Expanded(
-                    child: Text(
-                      '$currency ${dayTotal.toPriceFormat()}',
-                      textAlign: TextAlign.end,
-                      style: AppTextStyles.numericMedium.copyWith(
-                        color: dayTotal > 0
-                            ? AppColors.green200
-                            : (dayTotal < 0
-                                  ? AppColors.red700
-                                  : null), // Neutral for zero
-                      ),
+                    child: FutureBuilder<double>(
+                      future: _calculateDayTotal(transactionsForDay, baseCurrency, rateCache),
+                      builder: (context, snapshot) {
+                        final dayTotal = snapshot.data ?? 0;
+                        return Text(
+                          '$currency ${dayTotal.toPriceFormat()}',
+                          textAlign: TextAlign.end,
+                          style: AppTextStyles.numericMedium.copyWith(
+                            color: dayTotal > 0
+                                ? AppColors.green200
+                                : (dayTotal < 0
+                                      ? AppColors.red700
+                                      : null), // Neutral for zero
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],

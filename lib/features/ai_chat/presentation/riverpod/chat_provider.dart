@@ -1207,6 +1207,20 @@ Please create a transaction based on this receipt data.''';
                 displayMessage += '\n\n' + listText;
                 break;
               }
+            case 'list_goals':
+              {
+                Log.d('Processing list_goals action: $action', label: 'Chat Provider');
+                final listText = await _getGoalsListText();
+                displayMessage += '\n\n' + listText;
+                break;
+              }
+            case 'list_recurring':
+              {
+                Log.d('Processing list_recurring action: $action', label: 'Chat Provider');
+                final listText = await _getRecurringListText(action);
+                displayMessage += '\n\n' + listText;
+                break;
+              }
             case 'delete_budget':
               {
                 Log.d('Processing delete_budget action: $action', label: 'Chat Provider');
@@ -2949,6 +2963,84 @@ Please create a transaction based on this receipt data.''';
     } catch (e) {
       Log.e('Failed to get budgets list: $e', label: 'BUDGET_LIST');
       return '❌ Lỗi khi lấy danh sách budget.';
+    }
+  }
+
+  /// Get list of goals for AI
+  Future<String> _getGoalsListText() async {
+    final lang = _detectUserLanguage();
+    try {
+      final db = ref.read(databaseProvider);
+      final goals = await db.goalDao.getAllGoals();
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      final currency = wallet?.currency ?? 'VND';
+
+      if (goals.isEmpty) {
+        return lang == 'vi' ? '🎯 Không có mục tiêu nào.' : '🎯 No goals found.';
+      }
+
+      String fmt(num v) => v.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+
+      final header = lang == 'vi' ? '🎯 Danh sách mục tiêu:' : '🎯 Goals list:';
+      final buffer = StringBuffer('$header\n');
+      for (final goal in goals) {
+        final progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount * 100).toInt() : 0;
+        final currentText = fmt(goal.currentAmount);
+        final targetText = fmt(goal.targetAmount);
+        final deadlineText = ' (${goal.endDate.toIso8601String().substring(0, 10)})';
+        buffer.writeln('• ${goal.title}: $currentText / $targetText $currency ($progress%)$deadlineText');
+      }
+
+      return buffer.toString().trim();
+    } catch (e) {
+      Log.e('Failed to get goals list: $e', label: 'GOALS_LIST');
+      return lang == 'vi' ? '❌ Lỗi khi lấy danh sách mục tiêu.' : '❌ Failed to get goals list.';
+    }
+  }
+
+  /// Get list of recurring payments for AI
+  Future<String> _getRecurringListText(Map<String, dynamic> action) async {
+    final lang = _detectUserLanguage();
+    try {
+      final db = ref.read(databaseProvider);
+      final allRecurring = await db.recurringDao.watchAllRecurrings().first;
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      final currency = wallet?.currency ?? 'VND';
+
+      final status = action['status'] ?? 'active';
+      final recurring = status == 'active'
+          ? allRecurring.where((r) => r.isActive).toList()
+          : allRecurring;
+
+      if (recurring.isEmpty) {
+        return lang == 'vi'
+            ? '🔄 Không có thanh toán định kỳ nào${status == 'active' ? ' đang hoạt động' : ''}.'
+            : '🔄 No ${status == 'active' ? 'active ' : ''}recurring payments found.';
+      }
+
+      String fmt(num v) => v.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+
+      final frequencyLabels = {
+        'vi': {'daily': 'hàng ngày', 'weekly': 'hàng tuần', 'monthly': 'hàng tháng', 'yearly': 'hàng năm'},
+        'en': {'daily': 'daily', 'weekly': 'weekly', 'monthly': 'monthly', 'yearly': 'yearly'},
+      };
+
+      final header = lang == 'vi' ? '🔄 Danh sách thanh toán định kỳ:' : '🔄 Recurring payments:';
+      final buffer = StringBuffer('$header\n');
+      for (final r in recurring) {
+        final amountText = fmt(r.amount);
+        final freqText = frequencyLabels[lang]?[r.frequency.name] ?? r.frequency.name;
+        final nextDue = r.nextDueDate.toIso8601String().substring(0, 10);
+        final statusText = r.isActive
+            ? ''
+            : (lang == 'vi' ? ' [Tạm dừng]' : ' [Paused]');
+        buffer.writeln('• ${r.name}: $amountText $currency ($freqText) - ${lang == 'vi' ? 'Kỳ tiếp' : 'Next'}: $nextDue$statusText');
+      }
+
+      return buffer.toString().trim();
+    } catch (e) {
+      Log.e('Failed to get recurring list: $e', label: 'RECURRING_LIST');
+      return lang == 'vi' ? '❌ Lỗi khi lấy danh sách thanh toán định kỳ.' : '❌ Failed to get recurring payments list.';
     }
   }
 

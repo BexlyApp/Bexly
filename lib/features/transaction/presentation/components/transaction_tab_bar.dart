@@ -20,12 +20,15 @@ class TransactionTabBar extends HookConsumerWidget {
         indicatorWeight: 3,
         labelColor: AppColors.primary600,
         unselectedLabelColor: AppColors.neutral400,
-        labelStyle: AppTextStyles.body2.copyWith(
+        labelStyle: AppTextStyles.body3.copyWith(
           fontWeight: FontWeight.w600,
         ),
         isScrollable: true,
+        tabAlignment: TabAlignment.center,
         tabs: monthsForTabs
-            .map((monthDate) => Tab(text: monthDate.toMonthTabLabel(now)))
+            .map((monthDate) => Tab(
+                  child: Text(monthDate.toMonthTabLabel(now)),
+                ))
             .toList(),
       ),
     );

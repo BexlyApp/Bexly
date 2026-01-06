@@ -127,12 +127,17 @@ class BankConnectionNotifier extends Notifier<BankConnectionState> {
 
   /// Link new bank accounts
   Future<bool> linkAccounts() async {
+    Log.i('linkAccounts() called - starting link flow', label: _label);
     state = state.copyWith(isLinking: true, error: null);
 
     try {
+      Log.d('Calling BankConnectionService.linkBankAccounts()...', label: _label);
       final newAccounts = await BankConnectionService.linkBankAccounts();
+      Log.i('linkBankAccounts() returned ${newAccounts.length} accounts', label: _label);
+
       if (newAccounts.isEmpty) {
         // User cancelled
+        Log.w('No accounts returned - user may have cancelled', label: _label);
         state = state.copyWith(isLinking: false);
         return false;
       }
@@ -151,7 +156,9 @@ class BankConnectionNotifier extends Notifier<BankConnectionState> {
       await _cacheAccounts(allAccounts);
 
       return true;
-    } catch (e) {
+    } catch (e, stack) {
+      Log.e('linkAccounts() EXCEPTION: $e', label: _label);
+      Log.e('Stack trace: $stack', label: _label);
       state = state.copyWith(
         isLinking: false,
         error: e.toString(),

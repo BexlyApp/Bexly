@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
 import 'package:bexly/features/receipt_scanner/data/services/providers/ocr_provider.dart';
 
@@ -10,12 +11,13 @@ class GeminiOcrProvider implements OcrProvider {
   final String apiKey;
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
-  static const String _model = 'gemini-2.5-flash';
+
+  String get _model => LLMDefaultConfig.geminiModel;
 
   GeminiOcrProvider({required this.apiKey});
 
   @override
-  String get providerName => 'Gemini 2.5 Flash';
+  String get providerName => 'Gemini';
 
   @override
   bool get isConfigured => apiKey.isNotEmpty;

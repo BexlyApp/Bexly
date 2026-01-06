@@ -59,6 +59,8 @@ SCHEMAS:
 13. delete_budget: {"action":"delete_budget","budgetId":<num>,"requiresConfirmation":true}
 14. delete_all_budgets: {"action":"delete_all_budgets","period":"current|all"?,"requiresConfirmation":true}
 15. list_budgets: {"action":"list_budgets","period":"current|all"?}
+16. list_goals: {"action":"list_goals"}
+17. list_recurring: {"action":"list_recurring","status":"active|all"?}
 
 ⚠️ CRITICAL FOR BUDGET ACTIONS (delete_budget, delete_all_budgets, update_budget):
 - You MUST ALWAYS include "requiresConfirmation":true in your ACTION_JSON

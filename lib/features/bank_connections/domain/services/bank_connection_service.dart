@@ -83,26 +83,45 @@ class BankConnectionService {
 
       // Step 2: Launch Stripe Financial Connections UI
       Log.d('Launching Stripe Financial Connections UI...', label: _label);
-      late final dynamic result;
+      bool stripeFlowCanceled = false;
+      bool userExplicitlyDismissed = false;
       try {
-        result = await StripeService.collectBankAccounts(
+        final result = await StripeService.collectBankAccounts(
           clientSecret: clientSecret,
         );
 
         if (result == null) {
-          Log.w('User cancelled bank account linking', label: _label);
-          return [];
+          // User might have dismissed the sheet manually (before completing)
+          // But we should STILL try to complete - they might have connected accounts
+          // before dismissing
+          Log.w('Stripe SDK returned null - user may have dismissed early', label: _label);
+          userExplicitlyDismissed = true;
+        } else {
+          Log.d('Stripe UI completed successfully with result', label: _label);
         }
-        Log.d('Stripe UI completed successfully', label: _label);
       } catch (stripeError) {
-        Log.e('STRIPE SDK ERROR: $stripeError', label: _label);
-        Log.e('Stripe error type: ${stripeError.runtimeType}', label: _label);
-        rethrow;
+        // Check if this is a "canceled" error - the webview might have issues
+        // but the connection could still be successful on Stripe's backend
+        final errorStr = stripeError.toString().toLowerCase();
+        if (errorStr.contains('cancel')) {
+          Log.w('Stripe flow reported canceled, but will try to complete anyway', label: _label);
+          stripeFlowCanceled = true;
+        } else {
+          Log.e('STRIPE SDK ERROR: $stripeError', label: _label);
+          Log.e('Stripe error type: ${stripeError.runtimeType}', label: _label);
+          rethrow;
+        }
       }
 
-      Log.i('User completed Financial Connections flow', label: _label);
+      Log.i('Proceeding to complete Financial Connections flow (canceled=$stripeFlowCanceled, dismissed=$userExplicitlyDismissed)', label: _label);
+
+      // ALWAYS wait for Stripe webhook to be processed on backend
+      // Even on "success", Stripe may not have updated the session yet
+      Log.d('Waiting 3 seconds for Stripe webhook processing...', label: _label);
+      await Future.delayed(const Duration(seconds: 3));
 
       // Step 3: Complete the connection and save accounts
+      Log.d('Calling POST /complete with sessionId: $sessionId', label: _label);
       final completeResponse = await http.post(
         Uri.parse('$_baseUrl/complete'),
         headers: {
@@ -114,13 +133,25 @@ class BankConnectionService {
         }),
       );
 
+      Log.d('POST /complete response status: ${completeResponse.statusCode}', label: _label);
+      Log.d('POST /complete response body: ${completeResponse.body}', label: _label);
       final completeData = jsonDecode(completeResponse.body) as Map<String, dynamic>;
       if (completeData['success'] != true) {
+        // If Stripe flow was "canceled" but complete also failed,
+        // it's likely a true cancellation - don't throw error, just return empty
+        if (stripeFlowCanceled) {
+          Log.w('Complete failed after canceled flow - treating as user cancellation', label: _label);
+          return [];
+        }
         throw Exception(completeData['error']?['message'] ?? 'Failed to complete connection');
       }
 
       final accountsData = completeData['data']?['accounts'] as List<dynamic>?;
-      if (accountsData == null) {
+      if (accountsData == null || accountsData.isEmpty) {
+        // No accounts returned - if flow was canceled, this is expected
+        if (stripeFlowCanceled) {
+          Log.w('No accounts after canceled flow - user likely canceled', label: _label);
+        }
         return [];
       }
 
