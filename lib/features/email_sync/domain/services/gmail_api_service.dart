@@ -375,12 +375,13 @@ class GmailApiService {
   String? _cachedAccessToken;
   DateTime? _tokenExpiry;
 
-  /// Get access token from Google Sign In
+  /// Get access token from Google Sign In (silently, no UI)
   ///
   /// In google_sign_in 7.x:
   /// - Authentication and authorization are separate steps
   /// - `authorizationForScopes()` returns null if UI needed (silent only)
-  /// - `authorizeScopes()` shows UI if needed
+  /// - We DO NOT call `authorizeScopes()` here to avoid showing login UI during scan
+  /// - If token is expired/unavailable, user should reconnect Gmail manually
   Future<String?> _getAccessToken({bool forceRefresh = false}) async {
     try {
       // Return cached token if still valid (not expired and not forcing refresh)
@@ -395,16 +396,16 @@ class GmailApiService {
       final signIn = GoogleSignIn.instance;
 
       // Try lightweight auth first (similar to old signInSilently)
-      var user = await signIn.attemptLightweightAuthentication();
+      final user = await signIn.attemptLightweightAuthentication();
 
       if (user == null) {
-        // No cached session, need full authentication with scopes
-        Log.i('No lightweight auth, requesting full authentication', label: _label);
-        user = await signIn.authenticate(scopeHint: _gmailScopes);
+        // No cached session - user needs to reconnect Gmail
+        Log.w('No lightweight auth available, user needs to reconnect Gmail', label: _label);
+        return null;
       }
 
-      // Try silent authorization first
-      var authorization = await user.authorizationClient.authorizationForScopes(
+      // Try silent authorization only (no UI)
+      final authorization = await user.authorizationClient.authorizationForScopes(
         _gmailScopes,
       );
 
@@ -412,20 +413,14 @@ class GmailApiService {
         _cachedAccessToken = authorization.accessToken;
         // Token typically valid for 1 hour, cache for 50 minutes to be safe
         _tokenExpiry = DateTime.now().add(const Duration(minutes: 50));
+        Log.d('Got access token silently', label: _label);
         return _cachedAccessToken;
       }
 
-      // authorizationForScopes returned null, meaning UI is needed
-      // This happens when scopes haven't been granted yet or token expired
-      Log.i('Silent authorization failed, requesting interactive auth', label: _label);
-
-      // Show Google Sign-In UI to re-authorize scopes
-      final newAuth = await user.authorizationClient.authorizeScopes(_gmailScopes);
-
-      _cachedAccessToken = newAuth.accessToken;
-      _tokenExpiry = DateTime.now().add(const Duration(minutes: 50));
-      Log.i('Interactive authorization successful', label: _label);
-      return _cachedAccessToken;
+      // authorizationForScopes returned null - token expired or scopes not granted
+      // DO NOT show UI here - user should reconnect Gmail manually from settings
+      Log.w('Silent authorization failed, Gmail scopes may have expired. User needs to reconnect.', label: _label);
+      return null;
     } catch (e) {
       Log.e('Error getting access token: $e', label: _label);
       _cachedAccessToken = null;
@@ -438,6 +433,14 @@ class GmailApiService {
   void clearCachedToken() {
     _cachedAccessToken = null;
     _tokenExpiry = null;
+  }
+
+  /// Cache access token (call after successful Gmail connect)
+  void cacheAccessToken(String token) {
+    _cachedAccessToken = token;
+    // Token typically valid for 1 hour, cache for 50 minutes to be safe
+    _tokenExpiry = DateTime.now().add(const Duration(minutes: 50));
+    Log.d('Access token cached manually', label: _label);
   }
 
   /// Check if Gmail is connected (has valid token)

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
@@ -13,6 +14,7 @@ class TransactionTabBar extends HookConsumerWidget {
   Widget build(BuildContext context, ref) {
     final now = DateTime.now();
 
+    // Match recurring screen TabBar style exactly
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: TabBar(
@@ -27,7 +29,18 @@ class TransactionTabBar extends HookConsumerWidget {
         tabAlignment: TabAlignment.center,
         tabs: monthsForTabs
             .map((monthDate) => Tab(
-                  child: Text(monthDate.toMonthTabLabel(now)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      HugeIcon(
+                        icon: HugeIcons.strokeRoundedCalendar03,
+                        size: 18,
+                        color: AppColors.primary600,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(monthDate.toMonthTabLabel(now)),
+                    ],
+                  ),
                 ))
             .toList(),
       ),

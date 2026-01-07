@@ -1,11 +1,23 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/features/email_sync/domain/services/gmail_auth_service.dart';
+import 'package:bexly/features/email_sync/domain/services/gmail_api_service.dart';
 import 'package:bexly/features/email_sync/data/models/email_sync_settings_model.dart';
+
+/// Provider for GmailApiService (shared singleton)
+final _gmailApiServiceInstance = GmailApiService();
+
+/// Provider for GmailApiService
+final gmailApiServiceProvider = Provider<GmailApiService>((ref) {
+  return _gmailApiServiceInstance;
+});
 
 /// Provider for GmailAuthService
 final gmailAuthServiceProvider = Provider<GmailAuthService>((ref) {
-  return GmailAuthService();
+  final authService = GmailAuthService();
+  // Link to GmailApiService so it can cache token after connect
+  authService.setGmailApiService(_gmailApiServiceInstance);
+  return authService;
 });
 
 /// Keys for SharedPreferences storage

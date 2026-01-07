@@ -3,6 +3,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/features/email_sync/domain/services/gmail_api_service.dart';
 
 /// Result of Gmail connection attempt
 sealed class GmailConnectResult {
@@ -47,11 +48,20 @@ class GmailAuthService {
   // GoogleSignIn instance for Gmail (uses singleton pattern in 7.x)
   GoogleSignIn get _signIn => GoogleSignIn.instance;
 
+  // Reference to GmailApiService for caching token
+  GmailApiService? _gmailApiService;
+
+  /// Set the GmailApiService reference for token caching
+  void setGmailApiService(GmailApiService service) {
+    _gmailApiService = service;
+  }
+
   /// Connect Gmail account for email sync.
   ///
   /// This will:
   /// 1. Show Google sign-in with gmail.readonly scope
-  /// 2. Return the email on success
+  /// 2. Authorize scopes and cache access token
+  /// 3. Return the email on success
   Future<GmailConnectResult> connectGmail() async {
     try {
       Log.i('Starting Gmail connection for email sync', label: _label);
@@ -66,7 +76,19 @@ class GmailAuthService {
         scopeHint: _gmailScopes,
       );
 
-      Log.i('Gmail connected: ${googleUser.email}', label: _label);
+      Log.i('Gmail authenticated: ${googleUser.email}', label: _label);
+
+      // Now authorize scopes to get access token
+      // This ensures we have the token cached for later use
+      final authorization = await googleUser.authorizationClient.authorizeScopes(_gmailScopes);
+
+      // Cache the token in GmailApiService if available
+      if (_gmailApiService != null) {
+        _gmailApiService!.cacheAccessToken(authorization.accessToken);
+        Log.i('Access token cached in GmailApiService', label: _label);
+      }
+
+      Log.i('Gmail connected with scopes: ${googleUser.email}', label: _label);
 
       return GmailConnectSuccess(
         email: googleUser.email,

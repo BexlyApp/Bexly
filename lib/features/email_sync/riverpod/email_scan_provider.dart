@@ -4,16 +4,12 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/utils/logger.dart';
-import 'package:bexly/features/email_sync/domain/services/gmail_api_service.dart';
 import 'package:bexly/features/email_sync/domain/services/email_parser_service.dart';
 import 'package:bexly/features/email_sync/data/models/parsed_email_transaction_model.dart';
 import 'package:bexly/features/email_sync/riverpod/email_sync_provider.dart';
 import 'package:bexly/features/email_sync/domain/services/email_import_service.dart';
 
-/// Provider for GmailApiService
-final gmailApiServiceProvider = Provider<GmailApiService>((ref) {
-  return GmailApiService();
-});
+// Note: gmailApiServiceProvider is defined in email_sync_provider.dart
 
 /// Provider for EmailParserService
 final emailParserServiceProvider = Provider<EmailParserService>((ref) {

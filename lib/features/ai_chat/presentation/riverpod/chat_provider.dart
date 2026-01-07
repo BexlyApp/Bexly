@@ -565,15 +565,37 @@ class ChatNotifier extends Notifier<ChatState> {
     print('🚀 [DEBUG] sendMessage() CALLED with content: ${content.substring(0, content.length > 30 ? 30 : content.length)}... imageBytes: ${imageBytes != null ? "${imageBytes.length} bytes" : "null"}');
     if ((content.trim().isEmpty && imageBytes == null) || state.isLoading) return;
 
-    // Check AI message limit
+    // Check AI message limit (skip in debug mode for testing)
     final aiUsageService = ref.read(aiUsageServiceProvider);
     final limits = ref.read(subscriptionLimitsProvider);
-    if (!aiUsageService.canSendMessage(limits)) {
-      final remaining = aiUsageService.getRemainingMessages(limits);
-      state = state.copyWith(
-        error: 'You have used all ${ limits.maxAiMessagesPerMonth} AI messages this month. Upgrade to Plus for more messages.',
+    const isDebugMode = bool.fromEnvironment('dart.vm.product') == false;
+    if (!isDebugMode && !aiUsageService.canSendMessage(limits)) {
+      Log.w('AI message limit reached: 0 remaining', label: 'Chat');
+
+      // Add user message first
+      final userMessage = ChatMessage(
+        id: _uuid.v4(),
+        content: content.trim(),
+        isFromUser: true,
+        timestamp: DateTime.now(),
+        imageBytes: imageBytes,
       );
-      Log.w('AI message limit reached: $remaining remaining', label: 'Chat');
+
+      // Create limit reached message in chat (not as error toast)
+      final used = aiUsageService.getUsedMessagesThisMonth();
+      final max = limits.maxAiMessagesPerMonth;
+      final limitMessage = ChatMessage(
+        id: _uuid.v4(),
+        content: '⚠️ **Đã hết lượt chat AI tháng này**\n\n'
+            'Bạn đã sử dụng **$used/$max** tin nhắn AI trong tháng.\n\n'
+            '💡 Nâng cấp lên **Plus** để có 240 tin nhắn/tháng, hoặc **Pro** để không giới hạn.',
+        isFromUser: false,
+        timestamp: DateTime.now(),
+      );
+
+      state = state.copyWith(
+        messages: [...state.messages, userMessage, limitMessage],
+      );
       return;
     }
 
@@ -1078,16 +1100,19 @@ Please create a transaction based on this receipt data.''';
                 Log.d('🔵 Processing create_recurring action: $action', label: 'Chat Provider');
                 Log.d('🔵 AI Response: $response', label: 'Chat Provider');
 
-                // CRITICAL: Check if categories are loaded before processing
-                final categoriesAsync = ref.read(hierarchicalCategoriesProvider);
-                final hierarchicalCategories = _unwrapAsyncValue(categoriesAsync) ?? [];
+                // CRITICAL: Query categories directly from database instead of relying on provider state
+                // This avoids timing issues where StreamProvider hasn't emitted yet
+                final categoryDao = ref.read(databaseProvider).categoryDao;
+                final categoryEntities = await categoryDao.watchAllCategories().first;
 
-                if (hierarchicalCategories.isEmpty) {
+                if (categoryEntities.isEmpty) {
                   Log.w('⚠️ Categories not loaded yet, skipping recurring creation. Action: $action', label: 'Chat Provider');
                   print('⚠️ [CREATE_RECURRING] Categories not ready, action skipped');
                   displayMessage += '\n\n⚠️ Error: Categories not loaded yet. Please try again in a few seconds.';
                   break;
                 }
+
+                Log.d('🔵 Loaded ${categoryEntities.length} categories from database', label: 'Chat Provider');
 
                 // Get wallet used by recurring (query directly from database)
                 final walletDao = ref.read(walletDaoProvider);
@@ -2545,24 +2570,71 @@ Please create a transaction based on this receipt data.''';
       Log.d('Creating recurring: $name, amount: $amount, aiCurrency: $aiCurrency, frequency: $frequencyString', label: 'CREATE_RECURRING');
       Log.d('AI Action received: ${action.toString()}', label: 'CREATE_RECURRING');
 
-      // Find wallet matching currency
+      // Find wallet - Priority: AI specified wallet name > currency match > active wallet > default
       final walletsAsync = ref.read(allWalletsStreamProvider);
       final allWallets = _unwrapAsyncValue(walletsAsync) ?? [];
-      WalletModel? wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
+      WalletModel? wallet;
 
-      if (wallet == null) {
-        wallet = ref.read(activeWalletProvider).value;
+      // Priority 1: If AI specified a wallet name, try EXACT match only
+      // Partial matches are unreliable and can cause wrong wallet selection
+      final aiWalletName = action['wallet'] as String?;
+      if (aiWalletName != null && aiWalletName.isNotEmpty) {
+        final aiWalletLower = aiWalletName.toLowerCase();
+
+        // Try exact match ONLY - partial matches are too risky
+        wallet = allWallets.firstWhereOrNull((w) =>
+          w.name.toLowerCase() == aiWalletLower);
+
+        if (wallet != null) {
+          Log.d('Using AI-specified wallet (exact match): "${wallet.name}" (${wallet.currency})', label: 'CREATE_RECURRING');
+        } else {
+          // Check if wallet name contains currency hint (e.g., "My USD Wallet", "ví USD")
+          final walletNameUpper = aiWalletName.toUpperCase();
+          String? hintedCurrency;
+          if (walletNameUpper.contains('USD') || walletNameUpper.contains('DOLLAR') || walletNameUpper.contains('ĐÔ')) {
+            hintedCurrency = 'USD';
+          } else if (walletNameUpper.contains('VND') || walletNameUpper.contains('ĐỒNG')) {
+            hintedCurrency = 'VND';
+          }
+
+          if (hintedCurrency != null) {
+            wallet = allWallets.firstWhereOrNull((w) => w.currency == hintedCurrency);
+            if (wallet != null) {
+              Log.d('Using currency-hinted wallet from name "$aiWalletName": "${wallet.name}" (${wallet.currency})', label: 'CREATE_RECURRING');
+            }
+          }
+
+          if (wallet == null) {
+            Log.w('AI specified wallet "$aiWalletName" not found (no exact match), falling back to currency matching', label: 'CREATE_RECURRING');
+          }
+        }
       }
 
-      // If still no wallet, try to get default wallet, then first available wallet
+      // Priority 2: Match wallet by currency from AI action
+      if (wallet == null) {
+        wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
+        if (wallet != null) {
+          Log.d('Using currency-matched wallet: "${wallet.name}" (${wallet.currency})', label: 'CREATE_RECURRING');
+        }
+      }
+
+      // Priority 3: Use active wallet
+      if (wallet == null) {
+        wallet = ref.read(activeWalletProvider).value;
+        if (wallet != null) {
+          Log.d('Using active wallet: "${wallet.name}" (${wallet.currency})', label: 'CREATE_RECURRING');
+        }
+      }
+
+      // Priority 4: Use default wallet, then first available wallet
       if (wallet == null) {
         final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
         if (defaultWallet != null) {
           wallet = defaultWallet;
-          Log.d('No active wallet, using default wallet: ${wallet.name}', label: 'CREATE_RECURRING');
+          Log.d('Using default wallet: ${wallet.name}', label: 'CREATE_RECURRING');
         } else if (allWallets.isNotEmpty) {
           wallet = allWallets.first;
-          Log.d('No active wallet, using first available wallet: ${wallet.name}', label: 'CREATE_RECURRING');
+          Log.d('Using first available wallet: ${wallet.name}', label: 'CREATE_RECURRING');
         }
       }
 
@@ -2571,25 +2643,35 @@ Please create a transaction based on this receipt data.''';
       }
 
       // Find category with fallback logic
-      // CRITICAL: hierarchicalCategoriesProvider returns only PARENT categories!
-      // We need to FLATTEN to include ALL subcategories for matching
-      final categoriesAsync = ref.read(hierarchicalCategoriesProvider);
-      final hierarchicalCategories = _unwrapAsyncValue(categoriesAsync) ?? [];
+      // CRITICAL: Query directly from database to avoid StreamProvider timing issues
+      final categoryDao = ref.read(databaseProvider).categoryDao;
+      final categoryEntities = await categoryDao.watchAllCategories().first;
 
-      if (hierarchicalCategories.isEmpty) {
+      if (categoryEntities.isEmpty) {
         throw Exception('No categories available.');
       }
 
-      // Flatten hierarchy to include BOTH parent categories AND subcategories
+      // Convert to CategoryModel and flatten for matching
       // IMPORTANT: Add subcategories FIRST for higher matching priority
       final List<CategoryModel> allCategories = [];
-      for (final cat in hierarchicalCategories) {
-        // Add subcategories FIRST (higher priority for matching)
-        if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
-          allCategories.addAll(cat.subCategories!);
-        }
-        // Then add parent as fallback
-        allCategories.add(cat);
+      final Map<int?, List<CategoryModel>> childrenByParentIdMap = {};
+
+      // Convert all entities to models
+      final allModels = categoryEntities.map((e) => e.toModel()).toList();
+
+      // Group by parentId
+      for (final model in allModels) {
+        childrenByParentIdMap.putIfAbsent(model.parentId, () => []).add(model);
+      }
+
+      // Get top-level categories (parentId == null)
+      final topLevelCategories = childrenByParentIdMap[null] ?? [];
+
+      // Flatten: Add subcategories first, then parent
+      for (final parent in topLevelCategories) {
+        final children = childrenByParentIdMap[parent.id] ?? [];
+        allCategories.addAll(children); // Subcategories first (higher priority)
+        allCategories.add(parent); // Then parent as fallback
       }
 
       Log.d('Flattened categories for matching: ${allCategories.map((c) => c.title).join(", ")}', label: 'CREATE_RECURRING');
