@@ -145,10 +145,10 @@ class SubscriptionLimits {
   int get maxAiMessagesPerMonth {
     switch (tier) {
       case SubscriptionTier.free:
-        return 20;
+        return 60;
       case SubscriptionTier.plus:
       case SubscriptionTier.plusFamily:
-        return 60;
+        return 240;
       case SubscriptionTier.pro:
       case SubscriptionTier.proFamily:
         return -1; // Unlimited
