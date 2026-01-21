@@ -180,7 +180,7 @@ Bot → https://id.dos.me/login?redirect=bexly://telegram/linked&tg_token=JWT
 
 ### Bot Information
 - **Bot Username**: @BexlyBot
-- **Bot Token**: `8038733197:AAFi1F1Wx70aiExd3QtT2-9WyBqXm09zHJA`
+- **Bot Token**: `[STORED IN SUPABASE SECRETS - DO NOT COMMIT]`
 - **Webhook URL**: `https://dos.supabase.co/functions/v1/telegram-webhook`
 
 ### Test Data
