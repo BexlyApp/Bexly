@@ -3,10 +3,10 @@ import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/database/tables/goal_table.dart';
 import 'package:bexly/features/goal/data/model/goal_model.dart';
 
-final goalDetailsProvider = StreamProvider.autoDispose.family<GoalModel, int>((
+final goalDetailsProvider = StreamProvider.autoDispose.family<GoalModel?, int>((
   ref,
   id,
 ) {
   final db = ref.watch(databaseProvider);
-  return db.goalDao.watchGoalByID(id).map((event) => event.toModel());
+  return db.goalDao.watchGoalByID(id).map((event) => event?.toModel());
 });

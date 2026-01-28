@@ -43,6 +43,12 @@ abstract class GoalModel with _$GoalModel {
 
     /// Indicates if the goal is pinned for priority viewing.
     @Default(false) bool pinned,
+
+    /// Soft delete flag (Tombstone pattern)
+    @Default(false) bool isDeleted,
+
+    /// Timestamp when goal was soft deleted
+    DateTime? deletedAt,
   }) = _GoalModel;
 
   /// Creates a `GoalModel` instance from a JSON map.
