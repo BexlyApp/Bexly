@@ -26,6 +26,10 @@ _GoalModel _$GoalModelFromJson(Map<String, dynamic> json) => _GoalModel(
       : DateTime.parse(json['updatedAt'] as String),
   associatedAccountId: (json['associatedAccountId'] as num?)?.toInt(),
   pinned: json['pinned'] as bool? ?? false,
+  isDeleted: json['isDeleted'] as bool? ?? false,
+  deletedAt: json['deletedAt'] == null
+      ? null
+      : DateTime.parse(json['deletedAt'] as String),
 );
 
 Map<String, dynamic> _$GoalModelToJson(_GoalModel instance) =>
@@ -43,4 +47,6 @@ Map<String, dynamic> _$GoalModelToJson(_GoalModel instance) =>
       'updatedAt': instance.updatedAt?.toIso8601String(),
       'associatedAccountId': instance.associatedAccountId,
       'pinned': instance.pinned,
+      'isDeleted': instance.isDeleted,
+      'deletedAt': instance.deletedAt?.toIso8601String(),
     };

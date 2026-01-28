@@ -27,7 +27,9 @@ mixin _$GoalModel {
  DateTime? get createdAt;/// Timestamp when goal was last updated
  DateTime? get updatedAt;/// Optional ID of an associated account or fund source for this goal.
  int? get associatedAccountId;/// Indicates if the goal is pinned for priority viewing.
- bool get pinned;
+ bool get pinned;/// Soft delete flag (Tombstone pattern)
+ bool get isDeleted;/// Timestamp when goal was soft deleted
+ DateTime? get deletedAt;
 /// Create a copy of GoalModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -40,16 +42,16 @@ $GoalModelCopyWith<GoalModel> get copyWith => _$GoalModelCopyWithImpl<GoalModel>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GoalModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.targetAmount, targetAmount) || other.targetAmount == targetAmount)&&(identical(other.currentAmount, currentAmount) || other.currentAmount == currentAmount)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.description, description) || other.description == description)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.associatedAccountId, associatedAccountId) || other.associatedAccountId == associatedAccountId)&&(identical(other.pinned, pinned) || other.pinned == pinned));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GoalModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.targetAmount, targetAmount) || other.targetAmount == targetAmount)&&(identical(other.currentAmount, currentAmount) || other.currentAmount == currentAmount)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.description, description) || other.description == description)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.associatedAccountId, associatedAccountId) || other.associatedAccountId == associatedAccountId)&&(identical(other.pinned, pinned) || other.pinned == pinned)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,title,targetAmount,currentAmount,startDate,endDate,iconName,description,createdAt,updatedAt,associatedAccountId,pinned);
+int get hashCode => Object.hash(runtimeType,id,cloudId,title,targetAmount,currentAmount,startDate,endDate,iconName,description,createdAt,updatedAt,associatedAccountId,pinned,isDeleted,deletedAt);
 
 @override
 String toString() {
-  return 'GoalModel(id: $id, cloudId: $cloudId, title: $title, targetAmount: $targetAmount, currentAmount: $currentAmount, startDate: $startDate, endDate: $endDate, iconName: $iconName, description: $description, createdAt: $createdAt, updatedAt: $updatedAt, associatedAccountId: $associatedAccountId, pinned: $pinned)';
+  return 'GoalModel(id: $id, cloudId: $cloudId, title: $title, targetAmount: $targetAmount, currentAmount: $currentAmount, startDate: $startDate, endDate: $endDate, iconName: $iconName, description: $description, createdAt: $createdAt, updatedAt: $updatedAt, associatedAccountId: $associatedAccountId, pinned: $pinned, isDeleted: $isDeleted, deletedAt: $deletedAt)';
 }
 
 
@@ -60,7 +62,7 @@ abstract mixin class $GoalModelCopyWith<$Res>  {
   factory $GoalModelCopyWith(GoalModel value, $Res Function(GoalModel) _then) = _$GoalModelCopyWithImpl;
 @useResult
 $Res call({
- int? id, String? cloudId, String title, double targetAmount, double currentAmount, DateTime? startDate, DateTime endDate, String? iconName, String? description, DateTime? createdAt, DateTime? updatedAt, int? associatedAccountId, bool pinned
+ int? id, String? cloudId, String title, double targetAmount, double currentAmount, DateTime? startDate, DateTime endDate, String? iconName, String? description, DateTime? createdAt, DateTime? updatedAt, int? associatedAccountId, bool pinned, bool isDeleted, DateTime? deletedAt
 });
 
 
@@ -77,7 +79,7 @@ class _$GoalModelCopyWithImpl<$Res>
 
 /// Create a copy of GoalModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? targetAmount = null,Object? currentAmount = null,Object? startDate = freezed,Object? endDate = null,Object? iconName = freezed,Object? description = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? associatedAccountId = freezed,Object? pinned = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? targetAmount = null,Object? currentAmount = null,Object? startDate = freezed,Object? endDate = null,Object? iconName = freezed,Object? description = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? associatedAccountId = freezed,Object? pinned = null,Object? isDeleted = null,Object? deletedAt = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -92,7 +94,9 @@ as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // igno
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,associatedAccountId: freezed == associatedAccountId ? _self.associatedAccountId : associatedAccountId // ignore: cast_nullable_to_non_nullable
 as int?,pinned: null == pinned ? _self.pinned : pinned // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,isDeleted: null == isDeleted ? _self.isDeleted : isDeleted // ignore: cast_nullable_to_non_nullable
+as bool,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 
@@ -177,10 +181,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  double targetAmount,  double currentAmount,  DateTime? startDate,  DateTime endDate,  String? iconName,  String? description,  DateTime? createdAt,  DateTime? updatedAt,  int? associatedAccountId,  bool pinned)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  double targetAmount,  double currentAmount,  DateTime? startDate,  DateTime endDate,  String? iconName,  String? description,  DateTime? createdAt,  DateTime? updatedAt,  int? associatedAccountId,  bool pinned,  bool isDeleted,  DateTime? deletedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GoalModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.title,_that.targetAmount,_that.currentAmount,_that.startDate,_that.endDate,_that.iconName,_that.description,_that.createdAt,_that.updatedAt,_that.associatedAccountId,_that.pinned);case _:
+return $default(_that.id,_that.cloudId,_that.title,_that.targetAmount,_that.currentAmount,_that.startDate,_that.endDate,_that.iconName,_that.description,_that.createdAt,_that.updatedAt,_that.associatedAccountId,_that.pinned,_that.isDeleted,_that.deletedAt);case _:
   return orElse();
 
 }
@@ -198,10 +202,10 @@ return $default(_that.id,_that.cloudId,_that.title,_that.targetAmount,_that.curr
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  double targetAmount,  double currentAmount,  DateTime? startDate,  DateTime endDate,  String? iconName,  String? description,  DateTime? createdAt,  DateTime? updatedAt,  int? associatedAccountId,  bool pinned)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  double targetAmount,  double currentAmount,  DateTime? startDate,  DateTime endDate,  String? iconName,  String? description,  DateTime? createdAt,  DateTime? updatedAt,  int? associatedAccountId,  bool pinned,  bool isDeleted,  DateTime? deletedAt)  $default,) {final _that = this;
 switch (_that) {
 case _GoalModel():
-return $default(_that.id,_that.cloudId,_that.title,_that.targetAmount,_that.currentAmount,_that.startDate,_that.endDate,_that.iconName,_that.description,_that.createdAt,_that.updatedAt,_that.associatedAccountId,_that.pinned);case _:
+return $default(_that.id,_that.cloudId,_that.title,_that.targetAmount,_that.currentAmount,_that.startDate,_that.endDate,_that.iconName,_that.description,_that.createdAt,_that.updatedAt,_that.associatedAccountId,_that.pinned,_that.isDeleted,_that.deletedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -218,10 +222,10 @@ return $default(_that.id,_that.cloudId,_that.title,_that.targetAmount,_that.curr
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String title,  double targetAmount,  double currentAmount,  DateTime? startDate,  DateTime endDate,  String? iconName,  String? description,  DateTime? createdAt,  DateTime? updatedAt,  int? associatedAccountId,  bool pinned)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String title,  double targetAmount,  double currentAmount,  DateTime? startDate,  DateTime endDate,  String? iconName,  String? description,  DateTime? createdAt,  DateTime? updatedAt,  int? associatedAccountId,  bool pinned,  bool isDeleted,  DateTime? deletedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _GoalModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.title,_that.targetAmount,_that.currentAmount,_that.startDate,_that.endDate,_that.iconName,_that.description,_that.createdAt,_that.updatedAt,_that.associatedAccountId,_that.pinned);case _:
+return $default(_that.id,_that.cloudId,_that.title,_that.targetAmount,_that.currentAmount,_that.startDate,_that.endDate,_that.iconName,_that.description,_that.createdAt,_that.updatedAt,_that.associatedAccountId,_that.pinned,_that.isDeleted,_that.deletedAt);case _:
   return null;
 
 }
@@ -233,7 +237,7 @@ return $default(_that.id,_that.cloudId,_that.title,_that.targetAmount,_that.curr
 @JsonSerializable()
 
 class _GoalModel implements GoalModel {
-  const _GoalModel({this.id, this.cloudId, required this.title, required this.targetAmount, this.currentAmount = 0.0, this.startDate, required this.endDate, this.iconName, this.description, this.createdAt, this.updatedAt, this.associatedAccountId, this.pinned = false});
+  const _GoalModel({this.id, this.cloudId, required this.title, required this.targetAmount, this.currentAmount = 0.0, this.startDate, required this.endDate, this.iconName, this.description, this.createdAt, this.updatedAt, this.associatedAccountId, this.pinned = false, this.isDeleted = false, this.deletedAt});
   factory _GoalModel.fromJson(Map<String, dynamic> json) => _$GoalModelFromJson(json);
 
 /// The unique identifier for the goal. Null if the goal is new and not yet saved.
@@ -261,6 +265,10 @@ class _GoalModel implements GoalModel {
 @override final  int? associatedAccountId;
 /// Indicates if the goal is pinned for priority viewing.
 @override@JsonKey() final  bool pinned;
+/// Soft delete flag (Tombstone pattern)
+@override@JsonKey() final  bool isDeleted;
+/// Timestamp when goal was soft deleted
+@override final  DateTime? deletedAt;
 
 /// Create a copy of GoalModel
 /// with the given fields replaced by the non-null parameter values.
@@ -275,16 +283,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GoalModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.targetAmount, targetAmount) || other.targetAmount == targetAmount)&&(identical(other.currentAmount, currentAmount) || other.currentAmount == currentAmount)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.description, description) || other.description == description)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.associatedAccountId, associatedAccountId) || other.associatedAccountId == associatedAccountId)&&(identical(other.pinned, pinned) || other.pinned == pinned));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GoalModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.targetAmount, targetAmount) || other.targetAmount == targetAmount)&&(identical(other.currentAmount, currentAmount) || other.currentAmount == currentAmount)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.iconName, iconName) || other.iconName == iconName)&&(identical(other.description, description) || other.description == description)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.associatedAccountId, associatedAccountId) || other.associatedAccountId == associatedAccountId)&&(identical(other.pinned, pinned) || other.pinned == pinned)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,title,targetAmount,currentAmount,startDate,endDate,iconName,description,createdAt,updatedAt,associatedAccountId,pinned);
+int get hashCode => Object.hash(runtimeType,id,cloudId,title,targetAmount,currentAmount,startDate,endDate,iconName,description,createdAt,updatedAt,associatedAccountId,pinned,isDeleted,deletedAt);
 
 @override
 String toString() {
-  return 'GoalModel(id: $id, cloudId: $cloudId, title: $title, targetAmount: $targetAmount, currentAmount: $currentAmount, startDate: $startDate, endDate: $endDate, iconName: $iconName, description: $description, createdAt: $createdAt, updatedAt: $updatedAt, associatedAccountId: $associatedAccountId, pinned: $pinned)';
+  return 'GoalModel(id: $id, cloudId: $cloudId, title: $title, targetAmount: $targetAmount, currentAmount: $currentAmount, startDate: $startDate, endDate: $endDate, iconName: $iconName, description: $description, createdAt: $createdAt, updatedAt: $updatedAt, associatedAccountId: $associatedAccountId, pinned: $pinned, isDeleted: $isDeleted, deletedAt: $deletedAt)';
 }
 
 
@@ -295,7 +303,7 @@ abstract mixin class _$GoalModelCopyWith<$Res> implements $GoalModelCopyWith<$Re
   factory _$GoalModelCopyWith(_GoalModel value, $Res Function(_GoalModel) _then) = __$GoalModelCopyWithImpl;
 @override @useResult
 $Res call({
- int? id, String? cloudId, String title, double targetAmount, double currentAmount, DateTime? startDate, DateTime endDate, String? iconName, String? description, DateTime? createdAt, DateTime? updatedAt, int? associatedAccountId, bool pinned
+ int? id, String? cloudId, String title, double targetAmount, double currentAmount, DateTime? startDate, DateTime endDate, String? iconName, String? description, DateTime? createdAt, DateTime? updatedAt, int? associatedAccountId, bool pinned, bool isDeleted, DateTime? deletedAt
 });
 
 
@@ -312,7 +320,7 @@ class __$GoalModelCopyWithImpl<$Res>
 
 /// Create a copy of GoalModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? targetAmount = null,Object? currentAmount = null,Object? startDate = freezed,Object? endDate = null,Object? iconName = freezed,Object? description = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? associatedAccountId = freezed,Object? pinned = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? targetAmount = null,Object? currentAmount = null,Object? startDate = freezed,Object? endDate = null,Object? iconName = freezed,Object? description = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? associatedAccountId = freezed,Object? pinned = null,Object? isDeleted = null,Object? deletedAt = freezed,}) {
   return _then(_GoalModel(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -327,7 +335,9 @@ as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // igno
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,associatedAccountId: freezed == associatedAccountId ? _self.associatedAccountId : associatedAccountId // ignore: cast_nullable_to_non_nullable
 as int?,pinned: null == pinned ? _self.pinned : pinned // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,isDeleted: null == isDeleted ? _self.isDeleted : isDeleted // ignore: cast_nullable_to_non_nullable
+as bool,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 

@@ -123,7 +123,19 @@ class GoalDetailsScreen extends ConsumerWidget {
               150,
             ),
             child: goalAsync.when(
-              data: (GoalModel goal) {
+              data: (GoalModel? goal) {
+                // Handle deleted goal - auto navigate back
+                if (goal == null) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (context.mounted) {
+                      context.pop();
+                    }
+                  });
+                  return const Center(
+                    child: Text('Goal not found or has been deleted'),
+                  );
+                }
+
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
