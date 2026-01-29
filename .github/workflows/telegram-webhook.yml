@@ -24,7 +24,7 @@ jobs:
           echo "Current webhook info: $WEBHOOK_INFO"
 
           CURRENT_URL=$(echo $WEBHOOK_INFO | jq -r '.result.url')
-          EXPECTED_URL="https://asia-southeast1-bexly-app.cloudfunctions.net/telegramWebhook"
+          EXPECTED_URL="https://gulptwduchsjcsbndmua.supabase.co/functions/v1/telegram-webhook"
 
           echo "current_url=$CURRENT_URL" >> $GITHUB_OUTPUT
           echo "expected_url=$EXPECTED_URL" >> $GITHUB_OUTPUT
