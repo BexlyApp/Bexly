@@ -12,11 +12,12 @@ class GoalsActions {
 }
 
 /// Expose your CRUD methods via Riverpod
+/// Uses goalDaoProvider to ensure sync functionality works
 final goalsActionsProvider = Provider<GoalsActions>((ref) {
-  final db = ref.watch(databaseProvider);
+  final goalDao = ref.watch(goalDaoProvider);
   return GoalsActions(
-    add: db.goalDao.addGoal,
-    update: db.goalDao.updateGoal,
-    delete: db.goalDao.deleteGoal,
+    add: goalDao.addGoal,
+    update: goalDao.updateGoal,
+    delete: goalDao.deleteGoal,
   );
 });
