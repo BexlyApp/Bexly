@@ -51,12 +51,12 @@ class GoalDetailsScreen extends ConsumerWidget {
           CustomIconButton(
             context,
             onPressed: () async {
-              final db = ref.read(databaseProvider);
+              final goalDao = ref.read(goalDaoProvider);
               final goal = goalAsync.value!;
               if (goal.pinned) {
-                await db.goalDao.unpinGoal(goalId);
+                await goalDao.unpinGoal(goalId);
               } else {
-                await db.goalDao.pinGoal(goalId);
+                await goalDao.pinGoal(goalId);
               }
               Toast.show(
                 'Goal ${goal.pinned ? 'unpinned' : 'pinned'}',
@@ -100,8 +100,7 @@ class GoalDetailsScreen extends ConsumerWidget {
                   ),
                   confirmText: context.l10n.delete,
                   onConfirm: () {
-                    final db = ref.read(databaseProvider);
-                    db.goalDao.deleteGoal(goalId);
+                    ref.read(goalDaoProvider).deleteGoal(goalId);
                     context.pop();
                     context.pop();
                   },

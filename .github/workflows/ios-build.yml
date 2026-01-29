@@ -14,7 +14,7 @@ on:
 jobs:
   # Signed build using manual certificate (.p12)
   build-ios-signed:
-    runs-on: macos-15
+    runs-on: macos-26
     # Only run if triggered by workflow_dispatch, tag push, or if version-bump succeeded
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
     steps:
