@@ -157,7 +157,10 @@ class TransactionFormState {
       int? savedTransactionId;
       if (!isEditing) {
         Log.d('💾 Adding new transaction to database...', label: 'TransactionForm');
-        savedTransactionId = await db.transactionDao.addTransaction(
+        // Use transactionDaoProvider with ref for sync support
+        final transactionDao = ref.read(transactionDaoProvider);
+        print('🎯 [TransactionForm] Using transactionDaoProvider - this should have _ref for sync!');
+        savedTransactionId = await transactionDao.addTransaction(
           transactionToSave,
         );
         Log.d('💾 Transaction saved with ID: $savedTransactionId', label: 'TransactionForm');
@@ -177,7 +180,9 @@ class TransactionFormState {
           );
           return;
         }
-        await db.transactionDao.updateTransaction(transactionToSave);
+        // Use transactionDaoProvider with ref for sync support
+        final transactionDao = ref.read(transactionDaoProvider);
+        await transactionDao.updateTransaction(transactionToSave);
         savedTransactionId = transactionToSave.id;
         await _adjustWalletBalance(ref, initialTransaction, transactionToSave);
       }
@@ -331,9 +336,12 @@ class TransactionFormState {
     await db.walletDao.updateWallet(updatedWallet);
 
     // Update activeWallet provider if the adjusted wallet is the active one
+    // Use Future.microtask to avoid modifying provider during build
     final activeWallet = ref.read(activeWalletProvider).value;
     if (activeWallet?.id == targetWallet.id) {
-      ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
+      Future.microtask(() {
+        ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
+      });
     }
 
     Log.d(

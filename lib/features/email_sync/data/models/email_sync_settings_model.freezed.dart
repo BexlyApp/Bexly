@@ -23,7 +23,8 @@ mixin _$EmailSyncSettingsModel {
 /// Stored as JSON array string in database
  List<String> get enabledBanks;/// Total number of transactions imported from email
  int get totalImported;/// Number of transactions pending review
- int get pendingReview;/// Timestamp when settings were created
+ int get pendingReview;/// Auto-sync frequency (default: every 24 hours)
+ SyncFrequency get syncFrequency;/// Timestamp when settings were created
  DateTime? get createdAt;/// Timestamp when settings were last updated
  DateTime? get updatedAt;
 /// Create a copy of EmailSyncSettingsModel
@@ -38,16 +39,16 @@ $EmailSyncSettingsModelCopyWith<EmailSyncSettingsModel> get copyWith => _$EmailS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is EmailSyncSettingsModel&&(identical(other.id, id) || other.id == id)&&(identical(other.gmailEmail, gmailEmail) || other.gmailEmail == gmailEmail)&&(identical(other.isEnabled, isEnabled) || other.isEnabled == isEnabled)&&(identical(other.lastSyncTime, lastSyncTime) || other.lastSyncTime == lastSyncTime)&&const DeepCollectionEquality().equals(other.enabledBanks, enabledBanks)&&(identical(other.totalImported, totalImported) || other.totalImported == totalImported)&&(identical(other.pendingReview, pendingReview) || other.pendingReview == pendingReview)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is EmailSyncSettingsModel&&(identical(other.id, id) || other.id == id)&&(identical(other.gmailEmail, gmailEmail) || other.gmailEmail == gmailEmail)&&(identical(other.isEnabled, isEnabled) || other.isEnabled == isEnabled)&&(identical(other.lastSyncTime, lastSyncTime) || other.lastSyncTime == lastSyncTime)&&const DeepCollectionEquality().equals(other.enabledBanks, enabledBanks)&&(identical(other.totalImported, totalImported) || other.totalImported == totalImported)&&(identical(other.pendingReview, pendingReview) || other.pendingReview == pendingReview)&&(identical(other.syncFrequency, syncFrequency) || other.syncFrequency == syncFrequency)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,gmailEmail,isEnabled,lastSyncTime,const DeepCollectionEquality().hash(enabledBanks),totalImported,pendingReview,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,gmailEmail,isEnabled,lastSyncTime,const DeepCollectionEquality().hash(enabledBanks),totalImported,pendingReview,syncFrequency,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'EmailSyncSettingsModel(id: $id, gmailEmail: $gmailEmail, isEnabled: $isEnabled, lastSyncTime: $lastSyncTime, enabledBanks: $enabledBanks, totalImported: $totalImported, pendingReview: $pendingReview, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'EmailSyncSettingsModel(id: $id, gmailEmail: $gmailEmail, isEnabled: $isEnabled, lastSyncTime: $lastSyncTime, enabledBanks: $enabledBanks, totalImported: $totalImported, pendingReview: $pendingReview, syncFrequency: $syncFrequency, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -58,7 +59,7 @@ abstract mixin class $EmailSyncSettingsModelCopyWith<$Res>  {
   factory $EmailSyncSettingsModelCopyWith(EmailSyncSettingsModel value, $Res Function(EmailSyncSettingsModel) _then) = _$EmailSyncSettingsModelCopyWithImpl;
 @useResult
 $Res call({
- int? id, String? gmailEmail, bool isEnabled, DateTime? lastSyncTime, List<String> enabledBanks, int totalImported, int pendingReview, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? gmailEmail, bool isEnabled, DateTime? lastSyncTime, List<String> enabledBanks, int totalImported, int pendingReview, SyncFrequency syncFrequency, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -75,7 +76,7 @@ class _$EmailSyncSettingsModelCopyWithImpl<$Res>
 
 /// Create a copy of EmailSyncSettingsModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? gmailEmail = freezed,Object? isEnabled = null,Object? lastSyncTime = freezed,Object? enabledBanks = null,Object? totalImported = null,Object? pendingReview = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? gmailEmail = freezed,Object? isEnabled = null,Object? lastSyncTime = freezed,Object? enabledBanks = null,Object? totalImported = null,Object? pendingReview = null,Object? syncFrequency = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,gmailEmail: freezed == gmailEmail ? _self.gmailEmail : gmailEmail // ignore: cast_nullable_to_non_nullable
@@ -84,7 +85,8 @@ as bool,lastSyncTime: freezed == lastSyncTime ? _self.lastSyncTime : lastSyncTim
 as DateTime?,enabledBanks: null == enabledBanks ? _self.enabledBanks : enabledBanks // ignore: cast_nullable_to_non_nullable
 as List<String>,totalImported: null == totalImported ? _self.totalImported : totalImported // ignore: cast_nullable_to_non_nullable
 as int,pendingReview: null == pendingReview ? _self.pendingReview : pendingReview // ignore: cast_nullable_to_non_nullable
-as int,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as int,syncFrequency: null == syncFrequency ? _self.syncFrequency : syncFrequency // ignore: cast_nullable_to_non_nullable
+as SyncFrequency,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
@@ -171,10 +173,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? gmailEmail,  bool isEnabled,  DateTime? lastSyncTime,  List<String> enabledBanks,  int totalImported,  int pendingReview,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? gmailEmail,  bool isEnabled,  DateTime? lastSyncTime,  List<String> enabledBanks,  int totalImported,  int pendingReview,  SyncFrequency syncFrequency,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _EmailSyncSettingsModel() when $default != null:
-return $default(_that.id,_that.gmailEmail,_that.isEnabled,_that.lastSyncTime,_that.enabledBanks,_that.totalImported,_that.pendingReview,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.gmailEmail,_that.isEnabled,_that.lastSyncTime,_that.enabledBanks,_that.totalImported,_that.pendingReview,_that.syncFrequency,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -192,10 +194,10 @@ return $default(_that.id,_that.gmailEmail,_that.isEnabled,_that.lastSyncTime,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? gmailEmail,  bool isEnabled,  DateTime? lastSyncTime,  List<String> enabledBanks,  int totalImported,  int pendingReview,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? gmailEmail,  bool isEnabled,  DateTime? lastSyncTime,  List<String> enabledBanks,  int totalImported,  int pendingReview,  SyncFrequency syncFrequency,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _EmailSyncSettingsModel():
-return $default(_that.id,_that.gmailEmail,_that.isEnabled,_that.lastSyncTime,_that.enabledBanks,_that.totalImported,_that.pendingReview,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.gmailEmail,_that.isEnabled,_that.lastSyncTime,_that.enabledBanks,_that.totalImported,_that.pendingReview,_that.syncFrequency,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -212,10 +214,10 @@ return $default(_that.id,_that.gmailEmail,_that.isEnabled,_that.lastSyncTime,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? gmailEmail,  bool isEnabled,  DateTime? lastSyncTime,  List<String> enabledBanks,  int totalImported,  int pendingReview,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? gmailEmail,  bool isEnabled,  DateTime? lastSyncTime,  List<String> enabledBanks,  int totalImported,  int pendingReview,  SyncFrequency syncFrequency,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _EmailSyncSettingsModel() when $default != null:
-return $default(_that.id,_that.gmailEmail,_that.isEnabled,_that.lastSyncTime,_that.enabledBanks,_that.totalImported,_that.pendingReview,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.gmailEmail,_that.isEnabled,_that.lastSyncTime,_that.enabledBanks,_that.totalImported,_that.pendingReview,_that.syncFrequency,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -227,7 +229,7 @@ return $default(_that.id,_that.gmailEmail,_that.isEnabled,_that.lastSyncTime,_th
 @JsonSerializable()
 
 class _EmailSyncSettingsModel implements EmailSyncSettingsModel {
-  const _EmailSyncSettingsModel({this.id, this.gmailEmail, this.isEnabled = false, this.lastSyncTime, final  List<String> enabledBanks = const [], this.totalImported = 0, this.pendingReview = 0, this.createdAt, this.updatedAt}): _enabledBanks = enabledBanks;
+  const _EmailSyncSettingsModel({this.id, this.gmailEmail, this.isEnabled = false, this.lastSyncTime, final  List<String> enabledBanks = const [], this.totalImported = 0, this.pendingReview = 0, this.syncFrequency = SyncFrequency.every24Hours, this.createdAt, this.updatedAt}): _enabledBanks = enabledBanks;
   factory _EmailSyncSettingsModel.fromJson(Map<String, dynamic> json) => _$EmailSyncSettingsModelFromJson(json);
 
 /// Local database ID
@@ -253,6 +255,8 @@ class _EmailSyncSettingsModel implements EmailSyncSettingsModel {
 @override@JsonKey() final  int totalImported;
 /// Number of transactions pending review
 @override@JsonKey() final  int pendingReview;
+/// Auto-sync frequency (default: every 24 hours)
+@override@JsonKey() final  SyncFrequency syncFrequency;
 /// Timestamp when settings were created
 @override final  DateTime? createdAt;
 /// Timestamp when settings were last updated
@@ -271,16 +275,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _EmailSyncSettingsModel&&(identical(other.id, id) || other.id == id)&&(identical(other.gmailEmail, gmailEmail) || other.gmailEmail == gmailEmail)&&(identical(other.isEnabled, isEnabled) || other.isEnabled == isEnabled)&&(identical(other.lastSyncTime, lastSyncTime) || other.lastSyncTime == lastSyncTime)&&const DeepCollectionEquality().equals(other._enabledBanks, _enabledBanks)&&(identical(other.totalImported, totalImported) || other.totalImported == totalImported)&&(identical(other.pendingReview, pendingReview) || other.pendingReview == pendingReview)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _EmailSyncSettingsModel&&(identical(other.id, id) || other.id == id)&&(identical(other.gmailEmail, gmailEmail) || other.gmailEmail == gmailEmail)&&(identical(other.isEnabled, isEnabled) || other.isEnabled == isEnabled)&&(identical(other.lastSyncTime, lastSyncTime) || other.lastSyncTime == lastSyncTime)&&const DeepCollectionEquality().equals(other._enabledBanks, _enabledBanks)&&(identical(other.totalImported, totalImported) || other.totalImported == totalImported)&&(identical(other.pendingReview, pendingReview) || other.pendingReview == pendingReview)&&(identical(other.syncFrequency, syncFrequency) || other.syncFrequency == syncFrequency)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,gmailEmail,isEnabled,lastSyncTime,const DeepCollectionEquality().hash(_enabledBanks),totalImported,pendingReview,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,gmailEmail,isEnabled,lastSyncTime,const DeepCollectionEquality().hash(_enabledBanks),totalImported,pendingReview,syncFrequency,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'EmailSyncSettingsModel(id: $id, gmailEmail: $gmailEmail, isEnabled: $isEnabled, lastSyncTime: $lastSyncTime, enabledBanks: $enabledBanks, totalImported: $totalImported, pendingReview: $pendingReview, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'EmailSyncSettingsModel(id: $id, gmailEmail: $gmailEmail, isEnabled: $isEnabled, lastSyncTime: $lastSyncTime, enabledBanks: $enabledBanks, totalImported: $totalImported, pendingReview: $pendingReview, syncFrequency: $syncFrequency, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -291,7 +295,7 @@ abstract mixin class _$EmailSyncSettingsModelCopyWith<$Res> implements $EmailSyn
   factory _$EmailSyncSettingsModelCopyWith(_EmailSyncSettingsModel value, $Res Function(_EmailSyncSettingsModel) _then) = __$EmailSyncSettingsModelCopyWithImpl;
 @override @useResult
 $Res call({
- int? id, String? gmailEmail, bool isEnabled, DateTime? lastSyncTime, List<String> enabledBanks, int totalImported, int pendingReview, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? gmailEmail, bool isEnabled, DateTime? lastSyncTime, List<String> enabledBanks, int totalImported, int pendingReview, SyncFrequency syncFrequency, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -308,7 +312,7 @@ class __$EmailSyncSettingsModelCopyWithImpl<$Res>
 
 /// Create a copy of EmailSyncSettingsModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? gmailEmail = freezed,Object? isEnabled = null,Object? lastSyncTime = freezed,Object? enabledBanks = null,Object? totalImported = null,Object? pendingReview = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? gmailEmail = freezed,Object? isEnabled = null,Object? lastSyncTime = freezed,Object? enabledBanks = null,Object? totalImported = null,Object? pendingReview = null,Object? syncFrequency = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_EmailSyncSettingsModel(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,gmailEmail: freezed == gmailEmail ? _self.gmailEmail : gmailEmail // ignore: cast_nullable_to_non_nullable
@@ -317,7 +321,8 @@ as bool,lastSyncTime: freezed == lastSyncTime ? _self.lastSyncTime : lastSyncTim
 as DateTime?,enabledBanks: null == enabledBanks ? _self._enabledBanks : enabledBanks // ignore: cast_nullable_to_non_nullable
 as List<String>,totalImported: null == totalImported ? _self.totalImported : totalImported // ignore: cast_nullable_to_non_nullable
 as int,pendingReview: null == pendingReview ? _self.pendingReview : pendingReview // ignore: cast_nullable_to_non_nullable
-as int,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as int,syncFrequency: null == syncFrequency ? _self.syncFrequency : syncFrequency // ignore: cast_nullable_to_non_nullable
+as SyncFrequency,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));

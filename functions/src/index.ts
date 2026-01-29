@@ -31,7 +31,7 @@ const OPENAI_MODEL = "gpt-4o-mini";
 // Set global options for all Gen 2 functions
 setGlobalOptions({
   region: "asia-southeast1",
-  minInstances: 1, // Keep warm for faster cold starts
+  minInstances: 0, // DISABLED to reduce costs - migrating to Supabase Edge Functions
 });
 
 // Initialize Firebase Admin

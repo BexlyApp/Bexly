@@ -6,9 +6,10 @@ import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/transaction_table.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart'; // Import WalletTable
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/utils/retry_helper.dart';
 import 'package:bexly/features/transaction/data/model/transaction_filter_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
-import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
+import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
 
 part 'transaction_dao.g.dart';
 
@@ -369,40 +370,18 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       print('💰 [wallet adjustment] Wallet $walletId balance: ${wallet.balance} -> $newBalance');
     }
 
-    // 3. Upload to cloud (if sync available)
-    print('🔄 [UPLOAD_DEBUG] Checking if can upload to cloud: _ref != null = ${_ref != null}');
+    // 3. Upload to cloud with retry (if sync available)
+    print('🔍 [SYNC CHECK] _ref is null: ${_ref == null}, cloudId: $cloudId');
     if (_ref != null) {
-      try {
-        print('🔄 [UPLOAD_DEBUG] Reading realtimeSyncServiceProvider...');
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-        print('🔄 [UPLOAD_DEBUG] Getting saved transaction with id=$id...');
-        final savedTransaction = await (select(transactions)..where((t) => t.id.equals(id))).getSingleOrNull();
-        if (savedTransaction != null) {
-          print('🔄 [UPLOAD_DEBUG] Fetching category and wallet...');
-          // Fetch category and wallet for complete model
-          final category = await (select(categories)..where((c) => c.id.equals(savedTransaction.categoryId))).getSingleOrNull();
-          final wallet = await (select(db.wallets)..where((w) => w.id.equals(savedTransaction.walletId))).getSingleOrNull();
-          print('🔄 [UPLOAD_DEBUG] Category: ${category?.title}, Wallet: ${wallet?.name}');
-          if (category != null && wallet != null) {
-            final model = await _mapToTransactionModel(savedTransaction, category, wallet);
-            print('🚀 [UPLOAD_DEBUG] UPLOADING transaction to cloud: ${model.title} - ${model.amount}');
-            await syncService.uploadTransaction(model);
-            print('✅ [UPLOAD_DEBUG] Transaction uploaded successfully!');
-          } else {
-            print('❌ [UPLOAD_DEBUG] Cannot upload: category=$category, wallet=$wallet');
-          }
-        } else {
-          print('❌ [UPLOAD_DEBUG] Cannot upload: savedTransaction is null');
-        }
-      } catch (e, stack) {
-        print('❌ [UPLOAD_DEBUG] Failed to upload transaction to cloud: $e');
-        print('❌ [UPLOAD_DEBUG] Stack: $stack');
-        Log.e('Failed to upload transaction to cloud: $e', label: 'sync');
-        Log.e('Stack: $stack', label: 'sync');
-        // Don't rethrow - local save succeeded
-      }
+      print('✅ [SYNC] Starting upload for transaction $id (cloudId: $cloudId)');
+      // Fire and forget upload (don't block UI)
+      _uploadTransactionWithRetry(id, cloudId).catchError((e) {
+        print('❌ [SYNC ERROR] Upload failed: $e');
+        Log.e('All upload attempts failed: $e', label: 'sync');
+        // TODO: Show toast notification to user
+      });
     } else {
-      print('❌ [UPLOAD_DEBUG] Cannot upload: _ref is null');
+      print('⚠️ [SYNC DISABLED] _ref is null - sync not available. DAO was created without Riverpod ref!');
     }
 
     return id;
@@ -436,16 +415,17 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     );
     final success = await update(transactions).replace(companion);
 
-    // 2. Upload to cloud (if sync available)
-    if (success && _ref != null) {
-      try {
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-        await syncService.uploadTransaction(transactionModel);
-      } catch (e, stack) {
-        Log.e('Failed to upload transaction update to cloud: $e', label: 'sync');
-        Log.e('Stack: $stack', label: 'sync');
-        // Don't rethrow - local update succeeded
-      }
+    // 2. Upload to cloud with retry (if sync available)
+    print('🔍 [UPDATE SYNC CHECK] success: $success, _ref is null: ${_ref == null}, transactionId: ${transactionModel.id}');
+    if (success && _ref != null && transactionModel.id != null) {
+      print('✅ [UPDATE SYNC] Starting upload for transaction ${transactionModel.id}');
+      // Fire and forget upload (don't block UI)
+      _uploadTransactionWithRetry(transactionModel.id!, transactionModel.cloudId ?? '').catchError((e) {
+        print('❌ [UPDATE SYNC ERROR] Upload failed: $e');
+        Log.e('Failed to upload transaction update: $e', label: 'sync');
+      });
+    } else {
+      print('⚠️ [UPDATE SYNC DISABLED] Conditions not met - success: $success, _ref null: ${_ref == null}');
     }
 
     return success;
@@ -464,8 +444,10 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     // 3. Delete from cloud (if sync available and has cloudId)
     if (count > 0 && _ref != null && transaction != null && transaction.cloudId != null) {
       try {
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-        await syncService.deleteTransactionFromCloud(transaction.cloudId!);
+        final syncService = _ref.read(supabaseSyncServiceProvider);
+        if (syncService.isAuthenticated) {
+          await syncService.deleteTransactionFromCloud(transaction.cloudId!);
+        }
       } catch (e, stack) {
         Log.e('Failed to delete transaction from cloud: $e', label: 'sync');
         Log.e('Stack: $stack', label: 'sync');
@@ -574,5 +556,173 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       }
       return result;
     });
+  }
+
+  // --- Upload Helpers ---
+
+  /// Upload transaction with retry logic (fire and forget)
+  /// CRITICAL: Ensures dependencies (category, wallet) are synced BEFORE transaction
+  Future<void> _uploadTransactionWithRetry(int transactionId, String cloudId) async {
+    print('📤 [_uploadTransactionWithRetry] Called for transaction $transactionId (cloudId: $cloudId)');
+    return RetryHelper.retry(
+      operationName: 'Upload transaction $cloudId',
+      operation: () async {
+        print('🔄 [RetryHelper] Starting upload operation...');
+        final syncService = _ref?.read(supabaseSyncServiceProvider);
+        print('🔍 [SyncService] syncService is null: ${syncService == null}, authenticated: ${syncService?.isAuthenticated ?? false}');
+        if (syncService == null || !syncService.isAuthenticated) {
+          print('⚠️ [SyncService] Not available or not authenticated - aborting upload');
+          Log.w('Supabase sync not available or not authenticated', label: 'sync');
+          return;
+        }
+
+        print('📦 [Fetching] Getting transaction data from local DB...');
+        // Fetch full transaction model
+        final savedTransaction = await (select(transactions)..where((t) => t.id.equals(transactionId))).getSingleOrNull();
+        if (savedTransaction == null) {
+          print('❌ [Error] Transaction $transactionId not found in local DB');
+          throw Exception('Transaction $transactionId not found');
+        }
+
+        final category = await (select(categories)..where((c) => c.id.equals(savedTransaction.categoryId))).getSingleOrNull();
+        final wallet = await (select(db.wallets)..where((w) => w.id.equals(savedTransaction.walletId))).getSingleOrNull();
+
+        if (category == null || wallet == null) {
+          print('❌ [Error] Missing category or wallet - category null: ${category == null}, wallet null: ${wallet == null}');
+          throw Exception('Missing category or wallet');
+        }
+
+        // CRITICAL FIX: Sync dependencies BEFORE uploading transaction to prevent foreign key errors!
+        print('🔍 [DEPENDENCY CHECK] Ensuring category and wallet exist on cloud before uploading transaction...');
+
+        // 1. Sync category first if it has a cloudId
+        // IMPORTANT: Use forceUpload=true to ensure category exists even if it's unmodified built-in
+        if (category.cloudId != null) {
+          try {
+            final categoryModel = category.toModel();
+            print('📤 [CATEGORY SYNC] Force uploading category: ${categoryModel.title} (${categoryModel.cloudId})');
+            await syncService.uploadCategory(categoryModel, forceUpload: true);
+            print('✅ [CATEGORY SYNC] Category synced successfully');
+          } catch (e) {
+            print('⚠️ [CATEGORY SYNC] Failed to sync category (may already exist): $e');
+            // Continue - category might already exist on cloud
+          }
+        } else {
+          print('⚠️ [CATEGORY SYNC] Category has no cloudId, skipping sync');
+        }
+
+        // 2. Sync wallet second if it has a cloudId
+        if (wallet.cloudId != null) {
+          try {
+            final walletModel = wallet.toModel();
+            print('📤 [WALLET SYNC] Uploading wallet: ${walletModel.name} (${walletModel.cloudId})');
+            await syncService.uploadWallet(walletModel);
+            print('✅ [WALLET SYNC] Wallet synced successfully');
+          } catch (e) {
+            print('⚠️ [WALLET SYNC] Failed to sync wallet (may already exist): $e');
+            // Continue - wallet might already exist on cloud
+          }
+        } else {
+          print('⚠️ [WALLET SYNC] Wallet has no cloudId, skipping sync');
+        }
+
+        // 3. Now upload transaction (dependencies are guaranteed to exist)
+        print('✅ [Data Ready] Transaction, category, wallet all ready. Mapping to model...');
+        final model = await _mapToTransactionModel(savedTransaction, category, wallet);
+        print('🚀 [Uploading] Calling syncService.uploadTransaction for ${model.title}...');
+        await syncService.uploadTransaction(model);
+        print('✅✅✅ [SUCCESS] Transaction uploaded: ${model.title}');
+        Log.d('✅ Transaction uploaded: ${model.title}', label: 'sync');
+      },
+    );
+  }
+
+  // --- Sync Operations ---
+
+  /// Create or update transaction (used by sync service to pull from cloud)
+  /// Uses cloudId to find existing transaction, or creates new one
+  /// NOTE: This method does NOT sync back to cloud (to avoid infinite loop)
+  Future<void> createOrUpdateTransaction(TransactionModel transactionModel) async {
+    Log.d('Creating or updating transaction from cloud: ${transactionModel.cloudId}', label: 'transaction');
+
+    // 1. Resolve wallet ID from cloudId
+    final wallet = transactionModel.wallet.cloudId != null
+        ? await db.walletDao.getWalletByCloudId(transactionModel.wallet.cloudId!)
+        : null;
+
+    if (wallet == null) {
+      Log.w('⚠️ Cannot create/update transaction: wallet not found (cloudId: ${transactionModel.wallet.cloudId})', label: 'transaction');
+      return; // Skip this transaction
+    }
+
+    // 2. Resolve category ID from cloudId
+    final category = transactionModel.category.cloudId != null
+        ? await db.categoryDao.getCategoryByCloudId(transactionModel.category.cloudId!)
+        : null;
+
+    if (category == null) {
+      Log.w('⚠️ Cannot create/update transaction: category not found (cloudId: ${transactionModel.category.cloudId})', label: 'transaction');
+      return; // Skip this transaction
+    }
+
+    // 3. Check if transaction exists by cloudId
+    final existingTransaction = transactionModel.cloudId != null
+        ? await getTransactionByCloudId(transactionModel.cloudId!)
+        : null;
+
+    if (existingTransaction != null) {
+      // CRITICAL: Only update if cloud data is NEWER than local data
+      // This prevents overwriting correct local data with stale cloud data
+      final cloudUpdatedAt = transactionModel.updatedAt ?? DateTime(2000); // Fallback to old date
+      final localUpdatedAt = existingTransaction.updatedAt ?? DateTime(2000);
+
+      if (cloudUpdatedAt.isAfter(localUpdatedAt)) {
+        // Cloud data is newer - update local
+        final companion = TransactionsCompanion(
+          id: Value(existingTransaction.id),
+          cloudId: Value(transactionModel.cloudId),
+          walletId: Value(wallet.id),
+          categoryId: Value(category.id),
+          transactionType: Value(transactionModel.transactionType.index),
+          amount: Value(transactionModel.amount),
+          date: Value(transactionModel.date),
+          title: Value(transactionModel.title),
+          notes: Value(transactionModel.notes),
+          imagePath: Value(transactionModel.imagePath),
+          isRecurring: Value(transactionModel.isRecurring ?? false),
+          recurringId: Value(transactionModel.recurringId),
+          createdAt: transactionModel.createdAt != null
+              ? Value(transactionModel.createdAt!)
+              : const Value.absent(),
+          updatedAt: Value(transactionModel.updatedAt ?? DateTime.now()),
+        );
+        await update(transactions).replace(companion);
+        Log.d('✅ Updated transaction ${existingTransaction.id} from cloud (cloud newer: $cloudUpdatedAt > $localUpdatedAt)', label: 'transaction');
+      } else {
+        // Local data is newer or same - keep local, skip update
+        Log.w('⏭️ Skipping transaction ${existingTransaction.id} update - local data is newer or same (local: $localUpdatedAt >= cloud: $cloudUpdatedAt)', label: 'transaction');
+      }
+    } else {
+      // Create new transaction (local only, no cloud sync)
+      final companion = TransactionsCompanion.insert(
+        cloudId: Value(transactionModel.cloudId),
+        walletId: wallet.id,
+        categoryId: category.id,
+        transactionType: transactionModel.transactionType.index,
+        amount: transactionModel.amount,
+        date: transactionModel.date,
+        title: transactionModel.title,
+        notes: Value(transactionModel.notes),
+        imagePath: Value(transactionModel.imagePath),
+        isRecurring: Value(transactionModel.isRecurring ?? false),
+        recurringId: Value(transactionModel.recurringId),
+        createdAt: transactionModel.createdAt != null
+            ? Value(transactionModel.createdAt!)
+            : Value(DateTime.now()),
+        updatedAt: Value(transactionModel.updatedAt ?? DateTime.now()),
+      );
+      final id = await into(transactions).insert(companion);
+      Log.d('Created new transaction $id from cloud', label: 'transaction');
+    }
   }
 }

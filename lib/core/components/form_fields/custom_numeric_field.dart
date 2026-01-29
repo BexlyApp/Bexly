@@ -23,6 +23,7 @@ class CustomNumericField extends ConsumerWidget {
   final bool isRequired;
   final bool autofocus;
   final bool enabled;
+  final bool allowNegative; // Allow negative numbers (for credit card debt)
   final ValueChanged<String>? onChanged;
 
   const CustomNumericField({
@@ -40,6 +41,7 @@ class CustomNumericField extends ConsumerWidget {
     this.isRequired = false,
     this.autofocus = false,
     this.enabled = true,
+    this.allowNegative = false, // Default to not allowing negative
     this.onChanged,
   });
 
@@ -70,6 +72,12 @@ class CustomNumericField extends ConsumerWidget {
           .replaceAll(' ', '')
           .trim();
 
+      // Check for negative sign
+      bool isNegative = sanitizedValue.startsWith('-');
+      if (isNegative) {
+        sanitizedValue = sanitizedValue.substring(1); // Remove - for processing
+      }
+
       // Replace commas (thousand separator) with empty for parsing
       sanitizedValue = sanitizedValue.replaceAll(',', '');
 
@@ -89,22 +97,25 @@ class CustomNumericField extends ConsumerWidget {
           ? formatter.format(int.parse(integerPart))
           : '';
 
+      // Add negative sign back if needed
+      String negativePrefix = isNegative && allowNegative ? '-' : '';
+
       // Combine integer and decimal parts
       // Only add decimal point if user explicitly typed it or there are decimal digits
       String formattedValue;
       if (decimalPart.isNotEmpty) {
         // User has decimal digits
-        formattedValue = "$defaultCurrency $formattedInteger.$decimalPart";
+        formattedValue = "$defaultCurrency $negativePrefix$formattedInteger.$decimalPart";
       } else if (parts.length == 2 && sanitizedValue.endsWith('.')) {
         // User typed a dot but no decimal digits yet
-        formattedValue = "$defaultCurrency $formattedInteger.";
+        formattedValue = "$defaultCurrency $negativePrefix$formattedInteger.";
       } else {
         // No decimal point
-        formattedValue = "$defaultCurrency $formattedInteger";
+        formattedValue = "$defaultCurrency $negativePrefix$formattedInteger";
       }
 
       if (formattedInteger.isEmpty) {
-        formattedValue = '';
+        formattedValue = negativePrefix.isNotEmpty ? '$defaultCurrency $negativePrefix' : '';
       }
 
       // Avoid infinite loop
@@ -117,8 +128,9 @@ class CustomNumericField extends ConsumerWidget {
           selection: TextSelection.collapsed(offset: formattedValue.length),
         );
 
-        // Notify parent widget with the raw numeric value
-        onChanged?.call(sanitizedValue);
+        // Notify parent widget with the raw numeric value (including negative sign)
+        final rawValue = isNegative && allowNegative ? '-$sanitizedValue' : sanitizedValue;
+        onChanged?.call(rawValue);
       }
     }
 
@@ -129,9 +141,12 @@ class CustomNumericField extends ConsumerWidget {
       hint: hint,
       textInputAction: TextInputAction.done,
       suffixIcon: suffixIcon,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: TextInputType.numberWithOptions(decimal: true, signed: allowNegative),
       inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+        FilteringTextInputFormatter.allow(
+          allowNegative ? RegExp(r'[\d.\-]') : RegExp(r'[\d.]'),
+        ),
+        if (allowNegative) LeadingMinusInputFormatter(), // Only allow - at start
         SingleDotInputFormatter(),
         DecimalInputFormatter(),
         LengthLimitingTextInputFormatter(12),
@@ -167,10 +182,31 @@ class DecimalInputFormatter extends TextInputFormatter {
     final text = newValue.text;
 
     // Allow only numbers, a single dot, and two digits after the dot
-    final regex = RegExp(r'^\d*\.?\d{0,2}$');
+    // Also allow optional leading minus sign
+    final regex = RegExp(r'^-?\d*\.?\d{0,2}$');
 
     if (!regex.hasMatch(text)) {
       return oldValue; // Reject invalid input
+    }
+
+    return newValue;
+  }
+}
+
+class LeadingMinusInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+
+    // Count minus signs in the text
+    final minusCount = text.split('').where((c) => c == '-').length;
+
+    // Reject if more than one minus, or minus is not at the start
+    if (minusCount > 1 || (minusCount == 1 && !text.startsWith('-'))) {
+      return oldValue;
     }
 
     return newValue;

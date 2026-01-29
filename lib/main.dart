@@ -7,6 +7,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:workmanager/workmanager.dart';
 import 'package:bexly/core/app.dart';
 import 'package:bexly/core/services/background_service.dart';
 import 'package:bexly/core/services/firebase_init_service.dart';
@@ -15,7 +16,38 @@ import 'package:bexly/core/services/firebase_messaging_service.dart';
 import 'package:bexly/core/services/package_info/package_info_provider.dart';
 import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:bexly/core/services/ads/ad_service.dart';
+import 'package:bexly/core/services/supabase_init_service.dart';
+import 'package:bexly/core/config/supabase_config.dart';
+import 'package:bexly/features/email_sync/domain/services/email_sync_worker.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+
+/// Background callback dispatcher for WorkManager
+///
+/// This runs in an isolate separate from the main app.
+/// It's called by the OS when background tasks need to execute.
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      print('[WorkManager] Task started: $task');
+
+      switch (task) {
+        case EmailSyncWorker.taskName:
+          // Run email sync in background
+          final success = await EmailSyncWorker.syncCallback();
+          print('[WorkManager] Email sync completed: $success');
+          return success;
+
+        default:
+          print('[WorkManager] Unknown task: $task');
+          return false;
+      }
+    } catch (e) {
+      print('[WorkManager] Task failed: $e');
+      return false;
+    }
+  });
+}
 
 Future<void> main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -41,24 +73,35 @@ Future<void> main() async {
     ]);
   }
 
-  // Initialize dual Firebase apps
+  // Initialize Supabase (primary auth provider)
+  try {
+    await SupabaseInitService.initialize();
+    print('✅ Supabase initialized');
+  } catch (e) {
+    print('⚠️ Supabase init error: $e');
+    // Continue without Supabase - will fallback to Firebase
+  }
+
+  // Initialize Firebase apps (for Firestore, Analytics, Crashlytics, etc.)
   try {
     await FirebaseInitService.initialize();
     // Only setup Crashlytics after successful Firebase init
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    print('✅ Firebase initialized');
   } catch (e) {
     print('Firebase init error in main: $e');
     // Continue without Crashlytics if Firebase fails
   }
 
   // Initialize Google Sign-In (google_sign_in 7.x requires explicit initialization)
-  // serverClientId must be provided explicitly for debug builds to work
+  // serverClientId is auto-detected from google-services.json (web client)
+  // See: https://pub.dev/packages/google_sign_in_android
   try {
-    await GoogleSignIn.instance.initialize(
-      serverClientId: '368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com',
-    );
+    print('🔑 Initializing Google Sign-In (auto-detect from google-services.json)...');
+    await GoogleSignIn.instance.initialize();
+    print('✅ Google Sign-In initialized successfully');
   } catch (e) {
-    print('Google Sign-In init error: $e');
+    print('❌ Google Sign-In init error: $e');
     // Continue without Google Sign-In if init fails
   }
 
@@ -89,6 +132,18 @@ Future<void> main() async {
   } catch (e) {
     print('BackgroundService init error: $e');
     // Continue without background service if init fails
+  }
+
+  // Initialize WorkManager for email sync (Android/iOS only)
+  try {
+    await Workmanager().initialize(
+      callbackDispatcher,
+      isInDebugMode: kDebugMode,
+    );
+    print('✅ WorkManager initialized for email sync');
+  } catch (e) {
+    print('❌ WorkManager init error: $e');
+    // Continue without WorkManager if init fails
   }
 
   // Initialize SharedPreferences for AI usage tracking

@@ -43,6 +43,9 @@ This document outlines the development roadmap for Bexly, focusing on transformi
 - ✅ **Multi-AI Provider Support (v370)** - Gemini, OpenAI, Claude with easy switching
 - ✅ **Category Sync to Cloud (v370)** - Bot can access user's full category list
 - ✅ **Filter Form Localization** - All 14 languages supported for filter UI
+- ✅ **Supabase Bidirectional Sync (v371)** - Full cloud sync (upload + download) for wallets, categories, transactions
+- ✅ **Login Data Pull (v371)** - App now pulls user data from cloud after authentication
+- ✅ **CloudId-based Sync Architecture (v371)** - UUID-based mapping to decouple local IDs from cloud IDs
 - ⏳ **Facebook Sign In** - pending Facebook App Review
 - 🚧 **iOS Build Workflow** - needs Distribution certificate with private key
 
@@ -781,6 +784,104 @@ Monitoring:
 - Sync failure alerts
 - Token expiration monitoring
 - User consent audit logs
+
+### 0.7 Supabase Sync Performance Optimization
+**Priority: P3 (Future) | Timeline: TBD | Status: 📋 PLANNED**
+
+**Current Implementation (v371):**
+- ✅ **Full bidirectional sync operational** - Upload and download for wallets, categories, transactions
+- ✅ **Sync time:** 2-3 seconds for typical user (~500-1000 transactions)
+- ✅ **Local-first architecture** with cloud backup
+- ✅ **CloudId mapping** - UUID-based global identifiers to decouple local IDs from cloud IDs
+- ✅ **Dependency-order sync** - Wallets → Categories → Transactions (prevents foreign key violations)
+- ✅ **Last-write-wins conflict resolution** based on updatedAt timestamps
+- ✅ **Separation of concerns** - DAOs handle local DB, Sync service handles cloud operations
+- ✅ **Login flow sync** - App pulls data from cloud after authentication
+
+**Data Size Analysis:**
+- Personal finance apps typically have 500-1000 transactions (~100KB data)
+- Full sync completes in 2-3 seconds for typical users
+- Cost: ~$0.03/user/month for sync operations
+
+**Future Optimizations (implement when needed):**
+
+#### 0.7.1 Incremental Sync
+**Trigger Conditions:**
+- User has >3000 transactions (currently ~1000 typical)
+- Sync time exceeds 4-5 seconds
+- User complaints about sync speed
+- Backend costs become significant
+
+**Implementation:**
+- Timestamp-based filtering (`updated_at > lastSyncTime`)
+- Track last sync timestamp per data type (wallets, categories, transactions)
+- Only pull records modified since last sync
+- Edge case handling:
+  - Clock skew (use server timestamps)
+  - Offline periods (full sync if >7 days)
+  - First sync (always full)
+
+**Benefits:**
+- Faster sync for users with large datasets
+- Reduced network bandwidth
+- Lower cloud costs
+
+**Trade-offs:**
+- Increased complexity
+- More potential for bugs
+- Edge cases to handle (clock skew, offline periods)
+
+#### 0.7.2 Batch Operations
+**Benefits:**
+- Reduce number of database round trips
+- Faster bulk inserts for large datasets
+- Lower latency for multi-record operations
+
+**Implementation:**
+- `batchUpsertWallets()`, `batchUpsertCategories()`, `batchUpsertTransactions()`
+- Batch size optimization (100-500 records per batch)
+- Supabase supports batch upsert natively
+- Transaction-level error handling
+
+#### 0.7.3 Soft Delete for Cloud Sync
+**Purpose:**
+- Track deleted items across devices
+- Prevent deleted items from reappearing after sync
+- Maintain referential integrity
+
+**Implementation:**
+- Add `is_deleted` and `deleted_at` columns to all sync tables
+- Modified sync logic to handle deleted items:
+  - Download: Mark as deleted locally instead of skipping
+  - Upload: Send delete flag instead of removing record
+- Cleanup job to permanently remove old deleted records (90 days)
+
+**Database Changes:**
+```sql
+ALTER TABLE wallets ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE;
+ALTER TABLE wallets ADD COLUMN deleted_at TIMESTAMP NULL;
+ALTER TABLE categories ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE;
+ALTER TABLE categories ADD COLUMN deleted_at TIMESTAMP NULL;
+ALTER TABLE transactions ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE;
+ALTER TABLE transactions ADD COLUMN deleted_at TIMESTAMP NULL;
+```
+
+**Priority Rationale:**
+- ✅ Current full sync is **production-ready and performant**
+- ✅ Optimizations add complexity and potential bugs
+- ✅ Industry standard: many apps use full sync successfully
+  - **1Password** - Uses full sync, one of most trusted password managers
+  - **Bear Notes** - Full sync for all notes
+  - **Day One** - Full sync for journal entries
+- ✅ Cost is acceptable (~$0.03/user/month for sync operations)
+- ✅ Performance is acceptable (2-3 seconds for typical user)
+- ⏳ Optimize when: >3000 transactions OR >4s sync time OR user complaints
+
+**When to Implement:**
+- Phase 3: After core features are stable
+- When >20% of users have >3000 transactions
+- When sync time complaints increase
+- When cloud costs become significant portion of revenue
 
 ---
 

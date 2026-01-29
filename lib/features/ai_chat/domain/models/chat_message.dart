@@ -116,12 +116,14 @@ class ChatState {
   final bool isLoading;
   final bool isTyping;
   final String? error;
+  final String draftMessage; // Draft message being typed
 
   const ChatState({
     this.messages = const [],
     this.isLoading = false,
     this.isTyping = false,
     this.error,
+    this.draftMessage = '',
   });
 
   ChatState copyWith({
@@ -129,12 +131,14 @@ class ChatState {
     bool? isLoading,
     bool? isTyping,
     String? error,
+    String? draftMessage,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
       isLoading: isLoading ?? this.isLoading,
       isTyping: isTyping ?? this.isTyping,
       error: error ?? this.error,
+      draftMessage: draftMessage ?? this.draftMessage,
     );
   }
 }

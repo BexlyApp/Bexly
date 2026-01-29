@@ -2,7 +2,7 @@ import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/email_sync/domain/services/gmail_api_service.dart';
 
 /// Parsed transaction from email
-class ParsedEmailTransaction {
+class ParsedEmail {
   final String emailId;
   final String emailSubject;
   final String fromEmail;
@@ -19,7 +19,7 @@ class ParsedEmailTransaction {
   final String? categoryHint;
   final String bankName;
 
-  const ParsedEmailTransaction({
+  const ParsedEmail({
     required this.emailId,
     required this.emailSubject,
     required this.fromEmail,
@@ -39,7 +39,7 @@ class ParsedEmailTransaction {
 
   @override
   String toString() =>
-      'ParsedEmailTransaction(amount: $amount $currency, type: $transactionType, merchant: $merchant, bank: $bankName)';
+      'ParsedEmail(amount: $amount $currency, type: $transactionType, merchant: $merchant, bank: $bankName)';
 }
 
 /// Service for parsing banking emails into transactions
@@ -47,7 +47,7 @@ class EmailParserService {
   static const _label = 'EmailParser';
 
   /// Parse a Gmail message into a transaction
-  ParsedEmailTransaction? parseEmail(GmailMessage email) {
+  ParsedEmail? parseEmail(GmailMessage email) {
     final from = email.from.toLowerCase();
 
     // Try each bank parser
@@ -95,7 +95,7 @@ abstract class BankEmailParser {
     return domains.any((domain) => fromEmail.contains(domain));
   }
 
-  ParsedEmailTransaction? parse(GmailMessage email);
+  ParsedEmail? parse(GmailMessage email);
 
   /// Helper to extract amount from Vietnamese format
   /// Examples: "150,000 VND", "1.500.000 VND", "+500,000đ", "-200.000 đ"
@@ -334,7 +334,7 @@ class VietcombankParser extends BankEmailParser {
   List<String> get domains => ['vietcombank.com.vn'];
 
   @override
-  ParsedEmailTransaction? parse(GmailMessage email) {
+  ParsedEmail? parse(GmailMessage email) {
     final content = '${email.subject}\n${email.body}';
 
     final amount = parseVNDAmount(content);
@@ -343,7 +343,7 @@ class VietcombankParser extends BankEmailParser {
     final type = detectTransactionType(content, amount);
     final absAmount = amount.abs();
 
-    return ParsedEmailTransaction(
+    return ParsedEmail(
       emailId: email.id,
       emailSubject: email.subject,
       fromEmail: email.from,
@@ -372,7 +372,7 @@ class TechcombankParser extends BankEmailParser {
   List<String> get domains => ['techcombank.com.vn'];
 
   @override
-  ParsedEmailTransaction? parse(GmailMessage email) {
+  ParsedEmail? parse(GmailMessage email) {
     final content = '${email.subject}\n${email.body}';
 
     final amount = parseVNDAmount(content);
@@ -381,7 +381,7 @@ class TechcombankParser extends BankEmailParser {
     final type = detectTransactionType(content, amount);
     final absAmount = amount.abs();
 
-    return ParsedEmailTransaction(
+    return ParsedEmail(
       emailId: email.id,
       emailSubject: email.subject,
       fromEmail: email.from,
@@ -410,7 +410,7 @@ class MBBankParser extends BankEmailParser {
   List<String> get domains => ['mbbank.com.vn'];
 
   @override
-  ParsedEmailTransaction? parse(GmailMessage email) {
+  ParsedEmail? parse(GmailMessage email) {
     final content = '${email.subject}\n${email.body}';
 
     // MB uses PS: +/- for amount
@@ -432,7 +432,7 @@ class MBBankParser extends BankEmailParser {
     final type = amount > 0 ? 'income' : 'expense';
     final absAmount = amount.abs();
 
-    return ParsedEmailTransaction(
+    return ParsedEmail(
       emailId: email.id,
       emailSubject: email.subject,
       fromEmail: email.from,
@@ -461,7 +461,7 @@ class BIDVParser extends BankEmailParser {
   List<String> get domains => ['bidv.com.vn'];
 
   @override
-  ParsedEmailTransaction? parse(GmailMessage email) {
+  ParsedEmail? parse(GmailMessage email) {
     final content = '${email.subject}\n${email.body}';
 
     final amount = parseVNDAmount(content);
@@ -470,7 +470,7 @@ class BIDVParser extends BankEmailParser {
     final type = detectTransactionType(content, amount);
     final absAmount = amount.abs();
 
-    return ParsedEmailTransaction(
+    return ParsedEmail(
       emailId: email.id,
       emailSubject: email.subject,
       fromEmail: email.from,
@@ -499,7 +499,7 @@ class VPBankParser extends BankEmailParser {
   List<String> get domains => ['vpbank.com.vn'];
 
   @override
-  ParsedEmailTransaction? parse(GmailMessage email) {
+  ParsedEmail? parse(GmailMessage email) {
     final content = '${email.subject}\n${email.body}';
 
     final amount = parseVNDAmount(content);
@@ -508,7 +508,7 @@ class VPBankParser extends BankEmailParser {
     final type = detectTransactionType(content, amount);
     final absAmount = amount.abs();
 
-    return ParsedEmailTransaction(
+    return ParsedEmail(
       emailId: email.id,
       emailSubject: email.subject,
       fromEmail: email.from,
@@ -537,7 +537,7 @@ class ACBParser extends BankEmailParser {
   List<String> get domains => ['acb.com.vn'];
 
   @override
-  ParsedEmailTransaction? parse(GmailMessage email) {
+  ParsedEmail? parse(GmailMessage email) {
     final content = '${email.subject}\n${email.body}';
 
     final amount = parseVNDAmount(content);
@@ -546,7 +546,7 @@ class ACBParser extends BankEmailParser {
     final type = detectTransactionType(content, amount);
     final absAmount = amount.abs();
 
-    return ParsedEmailTransaction(
+    return ParsedEmail(
       emailId: email.id,
       emailSubject: email.subject,
       fromEmail: email.from,
@@ -575,7 +575,7 @@ class TPBankParser extends BankEmailParser {
   List<String> get domains => ['tpb.vn', 'tpbank.vn'];
 
   @override
-  ParsedEmailTransaction? parse(GmailMessage email) {
+  ParsedEmail? parse(GmailMessage email) {
     final content = '${email.subject}\n${email.body}';
 
     final amount = parseVNDAmount(content);
@@ -584,7 +584,7 @@ class TPBankParser extends BankEmailParser {
     final type = detectTransactionType(content, amount);
     final absAmount = amount.abs();
 
-    return ParsedEmailTransaction(
+    return ParsedEmail(
       emailId: email.id,
       emailSubject: email.subject,
       fromEmail: email.from,
@@ -613,7 +613,7 @@ class SacombankParser extends BankEmailParser {
   List<String> get domains => ['sacombank.com.vn'];
 
   @override
-  ParsedEmailTransaction? parse(GmailMessage email) {
+  ParsedEmail? parse(GmailMessage email) {
     final content = '${email.subject}\n${email.body}';
 
     final amount = parseVNDAmount(content);
@@ -622,7 +622,7 @@ class SacombankParser extends BankEmailParser {
     final type = detectTransactionType(content, amount);
     final absAmount = amount.abs();
 
-    return ParsedEmailTransaction(
+    return ParsedEmail(
       emailId: email.id,
       emailSubject: email.subject,
       fromEmail: email.from,
@@ -651,7 +651,7 @@ class MomoParser extends BankEmailParser {
   List<String> get domains => ['momo.vn'];
 
   @override
-  ParsedEmailTransaction? parse(GmailMessage email) {
+  ParsedEmail? parse(GmailMessage email) {
     final content = '${email.subject}\n${email.body}';
 
     final amount = parseVNDAmount(content);
@@ -660,7 +660,7 @@ class MomoParser extends BankEmailParser {
     final type = detectTransactionType(content, amount);
     final absAmount = amount.abs();
 
-    return ParsedEmailTransaction(
+    return ParsedEmail(
       emailId: email.id,
       emailSubject: email.subject,
       fromEmail: email.from,
@@ -689,7 +689,7 @@ class ZaloPayParser extends BankEmailParser {
   List<String> get domains => ['zalopay.vn'];
 
   @override
-  ParsedEmailTransaction? parse(GmailMessage email) {
+  ParsedEmail? parse(GmailMessage email) {
     final content = '${email.subject}\n${email.body}';
 
     final amount = parseVNDAmount(content);
@@ -698,7 +698,7 @@ class ZaloPayParser extends BankEmailParser {
     final type = detectTransactionType(content, amount);
     final absAmount = amount.abs();
 
-    return ParsedEmailTransaction(
+    return ParsedEmail(
       emailId: email.id,
       emailSubject: email.subject,
       fromEmail: email.from,
@@ -727,7 +727,7 @@ class GenericVNBankParser extends BankEmailParser {
   List<String> get domains => GmailApiService.vietnamBankDomains;
 
   @override
-  ParsedEmailTransaction? parse(GmailMessage email) {
+  ParsedEmail? parse(GmailMessage email) {
     final content = '${email.subject}\n${email.body}';
 
     final amount = parseVNDAmount(content);
@@ -739,7 +739,7 @@ class GenericVNBankParser extends BankEmailParser {
     // Try to extract bank name from domain
     final bankNameFromDomain = _extractBankName(email.from);
 
-    return ParsedEmailTransaction(
+    return ParsedEmail(
       emailId: email.id,
       emailSubject: email.subject,
       fromEmail: email.from,

@@ -50,7 +50,14 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/app/google-services.json
+*.backup
+ios/Runner/GoogleService-Info.plist
 keystore.properties
+
+# Temporary files
+temp_db.db
+test_webhook.json
+.playwright-mcp/
 
 # Note: firebase_options.dart is intentionally committed
 # Firebase API keys are designed to be public and protected by:
@@ -95,6 +102,9 @@ upload_cert.ps1
 # Windows temp
 nul
 .claude/settings.local.json
+
+# Claude Code temp directories
+tmpclaude-*-cwd
 
 .vercel
 .env*.local

@@ -4,6 +4,10 @@ import 'package:bexly/core/services/recurring_charge_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/data_population_service/category_population_service.dart';
+import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
+import 'package:bexly/core/database/migrations/migrate_existing_goals_to_cloud.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:bexly/core/services/subscription/ai_usage_service.dart';
 
 /// Widget that manages app lifecycle and triggers recurring charge checks
 /// when app resumes from background
@@ -32,9 +36,12 @@ class _LifecycleManagerState extends ConsumerState<LifecycleManager>
 
     // CRITICAL: Ensure categories exist on app startup
     // This fixes the bug where categories are lost after pm clear
-    // Also check for due recurring payments on app startup
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _ensureCategoriesExist();
+    // Also run auto-migration, pull cloud data, and check for due recurring payments on app startup
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _ensureCategoriesExist();
+      await _ensureInitialCategorySync();
+      await _runAutoMigration();
+      await _pullCloudData();
       _checkRecurringPayments();
     });
   }
@@ -66,6 +73,120 @@ class _LifecycleManagerState extends ConsumerState<LifecycleManager>
       Log.e('❌ Error ensuring categories exist: $e', label: 'LifecycleManager');
       Log.e('Stack trace: $stackTrace', label: 'LifecycleManager');
       print('❌ [LifecycleManager] Error ensuring categories exist: $e');
+    }
+  }
+
+  /// Ensure initial category sync on first login
+  /// This syncs ALL categories to cloud once, then uses Modified Hybrid Sync
+  /// for incremental updates (only modified/custom categories)
+  Future<void> _ensureInitialCategorySync() async {
+    try {
+      Log.d('🔍 Checking if initial category sync needed...', label: 'LifecycleManager');
+      print('🔍 [LifecycleManager] Checking if initial category sync needed...');
+
+      final syncService = ref.read(supabaseSyncServiceProvider);
+
+      // Only sync if user is authenticated
+      if (!syncService.isAuthenticated) {
+        Log.d('⏭️ User not authenticated, skipping initial category sync', label: 'LifecycleManager');
+        print('⏭️ [LifecycleManager] User not authenticated, skipping initial category sync');
+        return;
+      }
+
+      // Trigger initial category sync (will check cloud and sync if needed)
+      Log.d('🚀 Triggering initial category sync...', label: 'LifecycleManager');
+      print('🚀 [LifecycleManager] Triggering initial category sync...');
+
+      await syncService.syncCategoriesToCloud();
+
+      Log.i('✅ Initial category sync completed', label: 'LifecycleManager');
+      print('✅ [LifecycleManager] Initial category sync completed');
+    } catch (e, stackTrace) {
+      Log.e('❌ Error during initial category sync: $e', label: 'LifecycleManager');
+      Log.e('Stack trace: $stackTrace', label: 'LifecycleManager');
+      print('❌ [LifecycleManager] Error during initial category sync: $e');
+      // Don't throw - app should continue even if sync fails
+    }
+  }
+
+  /// Pull cloud data to local database on app startup/login
+  /// This downloads chat messages and other data from Supabase to local DB
+  Future<void> _pullCloudData() async {
+    try {
+      Log.d('🔍 Checking if cloud data pull needed...', label: 'LifecycleManager');
+      print('🔍 [LifecycleManager] Checking if cloud data pull needed...');
+
+      final syncService = ref.read(supabaseSyncServiceProvider);
+
+      // Only pull if user is authenticated
+      if (!syncService.isAuthenticated) {
+        Log.d('⏭️ User not authenticated, skipping cloud data pull', label: 'LifecycleManager');
+        print('⏭️ [LifecycleManager] User not authenticated, skipping cloud data pull');
+        return;
+      }
+
+      // Pull chat messages from cloud
+      Log.d('📥 Pulling chat messages from cloud...', label: 'LifecycleManager');
+      print('📥 [LifecycleManager] Pulling chat messages from cloud...');
+
+      final db = ref.read(databaseProvider);
+      await syncService.pullChatMessagesFromCloud(db.chatMessageDao);
+
+      Log.i('✅ Cloud data pull completed', label: 'LifecycleManager');
+      print('✅ [LifecycleManager] Cloud data pull completed');
+    } catch (e, stackTrace) {
+      Log.e('❌ Error pulling cloud data: $e', label: 'LifecycleManager');
+      Log.e('Stack trace: $stackTrace', label: 'LifecycleManager');
+      print('❌ [LifecycleManager] Error pulling cloud data: $e');
+      // Don't throw - app should continue even if pull fails
+    }
+  }
+
+  /// Run automatic migration on app startup/login (once per device)
+  /// This uploads existing local data (created before sync feature) to cloud
+  Future<void> _runAutoMigration() async {
+    const migrationKey = 'auto_migration_completed_v1';
+
+    try {
+      Log.d('🔍 Checking if auto-migration needed...', label: 'LifecycleManager');
+      print('🔍 [LifecycleManager] Checking if auto-migration needed...');
+
+      final prefs = ref.read(sharedPreferencesProvider);
+      final syncService = ref.read(supabaseSyncServiceProvider);
+
+      // Only migrate if user is authenticated
+      if (!syncService.isAuthenticated) {
+        Log.d('⏭️ User not authenticated, skipping auto-migration', label: 'LifecycleManager');
+        print('⏭️ [LifecycleManager] User not authenticated, skipping auto-migration');
+        return;
+      }
+
+      // Check if migration already completed
+      final migrationCompleted = prefs.getBool(migrationKey) ?? false;
+      if (migrationCompleted) {
+        Log.d('⏭️ Auto-migration already completed, skipping', label: 'LifecycleManager');
+        print('⏭️ [LifecycleManager] Auto-migration already completed, skipping');
+        return;
+      }
+
+      // Run migration
+      Log.d('🚀 Starting automatic migration of existing data...', label: 'LifecycleManager');
+      print('🚀 [LifecycleManager] Starting automatic migration of existing data...');
+
+      final db = ref.read(databaseProvider);
+      await MigrateExistingGoalsToCloud.runMigration(db, syncService);
+
+      // Mark migration as completed
+      await prefs.setBool(migrationKey, true);
+
+      Log.i('✅ Auto-migration completed successfully', label: 'LifecycleManager');
+      print('✅ [LifecycleManager] Auto-migration completed successfully');
+    } catch (e, stackTrace) {
+      Log.e('❌ Error during auto-migration: $e', label: 'LifecycleManager');
+      Log.e('Stack trace: $stackTrace', label: 'LifecycleManager');
+      print('❌ [LifecycleManager] Error during auto-migration: $e');
+      // Don't throw - app should continue even if migration fails
+      // User can still manually trigger migration from Developer Portal
     }
   }
 

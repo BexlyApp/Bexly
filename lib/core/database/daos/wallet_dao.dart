@@ -1,10 +1,13 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/utils/retry_helper.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
+import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 
 part 'wallet_dao.g.dart';
@@ -67,8 +70,28 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     final existingWallets = await getAllWallets();
     final isFirstWallet = existingWallets.isEmpty;
 
-    // 1. Save to local database
-    final companion = walletModel.toCompanion(isInsert: true);
+    // 1. Generate cloudId IMMEDIATELY to prevent race condition with sync
+    final cloudId = walletModel.cloudId ?? const Uuid().v7();
+    Log.d('Generated cloudId: $cloudId for wallet: ${walletModel.name}', label: 'wallet');
+
+    // 2. Save to local database WITH cloudId
+    final companion = WalletsCompanion(
+      cloudId: Value(cloudId), // CRITICAL: Set cloudId at insert time!
+      name: Value(walletModel.name),
+      balance: Value(walletModel.balance),
+      initialBalance: Value(walletModel.initialBalance),
+      currency: Value(walletModel.currency),
+      iconName: Value(walletModel.iconName),
+      colorHex: Value(walletModel.colorHex),
+      walletType: Value(walletModel.walletType.toDbString()),
+      creditLimit: walletModel.creditLimit != null ? Value(walletModel.creditLimit) : const Value.absent(),
+      billingDay: walletModel.billingDay != null ? Value(walletModel.billingDay) : const Value.absent(),
+      interestRate: walletModel.interestRate != null ? Value(walletModel.interestRate) : const Value.absent(),
+      ownerUserId: walletModel.ownerUserId != null ? Value(walletModel.ownerUserId) : const Value.absent(),
+      isShared: Value(walletModel.isShared),
+      createdAt: Value(walletModel.createdAt ?? DateTime.now()),
+      updatedAt: Value(walletModel.updatedAt ?? DateTime.now()),
+    );
     final id = await into(wallets).insert(companion);
 
     // 2. Set default wallet if this is the first wallet
@@ -81,19 +104,18 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
       }
     }
 
-    // 3. Upload to cloud (if sync available)
+    // 3. Upload to cloud with retry (if sync available)
+    Log.d('🔍 Checking sync availability for wallet: ${walletModel.name}', label: 'sync');
+    Log.d('   → _ref: ${_ref != null ? "EXISTS" : "NULL"}', label: 'sync');
+
     if (_ref != null) {
-      try {
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-        final savedWallet = await getWalletById(id);
-        if (savedWallet != null) {
-          await syncService.uploadWallet(savedWallet.toModel());
-        }
-      } catch (e, stack) {
-        Log.e('Failed to upload wallet to cloud: $e', label: 'sync');
-        Log.e('Stack: $stack', label: 'sync');
-        // Don't rethrow - local save succeeded
-      }
+      Log.d('   → Calling _uploadWalletWithRetry for cloudId: $cloudId', label: 'sync');
+      // Fire and forget upload (don't block UI)
+      _uploadWalletWithRetry(id, cloudId).catchError((e) {
+        Log.e('❌ Failed to upload wallet: $e', label: 'sync');
+      });
+    } else {
+      Log.w('⚠️ CANNOT SYNC: _ref is NULL! Wallet created without Riverpod ref', label: 'sync');
     }
 
     return id;
@@ -111,16 +133,12 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     final companion = walletModel.toCompanion();
     final success = await update(wallets).replace(companion);
 
-    // 2. Upload to cloud (if sync available)
-    if (success && _ref != null) {
-      try {
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-        await syncService.uploadWallet(walletModel);
-      } catch (e, stack) {
-        Log.e('Failed to upload wallet update to cloud: $e', label: 'sync');
-        Log.e('Stack: $stack', label: 'sync');
-        // Don't rethrow - local update succeeded
-      }
+    // 2. Upload to cloud with retry (if sync available)
+    if (success && _ref != null && walletModel.id != null) {
+      // Fire and forget upload (don't block UI)
+      _uploadWalletWithRetry(walletModel.id!, walletModel.cloudId ?? '').catchError((e) {
+        Log.e('Failed to upload wallet update: $e', label: 'sync');
+      });
     }
 
     return success;
@@ -152,8 +170,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     // 4. Delete from cloud (if sync available and has cloudId)
     if (count > 0 && _ref != null && wallet != null && wallet.cloudId != null) {
       try {
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-        await syncService.deleteWalletFromCloud(wallet.cloudId!);
+        await _deleteWalletFromCloud(wallet.cloudId!);
       } catch (e, stack) {
         Log.e('Failed to delete wallet from cloud: $e', label: 'sync');
         Log.e('Stack: $stack', label: 'sync');
@@ -187,6 +204,31 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
       updatedAt: Value(DateTime.now()),
     );
     await into(wallets).insertOnConflictUpdate(companion);
+  }
+
+  /// Create or update wallet (used by sync service to pull from cloud)
+  /// Uses cloudId to find existing wallet, or creates new one
+  /// NOTE: This method does NOT sync back to cloud (to avoid infinite loop)
+  Future<void> createOrUpdateWallet(WalletModel walletModel) async {
+    Log.d('Creating or updating wallet from cloud: ${walletModel.cloudId}', label: 'wallet');
+
+    // Check if wallet exists by cloudId
+    final existingWallet = walletModel.cloudId != null
+        ? await getWalletByCloudId(walletModel.cloudId!)
+        : null;
+
+    if (existingWallet != null) {
+      // Update existing wallet (local only, no cloud sync)
+      final updatedModel = walletModel.copyWith(id: existingWallet.id);
+      final companion = updatedModel.toCompanion();
+      await update(wallets).replace(companion);
+      Log.d('Updated existing wallet ${existingWallet.id} from cloud', label: 'wallet');
+    } else {
+      // Create new wallet (local only, no cloud sync)
+      final companion = walletModel.toCompanion(isInsert: true);
+      final id = await into(wallets).insert(companion);
+      Log.d('Created new wallet $id from cloud', label: 'wallet');
+    }
   }
 
   /// Recalculate wallet balance from transactions
@@ -228,5 +270,86 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     }
 
     Log.i('Recalculated balances for ${allWallets.length} wallets', label: 'wallet');
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // UPLOAD HELPERS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Upload wallet with retry logic (fire and forget)
+  Future<void> _uploadWalletWithRetry(int walletId, String cloudId) async {
+    return RetryHelper.retry(
+      operationName: 'Upload wallet $cloudId',
+      operation: () async {
+        final wallet = await getWalletById(walletId);
+        if (wallet == null) {
+          throw Exception('Wallet $walletId not found');
+        }
+        await _syncWalletToCloud(wallet.toModel());
+        Log.d('✅ Wallet uploaded: ${wallet.name}', label: 'sync');
+      },
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // CLOUD SYNC HELPERS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Sync wallet to cloud (Supabase + Firebase for backward compatibility)
+  Future<void> _syncWalletToCloud(WalletModel wallet) async {
+    if (_ref == null) return;
+
+    // Try Supabase first (primary sync method)
+    try {
+      final supabaseSync = _ref.read(supabaseSyncServiceProvider);
+      if (supabaseSync.isAuthenticated) {
+        await supabaseSync.uploadWallet(wallet);
+        Log.d('Wallet synced to Supabase', label: 'sync');
+        return; // Success, no need to try Firebase
+      }
+    } catch (e) {
+      Log.w('Supabase sync failed, trying Firebase: $e', label: 'sync');
+    }
+
+    // Fallback to Firebase if Supabase fails
+    try {
+      final firebaseSync = _ref.read(realtimeSyncServiceProvider);
+      if (firebaseSync != null && firebaseSync.isAuthenticated) {
+        await firebaseSync.uploadWallet(wallet);
+        Log.d('Wallet synced to Firebase', label: 'sync');
+      }
+    } catch (e) {
+      Log.e('Firebase sync also failed: $e', label: 'sync');
+      rethrow;
+    }
+  }
+
+  /// Delete wallet from cloud (Supabase + Firebase)
+  Future<void> _deleteWalletFromCloud(String cloudId) async {
+    if (_ref == null) return;
+
+    // Try Supabase first
+    try {
+      final supabaseSync = _ref.read(supabaseSyncServiceProvider);
+      if (supabaseSync.isAuthenticated) {
+        await supabaseSync.deleteWalletFromCloud(cloudId);
+        Log.d('Wallet deleted from Supabase', label: 'sync');
+        return;
+      }
+    } catch (e) {
+      Log.w('Supabase delete failed, trying Firebase: $e', label: 'sync');
+    }
+
+    // Fallback to Firebase
+    try {
+      final firebaseSync = _ref.read(realtimeSyncServiceProvider);
+      if (firebaseSync != null && firebaseSync.isAuthenticated) {
+        await firebaseSync.deleteWalletFromCloud(cloudId);
+        Log.d('Wallet deleted from Firebase', label: 'sync');
+      }
+    } catch (e) {
+      Log.e('Firebase delete also failed: $e', label: 'sync');
+      rethrow;
+    }
   }
 }

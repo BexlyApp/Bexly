@@ -4,7 +4,7 @@ import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/wallet/data/repositories/wallet_repo.dart'; // Assuming defaultWallets is here
 
 class WalletPopulationService {
-  /// Populate using AppDatabase (no sync - for offline-first scenarios)
+  /// Populate using AppDatabase (no sync - with offline support)
   static Future<void> populate(AppDatabase db) async {
     Log.i('Populating default wallets...', label: 'wallet');
     for (final walletModel in defaultWallets) {

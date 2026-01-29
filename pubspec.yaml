@@ -92,6 +92,8 @@ dependencies:
   flutter_facebook_auth: ^7.1.2
   http: ^1.5.0
   flutter_dotenv: ^6.0.0
+  supabase_flutter: ^2.8.0
+  dio: ^5.9.0
   workmanager: ^0.9.0
   in_app_purchase: ^3.2.0
   google_mobile_ads: ^7.0.0

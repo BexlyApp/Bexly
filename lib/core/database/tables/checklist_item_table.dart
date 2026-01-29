@@ -38,6 +38,7 @@ extension ChecklistItemTableExtensions on ChecklistItem {
   ChecklistItemModel toModel() {
     return ChecklistItemModel(
       id: id,
+      cloudId: cloudId,
       goalId: goalId,
       title: title,
       amount: amount ?? 0.0,

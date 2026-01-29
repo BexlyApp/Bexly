@@ -5,13 +5,12 @@ class ProfileCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
-    // Watch Firebase Auth state changes to auto-rebuild when user profile updates
-    final firebaseAuthState = ref.watch(firebase_auth.authStateProvider);
-    final firebaseUser = firebaseAuthState.value;
     final colorScheme = Theme.of(context).colorScheme;
 
-    // Fallback to local auth for profile picture (not stored in Firebase Auth)
+    // Use local auth state (with offline support)
     final auth = ref.watch(authStateProvider);
+    final displayName = auth.name;
+    final profilePicture = auth.profilePicture;
 
     // Use base currency for text display
     final baseCurrency = ref.watch(baseCurrencyProvider);
@@ -21,10 +20,6 @@ class ProfileCard extends ConsumerWidget {
     // Use language for flag display
     final currentLanguage = ref.watch(languageProvider);
     final countryCode = _getCountryCodeFromLanguage(currentLanguage.code);
-
-    // Get display name from Firebase Auth (synced from onboarding)
-    final displayName = firebaseUser?.displayName ?? auth.name;
-    final profilePicture = firebaseUser?.photoURL ?? auth.profilePicture;
 
     return Row(
       children: [

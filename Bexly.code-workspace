@@ -7,5 +7,11 @@
 			"path": "../Bexly-Landing"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"chat.mcp.discovery.enabled": {
+			"cursor-global": true,
+			"cursor-workspace": true,
+			"claude-desktop": true
+		}
+	}
 }

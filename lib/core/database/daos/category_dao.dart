@@ -1,9 +1,12 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/utils/logger.dart';
-import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
+import 'package:bexly/core/utils/retry_helper.dart';
+import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
+import 'package:bexly/features/category/data/model/category_model.dart';
 
 part 'category_dao.g.dart';
 
@@ -16,12 +19,23 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
 
   // --- Read Operations ---
 
-  /// Watches all categories in the database.
+  /// Watches all categories in the database (including soft-deleted).
   /// Returns a stream that emits a new list of categories whenever the data changes.
   Stream<List<Category>> watchAllCategories() => select(categories).watch();
 
-  /// Fetches all categories from the database once.
+  /// Fetches all categories from the database once (including soft-deleted).
   Future<List<Category>> getAllCategories() => select(categories).get();
+
+  /// Watches only non-deleted categories (recommended for UI)
+  /// Returns a stream that emits a new list of active categories
+  Stream<List<Category>> watchActiveCategories() {
+    return (select(categories)..where((tbl) => tbl.isDeleted.equals(false))).watch();
+  }
+
+  /// Fetches only non-deleted categories (recommended for UI)
+  Future<List<Category>> getActiveCategories() {
+    return (select(categories)..where((tbl) => tbl.isDeleted.equals(false))).get();
+  }
 
   /// Watches a single category by its ID.
   Stream<Category?> watchCategoryById(int id) {
@@ -75,23 +89,31 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   // --- Create Operations ---
 
   /// Inserts a new category into the database.
-  /// The `id` within [categoryCompanion] should typically be a pre-generated UUID.
+  /// Generates a UUID v7 for cloudId if not provided.
   /// Returns the inserted [Category] object.
   Future<Category> addCategory(CategoriesCompanion categoryCompanion) async {
     Log.d('Adding new category', label: 'category');
 
-    // 1. Save to local database
-    final category = await into(categories).insertReturning(categoryCompanion);
+    // 1. Generate cloudId if not provided
+    final companionWithCloudId = categoryCompanion.cloudId.present
+        ? categoryCompanion
+        : categoryCompanion.copyWith(cloudId: Value(const Uuid().v7()));
 
-    // 2. Upload to cloud (if sync available)
+    if (!categoryCompanion.cloudId.present) {
+      Log.d('Generated cloudId: ${companionWithCloudId.cloudId.value}', label: 'category');
+    }
+
+    // 2. Save to local database WITH cloudId
+    final category = await into(categories).insertReturning(companionWithCloudId);
+
+    // 3. Upload to cloud with retry (if sync available)
     if (_ref != null) {
-      try {
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-        await syncService.uploadCategory(category.toModel());
-      } catch (e, stack) {
-        Log.e('Failed to upload category to cloud: $e', label: 'sync');
-        Log.e('Stack: $stack', label: 'sync');
-        // Don't rethrow - local save succeeded
+      final cloudId = category.cloudId;
+      if (cloudId != null) {
+        // Fire and forget upload (don't block UI)
+        _uploadCategoryWithRetry(category.id, cloudId).catchError((e) {
+          Log.e('Failed to upload category: $e', label: 'sync');
+        });
       }
     }
 
@@ -104,29 +126,30 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// This uses `replace` which means all fields of the [category] object will be updated.
   /// Returns `true` if the update was successful, `false` otherwise.
   ///
-  /// PROTECTION: Cannot update system default categories (built-in categories)
+  /// Modified Hybrid Sync: When updating built-in category, marks hasBeenModified = true
   Future<bool> updateCategory(Category category) async {
     Log.d('Updating category: ${category.id}', label: 'category');
 
-    // PROTECTION: Check if this is a system default category
-    if (category.isSystemDefault) {
-      Log.w('⚠️ BLOCKED: Cannot update system default category: ${category.title} (ID: ${category.id})', label: 'category');
-      throw Exception('Cannot modify built-in categories. System categories are protected.');
+    // Modified Hybrid Sync: Mark built-in categories as modified
+    Category categoryToUpdate = category;
+    if (category.source == 'built-in' && category.hasBeenModified == false) {
+      Log.d('Marking built-in category as modified: ${category.title}', label: 'category');
+      categoryToUpdate = category.copyWith(
+        hasBeenModified: true,
+        updatedAt: DateTime.now(),
+      );
     }
 
     // 1. Update local database
-    final success = await update(categories).replace(category);
+    final success = await update(categories).replace(categoryToUpdate);
 
-    // 2. Upload to cloud (if sync available)
-    if (success && _ref != null) {
-      try {
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-        await syncService.uploadCategory(category.toModel());
-      } catch (e, stack) {
-        Log.e('Failed to upload category update to cloud: $e', label: 'sync');
-        Log.e('Stack: $stack', label: 'sync');
-        // Don't rethrow - local update succeeded
-      }
+    // 2. Upload to cloud with retry (if sync available)
+    // Modified Hybrid Sync: Will only sync if custom or modified built-in
+    if (success && _ref != null && categoryToUpdate.cloudId != null) {
+      // Fire and forget upload (don't block UI)
+      _uploadCategoryWithRetry(categoryToUpdate.id, categoryToUpdate.cloudId!).catchError((e) {
+        Log.e('Failed to upload category update: $e', label: 'sync');
+      });
     }
 
     return success;
@@ -134,57 +157,145 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
 
   /// Upserts a category: inserts if new, updates if exists based on primary key.
   ///
-  /// PROTECTION: Only allow upsert for non-system categories OR system categories during initial population
+  /// Modified Hybrid Sync: Allows upsert for all categories
   Future<int> upsertCategory(CategoriesCompanion categoryCompanion) async {
-    // PROTECTION: If updating existing category, check if it's a system default
-    if (categoryCompanion.id.present) {
-      final existingCategory = await getCategoryById(categoryCompanion.id.value);
-      if (existingCategory != null && existingCategory.isSystemDefault) {
-        // Allow upsert ONLY if the companion is ALSO marked as system default
-        // This allows repopulation but blocks user/sync overwrites
-        if (!categoryCompanion.isSystemDefault.present || !categoryCompanion.isSystemDefault.value) {
-          Log.w('⚠️ BLOCKED: Cannot upsert non-system data into system category: ${existingCategory.title} (ID: ${existingCategory.id})', label: 'category');
-          throw Exception('Cannot modify built-in categories. System categories are protected from cloud sync.');
-        }
-      }
-    }
-
     return into(categories).insertOnConflictUpdate(categoryCompanion);
   }
 
   // --- Delete Operations ---
 
-  /// Deletes a category by its ID.
+  /// Soft deletes a category by its ID.
+  /// Sets is_deleted = true to sync deletion across devices
   /// Returns the number of rows affected (usually 1 if successful).
   ///
-  /// PROTECTION: Cannot delete system default categories (built-in categories)
+  /// Modified Hybrid Sync: Uses soft delete for cross-device consistency
   Future<int> deleteCategoryById(int id) async {
-    Log.d('Deleting category with ID: $id', label: 'category');
+    Log.d('Soft deleting category with ID: $id', label: 'category');
 
-    // 1. Get category to retrieve cloudId AND check if system default
+    // 1. Get category to retrieve cloudId
     final category = await getCategoryById(id);
-
-    // PROTECTION: Check if this is a system default category
-    if (category != null && category.isSystemDefault) {
-      Log.w('⚠️ BLOCKED: Cannot delete system default category: ${category.title} (ID: ${category.id})', label: 'category');
-      throw Exception('Cannot delete built-in categories. System categories are protected.');
+    if (category == null) {
+      Log.w('Category $id not found', label: 'category');
+      return 0;
     }
 
-    // 2. Delete from local database
-    final count = await (delete(categories)..where((tbl) => tbl.id.equals(id))).go();
+    // 2. Soft delete: Update is_deleted = true
+    final updatedCategory = category.copyWith(
+      isDeleted: true,
+      updatedAt: DateTime.now(),
+    );
 
-    // 3. Delete from cloud (if sync available and has cloudId)
-    if (count > 0 && _ref != null && category != null && category.cloudId != null) {
+    // For built-in categories, also mark as modified to trigger cloud sync
+    final categoryToUpdate = category.source == 'built-in'
+        ? updatedCategory.copyWith(hasBeenModified: true)
+        : updatedCategory;
+
+    final success = await update(categories).replace(categoryToUpdate);
+
+    // 3. Sync deletion to cloud (if sync available and has cloudId)
+    if (success && _ref != null && category.cloudId != null) {
       try {
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-        await syncService.deleteCategoryFromCloud(category.cloudId!);
+        final syncService = _ref.read(supabaseSyncServiceProvider);
+        if (syncService.isAuthenticated) {
+          await syncService.deleteCategoryFromCloud(category.cloudId!);
+        }
       } catch (e, stack) {
-        Log.e('Failed to delete category from cloud: $e', label: 'sync');
+        Log.e('Failed to sync category deletion to cloud: $e', label: 'sync');
         Log.e('Stack: $stack', label: 'sync');
         // Don't rethrow - local delete succeeded
       }
     }
 
-    return count;
+    return success ? 1 : 0;
+  }
+
+  // --- Upload Helpers ---
+
+  /// Upload category with retry logic (fire and forget)
+  Future<void> _uploadCategoryWithRetry(int categoryId, String cloudId) async {
+    return RetryHelper.retry(
+      operationName: 'Upload category $cloudId',
+      operation: () async {
+        final syncService = _ref?.read(supabaseSyncServiceProvider);
+        if (syncService == null || !syncService.isAuthenticated) {
+          Log.w('Supabase sync not available or not authenticated', label: 'sync');
+          return;
+        }
+
+        final category = await getCategoryById(categoryId);
+        if (category == null) {
+          throw Exception('Category $categoryId not found');
+        }
+
+        await syncService.uploadCategory(category.toModel());
+        Log.d('✅ Category uploaded: ${category.title}', label: 'sync');
+      },
+    );
+  }
+
+  // --- Sync Operations ---
+
+  /// Create or update category (used by sync service to pull from cloud)
+  /// Uses cloudId to find existing category, or creates new one
+  /// NOTE: This method does NOT sync back to cloud (to avoid infinite loop)
+  Future<void> createOrUpdateCategory(CategoryModel categoryModel) async {
+    Log.d('Creating or updating category from cloud: ${categoryModel.cloudId}', label: 'category');
+
+    // Check if category exists by cloudId
+    final existingCategory = categoryModel.cloudId != null
+        ? await getCategoryByCloudId(categoryModel.cloudId!)
+        : null;
+
+    if (existingCategory != null) {
+      // Update existing category (local only, no cloud sync)
+      // Preserve the local ID
+      final companion = CategoriesCompanion(
+        id: Value(existingCategory.id),
+        cloudId: Value(categoryModel.cloudId),
+        title: Value(categoryModel.title),
+        icon: Value(categoryModel.icon),
+        iconBackground: Value(categoryModel.iconBackground),
+        iconType: Value(categoryModel.iconTypeValue), // Field name is iconType in table
+        parentId: Value(categoryModel.parentId),
+        description: Value(categoryModel.description),
+        localizedTitles: Value(categoryModel.localizedTitles),
+        isSystemDefault: Value(categoryModel.isSystemDefault),
+        source: Value(categoryModel.source ?? 'built-in'),  // Modified Hybrid Sync
+        builtInId: Value(categoryModel.builtInId),  // Modified Hybrid Sync
+        hasBeenModified: Value(categoryModel.hasBeenModified ?? false),  // Modified Hybrid Sync
+        isDeleted: Value(categoryModel.isDeleted ?? false),  // Soft delete support
+        transactionType: Value(categoryModel.transactionType),
+        createdAt: categoryModel.createdAt != null
+            ? Value(categoryModel.createdAt!)
+            : const Value.absent(),
+        updatedAt: Value(categoryModel.updatedAt ?? DateTime.now()),
+      );
+      await update(categories).replace(companion);
+      Log.d('Updated existing category ${existingCategory.id} from cloud', label: 'category');
+    } else {
+      // Create new category (local only, no cloud sync)
+      final companion = CategoriesCompanion.insert(
+        cloudId: Value(categoryModel.cloudId),
+        title: categoryModel.title,
+        icon: Value(categoryModel.icon),
+        iconBackground: Value(categoryModel.iconBackground),
+        iconType: Value(categoryModel.iconTypeValue), // Field name is iconType in table
+        parentId: Value(categoryModel.parentId),
+        description: Value(categoryModel.description ?? ''),
+        localizedTitles: Value(categoryModel.localizedTitles),
+        isSystemDefault: Value(categoryModel.isSystemDefault),
+        source: Value(categoryModel.source ?? 'built-in'),  // Modified Hybrid Sync
+        builtInId: Value(categoryModel.builtInId),  // Modified Hybrid Sync
+        hasBeenModified: Value(categoryModel.hasBeenModified ?? false),  // Modified Hybrid Sync
+        isDeleted: Value(categoryModel.isDeleted ?? false),  // Soft delete support
+        transactionType: categoryModel.transactionType,
+        createdAt: categoryModel.createdAt != null
+            ? Value(categoryModel.createdAt!)
+            : Value(DateTime.now()),
+        updatedAt: Value(categoryModel.updatedAt ?? DateTime.now()),
+      );
+      final id = await into(categories).insert(companion);
+      Log.d('Created new category $id from cloud', label: 'category');
+    }
   }
 }

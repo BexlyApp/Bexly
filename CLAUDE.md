@@ -124,9 +124,10 @@ feature_name/
 - Transactions are scoped to individual wallets
 - Wallet switching handled via dedicated UI component
 
-### Offline-First Design
+### Local Storage & Offline Support
 - All data stored locally using Drift/SQLite
-- No mandatory authentication required
+- Works without internet connection
+- Optional cloud sync via Supabase when authenticated
 - Backup/restore functionality for data portability
 
 ### Theme System

@@ -21,6 +21,10 @@ _CategoryModel _$CategoryModelFromJson(Map<String, dynamic> json) =>
           ?.map((e) => CategoryModel.fromJson(e as Map<String, dynamic>))
           .toList(),
       isSystemDefault: json['isSystemDefault'] as bool? ?? false,
+      source: json['source'] as String? ?? 'built-in',
+      builtInId: json['builtInId'] as String?,
+      hasBeenModified: json['hasBeenModified'] as bool? ?? false,
+      isDeleted: json['isDeleted'] as bool? ?? false,
       transactionType: json['transactionType'] as String? ?? 'expense',
       createdAt: json['createdAt'] == null
           ? null
@@ -43,6 +47,10 @@ Map<String, dynamic> _$CategoryModelToJson(_CategoryModel instance) =>
       'localizedTitles': instance.localizedTitles,
       'subCategories': instance.subCategories,
       'isSystemDefault': instance.isSystemDefault,
+      'source': instance.source,
+      'builtInId': instance.builtInId,
+      'hasBeenModified': instance.hasBeenModified,
+      'isDeleted': instance.isDeleted,
       'transactionType': instance.transactionType,
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),

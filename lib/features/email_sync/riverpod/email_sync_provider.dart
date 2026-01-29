@@ -2,7 +2,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/features/email_sync/domain/services/gmail_auth_service.dart';
 import 'package:bexly/features/email_sync/domain/services/gmail_api_service.dart';
+import 'package:bexly/features/email_sync/domain/services/email_sync_worker.dart';
 import 'package:bexly/features/email_sync/data/models/email_sync_settings_model.dart';
+import 'package:bexly/core/utils/logger.dart';
 
 /// Provider for GmailApiService (shared singleton)
 final _gmailApiServiceInstance = GmailApiService();
@@ -28,6 +30,7 @@ class _EmailSyncKeys {
   static const enabledBanks = 'email_sync_enabled_banks';
   static const totalImported = 'email_sync_total_imported';
   static const pendingReview = 'email_sync_pending_review';
+  static const syncFrequency = 'email_sync_sync_frequency';
 }
 
 /// Default list of bank domains to scan
@@ -79,6 +82,10 @@ class EmailSyncNotifier extends AsyncNotifier<EmailSyncSettingsModel?> {
     final enabledBanksJson = prefs.getStringList(_EmailSyncKeys.enabledBanks);
     final totalImported = prefs.getInt(_EmailSyncKeys.totalImported) ?? 0;
     final pendingReview = prefs.getInt(_EmailSyncKeys.pendingReview) ?? 0;
+    final syncFreqString = prefs.getString(_EmailSyncKeys.syncFrequency);
+    final syncFrequency = syncFreqString != null
+        ? SyncFrequency.fromString(syncFreqString)
+        : SyncFrequency.every24Hours;
 
     return EmailSyncSettingsModel(
       gmailEmail: email,
@@ -89,6 +96,7 @@ class EmailSyncNotifier extends AsyncNotifier<EmailSyncSettingsModel?> {
       enabledBanks: enabledBanksJson ?? defaultBankDomains,
       totalImported: totalImported,
       pendingReview: pendingReview,
+      syncFrequency: syncFrequency,
     );
   }
 
@@ -114,6 +122,7 @@ class EmailSyncNotifier extends AsyncNotifier<EmailSyncSettingsModel?> {
     await prefs.setStringList(_EmailSyncKeys.enabledBanks, settings.enabledBanks);
     await prefs.setInt(_EmailSyncKeys.totalImported, settings.totalImported);
     await prefs.setInt(_EmailSyncKeys.pendingReview, settings.pendingReview);
+    await prefs.setString(_EmailSyncKeys.syncFrequency, settings.syncFrequency.name);
   }
 
   /// Connect Gmail account for email sync
@@ -126,12 +135,16 @@ class EmailSyncNotifier extends AsyncNotifier<EmailSyncSettingsModel?> {
         gmailEmail: result.email,
         isEnabled: true,
         enabledBanks: defaultBankDomains,
+        syncFrequency: SyncFrequency.every24Hours, // Default to 24h
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
       await _saveSettings(settings);
       state = AsyncData(settings);
+
+      // Register background sync (default: 24 hours)
+      await _registerBackgroundSync(settings.syncFrequency);
     }
 
     return result;
@@ -142,6 +155,9 @@ class EmailSyncNotifier extends AsyncNotifier<EmailSyncSettingsModel?> {
     final authService = ref.read(gmailAuthServiceProvider);
     await authService.disconnectGmail();
 
+    // Cancel background sync
+    await EmailSyncWorker.cancelPeriodicSync();
+
     // Clear settings
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_EmailSyncKeys.gmailEmail);
@@ -150,6 +166,7 @@ class EmailSyncNotifier extends AsyncNotifier<EmailSyncSettingsModel?> {
     await prefs.remove(_EmailSyncKeys.enabledBanks);
     await prefs.remove(_EmailSyncKeys.totalImported);
     await prefs.remove(_EmailSyncKeys.pendingReview);
+    await prefs.remove(_EmailSyncKeys.syncFrequency);
 
     state = const AsyncData(null);
   }
@@ -222,6 +239,43 @@ class EmailSyncNotifier extends AsyncNotifier<EmailSyncSettingsModel?> {
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = AsyncData(await _loadSettings());
+  }
+
+  /// Set sync frequency and update background task
+  Future<void> setSyncFrequency(SyncFrequency frequency) async {
+    final current = _getCurrentValue();
+    if (current == null) return;
+
+    Log.i('Setting sync frequency to: ${frequency.name}', label: 'EmailSync');
+
+    final updated = current.copyWith(
+      syncFrequency: frequency,
+      updatedAt: DateTime.now(),
+    );
+
+    await _saveSettings(updated);
+    state = AsyncData(updated);
+
+    // Update background sync task
+    await _registerBackgroundSync(frequency);
+  }
+
+  /// Register or cancel background sync based on frequency
+  Future<void> _registerBackgroundSync(SyncFrequency frequency) async {
+    try {
+      if (frequency == SyncFrequency.manual) {
+        // Manual only - cancel background task
+        Log.i('Cancelling background sync (manual mode)', label: 'EmailSync');
+        await EmailSyncWorker.cancelPeriodicSync();
+      } else {
+        // Register periodic task
+        final hours = frequency.hours!;
+        Log.i('Registering background sync: every $hours hours', label: 'EmailSync');
+        await EmailSyncWorker.registerPeriodicSync(frequencyHours: hours);
+      }
+    } catch (e) {
+      Log.e('Failed to update background sync: $e', label: 'EmailSync');
+    }
   }
 }
 

@@ -1,0 +1,13 @@
+# Supabase Configuration
+
+[functions.telegram-webhook]
+verify_jwt = false  # Disable JWT verification for Telegram webhook (public endpoint)
+
+[functions.link-telegram]
+verify_jwt = false  # Manual JWT verification against DOS ID project (JWT issued by different project)
+
+[functions.unlink-telegram]
+verify_jwt = true  # Keep JWT verification for unlinking (requires user auth)
+
+[functions.create-short-link]
+verify_jwt = false  # Public endpoint for Telegram bot to create short links

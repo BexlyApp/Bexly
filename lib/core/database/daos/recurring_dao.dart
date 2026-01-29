@@ -1,4 +1,6 @@
 import 'package:drift/drift.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/recurrings_table.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
@@ -6,12 +8,15 @@ import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/recurring/data/model/recurring_model.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
+import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
 
 part 'recurring_dao.g.dart';
 
 @DriftAccessor(tables: [Recurrings, Categories, Wallets])
 class RecurringDao extends DatabaseAccessor<AppDatabase> with _$RecurringDaoMixin {
-  RecurringDao(super.db);
+  final Ref? _ref;
+
+  RecurringDao(super.db, [this._ref]);
 
   Future<RecurringModel> _mapRecurring(Recurring recurringData) async {
     final wallet = await db.walletDao.getWalletById(recurringData.walletId);
@@ -215,10 +220,17 @@ class RecurringDao extends DatabaseAccessor<AppDatabase> with _$RecurringDaoMixi
   }
 
   /// Add a new recurring payment
-  Future<int> addRecurring(RecurringModel recurringModel) {
-    return into(recurrings).insert(
+  Future<int> addRecurring(RecurringModel recurringModel) async {
+    Log.d('addRecurring → ${recurringModel.name}', label: 'recurring');
+
+    // CRITICAL: Generate UUID v7 for cloud sync if not present
+    final cloudId = recurringModel.cloudId ?? const Uuid().v7();
+    Log.d('CloudId for new recurring: $cloudId', label: 'recurring');
+
+    // 1. Save to local database with cloudId
+    final id = await into(recurrings).insert(
       RecurringsCompanion.insert(
-        cloudId: Value(recurringModel.cloudId),
+        cloudId: Value(cloudId),
         name: recurringModel.name,
         description: Value(recurringModel.description),
         walletId: recurringModel.wallet.id!,
@@ -244,12 +256,37 @@ class RecurringDao extends DatabaseAccessor<AppDatabase> with _$RecurringDaoMixi
         totalPayments: Value(recurringModel.totalPayments),
       ),
     );
+    Log.d('Recurring inserted with id=$id', label: 'recurring');
+
+    // 2. Upload to cloud (if sync available)
+    if (_ref != null) {
+      final syncService = _ref?.read(supabaseSyncServiceProvider);
+      if (syncService != null && syncService.isAuthenticated) {
+        try {
+          final savedRecurring = await getRecurringById(id);
+          if (savedRecurring != null) {
+            // Sync dependencies first (category, wallet should already be synced)
+            await syncService.uploadRecurring(savedRecurring);
+            Log.d('✅ [RECURRING SYNC] Recurring uploaded successfully', label: 'sync');
+          }
+        } catch (e, stack) {
+          Log.e('Failed to upload recurring to cloud: $e', label: 'sync');
+          Log.e('Stack: $stack', label: 'sync');
+          // Don't rethrow - local save succeeded
+        }
+      }
+    }
+
+    return id;
   }
 
   /// Update an existing recurring payment
-  Future<bool> updateRecurring(RecurringModel recurringModel) {
-    if (recurringModel.id == null) return Future.value(false);
-    return (update(recurrings)..where((r) => r.id.equals(recurringModel.id!)))
+  Future<bool> updateRecurring(RecurringModel recurringModel) async {
+    if (recurringModel.id == null) return false;
+    Log.d('updateRecurring → ${recurringModel.name}', label: 'recurring');
+
+    // 1. Update local database
+    final count = await (update(recurrings)..where((r) => r.id.equals(recurringModel.id!)))
         .write(
           RecurringsCompanion(
             cloudId: Value(recurringModel.cloudId),
@@ -278,13 +315,56 @@ class RecurringDao extends DatabaseAccessor<AppDatabase> with _$RecurringDaoMixi
             totalPayments: Value(recurringModel.totalPayments),
             updatedAt: Value(DateTime.now()),
           ),
-        )
-        .then((count) => count > 0);
+        );
+    final success = count > 0;
+    Log.d('updateRecurring success=$success', label: 'recurring');
+
+    // 2. Upload to cloud (if sync available)
+    if (success && _ref != null) {
+      final syncService = _ref?.read(supabaseSyncServiceProvider);
+      if (syncService != null && syncService.isAuthenticated) {
+        try {
+          await syncService.uploadRecurring(recurringModel);
+          Log.d('✅ [RECURRING SYNC] Recurring update uploaded successfully', label: 'sync');
+        } catch (e, stack) {
+          Log.e('Failed to upload recurring update to cloud: $e', label: 'sync');
+          Log.e('Stack: $stack', label: 'sync');
+          // Don't rethrow - local update succeeded
+        }
+      }
+    }
+
+    return success;
   }
 
   /// Delete a recurring payment
-  Future<int> deleteRecurring(int id) {
-    return (delete(recurrings)..where((r) => r.id.equals(id))).go();
+  Future<int> deleteRecurring(int id) async {
+    Log.d('deleteRecurring → id=$id', label: 'recurring');
+
+    // 1. Get recurring to retrieve cloudId
+    final recurring = await (select(recurrings)..where((r) => r.id.equals(id)))
+        .getSingleOrNull();
+
+    // 2. Delete from local database
+    final count = await (delete(recurrings)..where((r) => r.id.equals(id))).go();
+    Log.d('deleteRecurring deleted $count row(s)', label: 'recurring');
+
+    // 3. Delete from cloud (if sync available and has cloudId)
+    if (count > 0 && _ref != null && recurring != null && recurring.cloudId != null) {
+      final syncService = _ref?.read(supabaseSyncServiceProvider);
+      if (syncService != null && syncService.isAuthenticated) {
+        try {
+          await syncService.deleteRecurringFromCloud(recurring.cloudId!);
+          Log.d('✅ [RECURRING SYNC] Recurring deleted from cloud', label: 'sync');
+        } catch (e, stack) {
+          Log.e('Failed to delete recurring from cloud: $e', label: 'sync');
+          Log.e('Stack: $stack', label: 'sync');
+          // Don't rethrow - local delete succeeded
+        }
+      }
+    }
+
+    return count;
   }
 
   /// Pause a recurring payment

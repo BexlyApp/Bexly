@@ -35,6 +35,7 @@ class AuthProvider extends Notifier<UserModel> {
   }
 
   void setUser(UserModel user) {
+    Log.i('🔵 setUser() called with: ${user.toJson()}', label: 'AuthProvider');
     state = user;
     _setSession();
   }
@@ -51,15 +52,16 @@ class AuthProvider extends Notifier<UserModel> {
 
     if (existingUser != null) {
       // Update the user, ensuring the ID from the database is preserved
-      await _userDao.updateUser(
-        state.copyWith(id: existingUser.id).toCompanion(),
-      );
-      Log.i(state.toJson(), label: 'updated user session');
+      final updatedUser = state.copyWith(id: existingUser.id);
+      Log.i('🟢 Updating user in DB: ${updatedUser.toJson()}', label: 'AuthProvider');
+      await _userDao.updateUser(updatedUser.toCompanion());
+      Log.i('✅ User session updated in DB', label: 'AuthProvider');
     } else {
       // Insert a new user
+      Log.i('🟡 Creating new user in DB: ${state.toJson()}', label: 'AuthProvider');
       final newId = await _userDao.insertUser(state.toCompanion());
       state = state.copyWith(id: newId); // Update state with the new ID from DB
-      Log.i(state.toJson(), label: 'created user session');
+      Log.i('✅ User session created in DB with ID: $newId', label: 'AuthProvider');
     }
   }
 

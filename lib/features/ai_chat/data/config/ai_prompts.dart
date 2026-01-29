@@ -22,7 +22,13 @@ CRITICAL LANGUAGE RULE - MUST FOLLOW EXACTLY:
    - Input: "breakfast 50k" → "Recorded..." (English)
    - Input: "ăn sáng 50k" → "Đã ghi nhận..." (Vietnamese)
    - Input: "Netflix 每月 300元" → "已记录..." (Chinese)
-   - Input: "朝食 300円" → "記録しました..." (Japanese)''';
+   - Input: "朝食 300円" → "記録しました..." (Japanese)
+
+DATE FORMAT IN RESPONSES (human-readable text only):
+- Vietnamese: DD-MM-YYYY format (e.g., "14-01-2026", "ngày 25-12-2024")
+- English/Other: Use natural format (e.g., "January 14, 2026" or "14 Jan 2026")
+- ⚠️ NOTE: JSON dates MUST stay YYYY-MM-DD format (for parsing)''';
+
 
   // =========================================================================
   // SECTION 2: OUTPUT FORMAT (Most Critical - First!)
@@ -47,7 +53,7 @@ SCHEMAS:
 1. create_expense: {"action":"create_expense","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>","wallet":"<str>"?,"date":"YYYY-MM-DD"?,"time":"HH:MM"?}
 2. create_income: {"action":"create_income","amount":<num>,"currency":"USD|VND","description":"<str>","category":"<str>","wallet":"<str>"?,"date":"YYYY-MM-DD"?,"time":"HH:MM"?}
 3. create_budget: {"action":"create_budget","amount":<num>,"currency":"USD|VND","category":"<str>","period":"monthly|weekly|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?}
-4. create_goal: {"action":"create_goal","title":"<str>","targetAmount":<num>,"currency":"USD|VND","currentAmount":<num>?,"deadline":"YYYY-MM-DD"?}
+4. create_goal: {"action":"create_goal","title":"<str>","targetAmount":<num>,"currency":"USD|VND","currentAmount":<num>?,"deadline":"YYYY-MM-DD"?,"checklist":[{"title":"<str>","amount":<num>}]?}
 5. get_balance: {"action":"get_balance","wallet":"<str>"?}
 6. get_summary: {"action":"get_summary","range":"today|week|month|quarter|year|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?,"wallet":"<str>"?}
 7. list_transactions: {"action":"list_transactions","range":"today|week|month|custom","startDate":"YYYY-MM-DD"?,"endDate":"YYYY-MM-DD"?,"limit":<num>?,"wallet":"<str>"?}
@@ -192,7 +198,7 @@ CATEGORY MATCHING:
    - Even if categories in list are localized (Chinese: "音乐", Vietnamese: "Âm nhạc")
    - You must map to English equivalent (e.g., "Music", "Food", "Transportation")
 4. Categories are SPLIT by transaction type:
-   - EXPENSE categories: Food, Transportation, Shopping, Bills, Entertainment, etc.
+   - EXPENSE categories: Food, Transportation, Shopping, Utilities, Entertainment, etc.
    - INCOME categories: Salary, Bonus, Freelance, Dividends, Interest, Rental Income, Gifts Received, Refunds, etc.
    - Use create_expense action for expense categories
    - Use create_income action for income categories
@@ -208,8 +214,17 @@ CATEGORY MATCHING:
    - Refunds/Reimbursements → "Refunds"
    - Cashback/Rewards → "Cashback"
    - Tax refund → "Tax Refund"
-6. Parent categories are for grouping only - choose the subcategory!
-7. NEVER make up category names - use standard English category names''';
+6. Common Expense category mappings (CRITICAL - USE SPECIFIC SUBCATEGORIES):
+   - Electric/Electricity bill → "Electricity" (NOT "Bills" or "Utilities")
+   - Water bill → "Water" (NOT "Bills")
+   - Gas bill → "Gas" (NOT "Bills")
+   - Internet bill → "Internet" (NOT "Bills")
+   - Phone bill → "Phone" (NOT "Bills")
+   - Rent payment → "Rent" (NOT "Housing")
+   - Mortgage → "Mortgage" (NOT "Housing")
+   - NOTE: "Bills" is NOT a valid category - always use specific utility type!
+7. Parent categories are for grouping only - choose the subcategory!
+8. NEVER make up category names - use standard English category names''';
 
   static const String walletMatchingRules = '''
 WALLET MATCHING:

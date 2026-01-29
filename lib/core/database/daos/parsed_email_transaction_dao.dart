@@ -140,6 +140,30 @@ class ParsedEmailTransactionDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Update parsed transaction with user edits
+  Future<void> updateParsedTransaction({
+    required int id,
+    double? amount,
+    String? merchant,
+    String? transactionType,
+    String? categoryHint,
+    DateTime? transactionDate,
+    int? selectedCategoryId,
+  }) async {
+    await (update(parsedEmailTransactions)..where((t) => t.id.equals(id))).write(
+      ParsedEmailTransactionsCompanion(
+        amount: amount != null ? Value(amount) : const Value.absent(),
+        merchant: merchant != null ? Value(merchant) : const Value.absent(),
+        transactionType: transactionType != null ? Value(transactionType) : const Value.absent(),
+        categoryHint: categoryHint != null ? Value(categoryHint) : const Value.absent(),
+        transactionDate: transactionDate != null ? Value(transactionDate) : const Value.absent(),
+        selectedCategoryId: selectedCategoryId != null ? Value(selectedCategoryId) : const Value.absent(),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+    Log.d('Updated parsed transaction $id', label: _label);
+  }
+
   /// Delete a transaction
   Future<void> deleteParsedTransaction(int id) async {
     await (delete(parsedEmailTransactions)..where((t) => t.id.equals(id))).go();

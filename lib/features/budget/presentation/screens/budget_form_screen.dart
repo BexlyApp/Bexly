@@ -161,13 +161,10 @@ class BudgetFormScreen extends HookConsumerWidget {
         totalExistingBudgetsAmount -= budgetDetails.value!.amount;
       }
 
-      if (totalExistingBudgetsAmount + newAmount > activeWalletBalance) {
-        Toast.show(
-          'Total budget amount cannot exceed wallet balance.',
-          type: ToastificationType.warning,
-        );
-        return;
-      }
+      // Note: We intentionally do NOT check if budget > wallet balance
+      // Budget is a planning/tracking tool, not a spending limit
+      // Users should be able to set budgets regardless of current balance
+      // Example: Credit card with negative balance can still have budget limits
 
       final budgetToSave = BudgetModel(
         id: isEditing ? budgetId : null,

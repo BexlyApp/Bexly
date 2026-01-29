@@ -12,8 +12,6 @@ import 'package:bexly/features/recurring/data/model/recurring_model.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/recurring/services/recurring_notification_service.dart';
-import 'package:bexly/core/services/sync/cloud_sync_service.dart';
-import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:intl/intl.dart';
 
@@ -207,23 +205,9 @@ class RecurringDetailScreen extends HookConsumerWidget {
                   await db.recurringDao.pauseRecurring(currentRecurring.id!);
                 }
 
-                // Sync to cloud
-                final user = ref.read(authStateProvider).value;
-                if (user?.uid != null) {
-                  try {
-                    final syncService = ref.read(cloudSyncServiceProvider);
-                    final recurringEntity = await (db.select(db.recurrings)
-                          ..where((r) => r.id.equals(currentRecurring.id!)))
-                        .getSingleOrNull();
-
-                    if (recurringEntity != null) {
-                      await syncService.syncRecurring(recurringEntity);
-                      Log.i('Recurring status synced to cloud', label: 'RecurringDetail');
-                    }
-                  } catch (e) {
-                    Log.e('Failed to sync recurring status to cloud: $e', label: 'RecurringDetail');
-                  }
-                }
+                // TODO: Implement Supabase sync for recurring status
+                // Cloud sync removed with Firebase Auth migration
+                Log.i('Recurring status updated locally (cloud sync not implemented)', label: 'RecurringDetail');
 
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -290,23 +274,9 @@ class RecurringDetailScreen extends HookConsumerWidget {
                 try {
                   final db = ref.read(databaseProvider);
 
-                  // Sync delete to cloud first
-                  final user = ref.read(authStateProvider).value;
-                  if (user?.uid != null) {
-                    try {
-                      final syncService = ref.read(cloudSyncServiceProvider);
-                      final recurringEntity = await (db.select(db.recurrings)
-                            ..where((r) => r.id.equals(currentRecurring.id!)))
-                          .getSingleOrNull();
-
-                      if (recurringEntity != null) {
-                        await syncService.deleteRecurring(recurringEntity);
-                        Log.i('Recurring deleted from cloud', label: 'RecurringDetail');
-                      }
-                    } catch (e) {
-                      Log.e('Failed to delete recurring from cloud: $e', label: 'RecurringDetail');
-                    }
-                  }
+                  // TODO: Implement Supabase sync for recurring delete
+                  // Cloud sync removed with Firebase Auth migration
+                  Log.i('Recurring will be deleted locally (cloud sync not implemented)', label: 'RecurringDetail');
 
                   // Cancel notification for this recurring
                   await RecurringNotificationService.cancelNotification(currentRecurring.id!);

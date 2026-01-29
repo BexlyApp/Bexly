@@ -5,8 +5,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:gap/gap.dart';
 import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
@@ -18,7 +17,8 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/services/image_service/image_service.dart';
-import 'package:bexly/core/riverpod/auth_providers.dart' as firebase_auth;
+import 'package:bexly/core/services/auth/supabase_auth_service.dart';
+import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:toastification/toastification.dart';
@@ -26,29 +26,33 @@ import 'package:toastification/toastification.dart';
 class PersonalDetailsScreen extends HookConsumerWidget {
   const PersonalDetailsScreen({super.key});
 
-  /// Upload profile picture to Firebase Storage and return download URL
+  /// Upload profile picture to Supabase Storage and return download URL
   Future<(String?, String?)> _uploadProfilePicture(File imageFile, String userId) async {
     try {
       Log.i('Uploading profile picture for user: $userId', label: 'ProfileUpload');
 
-      // Use Bexly Firebase Storage (same project as Authentication)
-      // FirebaseStorage.instance uses DEFAULT app which is Bexly
-      final storage = FirebaseStorage.instance;
+      // Use Supabase Storage with 'Assets' bucket
+      // Structure: Assets/Avatars/{userId}/avatar.jpg (shared across all products)
+      final supabase = Supabase.instance.client;
 
-      // Create unique file path: avatars/{userId}/profile.jpg
-      final storageRef = storage.ref().child('avatars/$userId/profile.jpg');
+      // Create file path: Avatars/{userId}/avatar.jpg
+      final filePath = 'Avatars/$userId/avatar.jpg';
 
-      Log.i('Storage path: avatars/$userId/profile.jpg', label: 'ProfileUpload');
-      Log.i('Using default Firebase Storage (bexly-app)', label: 'ProfileUpload');
+      Log.i('Storage path: Assets/$filePath', label: 'ProfileUpload');
+      Log.i('Using Supabase Storage (Assets bucket)', label: 'ProfileUpload');
 
-      // Upload file
-      final uploadTask = storageRef.putFile(imageFile);
+      // Upload file to Supabase Storage
+      await supabase.storage.from('Assets').upload(
+            filePath,
+            imageFile,
+            fileOptions: const FileOptions(
+              upsert: true, // Overwrite if exists
+              contentType: 'image/jpeg',
+            ),
+          );
 
-      // Wait for upload to complete
-      final snapshot = await uploadTask;
-
-      // Get download URL
-      final downloadUrl = await snapshot.ref.getDownloadURL();
+      // Get public download URL
+      final downloadUrl = supabase.storage.from('Assets').getPublicUrl(filePath);
 
       Log.i('Profile picture uploaded successfully: $downloadUrl', label: 'ProfileUpload');
       return (downloadUrl, null);
@@ -61,22 +65,21 @@ class PersonalDetailsScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final firebaseUser = FirebaseAuth.instance.currentUser;
+    // Get user data from Supabase auth + local auth state
+    final supabaseAuth = ref.watch(supabaseAuthServiceProvider);
+    final localAuth = ref.watch(authStateProvider);
+
     final nameField = useTextEditingController();
     final emailField = useTextEditingController();
     final profilePicture = useState<File?>(null);
 
     useEffect(() {
-      // Read directly from Firebase Auth (source of truth)
-      nameField.text = firebaseUser?.displayName ?? '';
-      emailField.text = firebaseUser?.email ?? '';
-      if (firebaseUser?.photoURL != null) {
-        // photoURL is typically a network URL, not local file
-        // You may need to download and cache it if needed
-      }
+      // Use local auth state (with offline support)
+      nameField.text = localAuth.name;
+      emailField.text = localAuth.email;
 
       return null;
-    }, [firebaseUser]);
+    }, [localAuth]);
 
     return CustomScaffold(
       context: context,
@@ -150,16 +153,18 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                           radius: 70,
                           child: CircleAvatar(
                             // Only show background when no image (to support transparent PNGs)
-                            backgroundColor: (profilePicture.value == null && firebaseUser?.photoURL == null)
+                            backgroundColor: (profilePicture.value == null && localAuth.profilePicture == null)
                                 ? Theme.of(context).colorScheme.surface
                                 : Colors.transparent,
                             backgroundImage: profilePicture.value != null
                                 ? FileImage(profilePicture.value!)
-                                : (firebaseUser?.photoURL != null
-                                    ? NetworkImage(firebaseUser!.photoURL!)
+                                : (localAuth.profilePicture != null
+                                    ? (localAuth.profilePicture!.startsWith('http')
+                                        ? NetworkImage(localAuth.profilePicture!)
+                                        : FileImage(File(localAuth.profilePicture!)))
                                     : null),
                             radius: 69,
-                            child: profilePicture.value == null && firebaseUser?.photoURL == null
+                            child: profilePicture.value == null && localAuth.profilePicture == null
                                 ? Icon(
                                     Icons.camera_alt,
                                     color: AppColors.darkAlpha30,
@@ -219,19 +224,19 @@ class PersonalDetailsScreen extends HookConsumerWidget {
               }
 
               try {
-                // Update Firebase Auth profile directly (source of truth)
-                await firebaseUser?.updateDisplayName(newName);
+                String? photoURL = localAuth.profilePicture;
 
-                // Upload profile picture to Firebase Storage if changed
-                if (profilePicture.value != null && firebaseUser != null) {
+                // Upload profile picture to Supabase Storage if changed
+                if (profilePicture.value != null) {
+                  final userId = supabaseAuth.userId ?? localAuth.id.toString();
                   Log.i('Uploading new profile picture...', label: 'PersonalDetails');
-                  final (photoURL, errorMessage) = await _uploadProfilePicture(
+                  final (uploadedPhotoURL, errorMessage) = await _uploadProfilePicture(
                     profilePicture.value!,
-                    firebaseUser.uid,
+                    userId,
                   );
 
-                  if (photoURL != null) {
-                    await firebaseUser.updatePhotoURL(photoURL);
+                  if (uploadedPhotoURL != null) {
+                    photoURL = uploadedPhotoURL;
                     Log.i('Profile photo URL updated: $photoURL', label: 'PersonalDetails');
                   } else {
                     Log.w('Failed to upload profile picture: $errorMessage', label: 'PersonalDetails');
@@ -245,11 +250,27 @@ class PersonalDetailsScreen extends HookConsumerWidget {
                   }
                 }
 
-                // Reload user to get updated profile
-                await firebaseUser?.reload();
+                // 1. Save local FIRST (instant feedback, works offline)
+                final updatedUser = ref.read(authStateProvider).copyWith(
+                  name: newName,
+                  profilePicture: photoURL,
+                );
+                ref.read(authStateProvider.notifier).setUser(updatedUser);
+                Log.i('✅ Updated local auth state', label: 'PersonalDetails');
 
-                // Invalidate auth provider to force refresh UI
-                ref.invalidate(firebase_auth.authStateProvider);
+                // 2. Sync to Supabase in background (fire and forget)
+                if (supabaseAuth.isAuthenticated) {
+                  try {
+                    await ref.read(supabaseAuthServiceProvider.notifier).updateProfile(
+                      fullName: newName,
+                      avatarUrl: photoURL,
+                    );
+                    Log.i('✅ Synced to Supabase user metadata', label: 'PersonalDetails');
+                  } catch (e) {
+                    Log.w('Failed to sync to Supabase: $e', label: 'PersonalDetails');
+                    // Don't show error - local update succeeded, sync can retry later
+                  }
+                }
 
                 if (context.mounted) {
                   Toast.show(

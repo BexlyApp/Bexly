@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:bexly/core/services/notification_service.dart';
@@ -86,8 +87,10 @@ class FirebaseMessagingService {
       // Get FCM token
       _fcmToken = await _messaging.getToken();
       if (_fcmToken != null) {
-        print('✅ [FCM] Token received: $_fcmToken');
-        Log.i('FCM Token: $_fcmToken', label: 'FCM');
+        print('✅ [FCM] Token received');
+        if (kDebugMode) {
+          Log.i('FCM Token: $_fcmToken', label: 'FCM');
+        }
       } else {
         print('❌ [FCM] Token is NULL!');
       }
@@ -95,7 +98,9 @@ class FirebaseMessagingService {
       // Listen for token refresh
       _messaging.onTokenRefresh.listen((newToken) {
         _fcmToken = newToken;
-        Log.i('FCM Token refreshed: $newToken', label: 'FCM');
+        if (kDebugMode) {
+          Log.i('FCM Token refreshed: $newToken', label: 'FCM');
+        }
         // Update token in Firestore
         _updateTokenInFirestore(newToken);
       });

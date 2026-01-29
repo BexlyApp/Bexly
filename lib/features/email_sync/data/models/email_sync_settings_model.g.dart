@@ -22,6 +22,9 @@ _EmailSyncSettingsModel _$EmailSyncSettingsModelFromJson(
       const [],
   totalImported: (json['totalImported'] as num?)?.toInt() ?? 0,
   pendingReview: (json['pendingReview'] as num?)?.toInt() ?? 0,
+  syncFrequency:
+      $enumDecodeNullable(_$SyncFrequencyEnumMap, json['syncFrequency']) ??
+      SyncFrequency.every24Hours,
   createdAt: json['createdAt'] == null
       ? null
       : DateTime.parse(json['createdAt'] as String),
@@ -40,6 +43,13 @@ Map<String, dynamic> _$EmailSyncSettingsModelToJson(
   'enabledBanks': instance.enabledBanks,
   'totalImported': instance.totalImported,
   'pendingReview': instance.pendingReview,
+  'syncFrequency': _$SyncFrequencyEnumMap[instance.syncFrequency]!,
   'createdAt': instance.createdAt?.toIso8601String(),
   'updatedAt': instance.updatedAt?.toIso8601String(),
+};
+
+const _$SyncFrequencyEnumMap = {
+  SyncFrequency.manual: 'manual',
+  SyncFrequency.every12Hours: 'every12Hours',
+  SyncFrequency.every24Hours: 'every24Hours',
 };
