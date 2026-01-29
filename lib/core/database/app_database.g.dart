@@ -587,6 +587,57 @@ class $CategoriesTable extends Categories
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('built-in'),
+  );
+  static const VerificationMeta _builtInIdMeta = const VerificationMeta(
+    'builtInId',
+  );
+  @override
+  late final GeneratedColumn<String> builtInId = GeneratedColumn<String>(
+    'built_in_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hasBeenModifiedMeta = const VerificationMeta(
+    'hasBeenModified',
+  );
+  @override
+  late final GeneratedColumn<bool> hasBeenModified = GeneratedColumn<bool>(
+    'has_been_modified',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("has_been_modified" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _transactionTypeMeta = const VerificationMeta(
     'transactionType',
   );
@@ -638,6 +689,10 @@ class $CategoriesTable extends Categories
     description,
     localizedTitles,
     isSystemDefault,
+    source,
+    builtInId,
+    hasBeenModified,
+    isDeleted,
     transactionType,
     createdAt,
     updatedAt,
@@ -725,6 +780,33 @@ class $CategoriesTable extends Categories
         ),
       );
     }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('built_in_id')) {
+      context.handle(
+        _builtInIdMeta,
+        builtInId.isAcceptableOrUnknown(data['built_in_id']!, _builtInIdMeta),
+      );
+    }
+    if (data.containsKey('has_been_modified')) {
+      context.handle(
+        _hasBeenModifiedMeta,
+        hasBeenModified.isAcceptableOrUnknown(
+          data['has_been_modified']!,
+          _hasBeenModifiedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
     if (data.containsKey('transaction_type')) {
       context.handle(
         _transactionTypeMeta,
@@ -797,6 +879,22 @@ class $CategoriesTable extends Categories
         DriftSqlType.bool,
         data['${effectivePrefix}is_system_default'],
       )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      builtInId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}built_in_id'],
+      ),
+      hasBeenModified: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}has_been_modified'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
       transactionType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}transaction_type'],
@@ -840,6 +938,22 @@ class Category extends DataClass implements Insertable<Category> {
   /// These are the initial categories created on first app launch
   final bool isSystemDefault;
 
+  /// Category source: 'built-in' (from templates) or 'custom' (user-created)
+  /// Built-in categories stay local unless modified, custom categories always sync
+  final String source;
+
+  /// Stable ID for built-in templates (e.g., 'food', 'transport')
+  /// Used to match categories across devices and app versions
+  final String? builtInId;
+
+  /// Track if user modified built-in category (triggers cloud sync)
+  /// When true, this built-in category must sync to prevent duplication
+  final bool hasBeenModified;
+
+  /// Soft delete flag for cross-device sync
+  /// Deleted categories are hidden but synced to ensure consistency
+  final bool isDeleted;
+
   /// Transaction type: 'income' or 'expense'
   /// Required field to separate Income and Expense categories
   final String transactionType;
@@ -856,6 +970,10 @@ class Category extends DataClass implements Insertable<Category> {
     this.description,
     this.localizedTitles,
     required this.isSystemDefault,
+    required this.source,
+    this.builtInId,
+    required this.hasBeenModified,
+    required this.isDeleted,
     required this.transactionType,
     required this.createdAt,
     required this.updatedAt,
@@ -887,6 +1005,12 @@ class Category extends DataClass implements Insertable<Category> {
       map['localized_titles'] = Variable<String>(localizedTitles);
     }
     map['is_system_default'] = Variable<bool>(isSystemDefault);
+    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || builtInId != null) {
+      map['built_in_id'] = Variable<String>(builtInId);
+    }
+    map['has_been_modified'] = Variable<bool>(hasBeenModified);
+    map['is_deleted'] = Variable<bool>(isDeleted);
     map['transaction_type'] = Variable<String>(transactionType);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -917,6 +1041,12 @@ class Category extends DataClass implements Insertable<Category> {
           ? const Value.absent()
           : Value(localizedTitles),
       isSystemDefault: Value(isSystemDefault),
+      source: Value(source),
+      builtInId: builtInId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(builtInId),
+      hasBeenModified: Value(hasBeenModified),
+      isDeleted: Value(isDeleted),
       transactionType: Value(transactionType),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -939,6 +1069,10 @@ class Category extends DataClass implements Insertable<Category> {
       description: serializer.fromJson<String?>(json['description']),
       localizedTitles: serializer.fromJson<String?>(json['localizedTitles']),
       isSystemDefault: serializer.fromJson<bool>(json['isSystemDefault']),
+      source: serializer.fromJson<String>(json['source']),
+      builtInId: serializer.fromJson<String?>(json['builtInId']),
+      hasBeenModified: serializer.fromJson<bool>(json['hasBeenModified']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       transactionType: serializer.fromJson<String>(json['transactionType']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -958,6 +1092,10 @@ class Category extends DataClass implements Insertable<Category> {
       'description': serializer.toJson<String?>(description),
       'localizedTitles': serializer.toJson<String?>(localizedTitles),
       'isSystemDefault': serializer.toJson<bool>(isSystemDefault),
+      'source': serializer.toJson<String>(source),
+      'builtInId': serializer.toJson<String?>(builtInId),
+      'hasBeenModified': serializer.toJson<bool>(hasBeenModified),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
       'transactionType': serializer.toJson<String>(transactionType),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -975,6 +1113,10 @@ class Category extends DataClass implements Insertable<Category> {
     Value<String?> description = const Value.absent(),
     Value<String?> localizedTitles = const Value.absent(),
     bool? isSystemDefault,
+    String? source,
+    Value<String?> builtInId = const Value.absent(),
+    bool? hasBeenModified,
+    bool? isDeleted,
     String? transactionType,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -993,6 +1135,10 @@ class Category extends DataClass implements Insertable<Category> {
         ? localizedTitles.value
         : this.localizedTitles,
     isSystemDefault: isSystemDefault ?? this.isSystemDefault,
+    source: source ?? this.source,
+    builtInId: builtInId.present ? builtInId.value : this.builtInId,
+    hasBeenModified: hasBeenModified ?? this.hasBeenModified,
+    isDeleted: isDeleted ?? this.isDeleted,
     transactionType: transactionType ?? this.transactionType,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1017,6 +1163,12 @@ class Category extends DataClass implements Insertable<Category> {
       isSystemDefault: data.isSystemDefault.present
           ? data.isSystemDefault.value
           : this.isSystemDefault,
+      source: data.source.present ? data.source.value : this.source,
+      builtInId: data.builtInId.present ? data.builtInId.value : this.builtInId,
+      hasBeenModified: data.hasBeenModified.present
+          ? data.hasBeenModified.value
+          : this.hasBeenModified,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       transactionType: data.transactionType.present
           ? data.transactionType.value
           : this.transactionType,
@@ -1038,6 +1190,10 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('description: $description, ')
           ..write('localizedTitles: $localizedTitles, ')
           ..write('isSystemDefault: $isSystemDefault, ')
+          ..write('source: $source, ')
+          ..write('builtInId: $builtInId, ')
+          ..write('hasBeenModified: $hasBeenModified, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('transactionType: $transactionType, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -1057,6 +1213,10 @@ class Category extends DataClass implements Insertable<Category> {
     description,
     localizedTitles,
     isSystemDefault,
+    source,
+    builtInId,
+    hasBeenModified,
+    isDeleted,
     transactionType,
     createdAt,
     updatedAt,
@@ -1075,6 +1235,10 @@ class Category extends DataClass implements Insertable<Category> {
           other.description == this.description &&
           other.localizedTitles == this.localizedTitles &&
           other.isSystemDefault == this.isSystemDefault &&
+          other.source == this.source &&
+          other.builtInId == this.builtInId &&
+          other.hasBeenModified == this.hasBeenModified &&
+          other.isDeleted == this.isDeleted &&
           other.transactionType == this.transactionType &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -1091,6 +1255,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String?> description;
   final Value<String?> localizedTitles;
   final Value<bool> isSystemDefault;
+  final Value<String> source;
+  final Value<String?> builtInId;
+  final Value<bool> hasBeenModified;
+  final Value<bool> isDeleted;
   final Value<String> transactionType;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -1105,6 +1273,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.description = const Value.absent(),
     this.localizedTitles = const Value.absent(),
     this.isSystemDefault = const Value.absent(),
+    this.source = const Value.absent(),
+    this.builtInId = const Value.absent(),
+    this.hasBeenModified = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.transactionType = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1120,6 +1292,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.description = const Value.absent(),
     this.localizedTitles = const Value.absent(),
     this.isSystemDefault = const Value.absent(),
+    this.source = const Value.absent(),
+    this.builtInId = const Value.absent(),
+    this.hasBeenModified = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     required String transactionType,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1136,6 +1312,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? description,
     Expression<String>? localizedTitles,
     Expression<bool>? isSystemDefault,
+    Expression<String>? source,
+    Expression<String>? builtInId,
+    Expression<bool>? hasBeenModified,
+    Expression<bool>? isDeleted,
     Expression<String>? transactionType,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -1151,6 +1331,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (description != null) 'description': description,
       if (localizedTitles != null) 'localized_titles': localizedTitles,
       if (isSystemDefault != null) 'is_system_default': isSystemDefault,
+      if (source != null) 'source': source,
+      if (builtInId != null) 'built_in_id': builtInId,
+      if (hasBeenModified != null) 'has_been_modified': hasBeenModified,
+      if (isDeleted != null) 'is_deleted': isDeleted,
       if (transactionType != null) 'transaction_type': transactionType,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1168,6 +1352,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<String?>? description,
     Value<String?>? localizedTitles,
     Value<bool>? isSystemDefault,
+    Value<String>? source,
+    Value<String?>? builtInId,
+    Value<bool>? hasBeenModified,
+    Value<bool>? isDeleted,
     Value<String>? transactionType,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -1183,6 +1371,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       description: description ?? this.description,
       localizedTitles: localizedTitles ?? this.localizedTitles,
       isSystemDefault: isSystemDefault ?? this.isSystemDefault,
+      source: source ?? this.source,
+      builtInId: builtInId ?? this.builtInId,
+      hasBeenModified: hasBeenModified ?? this.hasBeenModified,
+      isDeleted: isDeleted ?? this.isDeleted,
       transactionType: transactionType ?? this.transactionType,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1222,6 +1414,18 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (isSystemDefault.present) {
       map['is_system_default'] = Variable<bool>(isSystemDefault.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (builtInId.present) {
+      map['built_in_id'] = Variable<String>(builtInId.value);
+    }
+    if (hasBeenModified.present) {
+      map['has_been_modified'] = Variable<bool>(hasBeenModified.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
     if (transactionType.present) {
       map['transaction_type'] = Variable<String>(transactionType.value);
     }
@@ -1247,6 +1451,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('description: $description, ')
           ..write('localizedTitles: $localizedTitles, ')
           ..write('isSystemDefault: $isSystemDefault, ')
+          ..write('source: $source, ')
+          ..write('builtInId: $builtInId, ')
+          ..write('hasBeenModified: $hasBeenModified, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('transactionType: $transactionType, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -1410,6 +1618,32 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
       'CHECK ("pinned" IN (0, 1))',
     ),
   );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1425,6 +1659,8 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     iconName,
     associatedAccountId,
     pinned,
+    isDeleted,
+    deletedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1531,6 +1767,18 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         pinned.isAcceptableOrUnknown(data['pinned']!, _pinnedMeta),
       );
     }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -1592,6 +1840,14 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         DriftSqlType.bool,
         data['${effectivePrefix}pinned'],
       ),
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
     );
   }
 
@@ -1618,6 +1874,8 @@ class Goal extends DataClass implements Insertable<Goal> {
   final String? iconName;
   final int? associatedAccountId;
   final bool? pinned;
+  final bool isDeleted;
+  final DateTime? deletedAt;
   const Goal({
     required this.id,
     this.cloudId,
@@ -1632,6 +1890,8 @@ class Goal extends DataClass implements Insertable<Goal> {
     this.iconName,
     this.associatedAccountId,
     this.pinned,
+    required this.isDeleted,
+    this.deletedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1662,6 +1922,10 @@ class Goal extends DataClass implements Insertable<Goal> {
     }
     if (!nullToAbsent || pinned != null) {
       map['pinned'] = Variable<bool>(pinned);
+    }
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
     return map;
   }
@@ -1695,6 +1959,10 @@ class Goal extends DataClass implements Insertable<Goal> {
       pinned: pinned == null && nullToAbsent
           ? const Value.absent()
           : Value(pinned),
+      isDeleted: Value(isDeleted),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
     );
   }
 
@@ -1719,6 +1987,8 @@ class Goal extends DataClass implements Insertable<Goal> {
         json['associatedAccountId'],
       ),
       pinned: serializer.fromJson<bool?>(json['pinned']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
     );
   }
   @override
@@ -1738,6 +2008,8 @@ class Goal extends DataClass implements Insertable<Goal> {
       'iconName': serializer.toJson<String?>(iconName),
       'associatedAccountId': serializer.toJson<int?>(associatedAccountId),
       'pinned': serializer.toJson<bool?>(pinned),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
     };
   }
 
@@ -1755,6 +2027,8 @@ class Goal extends DataClass implements Insertable<Goal> {
     Value<String?> iconName = const Value.absent(),
     Value<int?> associatedAccountId = const Value.absent(),
     Value<bool?> pinned = const Value.absent(),
+    bool? isDeleted,
+    Value<DateTime?> deletedAt = const Value.absent(),
   }) => Goal(
     id: id ?? this.id,
     cloudId: cloudId.present ? cloudId.value : this.cloudId,
@@ -1771,6 +2045,8 @@ class Goal extends DataClass implements Insertable<Goal> {
         ? associatedAccountId.value
         : this.associatedAccountId,
     pinned: pinned.present ? pinned.value : this.pinned,
+    isDeleted: isDeleted ?? this.isDeleted,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
   );
   Goal copyWithCompanion(GoalsCompanion data) {
     return Goal(
@@ -1795,6 +2071,8 @@ class Goal extends DataClass implements Insertable<Goal> {
           ? data.associatedAccountId.value
           : this.associatedAccountId,
       pinned: data.pinned.present ? data.pinned.value : this.pinned,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -1813,7 +2091,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           ..write('updatedAt: $updatedAt, ')
           ..write('iconName: $iconName, ')
           ..write('associatedAccountId: $associatedAccountId, ')
-          ..write('pinned: $pinned')
+          ..write('pinned: $pinned, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
@@ -1833,6 +2113,8 @@ class Goal extends DataClass implements Insertable<Goal> {
     iconName,
     associatedAccountId,
     pinned,
+    isDeleted,
+    deletedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -1850,7 +2132,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           other.updatedAt == this.updatedAt &&
           other.iconName == this.iconName &&
           other.associatedAccountId == this.associatedAccountId &&
-          other.pinned == this.pinned);
+          other.pinned == this.pinned &&
+          other.isDeleted == this.isDeleted &&
+          other.deletedAt == this.deletedAt);
 }
 
 class GoalsCompanion extends UpdateCompanion<Goal> {
@@ -1867,6 +2151,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   final Value<String?> iconName;
   final Value<int?> associatedAccountId;
   final Value<bool?> pinned;
+  final Value<bool> isDeleted;
+  final Value<DateTime?> deletedAt;
   const GoalsCompanion({
     this.id = const Value.absent(),
     this.cloudId = const Value.absent(),
@@ -1881,6 +2167,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.iconName = const Value.absent(),
     this.associatedAccountId = const Value.absent(),
     this.pinned = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedAt = const Value.absent(),
   });
   GoalsCompanion.insert({
     this.id = const Value.absent(),
@@ -1896,6 +2184,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.iconName = const Value.absent(),
     this.associatedAccountId = const Value.absent(),
     this.pinned = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedAt = const Value.absent(),
   }) : title = Value(title),
        targetAmount = Value(targetAmount),
        endDate = Value(endDate);
@@ -1913,6 +2203,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Expression<String>? iconName,
     Expression<int>? associatedAccountId,
     Expression<bool>? pinned,
+    Expression<bool>? isDeleted,
+    Expression<DateTime>? deletedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1929,6 +2221,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       if (associatedAccountId != null)
         'associated_account_id': associatedAccountId,
       if (pinned != null) 'pinned': pinned,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (deletedAt != null) 'deleted_at': deletedAt,
     });
   }
 
@@ -1946,6 +2240,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Value<String?>? iconName,
     Value<int?>? associatedAccountId,
     Value<bool?>? pinned,
+    Value<bool>? isDeleted,
+    Value<DateTime?>? deletedAt,
   }) {
     return GoalsCompanion(
       id: id ?? this.id,
@@ -1961,6 +2257,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       iconName: iconName ?? this.iconName,
       associatedAccountId: associatedAccountId ?? this.associatedAccountId,
       pinned: pinned ?? this.pinned,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 
@@ -2006,6 +2304,12 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     if (pinned.present) {
       map['pinned'] = Variable<bool>(pinned.value);
     }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
     return map;
   }
 
@@ -2024,7 +2328,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
           ..write('updatedAt: $updatedAt, ')
           ..write('iconName: $iconName, ')
           ..write('associatedAccountId: $associatedAccountId, ')
-          ..write('pinned: $pinned')
+          ..write('pinned: $pinned, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
@@ -11921,6 +12227,10 @@ typedef $$CategoriesTableCreateCompanionBuilder =
       Value<String?> description,
       Value<String?> localizedTitles,
       Value<bool> isSystemDefault,
+      Value<String> source,
+      Value<String?> builtInId,
+      Value<bool> hasBeenModified,
+      Value<bool> isDeleted,
       required String transactionType,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -11937,6 +12247,10 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<String?> description,
       Value<String?> localizedTitles,
       Value<bool> isSystemDefault,
+      Value<String> source,
+      Value<String?> builtInId,
+      Value<bool> hasBeenModified,
+      Value<bool> isDeleted,
       Value<String> transactionType,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -12075,6 +12389,26 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<bool> get isSystemDefault => $composableBuilder(
     column: $table.isSystemDefault,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get builtInId => $composableBuilder(
+    column: $table.builtInId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hasBeenModified => $composableBuilder(
+    column: $table.hasBeenModified,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12246,6 +12580,26 @@ class $$CategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get builtInId => $composableBuilder(
+    column: $table.builtInId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get hasBeenModified => $composableBuilder(
+    column: $table.hasBeenModified,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get transactionType => $composableBuilder(
     column: $table.transactionType,
     builder: (column) => ColumnOrderings(column),
@@ -12328,6 +12682,20 @@ class $$CategoriesTableAnnotationComposer
     column: $table.isSystemDefault,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get builtInId =>
+      $composableBuilder(column: $table.builtInId, builder: (column) => column);
+
+  GeneratedColumn<bool> get hasBeenModified => $composableBuilder(
+    column: $table.hasBeenModified,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 
   GeneratedColumn<String> get transactionType => $composableBuilder(
     column: $table.transactionType,
@@ -12482,6 +12850,10 @@ class $$CategoriesTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<String?> localizedTitles = const Value.absent(),
                 Value<bool> isSystemDefault = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String?> builtInId = const Value.absent(),
+                Value<bool> hasBeenModified = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<String> transactionType = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -12496,6 +12868,10 @@ class $$CategoriesTableTableManager
                 description: description,
                 localizedTitles: localizedTitles,
                 isSystemDefault: isSystemDefault,
+                source: source,
+                builtInId: builtInId,
+                hasBeenModified: hasBeenModified,
+                isDeleted: isDeleted,
                 transactionType: transactionType,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -12512,6 +12888,10 @@ class $$CategoriesTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<String?> localizedTitles = const Value.absent(),
                 Value<bool> isSystemDefault = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String?> builtInId = const Value.absent(),
+                Value<bool> hasBeenModified = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 required String transactionType,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -12526,6 +12906,10 @@ class $$CategoriesTableTableManager
                 description: description,
                 localizedTitles: localizedTitles,
                 isSystemDefault: isSystemDefault,
+                source: source,
+                builtInId: builtInId,
+                hasBeenModified: hasBeenModified,
+                isDeleted: isDeleted,
                 transactionType: transactionType,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -12692,6 +13076,8 @@ typedef $$GoalsTableCreateCompanionBuilder =
       Value<String?> iconName,
       Value<int?> associatedAccountId,
       Value<bool?> pinned,
+      Value<bool> isDeleted,
+      Value<DateTime?> deletedAt,
     });
 typedef $$GoalsTableUpdateCompanionBuilder =
     GoalsCompanion Function({
@@ -12708,6 +13094,8 @@ typedef $$GoalsTableUpdateCompanionBuilder =
       Value<String?> iconName,
       Value<int?> associatedAccountId,
       Value<bool?> pinned,
+      Value<bool> isDeleted,
+      Value<DateTime?> deletedAt,
     });
 
 final class $$GoalsTableReferences
@@ -12803,6 +13191,16 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
 
   ColumnFilters<bool> get pinned => $composableBuilder(
     column: $table.pinned,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12905,6 +13303,16 @@ class $$GoalsTableOrderingComposer
     column: $table.pinned,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GoalsTableAnnotationComposer
@@ -12962,6 +13370,12 @@ class $$GoalsTableAnnotationComposer
 
   GeneratedColumn<bool> get pinned =>
       $composableBuilder(column: $table.pinned, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   Expression<T> checklistItemsRefs<T extends Object>(
     Expression<T> Function($$ChecklistItemsTableAnnotationComposer a) f,
@@ -13030,6 +13444,8 @@ class $$GoalsTableTableManager
                 Value<String?> iconName = const Value.absent(),
                 Value<int?> associatedAccountId = const Value.absent(),
                 Value<bool?> pinned = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
               }) => GoalsCompanion(
                 id: id,
                 cloudId: cloudId,
@@ -13044,6 +13460,8 @@ class $$GoalsTableTableManager
                 iconName: iconName,
                 associatedAccountId: associatedAccountId,
                 pinned: pinned,
+                isDeleted: isDeleted,
+                deletedAt: deletedAt,
               ),
           createCompanionCallback:
               ({
@@ -13060,6 +13478,8 @@ class $$GoalsTableTableManager
                 Value<String?> iconName = const Value.absent(),
                 Value<int?> associatedAccountId = const Value.absent(),
                 Value<bool?> pinned = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
               }) => GoalsCompanion.insert(
                 id: id,
                 cloudId: cloudId,
@@ -13074,6 +13494,8 @@ class $$GoalsTableTableManager
                 iconName: iconName,
                 associatedAccountId: associatedAccountId,
                 pinned: pinned,
+                isDeleted: isDeleted,
+                deletedAt: deletedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(
