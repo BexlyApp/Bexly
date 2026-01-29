@@ -81,7 +81,7 @@ D:\Dev\flutter\bin\flutter analyze
 
 - **Expense Tracking**: Record daily expenses and income
 - **Multi-Wallet**: Manage multiple wallets with different currencies
-- **Offline-First**: All data stored locally with SQLite
+- **Offline Support**: All data stored locally with SQLite, syncs to cloud when authenticated
 - **Budget Management**: Set and track budgets
 - **Analytics**: Visual reports and insights
 - **Categories**: Customizable expense categories

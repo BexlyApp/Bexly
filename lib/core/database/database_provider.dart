@@ -5,6 +5,8 @@ import 'package:bexly/core/database/daos/category_dao.dart';
 import 'package:bexly/core/database/daos/transaction_dao.dart';
 import 'package:bexly/core/database/daos/budget_dao.dart';
 import 'package:bexly/core/database/daos/goal_dao.dart';
+import 'package:bexly/core/database/daos/checklist_item_dao.dart';
+import 'package:bexly/core/database/daos/recurring_dao.dart';
 import 'package:bexly/core/database/daos/notification_dao.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/category_integrity_service.dart';
@@ -64,6 +66,20 @@ final budgetDaoProvider = Provider<BudgetDao>((ref) {
 final goalDaoProvider = Provider<GoalDao>((ref) {
   final db = ref.watch(databaseProvider);
   return GoalDao(db, ref);
+});
+
+/// ChecklistItem DAO provider with sync support
+/// Use this instead of db.checklistItemDao when you need sync functionality
+final checklistItemDaoProvider = Provider<ChecklistItemDao>((ref) {
+  final db = ref.watch(databaseProvider);
+  return ChecklistItemDao(db, ref);
+});
+
+/// Recurring DAO provider with sync support
+/// Use this instead of db.recurringDao when you need sync functionality
+final recurringDaoProvider = Provider<RecurringDao>((ref) {
+  final db = ref.watch(databaseProvider);
+  return RecurringDao(db, ref);
 });
 
 /// Notification DAO provider

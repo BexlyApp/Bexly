@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -179,20 +178,11 @@ class OnboardingScreen extends HookConsumerWidget {
         profilePicture: avatarPath,
       );
 
-      // Save user profile locally
+      // Save user profile locally (with offline support)
       ref.read(authStateProvider.notifier).setUser(updatedUser);
 
-      // Sync display name to Firebase Auth if user is logged in
-      final firebaseUser = FirebaseAuth.instance.currentUser;
-      if (firebaseUser != null && displayName.isNotEmpty) {
-        try {
-          await firebaseUser.updateDisplayName(displayName);
-          await firebaseUser.reload(); // Refresh user data
-          Log.i('Synced displayName to Firebase: $displayName', label: 'onboarding');
-        } catch (e) {
-          Log.e('Failed to sync displayName to Firebase: $e', label: 'onboarding');
-        }
-      }
+      // Note: User metadata will sync to Supabase when they sign in via social auth
+      // (handled in bind_account_bottom_sheet.dart)
 
       Log.i('Profile setup complete: ${updatedUser.toJson()}', label: 'onboarding');
 

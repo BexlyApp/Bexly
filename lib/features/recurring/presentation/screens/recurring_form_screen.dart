@@ -26,8 +26,7 @@ import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/transaction/presentation/components/form/transaction_type_selector.dart';
 import 'package:bexly/core/database/database_provider.dart';
-import 'package:bexly/core/riverpod/auth_providers.dart';
-import 'package:bexly/core/services/sync/cloud_sync_service.dart';
+import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 import 'package:bexly/core/services/notification_permission_service.dart';
 
 class RecurringFormScreen extends HookConsumerWidget {
@@ -520,22 +519,8 @@ class _ActionButtons extends HookConsumerWidget {
                     await db.recurringDao.pauseRecurring(recurringId);
                   }
 
-                  // Sync to cloud
-                  final user = ref.read(authStateProvider).value;
-                  if (user?.uid != null) {
-                    try {
-                      final syncService = ref.read(cloudSyncServiceProvider);
-                      final recurringEntity = await (db.select(db.recurrings)
-                            ..where((r) => r.id.equals(recurringId)))
-                          .getSingleOrNull();
-
-                      if (recurringEntity != null) {
-                        await syncService.syncRecurring(recurringEntity);
-                      }
-                    } catch (e) {
-                      // Silently fail cloud sync
-                    }
-                  }
+                  // TODO: Implement Supabase sync for recurring transactions
+                  // Cloud sync removed with Firebase Auth migration
 
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -592,22 +577,8 @@ class _ActionButtons extends HookConsumerWidget {
                   try {
                     final db = ref.read(databaseProvider);
 
-                    // Sync delete to cloud first
-                    final user = ref.read(authStateProvider).value;
-                    if (user?.uid != null) {
-                      try {
-                        final syncService = ref.read(cloudSyncServiceProvider);
-                        final recurringEntity = await (db.select(db.recurrings)
-                              ..where((r) => r.id.equals(recurringId)))
-                            .getSingleOrNull();
-
-                        if (recurringEntity != null) {
-                          await syncService.deleteRecurring(recurringEntity);
-                        }
-                      } catch (e) {
-                        // Silently fail cloud sync
-                      }
-                    }
+                    // TODO: Implement Supabase sync for recurring delete
+                    // Cloud sync removed with Firebase Auth migration
 
                     // Cancel notification for this recurring
                     await RecurringNotificationService.cancelNotification(recurringId);

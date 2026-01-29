@@ -4,16 +4,22 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/utils/logger.dart';
-import 'package:bexly/features/email_sync/domain/services/email_parser_service.dart';
+import 'package:bexly/features/email_sync/domain/services/email_parser_service.dart' as parser;
+import 'package:bexly/features/email_sync/domain/services/llm_email_parser_service.dart';
 import 'package:bexly/features/email_sync/data/models/parsed_email_transaction_model.dart';
 import 'package:bexly/features/email_sync/riverpod/email_sync_provider.dart';
 import 'package:bexly/features/email_sync/domain/services/email_import_service.dart';
 
 // Note: gmailApiServiceProvider is defined in email_sync_provider.dart
 
-/// Provider for EmailParserService
-final emailParserServiceProvider = Provider<EmailParserService>((ref) {
-  return EmailParserService();
+/// Provider for EmailParserService (regex-based, fallback)
+final emailParserServiceProvider = Provider<parser.EmailParserService>((ref) {
+  return parser.EmailParserService();
+});
+
+/// Provider for LLM Email Parser (primary parser)
+final llmEmailParserServiceProvider = Provider<LLMEmailParserService>((ref) {
+  return LLMEmailParserService();
 });
 
 /// Scan result model
@@ -85,7 +91,7 @@ class EmailScanNotifier extends Notifier<EmailScanState> {
 
     try {
       final gmailApi = ref.read(gmailApiServiceProvider);
-      final parser = ref.read(emailParserServiceProvider);
+      final regexParser = ref.read(emailParserServiceProvider);
       // Unwrap AsyncValue manually (Riverpod 3.x doesn't have valueOrNull)
       final syncState = ref.read(emailSyncProvider);
       final syncSettings = syncState.when(
@@ -110,14 +116,39 @@ class EmailScanNotifier extends Notifier<EmailScanState> {
       Log.i('Fetched ${emails.length} emails', label: _label);
       state = state.copyWith(progress: 0.5);
 
-      // Parse each email
+      // Get LLM parser for primary parsing
+      final llmParser = ref.read(llmEmailParserServiceProvider);
+
+      // Parse each email (LLM first, fallback to regex)
       final transactions = <ParsedEmailTransactionModel>[];
       int errorCount = 0;
+      int llmSuccessCount = 0;
+      int regexFallbackCount = 0;
 
       for (int i = 0; i < emails.length; i++) {
         final email = emails[i];
         try {
-          final parsed = parser.parseEmail(email);
+          // Try LLM parser first
+          parser.ParsedEmail? parsed;
+          try {
+            parsed = await llmParser.parseEmail(email);
+            if (parsed != null) {
+              llmSuccessCount++;
+              Log.d('LLM parsed: ${email.subject}', label: _label);
+            }
+          } catch (e) {
+            Log.w('LLM parser failed for ${email.id}, falling back to regex: $e', label: _label);
+          }
+
+          // Fallback to regex parser if LLM failed
+          if (parsed == null) {
+            parsed = regexParser.parseEmail(email);
+            if (parsed != null) {
+              regexFallbackCount++;
+              Log.d('Regex parsed: ${email.subject}', label: _label);
+            }
+          }
+
           if (parsed != null) {
             transactions.add(ParsedEmailTransactionModel(
               emailId: parsed.emailId,
@@ -148,7 +179,7 @@ class EmailScanNotifier extends Notifier<EmailScanState> {
         state = state.copyWith(progress: progress);
       }
 
-      Log.i('Parsed ${transactions.length} transactions from ${emails.length} emails', label: _label);
+      Log.i('Parsed ${transactions.length} transactions from ${emails.length} emails (LLM: $llmSuccessCount, Regex: $regexFallbackCount, Failed: $errorCount)', label: _label);
 
       // Save to database
       final db = ref.read(databaseProvider);

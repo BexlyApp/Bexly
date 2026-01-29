@@ -4,7 +4,6 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/localization/app_localizations.dart';
-import 'package:bexly/core/services/sync/sync_trigger_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/category/data/repositories/category_repo.dart';
 
@@ -143,16 +142,10 @@ class CategoryPopulationService {
         label: 'category',
       );
 
-      // STEP 4: Sync to cloud if userId provided
+      // STEP 4: Cloud sync removed - app supports offline usage
+      // Categories will sync when user signs in via social auth
       if (userId != null) {
-        Log.i('Syncing categories to cloud for user: $userId', label: 'category');
-        try {
-          await SyncTriggerService.uploadAllCategoriesToCloud(db, userId);
-          Log.i('✅ Categories synced to cloud successfully', label: 'category');
-        } catch (e) {
-          Log.e('Failed to sync categories to cloud: $e', label: 'category');
-          // Don't rethrow - local repopulate succeeded
-        }
+        Log.d('Category cloud sync skipped (handled by Supabase sync service)', label: 'category');
       }
     } finally {
       // STEP 5: Re-enable foreign key constraints

@@ -118,7 +118,7 @@ class LLMDefaultConfig {
   }
 
   // Default model for Bexly Free AI (DOS AI vLLM server)
-  static const String _defaultBexlyFreeModel = 'Qwen/Qwen3-VL-30B-A3B-Instruct';
+  static const String _defaultBexlyFreeModel = 'Qwen/Qwen3-VL-30B-A3B-Instruct-FP8';
 
   static String get customModel {
     try {

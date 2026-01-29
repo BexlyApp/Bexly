@@ -107,6 +107,16 @@ class SettingsPreferencesGroup extends ConsumerWidget {
             desktopWidget: const BankConnectionsScreen(),
           ),
         ),
+        // Bot Integration - Telegram & Messenger
+        MenuTileButton(
+          label: 'Bot Integration',
+          icon: HugeIcons.strokeRoundedTelegram,
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.botIntegration,
+            desktopWidget: const BotIntegrationScreen(),
+          ),
+        ),
       ],
     );
   }

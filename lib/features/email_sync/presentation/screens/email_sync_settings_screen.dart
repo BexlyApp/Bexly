@@ -10,6 +10,7 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/components/buttons/button_state.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
+import 'package:bexly/core/components/bottom_sheets/alert_bottom_sheet.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
@@ -78,6 +79,16 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
 
             const Gap(AppSpacing.spacing24),
 
+            // Sync Frequency Selector
+            _SyncFrequencyCard(
+              currentFrequency: settings.syncFrequency,
+              onFrequencyChanged: (frequency) {
+                ref.read(emailSyncProvider.notifier).setSyncFrequency(frequency);
+              },
+            ),
+
+            const Gap(AppSpacing.spacing24),
+
             // Sync Now Button
             _SyncNowCard(
               onSync: () => _showScanPeriodSheet(context, ref),
@@ -134,40 +145,34 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
   }
 
   void _showDisconnectDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Disconnect Gmail?'),
-        content: const Text(
+      builder: (sheetContext) => AlertBottomSheet(
+        context: sheetContext,
+        title: 'Disconnect Gmail?',
+        content: Text(
           'This will stop syncing transactions from your email. '
           'Previously imported transactions will not be deleted.',
+          style: AppTextStyles.body3.copyWith(color: AppColors.neutral600),
+          textAlign: TextAlign.center,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              await ref.read(emailSyncProvider.notifier).disconnectGmail();
+        cancelText: 'Cancel',
+        confirmText: 'Disconnect',
+        onCancel: () => Navigator.pop(sheetContext),
+        onConfirm: () async {
+          Navigator.pop(sheetContext);
+          await ref.read(emailSyncProvider.notifier).disconnectGmail();
 
-              if (context.mounted) {
-                toastification.show(
-                  context: context,
-                  title: const Text('Gmail Disconnected'),
-                  type: ToastificationType.info,
-                  style: ToastificationStyle.fillColored,
-                  autoCloseDuration: const Duration(seconds: 3),
-                );
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.red600,
-            ),
-            child: const Text('Disconnect'),
-          ),
-        ],
+          if (context.mounted) {
+            toastification.show(
+              context: context,
+              title: const Text('Gmail Disconnected'),
+              type: ToastificationType.info,
+              style: ToastificationStyle.fillColored,
+              autoCloseDuration: const Duration(seconds: 3),
+            );
+          }
+        },
       ),
     );
   }
@@ -755,7 +760,10 @@ class _ReviewPendingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        debugPrint('[EmailSync] _ReviewPendingCard tapped! Navigating to email review...');
+        onTap();
+      },
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.spacing16),
@@ -859,6 +867,83 @@ class _PrivacyInfoCard extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Card for selecting sync frequency
+class _SyncFrequencyCard extends StatelessWidget {
+  final SyncFrequency currentFrequency;
+  final ValueChanged<SyncFrequency> onFrequencyChanged;
+
+  const _SyncFrequencyCard({
+    required this.currentFrequency,
+    required this.onFrequencyChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.spacing16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Compact header - icon + title only
+          Row(
+            children: [
+              Icon(
+                Icons.schedule,
+                color: AppColors.primary600,
+                size: 20,
+              ),
+              const Gap(AppSpacing.spacing8),
+              Text(
+                'Sync Frequency',
+                style: AppTextStyles.body3.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const Gap(AppSpacing.spacing12),
+          // Compact frequency options
+          ...SyncFrequency.values.map((frequency) => InkWell(
+                onTap: () => onFrequencyChanged(frequency),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Icon(
+                        currentFrequency == frequency
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                        color: currentFrequency == frequency
+                            ? AppColors.primary600
+                            : AppColors.neutral400,
+                        size: 18,
+                      ),
+                      const Gap(10),
+                      Expanded(
+                        child: Text(
+                          frequency.label,
+                          style: AppTextStyles.body3.copyWith(
+                            color: currentFrequency == frequency
+                                ? AppColors.primary700
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )),
         ],
       ),
     );

@@ -32,6 +32,22 @@ class Categories extends Table {
   /// These are the initial categories created on first app launch
   BoolColumn get isSystemDefault => boolean().withDefault(const Constant(false))();
 
+  /// Category source: 'built-in' (from templates) or 'custom' (user-created)
+  /// Built-in categories stay local unless modified, custom categories always sync
+  TextColumn get source => text().withDefault(const Constant('built-in'))();
+
+  /// Stable ID for built-in templates (e.g., 'food', 'transport')
+  /// Used to match categories across devices and app versions
+  TextColumn get builtInId => text().nullable()();
+
+  /// Track if user modified built-in category (triggers cloud sync)
+  /// When true, this built-in category must sync to prevent duplication
+  BoolColumn get hasBeenModified => boolean().withDefault(const Constant(false))();
+
+  /// Soft delete flag for cross-device sync
+  /// Deleted categories are hidden but synced to ensure consistency
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+
   /// Transaction type: 'income' or 'expense'
   /// Required field to separate Income and Expense categories
   TextColumn get transactionType => text().withLength(min: 6, max: 7)();
@@ -54,6 +70,10 @@ extension CategoryExtension on Category {
       description: json['description'] as String?,
       localizedTitles: json['localizedTitles'] as String?,
       isSystemDefault: json['isSystemDefault'] as bool? ?? false,
+      source: json['source'] as String? ?? 'built-in',
+      builtInId: json['builtInId'] as String?,
+      hasBeenModified: json['hasBeenModified'] as bool? ?? false,
+      isDeleted: json['isDeleted'] as bool? ?? false,
       transactionType: json['transactionType'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
@@ -84,6 +104,10 @@ extension CategoryTableExtensions on Category {
       // This needs to be populated by querying children if needed.
       subCategories: null,
       isSystemDefault: isSystemDefault,
+      source: source,
+      builtInId: builtInId,
+      hasBeenModified: hasBeenModified,
+      isDeleted: isDeleted,
       transactionType: transactionType,
       createdAt: createdAt,
       updatedAt: updatedAt,
@@ -109,6 +133,10 @@ extension CategoryModelExtensions on CategoryModel {
           ? const Value.absent()
           : Value(localizedTitles),
       isSystemDefault: Value(isSystemDefault),
+      source: Value(source ?? 'built-in'),
+      builtInId: builtInId == null ? const Value.absent() : Value(builtInId),
+      hasBeenModified: Value(hasBeenModified ?? false),
+      isDeleted: Value(isDeleted ?? false),
       transactionType: Value(transactionType),
       createdAt: createdAt != null
           ? Value(createdAt!)

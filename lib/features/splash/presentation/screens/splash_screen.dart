@@ -3,20 +3,23 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
+import 'package:bexly/core/services/auth/supabase_auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/recurring_charge_service.dart';
 import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
 
 class SplashScreen extends HookConsumerWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    Log.d('🚀 SplashScreen build() called', label: 'SplashScreen');
+
     // Use useState to track theme after loading from SharedPreferences
     final isDark = useState<bool?>(null);
     final systemBrightness = MediaQuery.platformBrightnessOf(context);
@@ -41,12 +44,16 @@ class SplashScreen extends HookConsumerWidget {
     }, const []);
 
     useEffect(() {
+      Log.d('📍 useEffect registered, scheduling postFrameCallback', label: 'SplashScreen');
+
       // Schedule navigation after frame is built
       WidgetsBinding.instance.addPostFrameCallback((_) async {
+        Log.d('⏰ postFrameCallback executing', label: 'SplashScreen');
+
         // Load currencies first
         try {
           final currencyList = await ref.read(currenciesProvider.future);
-          ref.read(currenciesStaticProvider.notifier).state = currencyList;
+          ref.read(currenciesStaticProvider.notifier).setCurrencies(currencyList);
           Log.d('Loaded ${currencyList.length} currencies', label: 'SplashScreen');
         } catch (e) {
           Log.e('Failed to load currencies: $e', label: 'SplashScreen');
@@ -84,14 +91,10 @@ class SplashScreen extends HookConsumerWidget {
         if (!context.mounted) return;
 
         try {
-          // Wait for auth state to be ready (Firebase needs time to restore from keychain)
-          User? currentUser;
-          try {
-            currentUser = await ref.read(authStateProvider.future);
-          } catch (e) {
-            Log.e('Auth state error: $e', label: 'SplashScreen');
-            currentUser = null;
-          }
+          // Check Supabase auth state (DOS-Me auth server)
+          final supabaseAuthState = ref.read(supabaseAuthServiceProvider);
+          final isAuthenticated = supabaseAuthState.isAuthenticated;
+          final currentUser = supabaseAuthState.user;
 
           // Check if user has skipped auth before
           final prefs = await SharedPreferences.getInstance();
@@ -102,9 +105,22 @@ class SplashScreen extends HookConsumerWidget {
           // Remove native splash before navigating
           FlutterNativeSplash.remove();
 
-          if (currentUser != null) {
-            // User is authenticated with Firebase
+          if (isAuthenticated && currentUser != null) {
+            // User is authenticated with Supabase (DOS-Me)
             Log.d('User authenticated (${currentUser.email}), checking wallet...', label: 'SplashScreen');
+
+            // Trigger background sync (don't await - let it run in background)
+            try {
+              final syncService = ref.read(supabaseSyncServiceProvider);
+              if (syncService.isAuthenticated) {
+                syncService.performFullSync(pushFirst: true).catchError((e) {
+                  Log.e('Background sync failed on app start: $e', label: 'SplashScreen');
+                });
+                Log.d('Background sync triggered on app start', label: 'SplashScreen');
+              }
+            } catch (e) {
+              Log.e('Failed to trigger background sync: $e', label: 'SplashScreen');
+            }
 
             // Check if user has any wallets
             final db = ref.read(databaseProvider);
@@ -113,7 +129,7 @@ class SplashScreen extends HookConsumerWidget {
             if (wallets.isEmpty) {
               // No wallet yet - go to onboarding to setup first wallet
               Log.d('No wallets found, navigating to onboarding', label: 'SplashScreen');
-              ref.read(isGuestModeProvider.notifier).state = false;
+              ref.read(isGuestModeProvider.notifier).setGuestMode(false);
               await prefs.setBool('hasSkippedAuth', false);
 
               if (context.mounted) {
@@ -122,7 +138,7 @@ class SplashScreen extends HookConsumerWidget {
             } else {
               // Has wallet - go to main
               Log.d('User has ${wallets.length} wallet(s), navigating to main', label: 'SplashScreen');
-              ref.read(isGuestModeProvider.notifier).state = false;
+              ref.read(isGuestModeProvider.notifier).setGuestMode(false);
               await prefs.setBool('hasSkippedAuth', false);
 
               if (context.mounted) {
@@ -132,7 +148,7 @@ class SplashScreen extends HookConsumerWidget {
           } else if (hasSkippedAuth) {
             // User has used guest mode before - check if has wallet
             Log.d('Guest mode active, checking wallet...', label: 'SplashScreen');
-            ref.read(isGuestModeProvider.notifier).state = true;
+            ref.read(isGuestModeProvider.notifier).setGuestMode(true);
 
             final db = ref.read(databaseProvider);
             final wallets = await db.walletDao.getAllWallets();

@@ -139,6 +139,48 @@ class WalletFormBottomSheet extends HookConsumerWidget {
       return null;
     }, [wallet]);
 
+    // Auto-update wallet name when currency or wallet type changes (for new wallets only)
+    useEffect(() {
+      if (wallet == null) { // Only for new wallets
+        String walletTypeName;
+        switch (walletType.value) {
+          case WalletType.cash:
+            walletTypeName = 'Cash';
+            break;
+          case WalletType.bankAccount:
+            walletTypeName = 'Bank';
+            break;
+          case WalletType.creditCard:
+            walletTypeName = 'Credit Card';
+            break;
+          case WalletType.savings:
+            walletTypeName = 'Savings';
+            break;
+          case WalletType.investment:
+            walletTypeName = 'Investment';
+            break;
+          case WalletType.eWallet:
+            walletTypeName = 'E-Wallet';
+            break;
+          case WalletType.insurance:
+            walletTypeName = 'Insurance';
+            break;
+          case WalletType.other:
+            walletTypeName = 'Wallet';
+            break;
+        }
+
+        final newName = 'My ${currency.isoCode} $walletTypeName';
+        nameController.text = newName;
+        // Select all text so it's easy to replace
+        nameController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: newName.length,
+        );
+      }
+      return null;
+    }, [currency, walletType.value]);
+
     return CustomBottomSheet(
       title: '${isEditing ? 'Edit' : 'Add'} Wallet',
       child: Form(
@@ -173,12 +215,13 @@ class WalletFormBottomSheet extends HookConsumerWidget {
             CustomNumericField(
               controller: balanceController,
               label: canEditCurrencyAndBalance ? 'Initial Balance' : 'Current Balance (read-only)',
-              hint: '1,000.00',
+              hint: walletType.value == WalletType.creditCard ? '-1,000.00' : '1,000.00',
               icon: Icons.attach_money, // CustomNumericField uses IconData, use Material icon
               isRequired: true,
               appendCurrencySymbolToHint: true,
               useSelectedCurrency: true,
               enabled: canEditCurrencyAndBalance, // Disable balance change unless allowFullEdit
+              allowNegative: walletType.value == WalletType.creditCard, // Allow negative for credit cards
               // autofocus: !isEditing, // Optional: autofocus if adding new
             ),
 

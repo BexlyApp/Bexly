@@ -99,13 +99,61 @@ class SettingsDataGroup extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Check Firebase Auth state to determine if user is authenticated
-    final firebaseAuthState = ref.watch(firebase_auth.authStateProvider);
-    final isAuthenticated = firebaseAuthState.value != null;
+    // Check Supabase Auth state to determine if user is authenticated
+    final supabaseAuthState = ref.watch(supabase_auth.supabaseAuthServiceProvider);
+    final isAuthenticated = supabaseAuthState.isAuthenticated;
 
     return SettingsGroupHolder(
       title: context.l10n.dataManagement,
       settingTiles: [
+        // Sync to Cloud button (only show if authenticated)
+        if (isAuthenticated)
+          MenuTileButton(
+            label: 'Sync to Cloud',
+            icon: HugeIcons.strokeRoundedCloudUpload,
+            onTap: () async {
+              try {
+                // Show loading
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+
+                // Trigger sync
+                final syncService = ref.read(supabase_sync.supabaseSyncServiceProvider);
+                await syncService.syncWalletsToCloud();
+                await syncService.syncCategoriesToCloud();
+                await syncService.syncTransactionsToCloud();
+                await syncService.syncBudgetsToCloud();
+                await syncService.syncGoalsToCloud();
+                await syncService.syncChecklistItemsToCloud();
+                await syncService.syncRecurringToCloud();
+
+                if (context.mounted) {
+                  context.pop(); // Close loading dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✅ Data synced to cloud successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  context.pop(); // Close loading dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('❌ Sync failed: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
         MenuTileButton(
           label: context.l10n.backupAndRestore,
           icon: HugeIcons.strokeRoundedDatabaseSync01,
@@ -150,27 +198,35 @@ class SettingsDataGroup extends ConsumerWidget {
                     context.pop(); // close bottom sheet
 
                     try {
-                      // Reset sync status on logout
-                      await SyncTriggerService.resetSyncStatus();
+                      // IMPORTANT: Clear guest mode flag FIRST before signing out
+                      // Because signOut() will trigger rebuild and splash screen will check this flag
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool('hasSkippedAuth', false);
+
+                      // Sign out from Supabase (this will trigger rebuild)
+                      await ref.read(supabase_auth.supabaseAuthServiceProvider.notifier).signOut();
 
                       // Clear local user data from database
                       await ref.read(authStateProvider.notifier).logout();
 
-                      // Sign out from Firebase (DOS-Me)
-                      final dosmeApp = FirebaseInitService.dosmeApp;
-                      if (dosmeApp != null) {
-                        await FirebaseAuth.instanceFor(app: dosmeApp).signOut();
+                      // Also sign out from Google/Facebook SDK
+                      try {
+                        await GoogleSignIn.instance.signOut();
+                      } catch (e) {
+                        Log.w('Google sign out error: $e', label: 'Settings');
+                      }
+                      try {
+                        await FacebookAuth.instance.logOut();
+                      } catch (e) {
+                        Log.w('Facebook sign out error: $e', label: 'Settings');
                       }
 
-                      // Also sign out from Google/Facebook if needed
-                      await GoogleSignIn.instance.signOut();
-                      await FacebookAuth.instance.logOut();
-
-                      // Navigate to login screen
+                      // Navigate to login screen after sign out
                       if (context.mounted) {
-                        context.go('/login');
+                        context.go(Routes.login);
                       }
                     } catch (e) {
+                      Log.e('Sign out error: $e', label: 'Settings');
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(

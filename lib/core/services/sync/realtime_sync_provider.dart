@@ -1,30 +1,39 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:bexly/core/database/database_provider.dart';
-import 'package:bexly/core/services/sync/realtime_sync_service.dart';
 
-/// Provider for RealtimeSyncService
-/// Automatically disposes service and stops listeners when provider is disposed
-final realtimeSyncServiceProvider = Provider<RealtimeSyncService>((ref) {
-  final db = ref.watch(databaseProvider);
-  final service = RealtimeSyncService(db: db);
-
-  // Stop sync when provider is disposed
-  ref.onDispose(() async {
-    await service.stopSync();
-  });
-
-  return service;
+/// Stub provider for realtime sync service (removed Firebase implementation)
+/// TODO: Implement Supabase realtime sync
+final realtimeSyncServiceProvider = Provider<RealtimeSyncService?>((ref) {
+  return null; // No sync service available
 });
 
-/// Provider to track sync state
-/// Returns true if sync is active and initial sync is complete
-final isSyncActiveProvider = Provider<bool>((ref) {
-  final service = ref.watch(realtimeSyncServiceProvider);
-  return service.isSyncing && service.isInitialSyncComplete;
-});
+/// Stub class for realtime sync service
+class RealtimeSyncService {
+  // Removed Firebase realtime sync implementation
+  // TODO: Implement Supabase realtime subscriptions
 
-/// Provider to check if user is authenticated
-final isAuthenticatedProvider = Provider<bool>((ref) {
-  final service = ref.watch(realtimeSyncServiceProvider);
-  return service.isAuthenticated;
-});
+  // Stub properties
+  bool get isAuthenticated => false;
+
+  // Stub methods for DAO compatibility
+  Future<void> uploadBudget(dynamic budget) async {}
+  Future<void> deleteBudgetFromCloud(String cloudId) async {}
+  Future<bool> deleteBudgetFromCloudByMatch({
+    required String categoryCloudId,
+    required String walletCloudId,
+    required double amount,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async => false;
+
+  Future<void> uploadCategory(dynamic category) async {}
+  Future<void> deleteCategoryFromCloud(String cloudId) async {}
+
+  Future<void> uploadGoal(dynamic goal) async {}
+  Future<void> deleteGoalFromCloud(String cloudId) async {}
+
+  Future<void> uploadTransaction(dynamic transaction) async {}
+  Future<void> deleteTransactionFromCloud(String cloudId) async {}
+
+  Future<void> uploadWallet(dynamic wallet) async {}
+  Future<void> deleteWalletFromCloud(String cloudId) async {}
+}

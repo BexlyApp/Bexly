@@ -17,7 +17,8 @@ mixin _$ChecklistItemModel {
 
 /// The unique identifier for the checklist item.
 /// Null if the item is new and not yet saved to the database.
- int? get id;/// The identifier of the [GoalModel] this checklist item belongs to.
+ int? get id;/// Cloud ID (UUID v7) for syncing with Supabase
+ String? get cloudId;/// The identifier of the [GoalModel] this checklist item belongs to.
  int get goalId;/// The title or description of the checklist item (e.g., "Save \$50 for concert tickets").
  String get title;/// An optional monetary amount associated with this checklist item.
 /// This could represent a target amount to save or spend for this specific item.
@@ -35,16 +36,16 @@ $ChecklistItemModelCopyWith<ChecklistItemModel> get copyWith => _$ChecklistItemM
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChecklistItemModel&&(identical(other.id, id) || other.id == id)&&(identical(other.goalId, goalId) || other.goalId == goalId)&&(identical(other.title, title) || other.title == title)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.link, link) || other.link == link)&&(identical(other.completed, completed) || other.completed == completed));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChecklistItemModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.goalId, goalId) || other.goalId == goalId)&&(identical(other.title, title) || other.title == title)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.link, link) || other.link == link)&&(identical(other.completed, completed) || other.completed == completed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,goalId,title,amount,link,completed);
+int get hashCode => Object.hash(runtimeType,id,cloudId,goalId,title,amount,link,completed);
 
 @override
 String toString() {
-  return 'ChecklistItemModel(id: $id, goalId: $goalId, title: $title, amount: $amount, link: $link, completed: $completed)';
+  return 'ChecklistItemModel(id: $id, cloudId: $cloudId, goalId: $goalId, title: $title, amount: $amount, link: $link, completed: $completed)';
 }
 
 
@@ -55,7 +56,7 @@ abstract mixin class $ChecklistItemModelCopyWith<$Res>  {
   factory $ChecklistItemModelCopyWith(ChecklistItemModel value, $Res Function(ChecklistItemModel) _then) = _$ChecklistItemModelCopyWithImpl;
 @useResult
 $Res call({
- int? id, int goalId, String title, double amount, String link, bool completed
+ int? id, String? cloudId, int goalId, String title, double amount, String link, bool completed
 });
 
 
@@ -72,10 +73,11 @@ class _$ChecklistItemModelCopyWithImpl<$Res>
 
 /// Create a copy of ChecklistItemModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? goalId = null,Object? title = null,Object? amount = null,Object? link = null,Object? completed = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? goalId = null,Object? title = null,Object? amount = null,Object? link = null,Object? completed = null,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as int?,goalId: null == goalId ? _self.goalId : goalId // ignore: cast_nullable_to_non_nullable
+as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
+as String?,goalId: null == goalId ? _self.goalId : goalId // ignore: cast_nullable_to_non_nullable
 as int,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
 as double,link: null == link ? _self.link : link // ignore: cast_nullable_to_non_nullable
@@ -165,10 +167,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  int goalId,  String title,  double amount,  String link,  bool completed)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  int goalId,  String title,  double amount,  String link,  bool completed)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ChecklistItemModel() when $default != null:
-return $default(_that.id,_that.goalId,_that.title,_that.amount,_that.link,_that.completed);case _:
+return $default(_that.id,_that.cloudId,_that.goalId,_that.title,_that.amount,_that.link,_that.completed);case _:
   return orElse();
 
 }
@@ -186,10 +188,10 @@ return $default(_that.id,_that.goalId,_that.title,_that.amount,_that.link,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  int goalId,  String title,  double amount,  String link,  bool completed)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  int goalId,  String title,  double amount,  String link,  bool completed)  $default,) {final _that = this;
 switch (_that) {
 case _ChecklistItemModel():
-return $default(_that.id,_that.goalId,_that.title,_that.amount,_that.link,_that.completed);case _:
+return $default(_that.id,_that.cloudId,_that.goalId,_that.title,_that.amount,_that.link,_that.completed);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -206,10 +208,10 @@ return $default(_that.id,_that.goalId,_that.title,_that.amount,_that.link,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  int goalId,  String title,  double amount,  String link,  bool completed)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  int goalId,  String title,  double amount,  String link,  bool completed)?  $default,) {final _that = this;
 switch (_that) {
 case _ChecklistItemModel() when $default != null:
-return $default(_that.id,_that.goalId,_that.title,_that.amount,_that.link,_that.completed);case _:
+return $default(_that.id,_that.cloudId,_that.goalId,_that.title,_that.amount,_that.link,_that.completed);case _:
   return null;
 
 }
@@ -221,12 +223,14 @@ return $default(_that.id,_that.goalId,_that.title,_that.amount,_that.link,_that.
 @JsonSerializable()
 
 class _ChecklistItemModel extends ChecklistItemModel {
-  const _ChecklistItemModel({this.id, required this.goalId, required this.title, this.amount = 0.0, this.link = '', this.completed = false}): super._();
+  const _ChecklistItemModel({this.id, this.cloudId, required this.goalId, required this.title, this.amount = 0.0, this.link = '', this.completed = false}): super._();
   factory _ChecklistItemModel.fromJson(Map<String, dynamic> json) => _$ChecklistItemModelFromJson(json);
 
 /// The unique identifier for the checklist item.
 /// Null if the item is new and not yet saved to the database.
 @override final  int? id;
+/// Cloud ID (UUID v7) for syncing with Supabase
+@override final  String? cloudId;
 /// The identifier of the [GoalModel] this checklist item belongs to.
 @override final  int goalId;
 /// The title or description of the checklist item (e.g., "Save \$50 for concert tickets").
@@ -251,16 +255,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChecklistItemModel&&(identical(other.id, id) || other.id == id)&&(identical(other.goalId, goalId) || other.goalId == goalId)&&(identical(other.title, title) || other.title == title)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.link, link) || other.link == link)&&(identical(other.completed, completed) || other.completed == completed));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChecklistItemModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.goalId, goalId) || other.goalId == goalId)&&(identical(other.title, title) || other.title == title)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.link, link) || other.link == link)&&(identical(other.completed, completed) || other.completed == completed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,goalId,title,amount,link,completed);
+int get hashCode => Object.hash(runtimeType,id,cloudId,goalId,title,amount,link,completed);
 
 @override
 String toString() {
-  return 'ChecklistItemModel(id: $id, goalId: $goalId, title: $title, amount: $amount, link: $link, completed: $completed)';
+  return 'ChecklistItemModel(id: $id, cloudId: $cloudId, goalId: $goalId, title: $title, amount: $amount, link: $link, completed: $completed)';
 }
 
 
@@ -271,7 +275,7 @@ abstract mixin class _$ChecklistItemModelCopyWith<$Res> implements $ChecklistIte
   factory _$ChecklistItemModelCopyWith(_ChecklistItemModel value, $Res Function(_ChecklistItemModel) _then) = __$ChecklistItemModelCopyWithImpl;
 @override @useResult
 $Res call({
- int? id, int goalId, String title, double amount, String link, bool completed
+ int? id, String? cloudId, int goalId, String title, double amount, String link, bool completed
 });
 
 
@@ -288,10 +292,11 @@ class __$ChecklistItemModelCopyWithImpl<$Res>
 
 /// Create a copy of ChecklistItemModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? goalId = null,Object? title = null,Object? amount = null,Object? link = null,Object? completed = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? goalId = null,Object? title = null,Object? amount = null,Object? link = null,Object? completed = null,}) {
   return _then(_ChecklistItemModel(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as int?,goalId: null == goalId ? _self.goalId : goalId // ignore: cast_nullable_to_non_nullable
+as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
+as String?,goalId: null == goalId ? _self.goalId : goalId // ignore: cast_nullable_to_non_nullable
 as int,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
 as double,link: null == link ? _self.link : link // ignore: cast_nullable_to_non_nullable

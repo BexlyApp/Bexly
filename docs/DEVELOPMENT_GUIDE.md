@@ -1,13 +1,14 @@
 # Bexly Development Guide
 
 ## Project Overview
-**Bexly** is a personal finance and expense tracking app built with Flutter. It features offline-first functionality, multi-wallet support, and comprehensive expense management.
+**Bexly** is a personal finance and expense tracking app built with Flutter. It features offline support, multi-wallet support, and comprehensive expense management with Supabase backend for cloud sync.
 
 - **App Name**: Bexly
 - **Package ID**: `com.joy.bexly`
-- **Firebase Project**: `bexly-app`
+- **Firebase Project**: `dos-me` (shared DOS-Me ecosystem)
+- **Supabase Project**: `dos` (Supabase URL: https://dos.supabase.co)
 - **Flutter Path**: `D:\Dev\flutter`
-- **Project Path**: `D:\Projects\DOSafe`
+- **Project Path**: `D:\Projects\Bexly`
 - **Original Fork**: Pockaw (open-source)
 
 ---
@@ -93,31 +94,60 @@ DOSafe/
 
 ---
 
-## 🔥 Firebase Setup
+## 🔥 Firebase Setup (dos-me project)
 
 ### Project Details
-- **Project Name**: Bexly
-- **Project ID**: `bexly-app`
-- **Project Number**: 657555385291
+- **Project Name**: DOS-Me (shared ecosystem project)
+- **Project ID**: `dos-me`
+- **Project Number**: 368090586626
+
+**Services Used:**
+- Firebase Cloud Messaging (FCM) - Push notifications
+- Firebase Analytics - User behavior tracking
+- Firebase Crashlytics - Crash reporting
+- Firebase Storage - Avatar uploads (bucket: `bexly-app.firebasestorage.app`)
 
 ### Configuration Process
 ```bash
-# 1. Login to Firebase
-firebase login
-
-# 2. Configure FlutterFire
-flutterfire configure --project=bexly-app --platforms=android,ios,web
-
-# This generates:
-# - lib/firebase_options.dart
-# - android/app/google-services.json
-# - ios/Runner/GoogleService-Info.plist (when building)
+# Download google-services.json from Firebase Console
+# Place in: android/app/google-services.json
+# DO NOT commit to git (already in .gitignore)
 ```
 
+**Important:** `google-services.json` is environment-specific. Each developer must:
+1. Go to Firebase Console (dos-me project)
+2. Add their debug keystore SHA-1 fingerprint
+3. Download their own `google-services.json`
+
+---
+
+## 🗄️ Supabase Setup (Backend)
+
+### Project Details
+- **Project**: DOS
+- **Organization**: DOS-Me
+- **Supabase URL**: https://dos.supabase.co
+- **Publishable Key**: Set in `.env` file
+
 ### Enabled Services
-1. **Firebase Analytics** - User behavior tracking
-2. **Firebase Crashlytics** - Crash reporting
-3. **Firebase Performance** - Performance monitoring
+1. **Supabase Auth** - User authentication (Google, Email)
+2. **Supabase Database** - PostgreSQL with Row Level Security (RLS)
+3. **Realtime** - Real-time sync across devices
+
+### Environment Configuration
+
+Create `.env` file (NOT in git):
+```env
+SUPABASE_URL=https://dos.supabase.co
+SUPABASE_PUBLISHABLE_KEY=your_publishable_key_here
+
+# Google OAuth Client IDs
+GOOGLE_WEB_CLIENT_ID=your_web_client_id.apps.googleusercontent.com
+GOOGLE_ANDROID_CLIENT_ID_DEBUG=your_debug_client_id.apps.googleusercontent.com
+GOOGLE_ANDROID_CLIENT_ID_RELEASE=your_release_client_id.apps.googleusercontent.com
+```
+
+See `.env.example` for complete template.
 
 ### Package ID Migration History
 - Original: `com.layground.pockaw` (from forked source)
@@ -301,37 +331,150 @@ flutterfire configure --project=bexly-app
 - Design sync logic to be non-blocking
 - Use auto-resolve for trivial conflicts
 
-#### Problem: Google Sign In error code 10 (DEVELOPER_ERROR)
+#### Problem: Google Sign-In with Supabase Auth [28444] Error
+
+**Background:**
+Bexly migrated from Firebase Auth to Supabase Auth. Google Sign-In required significant changes due to:
+1. API changes in `google_sign_in` v7.0
+2. Different token requirements between Firebase and Supabase
+
 **Symptoms:**
-- `PlatformException: code=sign_in_failed, message=com.google.android.gms.common.api.j: 10:`
+- Error `[28444] Developer console is not set up correctly`
+- Account picker shows but fails after account selection
 
 **Root Cause:**
-- SHA-1 fingerprint mismatch between app keystore and Firebase OAuth Client
-- Different keystores (debug vs release) have different SHA-1s
+1. **API Breaking Changes**: `google_sign_in` v7.0 removed `signIn()`, added `authenticate()`
+2. **Missing accessToken**: Supabase requires BOTH `idToken` AND `accessToken` (Firebase only needed `idToken`)
+3. **Client Type Confusion**: Native app must use Web Client ID for token generation
 
-**Solution:**
-1. Extract SHA-1 from keystore:
+---
+
+### Google Sign-In Architecture
+
+**Key Concept:** Native mobile apps with backend authentication require **2 types of OAuth clients**:
+
+| Client Type | Purpose | Used For |
+|------------|---------|----------|
+| **Android Clients** | SHA-1 validation | Local app signature verification |
+| **Web Client** | Token generation | Server-side token verification (Supabase) |
+
+**Why Web Client?**
+- Android Client tokens can only be verified by Google services (Firebase)
+- 3rd party backends (Supabase, custom servers) require Web Client tokens
+- Web Client tokens are verifiable by any OAuth 2.0 compliant server
+
+---
+
+### OAuth Client Setup (Google Cloud Console - dos-me project)
+
+**Required Clients:**
+
+1. **Web Application** (auto-detected from google-services.json)
+   - Client ID: `368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6`
+   - Purpose: Token generation for server verification
+   - No restrictions needed
+
+2. **Android (Debug)**
+   - Client ID: `368090586626-2i3h1mmsrmjn30865q883lioaruhpbqu`
+   - SHA-1: `79:CF:10:6C:1D:4C:E7:B1:7D:6C:CF:FC:25:E5:E1:DE:18:C1:59:C7`
+   - Package: `com.joy.bexly`
+   - Purpose: Validate debug builds
+
+3. **Android (Release)**
+   - Client ID: `368090586626-lu2v4fapus52k6sjcs0edneglm3spuu4`
+   - SHA-1: `B8:B5:58:78:A4:1E:59:70:69:C6:0E:97:0F:B6:33:E2:A6:4A:6A:39`
+   - Package: `com.joy.bexly`
+   - Purpose: Validate release builds (DOS-key.jks)
+
+**Get SHA-1 from keystore:**
 ```bash
 # Debug keystore
-keytool -list -v -keystore C:\Users\JOY\.android\debug.keystore -alias androiddebugkey -storepass android -keypass android
+cd android && gradlew signingReport | grep SHA1
 
-# Release keystore
-keytool -list -v -keystore C:\Users\JOY\DOS-key.jks -alias dos -storepass DOSLabs -keypass DOSLabs
+# Or with keytool
+keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android
 ```
 
-2. Add SHA-1 to Firebase Console:
-   - Project Settings → Your apps → Android app
-   - Add fingerprint
-   - Download new `google-services.json`
-   - Replace `android/app/google-services.json`
+---
 
-**Note:** Firebase automatically creates OAuth 2.0 Client IDs in Google Cloud Console when you add SHA-1 fingerprints.
+### Supabase Google Provider Configuration
 
-**Important:** `google-services.json` is environment-specific and should NOT be committed to git. It's already in `.gitignore`. Each developer must download their own copy from Firebase Console after configuring their keystore's SHA-1 fingerprints.
+**Dashboard:** Supabase Console → Authentication → Providers → Google
 
-**Current SHA-1 Fingerprints:**
-- Debug: `44:91:55:73:94:15:0E:B0:64:19:18:B3:49:27:C3:C4:59:63:42:68`
-- Release (DOS-key.jks): `B8:B5:58:78:A4:1E:59:70:69:C6:0E:97:0F:B6:33:E2:A6:4A:6A:39`
+**Authorized Client IDs:** (comma-separated, no spaces)
+```
+368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com,368090586626-2i3h1mmsrmjn30865q883lioaruhpbqu.apps.googleusercontent.com,368090586626-lu2v4fapus52k6sjcs0edneglm3spuu4.apps.googleusercontent.com
+```
+
+All 3 client IDs must be added to allow authentication from Web, Debug, and Release builds.
+
+---
+
+### Code Implementation
+
+**Google Sign-In Flow:**
+```dart
+// 1. Initialize (auto-detects Web Client from google-services.json)
+await GoogleSignIn.instance.initialize();
+
+// 2. Authenticate user
+final googleUser = await GoogleSignIn.instance.authenticate();
+
+// 3. Get ID token
+final googleAuth = googleUser.authentication;
+final idToken = googleAuth.idToken;
+
+// 4. Get access token (requires scope)
+const scopes = ['email'];
+final clientAuth = await googleUser.authorizationClient.authorizationForScopes(scopes);
+final accessToken = clientAuth.accessToken;
+
+// 5. Sign in with Supabase (BOTH tokens required!)
+await supabase.auth.signInWithIdToken(
+  provider: OAuthProvider.google,
+  idToken: idToken,
+  accessToken: accessToken,
+);
+```
+
+**Key Points:**
+- Use `authenticate()` not `signIn()` (v7.0 change)
+- Supabase requires both `idToken` AND `accessToken`
+- Empty scopes `[]` not allowed - must specify at least `['email']`
+- Auto-detection works better than manual `serverClientId` configuration
+
+---
+
+### Token Requirements: Firebase vs Supabase
+
+| Backend | idToken | accessToken | Why? |
+|---------|---------|-------------|------|
+| **Firebase** | ✅ Required | ❌ Not used | Google ecosystem - trusts idToken |
+| **Supabase** | ✅ Required | ✅ Required | 3rd party - needs full OAuth verification |
+
+---
+
+### Common Issues
+
+**Issue 1: [28444] Developer console not set up correctly**
+- **Cause**: Missing accessToken or wrong client type
+- **Fix**: Ensure both tokens provided, use Web Client for serverClientId
+
+**Issue 2: "requestedScopes cannot be null or empty"**
+- **Cause**: Passing empty `[]` to `authorizationForScopes()`
+- **Fix**: Specify at least `['email']` scope
+
+**Issue 3: "signIn method not found"**
+- **Cause**: Using v6.x API with v7.x package
+- **Fix**: Use `authenticate()` instead of `signIn()`
+
+---
+
+### References
+
+- [google_sign_in v7.0 Migration Guide](https://github.com/flutter/packages/blob/main/packages/google_sign_in/google_sign_in/MIGRATION.md)
+- [Supabase signInWithIdToken API](https://supabase.com/docs/reference/dart/auth-signinwithidtoken)
+- [DEV_LOG.md - Google Sign-In Session](./DEV_LOG.md#session-google-sign-in-with-supabase-auth-v475)
 
 ---
 
@@ -403,4 +546,4 @@ echo Build complete! Check build\app\outputs\flutter-apk\
 
 ---
 
-*Last updated: September 2025*
+*Last updated: January 2026*

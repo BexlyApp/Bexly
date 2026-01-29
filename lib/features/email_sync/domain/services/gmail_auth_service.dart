@@ -1,7 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:bexly/core/services/firebase_init_service.dart';
+import 'package:bexly/core/services/supabase_init_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/email_sync/domain/services/gmail_api_service.dart';
 
@@ -36,7 +35,7 @@ class GmailConnectError extends GmailConnectResult {
 /// - Disconnecting Gmail access
 ///
 /// Note: google_sign_in 7.x removed isSignedIn() and currentUser getter.
-/// We track the connected email separately in local storage/Firestore.
+/// We track the connected email separately in local storage.
 class GmailAuthService {
   static const _label = 'GmailAuth';
 
@@ -141,12 +140,18 @@ class GmailAuthService {
     }
   }
 
-  /// Get the current user's Firebase UID (for storing email sync settings).
+  /// Get the current user's ID (for storing email sync settings).
+  /// Supports both Supabase and Firebase authentication.
   String? getCurrentUserId() {
-    final bexlyApp = FirebaseInitService.bexlyApp;
-    if (bexlyApp == null) return null;
+    // Try Supabase first (preferred)
+    if (SupabaseInitService.isInitialized) {
+      final supabaseUser = SupabaseInitService.currentUser;
+      if (supabaseUser != null) {
+        return supabaseUser.id;
+      }
+    }
 
-    final auth = FirebaseAuth.instanceFor(app: bexlyApp);
-    return auth.currentUser?.uid;
+    // No Supabase user - return null
+    return null;
   }
 }

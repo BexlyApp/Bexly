@@ -31,16 +31,16 @@ class SettingsAppInfoGroup extends ConsumerWidget {
           icon: HugeIcons.strokeRoundedFileCorrupt,
           onTap: () => context.openBottomSheet(child: ReportLogFileDialog()),
         ),
-        if (kDebugMode)
-          MenuTileButton(
-            label: context.l10n.developerPortal,
-            icon: HugeIcons.strokeRoundedCode,
-            onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
-              context,
-              route: Routes.developerPortal,
-              desktopWidget: const DeveloperPortalScreen(),
-            ),
+        // Developer Portal - Always show (not just debug mode)
+        MenuTileButton(
+          label: context.l10n.developerPortal,
+          icon: HugeIcons.strokeRoundedCode,
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.developerPortal,
+            desktopWidget: const DeveloperPortalScreen(),
           ),
+        ),
       ],
     );
   }

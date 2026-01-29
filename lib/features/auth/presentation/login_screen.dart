@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -6,17 +6,17 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:toastification/toastification.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:bexly/core/riverpod/auth_providers.dart';
-import 'package:bexly/core/services/firebase_init_service.dart';
-import 'package:bexly/core/services/sync/cloud_sync_service.dart';
-import 'package:bexly/core/services/sync/sync_trigger_service.dart';
+import 'package:bexly/core/services/supabase_init_service.dart';
+import 'package:bexly/core/services/sync/supabase_sync_service.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/package_info/package_info_provider.dart';
-import 'package:bexly/core/services/auth/dos_me_api_service.dart';
+import 'package:bexly/core/services/auth/supabase_auth_service.dart';
+import 'package:bexly/core/config/supabase_config.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
@@ -37,7 +37,7 @@ class LoginScreen extends HookConsumerWidget {
     final obscurePassword = useState(true);
     final formKey = useMemoized(() => GlobalKey<FormState>());
 
-    final bexlyAuth = ref.watch(bexlyAuthProvider);
+    final supabase = SupabaseInitService.client;
     final packageInfoService = ref.watch(packageInfoServiceProvider);
 
     Future<void> handleLogin() async {
@@ -45,69 +45,71 @@ class LoginScreen extends HookConsumerWidget {
 
       isLoading.value = true;
       try {
-        await bexlyAuth.signInWithEmailAndPassword(
+        // Sign in with Supabase
+        final response = await supabase.auth.signInWithPassword(
           email: emailController.text.trim(),
           password: passwordController.text,
         );
 
-        // Sync user profile from Firebase Auth to local database
-        final dosmeApp = FirebaseInitService.dosmeApp;
-        if (dosmeApp != null) {
-          final firebaseAuth = FirebaseAuth.instanceFor(app: dosmeApp);
-          final firebaseUser = firebaseAuth.currentUser;
-          if (firebaseUser != null) {
-            final authProvider = ref.read(local_auth.authStateProvider.notifier);
-            final currentUser = authProvider.getUser();
-
-            authProvider.setUser(currentUser.copyWith(
-              name: firebaseUser.displayName ?? currentUser.name,
-              email: firebaseUser.email ?? currentUser.email,
-              profilePicture: firebaseUser.photoURL ?? currentUser.profilePicture,
-            ));
-
-            Log.i('✅ Synced profile from Firebase Auth (Email)', label: 'auth');
-          }
-
-          // Trigger initial sync to pull data from Firestore
-          if (context.mounted) {
-            final syncService = ref.read(cloudSyncServiceProvider);
-            final localDb = ref.read(databaseProvider);
-            final userId = firebaseUser!.uid;
-
-            Log.i('Starting initial sync for user: $userId', label: 'auth');
-            try {
-              await SyncTriggerService.triggerInitialSyncIfNeeded(
-                syncService,
-                context: context,
-                localDb: localDb,
-                userId: userId,
-                ref: ref,
-              ).timeout(
-                const Duration(seconds: 30),
-                onTimeout: () {
-                  Log.w('⚠️ Sync timeout after 30s, continuing anyway', label: 'auth');
-                },
-              );
-              Log.i('✅ Initial sync completed or skipped', label: 'auth');
-            } catch (e) {
-              Log.e('❌ Sync error (non-fatal): $e', label: 'auth');
-              // Continue even if sync fails
-            }
-          }
+        if (response.session == null || response.user == null) {
+          throw Exception('Login failed - no session created');
         }
 
+        final user = response.user!;
+        Log.i('✅ Supabase authentication successful: ${user.email}', label: 'auth');
+
+        // Sync user profile to local database
+        final authProvider = ref.read(local_auth.authStateProvider.notifier);
+        final currentUser = authProvider.getUser();
+
+        authProvider.setUser(currentUser.copyWith(
+          name: user.userMetadata?['full_name'] ?? user.email?.split('@').first ?? currentUser.name,
+          email: user.email ?? currentUser.email,
+          profilePicture: user.userMetadata?['avatar_url'] ?? currentUser.profilePicture,
+        ));
+
+        Log.i('✅ Synced profile from Supabase Auth (Email)', label: 'auth');
+
+        // Trigger initial Supabase sync to pull data from cloud
         if (context.mounted) {
-          // Check if user has wallet - redirect to onboarding if not
+          try {
+            Log.i('🔄 Pulling data from Supabase...', label: 'auth');
+            final syncService = ref.read(supabaseSyncServiceProvider);
+
+            // Pull data from cloud (pull-first mode)
+            await syncService.performFullSync(pushFirst: false);
+
+            Log.i('✅ Initial sync completed', label: 'auth');
+          } catch (e) {
+            Log.e('⚠️ Failed to sync from cloud: $e', label: 'auth');
+            // Continue anyway - user might be offline or have no cloud data
+          }
+
+          // Check if user has any wallets (either from cloud or existing local)
           final db = ref.read(databaseProvider);
           final wallets = await db.walletDao.getAllWallets();
 
           if (wallets.isEmpty) {
-            // No wallet - go to onboarding to setup first wallet
+            // No wallets in local DB and cloud - new user, show onboarding
+            Log.i('No wallets found, showing onboarding', label: 'auth');
             context.go('/onboarding');
           } else {
-            // Has wallet - go straight to main
+            // Has wallets (synced from cloud or existing local) - go to home
+            Log.i('Found ${wallets.length} wallets, going to home', label: 'auth');
             context.go('/');
           }
+        }
+      } on AuthException catch (e) {
+        Log.e('Supabase auth error: ${e.message}', label: 'auth');
+        if (context.mounted) {
+          toastification.show(
+            context: context,
+            title: const Text('Login Failed'),
+            description: Text(e.message),
+            type: ToastificationType.error,
+            style: ToastificationStyle.fillColored,
+            autoCloseDuration: const Duration(seconds: 4),
+          );
         }
       } catch (e) {
         if (context.mounted) {
@@ -139,10 +141,8 @@ class LoginScreen extends HookConsumerWidget {
         final wallets = await db.walletDao.getAllWallets();
 
         if (wallets.isEmpty) {
-          // No wallet - go to onboarding to setup first wallet
           context.go('/onboarding');
         } else {
-          // Has wallet - go straight to main
           context.go('/');
         }
       }
@@ -151,141 +151,145 @@ class LoginScreen extends HookConsumerWidget {
     Future<void> handleGoogleSignIn() async {
       isLoading.value = true;
       try {
-        // Sign in to Firebase using DOS-Me app (matches google-services.json)
-        final dosmeApp = FirebaseInitService.dosmeApp;
-        if (dosmeApp == null) {
-          throw Exception('DOS-Me Firebase not initialized');
-        }
-
-        final dosmeFirebaseAuth = FirebaseAuth.instanceFor(app: dosmeApp);
-
         if (kIsWeb) {
-          // Web: Use Firebase signInWithPopup directly
-          final googleProvider = GoogleAuthProvider();
-          googleProvider.addScope('email');
-          googleProvider.addScope('profile');
-          await dosmeFirebaseAuth.signInWithPopup(googleProvider);
-          debugPrint('Google Sign In (Web) successful');
+          // Web: Use Supabase signInWithOAuth
+          await supabase.auth.signInWithOAuth(
+            OAuthProvider.google,
+            redirectTo: kIsWeb ? null : 'com.joy.bexly://login-callback/',
+          );
         } else {
-          // Mobile: Use google_sign_in package
+          // Mobile: Use native Google Sign-In SDK (initialized in main.dart with serverClientId)
           final googleSignIn = GoogleSignIn.instance;
-          // Sign out any cached session to force re-consent/account chooser on first attempt
+
+          Log.i('📱 Starting native Google Sign In flow', label: 'auth');
+          Log.i('🔑 Expected client ID: ${SupabaseConfig.googleWebClientId}', label: 'auth');
+          Log.i('🔍 Debug mode: ${kDebugMode}', label: 'auth');
+
+          // Sign out first to show account picker
           try {
             await googleSignIn.signOut();
-          } catch (_) {}
+            Log.i('🔓 Signed out from previous session', label: 'auth');
+          } catch (e) {
+            Log.w('Sign out error (safe to ignore): $e', label: 'auth');
+          }
+
+          // Show native Google account picker and authenticate
+          // Note: authenticate() replaced signIn() in google_sign_in v7.0
+          // It throws exception if user cancels (doesn't return null)
+          Log.i('👤 Showing Google account picker...', label: 'auth');
           final googleUser = await googleSignIn.authenticate();
 
-          debugPrint('Google Sign In successful for: ${googleUser.email}');
+          Log.i('✅ User authenticated: ${googleUser.email}', label: 'auth');
 
-          // Get authentication tokens (google_sign_in 7.x: .authentication is sync, no accessToken)
+          // Get ID token from authentication
+          Log.i('🔐 Getting ID token...', label: 'auth');
           final googleAuth = googleUser.authentication;
+          final idToken = googleAuth.idToken;
 
-          // Create Firebase credential (idToken only in 7.x)
-          if (googleAuth.idToken == null) {
-            throw Exception('Missing ID token from Google. Please try again.');
+          if (idToken == null) {
+            throw Exception('Failed to get Google ID token');
           }
-          final credential = GoogleAuthProvider.credential(
-            idToken: googleAuth.idToken,
+          Log.i('✅ Got ID token (length: ${idToken.length})', label: 'auth');
+
+          // Get access token from authorization client (google_sign_in v7.0 API)
+          // Request email scope to get access token (required by Google SDK)
+          Log.i('🔐 Getting access token via authorizationClient...', label: 'auth');
+          const scopes = ['email'];
+          var clientAuth = await googleUser.authorizationClient.authorizationForScopes(scopes);
+
+          if (clientAuth == null) {
+            // No cached token, request authorization (may show consent screen on first use)
+            Log.i('📝 No cached token, requesting authorization...', label: 'auth');
+            clientAuth = await googleUser.authorizationClient.authorizeScopes(scopes);
+          }
+
+          final accessToken = clientAuth.accessToken;
+          Log.i('✅ Got access token (length: ${accessToken.length})', label: 'auth');
+
+          // Exchange Google tokens with Supabase (BOTH tokens required!)
+          Log.i('🔄 Exchanging tokens with Supabase...', label: 'auth');
+          final response = await supabase.auth.signInWithIdToken(
+            provider: OAuthProvider.google,
+            idToken: idToken,
+            accessToken: accessToken,
           );
 
-          await dosmeFirebaseAuth.signInWithCredential(credential);
-        }
-
-        Log.i('Firebase authentication successful', label: 'auth');
-        print('🔐 Firebase authentication successful');
-
-        // Get ID token and sync with DOS-Me API
-        final idToken = await dosmeFirebaseAuth.currentUser?.getIdToken();
-        if (idToken != null) {
-          Log.i('Syncing with DOS-Me API...', label: 'auth');
-          final dosMeApi = DosMeApiService();
-          final result = await dosMeApi.login(idToken);
-          if (result.success && result.customToken != null) {
-            // Sign in with custom token to get updated claims
-            await dosmeFirebaseAuth.signInWithCustomToken(result.customToken!);
-            Log.i('DOS-Me sync successful, signed in with custom token', label: 'auth');
-          } else {
-            Log.w('DOS-Me sync: ${result.message ?? "no custom token"}', label: 'auth');
+          if (response.session == null || response.user == null) {
+            throw Exception('Supabase authentication failed');
           }
-        }
 
-        // Sync user profile from Firebase Auth to local database
-        final firebaseUser = dosmeFirebaseAuth.currentUser;
-        if (firebaseUser != null) {
+          final user = response.user!;
+          Log.i('✅ Supabase authentication successful: ${user.email}', label: 'auth');
+
+          // Sync profile from Supabase to local (only update empty fields)
+          // Keep existing local data to support offline usage
           final authProvider = ref.read(local_auth.authStateProvider.notifier);
           final currentUser = authProvider.getUser();
 
-          // Update user info from Firebase Auth
           authProvider.setUser(currentUser.copyWith(
-            name: firebaseUser.displayName ?? currentUser.name,
-            email: firebaseUser.email ?? currentUser.email,
-            profilePicture: firebaseUser.photoURL ?? currentUser.profilePicture,
+            // Only update name if local is empty/default
+            name: currentUser.name.isEmpty || currentUser.name == 'User'
+                ? (user.userMetadata?['full_name'] ?? user.email?.split('@').first ?? currentUser.name)
+                : currentUser.name,  // Keep existing local name
+            email: user.email ?? currentUser.email,  // Always update email
+            // Only update avatar if local is empty
+            profilePicture: currentUser.profilePicture == null || currentUser.profilePicture!.isEmpty
+                ? (user.userMetadata?['avatar_url'] ?? currentUser.profilePicture)
+                : currentUser.profilePicture,  // Keep existing local avatar
           ));
 
-          Log.i('✅ Synced profile from Firebase Auth: ${firebaseUser.displayName}', label: 'auth');
-          print('✅ Synced profile from Firebase Auth');
-        }
+          Log.i('✅ Synced profile from Supabase (kept existing local data)', label: 'auth');
 
-        // Trigger initial sync with timeout protection
-        if (context.mounted) {
-          final syncService = ref.read(cloudSyncServiceProvider);
-          final localDb = ref.read(databaseProvider);
-          final userId = dosmeFirebaseAuth.currentUser?.uid;
-
-          if (userId != null) {
-            Log.i('Starting initial sync for user: $userId', label: 'auth');
-            print('🔄 Starting initial sync for user: $userId');
+          // Trigger initial Supabase sync to pull data from cloud
+          if (context.mounted) {
             try {
-              await SyncTriggerService.triggerInitialSyncIfNeeded(
-                syncService,
-                context: context,
-                localDb: localDb,
-                userId: userId,
-                ref: ref,
-              ).timeout(
-                const Duration(seconds: 30),
-                onTimeout: () {
-                  Log.w('⚠️ Sync timeout after 30s, continuing anyway', label: 'auth');
-                  print('⚠️ Sync timeout after 30s, continuing anyway');
-                },
-              );
-              Log.i('✅ Initial sync completed or skipped', label: 'auth');
-              print('✅ Initial sync completed or skipped');
+              Log.i('🔄 Pulling data from Supabase...', label: 'auth');
+              final syncService = ref.read(supabaseSyncServiceProvider);
+
+              // Pull data from cloud (pull-first mode)
+              await syncService.performFullSync(pushFirst: false);
+
+              Log.i('✅ Initial sync completed', label: 'auth');
             } catch (e) {
-              Log.e('❌ Sync error (non-fatal): $e', label: 'auth');
-              print('❌ Sync error (non-fatal): $e');
-              // Continue even if sync fails
+              Log.e('⚠️ Failed to sync from cloud: $e', label: 'auth');
+              // Continue anyway - user might be offline or have no cloud data
+            }
+
+            // Check if user has any wallets (either from cloud or existing local)
+            final db = ref.read(databaseProvider);
+            final wallets = await db.walletDao.getAllWallets();
+
+            if (wallets.isEmpty) {
+              // No wallets in local DB and cloud - new user, show onboarding
+              Log.i('No wallets found, showing onboarding', label: 'auth');
+              context.go('/onboarding');
+            } else {
+              // Has wallets (synced from cloud or existing local) - go to home
+              Log.i('Found ${wallets.length} wallets, going to home', label: 'auth');
+              context.go('/');
             }
           }
         }
-
-        Log.i('Navigating to appropriate screen', label: 'auth');
-        print('🧭 Navigating to appropriate screen');
+      } on AuthException catch (e) {
+        Log.e('Supabase auth error: ${e.message}', label: 'auth');
         if (context.mounted) {
-          // Check if user has wallet - redirect to onboarding if not
-          final db = ref.read(databaseProvider);
-          final wallets = await db.walletDao.getAllWallets();
-
-          if (wallets.isEmpty) {
-            context.go('/onboarding');
-          } else {
-            context.go('/');
-          }
-        }
-        Log.i('Navigation completed', label: 'auth');
-        print('✅ Navigation completed');
-      } on PlatformException catch (e) {
-        debugPrint('Google Sign In PlatformException: code=${e.code}, message=${e.message}, details=${e.details}');
-        if (context.mounted) {
-          final code = e.code;
-          String message = e.message ?? 'Google Sign-In failed';
-          if (code == 'sign_in_failed' && (message.contains('10') || (e.details?.toString().contains('10') ?? false))) {
-            message = 'Configuration error (code 10). Please check SHA-1/SHA-256 and OAuth client settings.';
-          }
           toastification.show(
             context: context,
             title: const Text('Google Login Failed'),
-            description: Text('[$code] $message'),
+            description: Text('${e.message} (${e.statusCode})'),
+            type: ToastificationType.error,
+            style: ToastificationStyle.fillColored,
+            autoCloseDuration: const Duration(seconds: 5),
+          );
+        }
+      } on PlatformException catch (e) {
+        debugPrint('Google Sign In PlatformException: code=${e.code}, message=${e.message}');
+        if (context.mounted) {
+          String message = e.message ?? 'Google Sign-In failed';
+          toastification.show(
+            context: context,
+            title: const Text('Google Login Failed'),
+            description: Text('[${e.code}] $message'),
             type: ToastificationType.error,
             style: ToastificationStyle.fillColored,
             autoCloseDuration: const Duration(seconds: 5),
@@ -311,80 +315,44 @@ class LoginScreen extends HookConsumerWidget {
     Future<void> handleFacebookSignIn() async {
       isLoading.value = true;
       try {
-        // Facebook Sign In using Firebase Auth
+        // Facebook Sign In using native SDK
         final LoginResult result = await FacebookAuth.instance.login(
           permissions: ['email', 'public_profile'],
         );
 
         if (result.status == LoginStatus.success) {
-          // Get the access token
           final AccessToken? accessToken = result.accessToken;
 
           if (accessToken != null) {
             debugPrint('Facebook Sign In successful');
 
-            // Create a credential from the access token
-            final OAuthCredential credential = FacebookAuthProvider.credential(
-              accessToken.tokenString,
+            // Exchange Facebook token with Supabase
+            final response = await supabase.auth.signInWithIdToken(
+              provider: OAuthProvider.facebook,
+              idToken: accessToken.tokenString,
             );
 
-            // Sign in to Firebase using DOS-Me app
-            final dosmeApp = FirebaseInitService.dosmeApp;
-            if (dosmeApp == null) {
-              throw Exception('DOS-Me Firebase not initialized');
+            if (response.session == null || response.user == null) {
+              throw Exception('Supabase authentication failed');
             }
 
-            final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
-            await dosmeAuth.signInWithCredential(credential);
+            final user = response.user!;
+            Log.i('✅ Supabase authentication successful: ${user.email}', label: 'auth');
 
-            debugPrint('Firebase authentication with Facebook successful');
+            // Sync user profile to local database
+            final authProvider = ref.read(local_auth.authStateProvider.notifier);
+            final currentUser = authProvider.getUser();
 
-            // Get ID token and sync with DOS-Me API
-            final idToken = await dosmeAuth.currentUser?.getIdToken();
-            if (idToken != null) {
-              Log.i('Syncing with DOS-Me API...', label: 'auth');
-              final dosMeApi = DosMeApiService();
-              final result = await dosMeApi.login(idToken);
-              if (result.success && result.customToken != null) {
-                await dosmeAuth.signInWithCustomToken(result.customToken!);
-                Log.i('DOS-Me sync successful (Facebook)', label: 'auth');
-              }
-            }
+            authProvider.setUser(currentUser.copyWith(
+              name: user.userMetadata?['full_name'] ?? user.email?.split('@').first ?? currentUser.name,
+              email: user.email ?? currentUser.email,
+              profilePicture: user.userMetadata?['avatar_url'] ?? currentUser.profilePicture,
+            ));
 
-            // Sync user profile from Firebase Auth
-            final firebaseUser = dosmeAuth.currentUser;
-            if (firebaseUser != null) {
-              final authProvider = ref.read(local_auth.authStateProvider.notifier);
-              final currentUser = authProvider.getUser();
+            Log.i('✅ Synced profile from Supabase Auth (Facebook)', label: 'auth');
 
-              authProvider.setUser(currentUser.copyWith(
-                name: firebaseUser.displayName ?? currentUser.name,
-                email: firebaseUser.email ?? currentUser.email,
-                profilePicture: firebaseUser.photoURL ?? currentUser.profilePicture,
-              ));
-
-              Log.i('✅ Synced profile from Firebase Auth (Facebook)', label: 'auth');
-            }
-
-            // Trigger initial sync if first time login
+            // TODO: Trigger initial Supabase sync
             if (context.mounted) {
-              final syncService = ref.read(cloudSyncServiceProvider);
-              final localDb = ref.read(databaseProvider);
-              final userId = dosmeAuth.currentUser?.uid;
-
-              if (userId != null) {
-                await SyncTriggerService.triggerInitialSyncIfNeeded(
-                  syncService,
-                  context: context,
-                  localDb: localDb,
-                  userId: userId,
-                  ref: ref,
-                );
-              }
-            }
-
-            if (context.mounted) {
-              // Check if user has wallet - redirect to onboarding if not
               final db = ref.read(databaseProvider);
               final wallets = await db.walletDao.getAllWallets();
 
@@ -400,13 +368,25 @@ class LoginScreen extends HookConsumerWidget {
         } else if (result.status == LoginStatus.failed) {
           throw Exception('Facebook Sign In failed: ${result.message}');
         }
+      } on AuthException catch (e) {
+        Log.e('Supabase auth error: ${e.message}', label: 'auth');
+        if (context.mounted) {
+          toastification.show(
+            context: context,
+            title: const Text('Facebook Login Failed'),
+            description: Text('${e.message}'),
+            type: ToastificationType.error,
+            style: ToastificationStyle.fillColored,
+            autoCloseDuration: const Duration(seconds: 4),
+          );
+        }
       } catch (e) {
         debugPrint('Facebook Sign In Error: $e');
         if (context.mounted) {
           toastification.show(
             context: context,
             title: const Text('Facebook Login Failed'),
-            description: Text('${e.toString()}'),
+            description: Text(e.toString()),
             type: ToastificationType.error,
             style: ToastificationStyle.fillColored,
             autoCloseDuration: const Duration(seconds: 4),
@@ -421,101 +401,54 @@ class LoginScreen extends HookConsumerWidget {
       isLoading.value = true;
       try {
         // Request Apple ID credential
-        // On Android, this will use web-based authentication
         final credential = await SignInWithApple.getAppleIDCredential(
           scopes: [
             AppleIDAuthorizationScopes.email,
             AppleIDAuthorizationScopes.fullName,
           ],
           webAuthenticationOptions: WebAuthenticationOptions(
-            clientId: 'com.joy.bexly.service', // Service ID from Apple Developer
+            clientId: 'com.joy.bexly.service',
             redirectUri: Uri.parse(
-              'https://bexly-app.firebaseapp.com/__/auth/handler', // Firebase auth handler URL
+              'https://dos.supabase.co/auth/v1/callback',
             ),
           ),
         );
 
         debugPrint('Apple Sign In successful');
-        debugPrint('User: ${credential.givenName} ${credential.familyName}');
-        debugPrint('Email: ${credential.email}');
 
-        // Create OAuth credential for Firebase
-        final oAuthProvider = OAuthProvider('apple.com');
-        final authCredential = oAuthProvider.credential(
-          idToken: credential.identityToken,
-          accessToken: credential.authorizationCode,
+        // Exchange Apple token with Supabase
+        final response = await supabase.auth.signInWithIdToken(
+          provider: OAuthProvider.apple,
+          idToken: credential.identityToken!,
         );
 
-        // Sign in to Firebase using DOS-Me app
-        final dosmeApp = FirebaseInitService.dosmeApp;
-        if (dosmeApp == null) {
-          throw Exception('DOS-Me Firebase not initialized');
+        if (response.session == null || response.user == null) {
+          throw Exception('Supabase authentication failed');
         }
 
-        final dosmeAuth = FirebaseAuth.instanceFor(app: dosmeApp);
-        final userCredential = await dosmeAuth.signInWithCredential(authCredential);
+        final user = response.user!;
+        Log.i('✅ Supabase authentication successful: ${user.email}', label: 'auth');
 
-        // If this is the first time, save the user info
-        if (credential.email != null || credential.givenName != null) {
-          // You can save user details to Firestore here if needed
-          debugPrint('New Apple user: ${userCredential.user?.uid}');
+        // Sync user profile to local database
+        final authProvider = ref.read(local_auth.authStateProvider.notifier);
+        final currentUser = authProvider.getUser();
+
+        // For Apple, combine givenName and familyName if full_name is null
+        String? displayName = user.userMetadata?['full_name'];
+        if (displayName == null && credential.givenName != null) {
+          displayName = '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
         }
 
-        debugPrint('Firebase authentication with Apple successful');
+        authProvider.setUser(currentUser.copyWith(
+          name: displayName ?? user.email?.split('@').first ?? currentUser.name,
+          email: user.email ?? credential.email ?? currentUser.email,
+          profilePicture: user.userMetadata?['avatar_url'] ?? currentUser.profilePicture,
+        ));
 
-        // Get ID token and sync with DOS-Me API
-        final idToken = await dosmeAuth.currentUser?.getIdToken();
-        if (idToken != null) {
-          Log.i('Syncing with DOS-Me API...', label: 'auth');
-          final dosMeApi = DosMeApiService();
-          final result = await dosMeApi.login(idToken);
-          if (result.success && result.customToken != null) {
-            await dosmeAuth.signInWithCustomToken(result.customToken!);
-            Log.i('DOS-Me sync successful (Apple)', label: 'auth');
-          }
-        }
+        Log.i('✅ Synced profile from Supabase Auth (Apple)', label: 'auth');
 
-        // Sync user profile from Firebase Auth
-        final firebaseUser = dosmeAuth.currentUser;
-        if (firebaseUser != null) {
-          final authProvider = ref.read(local_auth.authStateProvider.notifier);
-          final currentUser = authProvider.getUser();
-
-          // For Apple, combine givenName and familyName if displayName is null
-          String? displayName = firebaseUser.displayName;
-          if (displayName == null && credential.givenName != null) {
-            displayName = '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
-          }
-
-          authProvider.setUser(currentUser.copyWith(
-            name: displayName ?? currentUser.name,
-            email: firebaseUser.email ?? credential.email ?? currentUser.email,
-            profilePicture: firebaseUser.photoURL ?? currentUser.profilePicture,
-          ));
-
-          Log.i('✅ Synced profile from Firebase Auth (Apple)', label: 'auth');
-        }
-
-        // Trigger initial sync if first time login
+        // TODO: Trigger initial Supabase sync
         if (context.mounted) {
-          final syncService = ref.read(cloudSyncServiceProvider);
-          final localDb = ref.read(databaseProvider);
-          final userId = dosmeAuth.currentUser?.uid;
-
-          if (userId != null) {
-            await SyncTriggerService.triggerInitialSyncIfNeeded(
-              syncService,
-              context: context,
-              localDb: localDb,
-              userId: userId,
-              ref: ref,
-            );
-          }
-        }
-
-        debugPrint('Auth successful, navigating to appropriate screen');
-        if (context.mounted) {
-          // Check if user has wallet - redirect to onboarding if not
           final db = ref.read(databaseProvider);
           final wallets = await db.walletDao.getAllWallets();
 
@@ -525,7 +458,18 @@ class LoginScreen extends HookConsumerWidget {
             context.go('/');
           }
         }
-        debugPrint('Navigation completed');
+      } on AuthException catch (e) {
+        Log.e('Supabase auth error: ${e.message}', label: 'auth');
+        if (context.mounted) {
+          toastification.show(
+            context: context,
+            title: const Text('Apple Login Failed'),
+            description: Text(e.message),
+            type: ToastificationType.error,
+            style: ToastificationStyle.fillColored,
+            autoCloseDuration: const Duration(seconds: 4),
+          );
+        }
       } catch (e) {
         debugPrint('Apple Sign In Error: $e');
         if (context.mounted) {
@@ -563,248 +507,265 @@ class LoginScreen extends HookConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                  Image.asset(
-                    'assets/icon/Bexly-logo-no-bg.png',
-                    width: 80,
-                    height: 80,
-                  ),
-                  const Gap(16),
-                  Text(
-                    'Sign in to sync across devices',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const Gap(24),
-                  TextFormField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    style: AppTextStyles.body3,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'Enter your email',
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      isDense: true,
-                      contentPadding: const EdgeInsets.fromLTRB(
-                        0,
-                        AppSpacing.spacing16,
-                        0,
-                        AppSpacing.spacing16,
-                      ),
-                      border: CustomInputBorder(
-                        borderSide: const BorderSide(color: AppColors.neutral600),
-                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
-                      ),
-                      enabledBorder: CustomInputBorder(
-                        borderSide: const BorderSide(color: AppColors.neutral600),
-                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
-                      ),
-                      focusedBorder: CustomInputBorder(
-                        borderSide: const BorderSide(color: AppColors.purple),
-                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
-                      ),
-                      errorBorder: CustomInputBorder(
-                        borderSide: const BorderSide(color: AppColors.red),
-                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
-                      ),
-                      focusedErrorBorder: CustomInputBorder(
-                        borderSide: const BorderSide(color: AppColors.red),
-                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
-                      ),
+                    Image.asset(
+                      'assets/icon/Bexly-logo-no-bg.png',
+                      width: 80,
+                      height: 80,
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Please enter a valid email';
-                      }
-                      return null;
-                    },
-                  ),
-                  const Gap(16),
-                  TextFormField(
-                    controller: passwordController,
-                    obscureText: obscurePassword.value,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => handleLogin(),
-                    style: AppTextStyles.body3,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      hintText: 'Enter your password',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          obscurePassword.value
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                    const Gap(16),
+                    Text(
+                      'Sign in to sync across devices',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                      textAlign: TextAlign.center,
+                    ),
+                    const Gap(24),
+                    TextFormField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      style: AppTextStyles.body3,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        hintText: 'Enter your email',
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.fromLTRB(
+                          0,
+                          AppSpacing.spacing16,
+                          0,
+                          AppSpacing.spacing16,
                         ),
-                        onPressed: () {
-                          obscurePassword.value = !obscurePassword.value;
-                        },
+                        border: CustomInputBorder(
+                          borderSide: const BorderSide(color: AppColors.neutral600),
+                          borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                        ),
+                        enabledBorder: CustomInputBorder(
+                          borderSide: const BorderSide(color: AppColors.neutral600),
+                          borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                        ),
+                        focusedBorder: CustomInputBorder(
+                          borderSide: const BorderSide(color: AppColors.purple),
+                          borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                        ),
+                        errorBorder: CustomInputBorder(
+                          borderSide: const BorderSide(color: AppColors.red),
+                          borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                        ),
+                        focusedErrorBorder: CustomInputBorder(
+                          borderSide: const BorderSide(color: AppColors.red),
+                          borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                        ),
                       ),
-                      isDense: true,
-                      contentPadding: const EdgeInsets.fromLTRB(
-                        0,
-                        AppSpacing.spacing16,
-                        0,
-                        AppSpacing.spacing16,
-                      ),
-                      border: CustomInputBorder(
-                        borderSide: const BorderSide(color: AppColors.neutral600),
-                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
-                      ),
-                      enabledBorder: CustomInputBorder(
-                        borderSide: const BorderSide(color: AppColors.neutral600),
-                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
-                      ),
-                      focusedBorder: CustomInputBorder(
-                        borderSide: const BorderSide(color: AppColors.purple),
-                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
-                      ),
-                      errorBorder: CustomInputBorder(
-                        borderSide: const BorderSide(color: AppColors.red),
-                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
-                      ),
-                      focusedErrorBorder: CustomInputBorder(
-                        borderSide: const BorderSide(color: AppColors.red),
-                        borderRadius: BorderRadius.circular(AppSpacing.spacing8),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
-                      }
-                      if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const Gap(8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        context.push('/forgot-password');
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Please enter a valid email';
+                        }
+                        return null;
                       },
-                      child: const Text('Forgot Password?'),
                     ),
-                  ),
-                  const Gap(24),
-                  FilledButton(
-                    onPressed: isLoading.value ? null : handleLogin,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                    ),
-                    child: isLoading.value
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text('Sign In', style: TextStyle(fontSize: 16)),
-                  ),
-                  const Gap(12),
-                  FilledButton.tonal(
-                    onPressed: isLoading.value
-                        ? null
-                        : () {
-                            context.push('/signup');
+                    const Gap(16),
+                    TextFormField(
+                      controller: passwordController,
+                      obscureText: obscurePassword.value,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => handleLogin(),
+                      style: AppTextStyles.body3,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        hintText: 'Enter your password',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword.value
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () {
+                            obscurePassword.value = !obscurePassword.value;
                           },
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
+                        ),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.fromLTRB(
+                          0,
+                          AppSpacing.spacing16,
+                          0,
+                          AppSpacing.spacing16,
+                        ),
+                        border: CustomInputBorder(
+                          borderSide: const BorderSide(color: AppColors.neutral600),
+                          borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                        ),
+                        enabledBorder: CustomInputBorder(
+                          borderSide: const BorderSide(color: AppColors.neutral600),
+                          borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                        ),
+                        focusedBorder: CustomInputBorder(
+                          borderSide: const BorderSide(color: AppColors.purple),
+                          borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                        ),
+                        errorBorder: CustomInputBorder(
+                          borderSide: const BorderSide(color: AppColors.red),
+                          borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                        ),
+                        focusedErrorBorder: CustomInputBorder(
+                          borderSide: const BorderSide(color: AppColors.red),
+                          borderRadius: BorderRadius.circular(AppSpacing.spacing8),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your password';
+                        }
+                        if (value.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
+                      },
                     ),
-                    child: const Text('Create Account', style: TextStyle(fontSize: 16)),
-                  ),
-                  const Gap(24),
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: Colors.grey.shade400)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                    const Gap(8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {
+                          // TODO: Implement forgot password with Supabase
+                          toastification.show(
+                            context: context,
+                            title: const Text('Coming Soon'),
+                            description: const Text('Password reset will be available soon'),
+                            type: ToastificationType.info,
+                            autoCloseDuration: const Duration(seconds: 3),
+                          );
+                        },
+                        child: const Text('Forgot Password?'),
+                      ),
+                    ),
+                    const Gap(24),
+                    FilledButton(
+                      onPressed: isLoading.value ? null : handleLogin,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      child: isLoading.value
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Sign In', style: TextStyle(fontSize: 16)),
+                    ),
+                    const Gap(12),
+                    FilledButton.tonal(
+                      onPressed: isLoading.value
+                          ? null
+                          : () {
+                              // TODO: Implement signup with Supabase
+                              toastification.show(
+                                context: context,
+                                title: const Text('Coming Soon'),
+                                description: const Text('Account creation will be available soon'),
+                                type: ToastificationType.info,
+                                autoCloseDuration: const Duration(seconds: 3),
+                              );
+                            },
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      child: const Text('Create Account', style: TextStyle(fontSize: 16)),
+                    ),
+                    const Gap(24),
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.grey.shade400)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'OR',
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Colors.grey.shade400)),
+                      ],
+                    ),
+                    const Gap(16),
+                    // Social Login Buttons
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        // Google Sign In
+                        FilledButton.tonalIcon(
+                          onPressed: isLoading.value ? null : handleGoogleSignIn,
+                          icon: const FaIcon(
+                            FontAwesomeIcons.google,
+                            size: 18,
+                          ),
+                          label: const Text('Google'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(100, 44),
+                          ),
+                        ),
+                        // Facebook Sign In
+                        FilledButton.tonalIcon(
+                          onPressed: isLoading.value ? null : handleFacebookSignIn,
+                          icon: const FaIcon(
+                            FontAwesomeIcons.facebookF,
+                            size: 18,
+                            color: Color(0xFF1877F2),
+                          ),
+                          label: const Text('Facebook'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(100, 44),
+                          ),
+                        ),
+                        // Apple Sign In
+                        FilledButton.tonalIcon(
+                          onPressed: isLoading.value ? null : handleAppleSignIn,
+                          icon: FaIcon(
+                            FontAwesomeIcons.apple,
+                            size: 20,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                          label: const Text('Apple'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(100, 44),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Gap(16),
+                    TextButton(
+                      onPressed: isLoading.value ? null : handleSkip,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(
-                          'OR',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.grey.shade400)),
-                    ],
-                  ),
-                  const Gap(16),
-                  // Social Login Buttons
-                  Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          // Google Sign In
-                          FilledButton.tonalIcon(
-                            onPressed: isLoading.value ? null : handleGoogleSignIn,
-                            icon: const FaIcon(
-                              FontAwesomeIcons.google,
-                              size: 18,
-                            ),
-                            label: const Text('Google'),
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size(100, 44),
-                            ),
-                          ),
-                          // Facebook Sign In
-                          FilledButton.tonalIcon(
-                            onPressed: isLoading.value ? null : handleFacebookSignIn,
-                            icon: const FaIcon(
-                              FontAwesomeIcons.facebookF,
-                              size: 18,
-                              color: Color(0xFF1877F2),
-                            ),
-                            label: const Text('Facebook'),
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size(100, 44),
-                            ),
-                          ),
-                          // Apple Sign In
-                          FilledButton.tonalIcon(
-                            onPressed: isLoading.value ? null : handleAppleSignIn,
-                            icon: FaIcon(
-                              FontAwesomeIcons.apple,
-                              size: 20,
-                              color: Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.white
-                                  : Colors.black,
-                            ),
-                            label: const Text('Apple'),
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size(100, 44),
-                            ),
-                          ),
-                        ],
-                      ),
-                  const Gap(16),
-                  TextButton(
-                    onPressed: isLoading.value ? null : handleSkip,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text(
-                        'Skip for now',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
+                          'Skip for now',
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                         ),
                       ),
                     ),
-                  ),
-                  const Gap(24),
-                  // Version number
-                  Text(
-                    'v${packageInfoService.version}+${packageInfoService.buildNumber}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    const Gap(24),
+                    // Version number
+                    Text(
+                      'v${packageInfoService.version}+${packageInfoService.buildNumber}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant
+                                .withValues(alpha: 0.6),
+                          ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
                   ],
                 ),
               ),

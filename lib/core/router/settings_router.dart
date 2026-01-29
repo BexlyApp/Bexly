@@ -14,6 +14,8 @@ import 'package:bexly/features/settings/presentation/screens/personal_details_sc
 import 'package:bexly/features/settings/presentation/screens/settings_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/ai_model_settings_screen.dart';
 import 'package:bexly/features/subscription/presentation/screens/subscription_screen.dart';
+import 'package:bexly/features/settings/presentation/screens/bot_integration_screen.dart';
+import 'package:bexly/features/settings/presentation/screens/bot_integration_screen_wrapper.dart';
 
 class SettingsRouter {
   static final routes = <GoRoute>[
@@ -65,10 +67,29 @@ class SettingsRouter {
       path: Routes.subscription,
       builder: (context, state) => const SubscriptionScreen(),
     ),
-    if (kDebugMode)
-      GoRoute(
-        path: Routes.developerPortal,
-        builder: (context, state) => const DeveloperPortalScreen(),
-      ),
+    GoRoute(
+      path: Routes.developerPortal,
+      builder: (context, state) => const DeveloperPortalScreen(),
+    ),
+    GoRoute(
+      path: Routes.botIntegration,
+      builder: (context, state) => const BotIntegrationScreen(),
+    ),
+    GoRoute(
+      path: Routes.telegramLinked,
+      redirect: (context, state) {
+        // Deep link from id.dos.me after successful Telegram account linking
+        // Show success message and navigate to bot integration screen
+        return Routes.botIntegration;
+      },
+    ),
+    GoRoute(
+      path: Routes.telegramLink,
+      builder: (context, state) {
+        // Deep link from Telegram bot: bexly://telegram/link?token=xxx
+        final token = state.uri.queryParameters['token'];
+        return BotIntegrationScreenWrapper(telegramLinkToken: token);
+      },
+    ),
   ];
 }

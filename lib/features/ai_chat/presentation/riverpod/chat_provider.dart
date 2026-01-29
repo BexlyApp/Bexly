@@ -25,13 +25,13 @@ import 'package:bexly/features/ai_chat/presentation/riverpod/chat_dao_provider.d
 import 'package:bexly/core/database/app_database.dart' as db;
 import 'package:drift/drift.dart' as drift;
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
-import 'package:bexly/core/services/sync/chat_message_sync_service.dart';
 import 'package:bexly/core/utils/category_translation_map.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/features/receipt_scanner/presentation/riverpod/receipt_scanner_provider.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:bexly/features/settings/presentation/riverpod/ai_model_provider.dart';
+import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
 
 // Simple category info for AI
 class CategoryInfo {
@@ -448,35 +448,20 @@ class ChatNotifier extends Notifier<ChatState> {
 
   void _initializeChat() async {
     final dao = ref.read(chatMessageDaoProvider);
-    final syncService = ref.read(chatMessageSyncServiceProvider);
+    // Cloud sync removed - chat messages stored locally only
+    // TODO: Implement Supabase chat message sync
 
-    // STEP 1: Try to download messages from cloud (if authenticated)
+    // STEP 1: Load messages from local database
     try {
-      final cloudMessages = await syncService.downloadAllMessages();
-
-      if (cloudMessages.isNotEmpty) {
-        Log.d('Downloaded ${cloudMessages.length} messages from cloud', label: 'Chat Provider');
-
-        // Save cloud messages to local database (with dedup check)
-        int insertedCount = 0;
-        for (final cloudMsg in cloudMessages) {
-          final result = await dao.addMessageIfNotExists(db.ChatMessagesCompanion(
-            messageId: drift.Value(cloudMsg['messageId']),
-            content: drift.Value(cloudMsg['content']),
-            isFromUser: drift.Value(cloudMsg['isFromUser']),
-            timestamp: drift.Value(cloudMsg['timestamp']),
-            error: drift.Value(cloudMsg['error']),
-            isTyping: drift.Value(cloudMsg['isTyping']),
-          ));
-          if (result > 0) insertedCount++;
-        }
-        Log.d('Inserted $insertedCount new messages (skipped ${cloudMessages.length - insertedCount} duplicates)', label: 'Chat Provider');
+      final localMessages = await dao.getAllMessages();
+      if (localMessages.isNotEmpty) {
+        Log.d('Loaded ${localMessages.length} messages from local database', label: 'Chat Provider');
       }
     } catch (e) {
-      Log.w('Failed to download messages from cloud: $e', label: 'Chat Provider');
+      Log.w('Failed to load messages: $e', label: 'Chat Provider');
     }
 
-    // STEP 2: Load messages from local database
+    // Load all saved messages
     final savedMessages = await dao.getAllMessages();
 
     if (savedMessages.isNotEmpty) {
@@ -503,8 +488,10 @@ class ChatNotifier extends Notifier<ChatState> {
       state = state.copyWith(messages: messages);
     } else {
       // Add welcome message if no history
+      // Use fixed ID to prevent duplicates when syncing
+      const welcomeMessageId = 'welcome_message_v1';
       final welcomeMessage = ChatMessage(
-        id: _uuid.v4(),
+        id: welcomeMessageId,
         content: 'Welcome to Bexly AI Assistant! I can help you track expenses, record income, check balances, and view transaction summaries. Note: Budget creation is now supported via chat!',
         isFromUser: false,
         timestamp: DateTime.now(),
@@ -531,33 +518,10 @@ class ChatNotifier extends Notifier<ChatState> {
     ));
 
     // Sync to cloud (if authenticated)
-    // Don't sync typing messages or welcome messages
-    // Use fire-and-forget with timeout to prevent blocking
+    // Cloud sync removed - messages stored locally only
+    // TODO: Implement Supabase chat message sync
     if (shouldSync && !message.isTyping) {
-      try {
-        final syncService = ref.read(chatMessageSyncServiceProvider);
-        final dbMessage = db.ChatMessage(
-          id: 0, // Not used for Firestore sync
-          messageId: message.id,
-          content: message.content,
-          isFromUser: message.isFromUser,
-          timestamp: message.timestamp,
-          error: message.error,
-          isTyping: message.isTyping,
-          createdAt: message.timestamp,
-        );
-        // Don't await - fire and forget to prevent blocking
-        syncService.syncMessage(dbMessage).timeout(
-          const Duration(seconds: 3),
-          onTimeout: () {
-            print('[CHAT_SYNC] Sync timeout, continuing without sync');
-          },
-        ).catchError((e) {
-          print('[CHAT_SYNC] Sync failed: $e');
-        });
-      } catch (e) {
-        print('[CHAT_SYNC] Sync error: $e');
-      }
+      Log.d('Message saved locally (cloud sync not implemented)', label: 'Chat Provider');
     }
   }
 
@@ -1004,11 +968,16 @@ Please create a transaction based on this receipt data.''';
                   amount = amount / 25000;
                 }
 
-                await _createBudgetFromAction({
+                final budgetCreated = await _createBudgetFromAction({
                   ...action,
                   'amount': amount,
                 });
-                // AI already provides confirmation in user's language
+
+                // If budget creation failed, don't show success message from AI
+                // Error message was already added by _createBudgetFromAction via _addErrorMessage
+                if (!budgetCreated) {
+                  displayMessage = ''; // Clear success message, error is already shown
+                }
                 break;
               }
             case 'create_goal':
@@ -1456,6 +1425,11 @@ Please create a transaction based on this receipt data.''';
     Log.d('✅ Error state cleared - error is now: ${state.error}', label: 'Chat Provider');
   }
 
+  /// Update draft message (preserves user's typing when navigating away)
+  void updateDraftMessage(String draft) {
+    state = state.copyWith(draftMessage: draft);
+  }
+
   void clearChat() async {
     _cancelTypingEffect();
 
@@ -1463,9 +1437,8 @@ Please create a transaction based on this receipt data.''';
     final dao = ref.read(chatMessageDaoProvider);
     await dao.clearAllMessages();
 
-    // Clear messages from cloud (if authenticated)
-    final syncService = ref.read(chatMessageSyncServiceProvider);
-    await syncService.clearAllMessages();
+    // Cloud sync removed - messages cleared locally only
+    Log.d('Chat messages cleared from local database', label: 'Chat Provider');
 
     // Clear AI conversation history
     _aiService.clearHistory();
@@ -1806,47 +1779,60 @@ Please create a transaction based on this receipt data.''';
     }
   }
 
-  Future<void> _createBudgetFromAction(Map<String, dynamic> action) async {
+  /// Returns true if budget was created successfully, false otherwise
+  Future<bool> _createBudgetFromAction(Map<String, dynamic> action) async {
     Log.d('Creating budget from action: $action', label: 'BUDGET_DEBUG');
 
     try {
       final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       if (wallet == null) {
         Log.e('No active wallet for budget creation', label: 'BUDGET_DEBUG');
-        return;
+        _addErrorMessage('❌ Cannot create budget: No wallet available. Please create a wallet first.');
+        return false;
       }
 
       // Get category
-      // CRITICAL: hierarchicalCategoriesProvider returns only PARENT categories!
-      // We need to FLATTEN to include ALL subcategories for matching
       final categoryName = action['category']?.toString() ?? 'Others';
       Log.d('🔍 Searching for category: "$categoryName"', label: 'BUDGET_DEBUG');
 
-      final hierarchicalCategories = _unwrapAsyncValue(ref.read(hierarchicalCategoriesProvider)) ?? [];
+      // CRITICAL FIX: Fetch categories directly from database to avoid provider race condition
+      // (same issue as transaction creation - provider may not be loaded yet)
+      final db = ref.read(databaseProvider);
+      final categoryEntities = await db.categoryDao.getAllCategories();
+      Log.d('📦 Fetched ${categoryEntities.length} categories directly from database', label: 'BUDGET_DEBUG');
 
-      if (hierarchicalCategories.isEmpty) {
+      if (categoryEntities.isEmpty) {
         Log.e('❌ No categories available for budget', label: 'BUDGET_DEBUG');
-        return;
+        _addErrorMessage('❌ Cannot create budget: No categories available. Please create categories first.');
+        return false;
       }
 
-      Log.d('📂 Found ${hierarchicalCategories.length} parent categories', label: 'BUDGET_DEBUG');
-
-      // Flatten hierarchy to include BOTH parent and subcategories
+      // Convert to models and flatten hierarchy
       final List<CategoryModel> allCategories = [];
       final Map<String, CategoryModel> parentToFirstSubcategory = {};
+      final Map<int?, List<CategoryModel>> childrenByParentIdMap = {};
 
-      for (final cat in hierarchicalCategories) {
-        // Always add parent category
-        allCategories.add(cat);
+      // Convert all entities to models
+      final allModels = categoryEntities.map((e) => e.toModel()).toList();
 
-        if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
-          Log.d('  📁 ${cat.title} has ${cat.subCategories!.length} subcategories: ${cat.subCategories!.map((s) => s.title).join(", ")}', label: 'BUDGET_DEBUG');
-          // Map parent title to first subcategory for fallback
-          parentToFirstSubcategory[cat.title.toLowerCase()] = cat.subCategories!.first;
-          // Also add all subcategories
-          allCategories.addAll(cat.subCategories!);
+      // Group by parentId
+      for (final model in allModels) {
+        childrenByParentIdMap.putIfAbsent(model.parentId, () => []).add(model);
+      }
+
+      // Get top-level categories (parentId == null)
+      final topLevelCategories = childrenByParentIdMap[null] ?? [];
+
+      // Flatten: Add all categories and build parent-to-subcategory mapping
+      for (final parent in topLevelCategories) {
+        allCategories.add(parent);
+        final children = childrenByParentIdMap[parent.id] ?? [];
+        if (children.isNotEmpty) {
+          Log.d('  📁 ${parent.title} has ${children.length} subcategories: ${children.map((s) => s.title).join(", ")}', label: 'BUDGET_DEBUG');
+          parentToFirstSubcategory[parent.title.toLowerCase()] = children.first;
+          allCategories.addAll(children);
         } else {
-          Log.d('  📄 ${cat.title} (no subcategories)', label: 'BUDGET_DEBUG');
+          Log.d('  📄 ${parent.title} (no subcategories)', label: 'BUDGET_DEBUG');
         }
       }
 
@@ -1889,13 +1875,30 @@ Please create a transaction based on this receipt data.''';
         }
       }
 
+      // 4.5. Special case: "Bills" → search in Utilities subcategories
+      if (category == null && categoryName.toLowerCase().contains('bill')) {
+        Log.d('🔍 Step 4.5: Detected "bills" keyword, searching in Utilities subcategories...', label: 'BUDGET_DEBUG');
+        final utilitiesParent = topLevelCategories.firstWhereOrNull(
+          (c) => c.title.toLowerCase() == 'utilities'
+        );
+        if (utilitiesParent != null) {
+          final subcategories = childrenByParentIdMap[utilitiesParent.id] ?? [];
+          if (subcategories.isNotEmpty) {
+            // Default to first utility (usually Electricity)
+            category = subcategories.first;
+            Log.d('✅ Step 4.5: Mapped "Bills" → "${category.title}" from Utilities', label: 'BUDGET_DEBUG');
+          }
+        }
+      }
+
       // 5. Fallback to "Others" or first non-parent category
       if (category == null) {
         category = allCategories.firstWhereOrNull((c) => c.title == 'Others' && (c.subCategories == null || c.subCategories!.isEmpty));
         category ??= allCategories.firstWhereOrNull((c) => c.subCategories == null || c.subCategories!.isEmpty);
         if (category == null) {
           Log.e('❌ Step 5: No categories available for budget (even after fallback)', label: 'BUDGET_DEBUG');
-          return;
+          _addErrorMessage('❌ Cannot create budget: No valid category found.');
+          return false;
         }
         Log.w('⚠️ Step 5: Using FALLBACK category: "${category.title}" (ID: ${category.id})', label: 'BUDGET_DEBUG');
       }
@@ -1931,22 +1934,28 @@ Please create a transaction based on this receipt data.''';
       final amount = (action['amount'] as num).toDouble();
       final isRoutine = action['isRoutine'] ?? false;
 
-      // Check for duplicate budget before creating
-      final existingBudgets = await ref.read(budgetListProvider.future);
+      // Check for overlapping budget before creating
+      // CRITICAL FIX: Fetch budgets directly from database to avoid provider race condition
+      final budgetDao = ref.read(budgetDaoProvider);
+      final existingBudgetEntities = await budgetDao.getAllBudgets();
+      Log.d('📦 Fetched ${existingBudgetEntities.length} existing budgets from database', label: 'BUDGET_DEBUG');
+
       final categoryId = category.id;
       final walletId = wallet.id;
-      final isDuplicate = existingBudgets.any((b) =>
-          b.category.id == categoryId &&
-          b.wallet.id == walletId &&
-          b.amount == amount &&
-          b.startDate.year == startDate.year &&
-          b.startDate.month == startDate.month &&
-          b.endDate.year == endDate.year &&
-          b.endDate.month == endDate.month);
 
-      if (isDuplicate) {
-        Log.d('Skipping duplicate budget: category=${category.title}, amount=$amount', label: 'BUDGET_DEBUG');
-        return;
+      // Check for overlapping periods: Budget periods should NOT overlap
+      // Two periods overlap if: period1.start < period2.end AND period1.end > period2.start
+      final hasOverlap = existingBudgetEntities.any((b) =>
+          b.categoryId == categoryId &&
+          b.walletId == walletId &&
+          // Check if time periods overlap
+          (b.startDate.isBefore(endDate) || b.startDate.isAtSameMomentAs(endDate)) &&
+          (b.endDate.isAfter(startDate) || b.endDate.isAtSameMomentAs(startDate)));
+
+      if (hasOverlap) {
+        Log.w('⚠️ Budget period overlaps with existing budget for ${category.title}', label: 'BUDGET_DEBUG');
+        _addErrorMessage('⚠️ Đã có ngân sách cho "${category.title}" trong khoảng thời gian này rồi. Vui lòng chọn thời gian khác.');
+        return false; // CRITICAL: Return false to indicate failure, caller will skip success message
       }
 
       // Import budget model and providers
@@ -1962,8 +1971,7 @@ Please create a transaction based on this receipt data.''';
 
       Log.d('Creating budget: amount=$amount, category=${category.title}, period=$period', label: 'BUDGET_DEBUG');
 
-      // Save budget to database
-      final budgetDao = ref.read(budgetDaoProvider);
+      // Save budget to database (budgetDao already fetched above for duplicate check)
       await budgetDao.addBudget(budget);
 
       Log.d('Budget created successfully', label: 'BUDGET_DEBUG');
@@ -1980,9 +1988,13 @@ Please create a transaction based on this receipt data.''';
       //   Log.i('Cloud sync failed (may not be authenticated): $e', label: 'BUDGET_DEBUG');
       // }
 
+      return true; // Success!
+
     } catch (e, stackTrace) {
       Log.e('Failed to create budget: $e', label: 'BUDGET_ERROR');
       Log.e('Stack trace: $stackTrace', label: 'BUDGET_ERROR');
+      _addErrorMessage('❌ Lỗi khi tạo ngân sách: $e');
+      return false;
     }
   }
 
@@ -2040,9 +2052,34 @@ Please create a transaction based on this receipt data.''';
         pinned: drift.Value(goal.pinned),
       );
 
-      await database.goalDao.addGoal(companion);
+      final goalId = await database.goalDao.addGoal(companion);
 
-      Log.d('Goal created successfully', label: 'GOAL_DEBUG');
+      Log.d('Goal created successfully with ID: $goalId', label: 'GOAL_DEBUG');
+
+      // Parse and create checklist items if provided
+      if (action['checklist'] != null && action['checklist'] is List) {
+        final checklistData = action['checklist'] as List;
+        Log.d('Creating ${checklistData.length} checklist items...', label: 'GOAL_DEBUG');
+
+        for (final item in checklistData) {
+          if (item is Map<String, dynamic>) {
+            final itemTitle = item['title']?.toString() ?? 'Checklist Item';
+            final itemAmount = ((item['amount'] ?? 0) as num).toDouble();
+
+            final checklistCompanion = db.ChecklistItemsCompanion(
+              goalId: drift.Value(goalId),
+              title: drift.Value(itemTitle),
+              amount: drift.Value(itemAmount),
+              completed: const drift.Value(false),
+            );
+
+            final checklistItemId = await database.checklistItemDao.addChecklistItem(checklistCompanion);
+            Log.d('  ✅ Created checklist item "$itemTitle" (amount: $itemAmount) with ID: $checklistItemId', label: 'GOAL_DEBUG');
+          }
+        }
+
+        Log.d('All checklist items created successfully', label: 'GOAL_DEBUG');
+      }
 
       // Invalidate goal list to refresh UI
       ref.invalidate(goalsListProvider);
@@ -2841,6 +2878,17 @@ Please create a transaction based on this receipt data.''';
       // Save to database
       final db = ref.read(databaseProvider);
       final recurringId = await db.recurringDao.addRecurring(recurring);
+
+      // Upload to cloud immediately after creation
+      try {
+        final recurringWithId = recurring.copyWith(id: recurringId);
+        final syncService = ref.read(supabaseSyncServiceProvider);
+        await syncService.uploadRecurring(recurringWithId);
+        Log.d('Recurring uploaded to cloud: ${recurringWithId.cloudId}', label: 'CREATE_RECURRING');
+      } catch (e) {
+        Log.w('Failed to upload recurring to cloud: $e', label: 'CREATE_RECURRING');
+        // Don't fail the entire operation if cloud sync fails
+      }
 
       if (shouldChargeNow) {
         Log.d('shouldChargeNow = true, will create initial transaction', label: 'CREATE_RECURRING');

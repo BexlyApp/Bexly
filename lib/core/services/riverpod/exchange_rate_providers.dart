@@ -1,11 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/exchange_rate_service.dart';
-import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 
@@ -78,45 +75,12 @@ class DefaultWalletIdNotifier extends Notifier<int?> {
     }
   }
 
-  /// Sync default wallet cloudId to Firestore for external services (Telegram bot)
+  /// Sync default wallet cloudId to Supabase (removed Firestore sync)
   Future<void> _syncDefaultWalletToCloud(int walletId) async {
-    try {
-      final auth = FirebaseAuth.instanceFor(app: FirebaseInitService.bexlyApp);
-      final userId = auth.currentUser?.uid;
-      if (userId == null) {
-        Log.d('User not authenticated, skipping cloud sync', label: 'DefaultWallet');
-        return;
-      }
-
-      // Get wallet's cloudId from database
-      final db = ref.read(databaseProvider);
-      final wallet = await db.walletDao.getWalletById(walletId);
-      if (wallet == null || wallet.cloudId == null) {
-        Log.w('Wallet or cloudId not found for ID: $walletId', label: 'DefaultWallet');
-        return;
-      }
-
-      // Save to Firestore: users/{uid}/data/settings
-      final firestoreInstance = firestore.FirebaseFirestore.instanceFor(
-        app: FirebaseInitService.bexlyApp,
-        databaseId: 'bexly',
-      );
-
-      await firestoreInstance
-          .collection('users')
-          .doc(userId)
-          .collection('data')
-          .doc('settings')
-          .set({
-        'defaultWalletCloudId': wallet.cloudId,
-        'updatedAt': firestore.FieldValue.serverTimestamp(),
-      }, firestore.SetOptions(merge: true));
-
-      Log.i('Synced default wallet cloudId to Firestore: ${wallet.cloudId}', label: 'DefaultWallet');
-    } catch (e) {
-      Log.e('Error syncing default wallet to cloud: $e', label: 'DefaultWallet');
-      // Don't rethrow - local save succeeded
-    }
+    // TODO: Implement Supabase sync for default wallet setting
+    // This was previously syncing to Firestore for Telegram bot
+    // Now we should sync to Supabase user settings table
+    Log.d('Default wallet sync to cloud not implemented yet', label: 'DefaultWallet');
   }
 
   Future<void> clearDefaultWallet() async {

@@ -9,6 +9,7 @@ part of 'checklist_item_model.dart';
 _ChecklistItemModel _$ChecklistItemModelFromJson(Map<String, dynamic> json) =>
     _ChecklistItemModel(
       id: (json['id'] as num?)?.toInt(),
+      cloudId: json['cloudId'] as String?,
       goalId: (json['goalId'] as num).toInt(),
       title: json['title'] as String,
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
@@ -19,6 +20,7 @@ _ChecklistItemModel _$ChecklistItemModelFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$ChecklistItemModelToJson(_ChecklistItemModel instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'cloudId': instance.cloudId,
       'goalId': instance.goalId,
       'title': instance.title,
       'amount': instance.amount,

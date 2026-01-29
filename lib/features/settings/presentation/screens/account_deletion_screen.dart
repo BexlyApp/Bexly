@@ -13,7 +13,6 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/database/database_provider.dart';
-import 'package:bexly/core/database/firestore_database.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/services/keyboard_service/virtual_keyboard_service.dart';
 import 'package:bexly/core/services/data_population_service/category_population_service.dart';
@@ -72,35 +71,9 @@ class AccountDeletionScreen extends HookConsumerWidget {
     try {
       final db = ref.read(databaseProvider);
 
-      // STEP 1: Delete cloud data from Firestore (if user is logged in)
-      try {
-        final firestoreDb = FirestoreDatabase();
-        Log.i('Starting cloud data deletion...', label: 'delete account');
-        await firestoreDb.deleteAllUserData();
-        Log.i('✅ Cloud data deleted from Firestore successfully.', label: 'delete account');
-      } catch (e, stackTrace) {
-        // User might not be logged in, or network error
-        Log.e('❌ Failed to delete cloud data: $e', label: 'delete account');
-        Log.e('Stack trace: $stackTrace', label: 'delete account');
-
-        // Dismiss loading dialog
-        if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
-
-        // Show error to user
-        if (context.mounted) {
-          toastification.show(
-            context: context,
-            type: ToastificationType.error,
-            style: ToastificationStyle.minimal,
-            title: const Text('Failed to delete cloud data'),
-            description: Text('Error: $e'),
-            alignment: Alignment.bottomCenter,
-            autoCloseDuration: const Duration(seconds: 5),
-            showProgressBar: false,
-          );
-        }
-        return; // Stop execution if cloud deletion fails
-      }
+      // STEP 1: Cloud data deletion handled by Supabase RLS automatically
+      // When user deletes their Supabase account, RLS policies cascade delete their data
+      Log.i('Cloud data will be deleted by Supabase RLS', label: 'delete account');
 
       // STEP 2: Logout user
       await ref.read(authStateProvider.notifier).logout();

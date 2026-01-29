@@ -17,7 +17,7 @@ import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/ai_chat/data/services/speech_service.dart';
 import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/presentation/riverpod/chat_provider.dart';
-import 'package:bexly/core/riverpod/auth_providers.dart' as firebase_auth;
+import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 
 class AIChatScreen extends HookConsumerWidget {
   const AIChatScreen({super.key});
@@ -26,11 +26,20 @@ class AIChatScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final chatState = ref.watch(chatProvider);
     final chatNotifier = ref.read(chatProvider.notifier);
-    final textController = useTextEditingController();
+    final textController = useTextEditingController(text: chatState.draftMessage);
 
     // DEBUG: Log messages count on every build
     print('[UI_DEBUG] AIChatScreen build() - messages count: ${chatState.messages.length}');
     print('[UI_DEBUG] isLoading: ${chatState.isLoading}, isTyping: ${chatState.isTyping}');
+
+    // Sync draft message to state when user types
+    useEffect(() {
+      void listener() {
+        chatNotifier.updateDraftMessage(textController.text);
+      }
+      textController.addListener(listener);
+      return () => textController.removeListener(listener);
+    }, [textController]);
 
     // Proactively fetch exchange rate when chat screen opens
     // This ensures AI has exchange rate data for currency conversion messages
@@ -147,6 +156,7 @@ class AIChatScreen extends HookConsumerWidget {
               onSend: (message, imageBytes) {
                 chatNotifier.sendMessage(message, imageBytes: imageBytes);
                 textController.clear();
+                chatNotifier.updateDraftMessage(''); // Clear draft after sending
               },
               isLoading: chatState.isLoading,
             ),
@@ -314,7 +324,7 @@ class _MessageBubble extends ConsumerWidget {
     final isUser = message.isFromUser;
     final isTyping = message.isTyping;
     final hasPendingAction = message.hasPendingAction;
-    final userPhotoUrl = ref.watch(firebase_auth.userPhotoUrlProvider);
+    final userPhotoUrl = ref.watch(authStateProvider).profilePicture;
 
     // DEBUG: Log pending action status for each message
     if (!isUser && message.pendingAction != null) {
@@ -588,6 +598,7 @@ class _MessageBubble extends ConsumerWidget {
       'claude-3-opus': 'Claude 3 Opus',
       'claude-3-sonnet': 'Claude 3 Sonnet',
       'claude-3-haiku': 'Claude 3 Haiku',
+      'Qwen/Qwen3-VL-30B-A3B-Instruct-FP8': 'Qwen3-VL',
     };
 
     return mappings[modelName] ?? modelName;

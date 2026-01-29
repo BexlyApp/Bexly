@@ -13,6 +13,9 @@ abstract class ChecklistItemModel with _$ChecklistItemModel {
     /// Null if the item is new and not yet saved to the database.
     int? id,
 
+    /// Cloud ID (UUID v7) for syncing with Supabase
+    String? cloudId,
+
     /// The identifier of the [GoalModel] this checklist item belongs to.
     required int goalId,
 

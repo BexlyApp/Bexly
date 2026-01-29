@@ -31,7 +31,15 @@ mixin _$CategoryModel {
  String? get localizedTitles;/// A list of sub-categories. Null or empty if this category has no sub-categories.
  List<CategoryModel>? get subCategories;/// System default categories cannot be deleted by cloud sync
 /// These are the initial categories created on first app launch
- bool get isSystemDefault;/// Transaction type: 'income' or 'expense'
+ bool get isSystemDefault;/// Category source: 'built-in' (from templates) or 'custom' (user-created)
+/// Built-in categories stay local unless modified, custom categories always sync
+ String? get source;/// Stable ID for built-in templates (e.g., 'food', 'transport')
+/// Used to match categories across devices and app versions
+ String? get builtInId;/// Track if user modified built-in category (triggers cloud sync)
+/// When true, this built-in category must sync to prevent duplication
+ bool? get hasBeenModified;/// Soft delete flag for cross-device sync
+/// Deleted categories are hidden but synced to ensure consistency
+ bool? get isDeleted;/// Transaction type: 'income' or 'expense'
 /// Required field to separate Income and Expense categories
  String get transactionType;/// Timestamp when category was created
  DateTime? get createdAt;/// Timestamp when category was last updated
@@ -48,16 +56,16 @@ $CategoryModelCopyWith<CategoryModel> get copyWith => _$CategoryModelCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CategoryModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.iconBackground, iconBackground) || other.iconBackground == iconBackground)&&(identical(other.iconTypeValue, iconTypeValue) || other.iconTypeValue == iconTypeValue)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.description, description) || other.description == description)&&(identical(other.localizedTitles, localizedTitles) || other.localizedTitles == localizedTitles)&&const DeepCollectionEquality().equals(other.subCategories, subCategories)&&(identical(other.isSystemDefault, isSystemDefault) || other.isSystemDefault == isSystemDefault)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CategoryModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.iconBackground, iconBackground) || other.iconBackground == iconBackground)&&(identical(other.iconTypeValue, iconTypeValue) || other.iconTypeValue == iconTypeValue)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.description, description) || other.description == description)&&(identical(other.localizedTitles, localizedTitles) || other.localizedTitles == localizedTitles)&&const DeepCollectionEquality().equals(other.subCategories, subCategories)&&(identical(other.isSystemDefault, isSystemDefault) || other.isSystemDefault == isSystemDefault)&&(identical(other.source, source) || other.source == source)&&(identical(other.builtInId, builtInId) || other.builtInId == builtInId)&&(identical(other.hasBeenModified, hasBeenModified) || other.hasBeenModified == hasBeenModified)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,title,icon,iconBackground,iconTypeValue,parentId,description,localizedTitles,const DeepCollectionEquality().hash(subCategories),isSystemDefault,transactionType,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,title,icon,iconBackground,iconTypeValue,parentId,description,localizedTitles,const DeepCollectionEquality().hash(subCategories),isSystemDefault,source,builtInId,hasBeenModified,isDeleted,transactionType,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'CategoryModel(id: $id, cloudId: $cloudId, title: $title, icon: $icon, iconBackground: $iconBackground, iconTypeValue: $iconTypeValue, parentId: $parentId, description: $description, localizedTitles: $localizedTitles, subCategories: $subCategories, isSystemDefault: $isSystemDefault, transactionType: $transactionType, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'CategoryModel(id: $id, cloudId: $cloudId, title: $title, icon: $icon, iconBackground: $iconBackground, iconTypeValue: $iconTypeValue, parentId: $parentId, description: $description, localizedTitles: $localizedTitles, subCategories: $subCategories, isSystemDefault: $isSystemDefault, source: $source, builtInId: $builtInId, hasBeenModified: $hasBeenModified, isDeleted: $isDeleted, transactionType: $transactionType, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -68,7 +76,7 @@ abstract mixin class $CategoryModelCopyWith<$Res>  {
   factory $CategoryModelCopyWith(CategoryModel value, $Res Function(CategoryModel) _then) = _$CategoryModelCopyWithImpl;
 @useResult
 $Res call({
- int? id, String? cloudId, String title, String icon, String iconBackground, String iconTypeValue, int? parentId, String? description, String? localizedTitles, List<CategoryModel>? subCategories, bool isSystemDefault, String transactionType, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, String title, String icon, String iconBackground, String iconTypeValue, int? parentId, String? description, String? localizedTitles, List<CategoryModel>? subCategories, bool isSystemDefault, String? source, String? builtInId, bool? hasBeenModified, bool? isDeleted, String transactionType, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -85,7 +93,7 @@ class _$CategoryModelCopyWithImpl<$Res>
 
 /// Create a copy of CategoryModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? icon = null,Object? iconBackground = null,Object? iconTypeValue = null,Object? parentId = freezed,Object? description = freezed,Object? localizedTitles = freezed,Object? subCategories = freezed,Object? isSystemDefault = null,Object? transactionType = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? icon = null,Object? iconBackground = null,Object? iconTypeValue = null,Object? parentId = freezed,Object? description = freezed,Object? localizedTitles = freezed,Object? subCategories = freezed,Object? isSystemDefault = null,Object? source = freezed,Object? builtInId = freezed,Object? hasBeenModified = freezed,Object? isDeleted = freezed,Object? transactionType = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -98,7 +106,11 @@ as int?,description: freezed == description ? _self.description : description //
 as String?,localizedTitles: freezed == localizedTitles ? _self.localizedTitles : localizedTitles // ignore: cast_nullable_to_non_nullable
 as String?,subCategories: freezed == subCategories ? _self.subCategories : subCategories // ignore: cast_nullable_to_non_nullable
 as List<CategoryModel>?,isSystemDefault: null == isSystemDefault ? _self.isSystemDefault : isSystemDefault // ignore: cast_nullable_to_non_nullable
-as bool,transactionType: null == transactionType ? _self.transactionType : transactionType // ignore: cast_nullable_to_non_nullable
+as bool,source: freezed == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
+as String?,builtInId: freezed == builtInId ? _self.builtInId : builtInId // ignore: cast_nullable_to_non_nullable
+as String?,hasBeenModified: freezed == hasBeenModified ? _self.hasBeenModified : hasBeenModified // ignore: cast_nullable_to_non_nullable
+as bool?,isDeleted: freezed == isDeleted ? _self.isDeleted : isDeleted // ignore: cast_nullable_to_non_nullable
+as bool?,transactionType: null == transactionType ? _self.transactionType : transactionType // ignore: cast_nullable_to_non_nullable
 as String,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
@@ -186,10 +198,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  String? localizedTitles,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  String? localizedTitles,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String? source,  String? builtInId,  bool? hasBeenModified,  bool? isDeleted,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CategoryModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.localizedTitles,_that.subCategories,_that.isSystemDefault,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.localizedTitles,_that.subCategories,_that.isSystemDefault,_that.source,_that.builtInId,_that.hasBeenModified,_that.isDeleted,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -207,10 +219,10 @@ return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackgrou
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  String? localizedTitles,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  String? localizedTitles,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String? source,  String? builtInId,  bool? hasBeenModified,  bool? isDeleted,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _CategoryModel():
-return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.localizedTitles,_that.subCategories,_that.isSystemDefault,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.localizedTitles,_that.subCategories,_that.isSystemDefault,_that.source,_that.builtInId,_that.hasBeenModified,_that.isDeleted,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -227,10 +239,10 @@ return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackgrou
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  String? localizedTitles,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  String title,  String icon,  String iconBackground,  String iconTypeValue,  int? parentId,  String? description,  String? localizedTitles,  List<CategoryModel>? subCategories,  bool isSystemDefault,  String? source,  String? builtInId,  bool? hasBeenModified,  bool? isDeleted,  String transactionType,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _CategoryModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.localizedTitles,_that.subCategories,_that.isSystemDefault,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackground,_that.iconTypeValue,_that.parentId,_that.description,_that.localizedTitles,_that.subCategories,_that.isSystemDefault,_that.source,_that.builtInId,_that.hasBeenModified,_that.isDeleted,_that.transactionType,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -242,7 +254,7 @@ return $default(_that.id,_that.cloudId,_that.title,_that.icon,_that.iconBackgrou
 @JsonSerializable()
 
 class _CategoryModel implements CategoryModel {
-  const _CategoryModel({this.id, this.cloudId, required this.title, this.icon = '', this.iconBackground = '', this.iconTypeValue = '', this.parentId, this.description = '', this.localizedTitles, final  List<CategoryModel>? subCategories, this.isSystemDefault = false, this.transactionType = 'expense', this.createdAt, this.updatedAt}): _subCategories = subCategories;
+  const _CategoryModel({this.id, this.cloudId, required this.title, this.icon = '', this.iconBackground = '', this.iconTypeValue = '', this.parentId, this.description = '', this.localizedTitles, final  List<CategoryModel>? subCategories, this.isSystemDefault = false, this.source = 'built-in', this.builtInId, this.hasBeenModified = false, this.isDeleted = false, this.transactionType = 'expense', this.createdAt, this.updatedAt}): _subCategories = subCategories;
   factory _CategoryModel.fromJson(Map<String, dynamic> json) => _$CategoryModelFromJson(json);
 
 /// The unique identifier for the category. Null if the category is new and not yet saved.
@@ -281,6 +293,18 @@ class _CategoryModel implements CategoryModel {
 /// System default categories cannot be deleted by cloud sync
 /// These are the initial categories created on first app launch
 @override@JsonKey() final  bool isSystemDefault;
+/// Category source: 'built-in' (from templates) or 'custom' (user-created)
+/// Built-in categories stay local unless modified, custom categories always sync
+@override@JsonKey() final  String? source;
+/// Stable ID for built-in templates (e.g., 'food', 'transport')
+/// Used to match categories across devices and app versions
+@override final  String? builtInId;
+/// Track if user modified built-in category (triggers cloud sync)
+/// When true, this built-in category must sync to prevent duplication
+@override@JsonKey() final  bool? hasBeenModified;
+/// Soft delete flag for cross-device sync
+/// Deleted categories are hidden but synced to ensure consistency
+@override@JsonKey() final  bool? isDeleted;
 /// Transaction type: 'income' or 'expense'
 /// Required field to separate Income and Expense categories
 @override@JsonKey() final  String transactionType;
@@ -302,16 +326,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CategoryModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.iconBackground, iconBackground) || other.iconBackground == iconBackground)&&(identical(other.iconTypeValue, iconTypeValue) || other.iconTypeValue == iconTypeValue)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.description, description) || other.description == description)&&(identical(other.localizedTitles, localizedTitles) || other.localizedTitles == localizedTitles)&&const DeepCollectionEquality().equals(other._subCategories, _subCategories)&&(identical(other.isSystemDefault, isSystemDefault) || other.isSystemDefault == isSystemDefault)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CategoryModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.title, title) || other.title == title)&&(identical(other.icon, icon) || other.icon == icon)&&(identical(other.iconBackground, iconBackground) || other.iconBackground == iconBackground)&&(identical(other.iconTypeValue, iconTypeValue) || other.iconTypeValue == iconTypeValue)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.description, description) || other.description == description)&&(identical(other.localizedTitles, localizedTitles) || other.localizedTitles == localizedTitles)&&const DeepCollectionEquality().equals(other._subCategories, _subCategories)&&(identical(other.isSystemDefault, isSystemDefault) || other.isSystemDefault == isSystemDefault)&&(identical(other.source, source) || other.source == source)&&(identical(other.builtInId, builtInId) || other.builtInId == builtInId)&&(identical(other.hasBeenModified, hasBeenModified) || other.hasBeenModified == hasBeenModified)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.transactionType, transactionType) || other.transactionType == transactionType)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,title,icon,iconBackground,iconTypeValue,parentId,description,localizedTitles,const DeepCollectionEquality().hash(_subCategories),isSystemDefault,transactionType,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,title,icon,iconBackground,iconTypeValue,parentId,description,localizedTitles,const DeepCollectionEquality().hash(_subCategories),isSystemDefault,source,builtInId,hasBeenModified,isDeleted,transactionType,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'CategoryModel(id: $id, cloudId: $cloudId, title: $title, icon: $icon, iconBackground: $iconBackground, iconTypeValue: $iconTypeValue, parentId: $parentId, description: $description, localizedTitles: $localizedTitles, subCategories: $subCategories, isSystemDefault: $isSystemDefault, transactionType: $transactionType, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'CategoryModel(id: $id, cloudId: $cloudId, title: $title, icon: $icon, iconBackground: $iconBackground, iconTypeValue: $iconTypeValue, parentId: $parentId, description: $description, localizedTitles: $localizedTitles, subCategories: $subCategories, isSystemDefault: $isSystemDefault, source: $source, builtInId: $builtInId, hasBeenModified: $hasBeenModified, isDeleted: $isDeleted, transactionType: $transactionType, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -322,7 +346,7 @@ abstract mixin class _$CategoryModelCopyWith<$Res> implements $CategoryModelCopy
   factory _$CategoryModelCopyWith(_CategoryModel value, $Res Function(_CategoryModel) _then) = __$CategoryModelCopyWithImpl;
 @override @useResult
 $Res call({
- int? id, String? cloudId, String title, String icon, String iconBackground, String iconTypeValue, int? parentId, String? description, String? localizedTitles, List<CategoryModel>? subCategories, bool isSystemDefault, String transactionType, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, String title, String icon, String iconBackground, String iconTypeValue, int? parentId, String? description, String? localizedTitles, List<CategoryModel>? subCategories, bool isSystemDefault, String? source, String? builtInId, bool? hasBeenModified, bool? isDeleted, String transactionType, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -339,7 +363,7 @@ class __$CategoryModelCopyWithImpl<$Res>
 
 /// Create a copy of CategoryModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? icon = null,Object? iconBackground = null,Object? iconTypeValue = null,Object? parentId = freezed,Object? description = freezed,Object? localizedTitles = freezed,Object? subCategories = freezed,Object? isSystemDefault = null,Object? transactionType = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? title = null,Object? icon = null,Object? iconBackground = null,Object? iconTypeValue = null,Object? parentId = freezed,Object? description = freezed,Object? localizedTitles = freezed,Object? subCategories = freezed,Object? isSystemDefault = null,Object? source = freezed,Object? builtInId = freezed,Object? hasBeenModified = freezed,Object? isDeleted = freezed,Object? transactionType = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_CategoryModel(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -352,7 +376,11 @@ as int?,description: freezed == description ? _self.description : description //
 as String?,localizedTitles: freezed == localizedTitles ? _self.localizedTitles : localizedTitles // ignore: cast_nullable_to_non_nullable
 as String?,subCategories: freezed == subCategories ? _self._subCategories : subCategories // ignore: cast_nullable_to_non_nullable
 as List<CategoryModel>?,isSystemDefault: null == isSystemDefault ? _self.isSystemDefault : isSystemDefault // ignore: cast_nullable_to_non_nullable
-as bool,transactionType: null == transactionType ? _self.transactionType : transactionType // ignore: cast_nullable_to_non_nullable
+as bool,source: freezed == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
+as String?,builtInId: freezed == builtInId ? _self.builtInId : builtInId // ignore: cast_nullable_to_non_nullable
+as String?,hasBeenModified: freezed == hasBeenModified ? _self.hasBeenModified : hasBeenModified // ignore: cast_nullable_to_non_nullable
+as bool?,isDeleted: freezed == isDeleted ? _self.isDeleted : isDeleted // ignore: cast_nullable_to_non_nullable
+as bool?,transactionType: null == transactionType ? _self.transactionType : transactionType // ignore: cast_nullable_to_non_nullable
 as String,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
