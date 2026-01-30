@@ -272,18 +272,15 @@ class RecurringDetailScreen extends HookConsumerWidget {
 
               if (confirmed == true && context.mounted) {
                 try {
-                  final db = ref.read(databaseProvider);
-
-                  // TODO: Implement Supabase sync for recurring delete
-                  // Cloud sync removed with Firebase Auth migration
-                  Log.i('Recurring will be deleted locally (cloud sync not implemented)', label: 'RecurringDetail');
+                  // Use recurringDaoProvider (has Ref injection for cloud sync)
+                  final recurringDao = ref.read(recurringDaoProvider);
 
                   // Cancel notification for this recurring
                   await RecurringNotificationService.cancelNotification(currentRecurring.id!);
                   Log.i('Notification cancelled for recurring ${currentRecurring.id}', label: 'RecurringDetail');
 
-                  // Delete from local database
-                  await db.recurringDao.deleteRecurring(currentRecurring.id!);
+                  // Delete from local database AND cloud (sync handled by DAO)
+                  await recurringDao.deleteRecurring(currentRecurring.id!);
                   if (context.mounted) {
                     Navigator.of(context).pop(); // Go back to list
                   }

@@ -575,16 +575,14 @@ class _ActionButtons extends HookConsumerWidget {
 
                       if (!context.mounted) return;
                   try {
-                    final db = ref.read(databaseProvider);
-
-                    // TODO: Implement Supabase sync for recurring delete
-                    // Cloud sync removed with Firebase Auth migration
+                    // Use recurringDaoProvider (has Ref injection for cloud sync)
+                    final recurringDao = ref.read(recurringDaoProvider);
 
                     // Cancel notification for this recurring
                     await RecurringNotificationService.cancelNotification(recurringId);
 
-                    // Delete from local database
-                    await db.recurringDao.deleteRecurring(recurringId);
+                    // Delete from local database AND cloud (sync handled by DAO)
+                    await recurringDao.deleteRecurring(recurringId);
                     if (context.mounted) {
                       Navigator.of(context).pop(); // Close form
                     }

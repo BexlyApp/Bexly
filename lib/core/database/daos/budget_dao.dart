@@ -183,6 +183,52 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
     return id;
   }
 
+  /// Insert a budget from cloud data (for sync pull operations)
+  /// This method preserves the cloudId and does NOT re-upload to cloud
+  Future<int> insertFromCloud(BudgetModel budgetModel) async {
+    Log.d('Inserting budget from cloud: ${budgetModel.cloudId}', label: 'budget');
+
+    // Insert directly without generating new cloudId or re-uploading
+    return into(budgets).insert(
+      BudgetsCompanion.insert(
+        cloudId: Value(budgetModel.cloudId),
+        walletId: budgetModel.wallet.id!,
+        categoryId: budgetModel.category.id!,
+        amount: budgetModel.amount,
+        startDate: budgetModel.startDate,
+        endDate: budgetModel.endDate,
+        isRoutine: budgetModel.isRoutine,
+        createdAt: Value(budgetModel.createdAt ?? DateTime.now()),
+        updatedAt: Value(budgetModel.updatedAt ?? DateTime.now()),
+      ),
+    );
+  }
+
+  /// Update a budget from cloud data (for sync pull operations)
+  /// This method does NOT re-upload to cloud
+  Future<bool> updateFromCloud(BudgetModel budgetModel) async {
+    if (budgetModel.cloudId == null) return false;
+    Log.d('Updating budget from cloud: ${budgetModel.cloudId}', label: 'budget');
+
+    // Find local budget by cloudId
+    final existingBudget = await getBudgetByCloudId(budgetModel.cloudId!);
+    if (existingBudget == null) return false;
+
+    final count = await (update(budgets)..where((b) => b.cloudId.equals(budgetModel.cloudId!)))
+        .write(
+          BudgetsCompanion(
+            walletId: Value(budgetModel.wallet.id!),
+            categoryId: Value(budgetModel.category.id!),
+            amount: Value(budgetModel.amount),
+            startDate: Value(budgetModel.startDate),
+            endDate: Value(budgetModel.endDate),
+            isRoutine: Value(budgetModel.isRoutine),
+            updatedAt: Value(budgetModel.updatedAt ?? DateTime.now()),
+          ),
+        );
+    return count > 0;
+  }
+
   // Get all budgets (for backup)
   Future<List<Budget>> getAllBudgets() {
     return select(budgets).get();

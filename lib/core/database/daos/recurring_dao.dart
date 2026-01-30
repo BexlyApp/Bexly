@@ -280,6 +280,83 @@ class RecurringDao extends DatabaseAccessor<AppDatabase> with _$RecurringDaoMixi
     return id;
   }
 
+  /// Insert a recurring from cloud data (for sync pull operations)
+  /// This method preserves the cloudId and does NOT re-upload to cloud
+  Future<int> insertFromCloud(RecurringModel recurringModel) async {
+    Log.d('Inserting recurring from cloud: ${recurringModel.cloudId}', label: 'recurring');
+
+    // Insert directly without generating new cloudId or re-uploading
+    return into(recurrings).insert(
+      RecurringsCompanion.insert(
+        cloudId: Value(recurringModel.cloudId),
+        name: recurringModel.name,
+        description: Value(recurringModel.description),
+        walletId: recurringModel.wallet.id!,
+        categoryId: recurringModel.category.id!,
+        amount: recurringModel.amount,
+        currency: recurringModel.currency,
+        startDate: recurringModel.startDate,
+        nextDueDate: recurringModel.nextDueDate,
+        frequency: recurringModel.frequency.toDbValue(),
+        customInterval: Value(recurringModel.customInterval),
+        customUnit: Value(recurringModel.customUnit),
+        billingDay: Value(recurringModel.billingDay),
+        endDate: Value(recurringModel.endDate),
+        status: recurringModel.status.toDbValue(),
+        autoCreate: Value(recurringModel.autoCreate),
+        enableReminder: Value(recurringModel.enableReminder),
+        reminderDaysBefore: Value(recurringModel.reminderDaysBefore),
+        notes: Value(recurringModel.notes),
+        vendorName: Value(recurringModel.vendorName),
+        iconName: Value(recurringModel.iconName),
+        colorHex: Value(recurringModel.colorHex),
+        lastChargedDate: Value(recurringModel.lastChargedDate),
+        totalPayments: Value(recurringModel.totalPayments),
+        createdAt: Value(recurringModel.createdAt ?? DateTime.now()),
+        updatedAt: Value(recurringModel.updatedAt ?? DateTime.now()),
+      ),
+    );
+  }
+
+  /// Update a recurring from cloud data (for sync pull operations)
+  /// This method ALWAYS updates foreign keys and does NOT re-upload to cloud
+  Future<bool> updateFromCloud(RecurringModel recurringModel) async {
+    if (recurringModel.cloudId == null) return false;
+    Log.d('Updating recurring from cloud: ${recurringModel.cloudId}', label: 'recurring');
+
+    // Find local recurring by cloudId and update with correct foreign keys
+    final count = await (update(recurrings)..where((r) => r.cloudId.equals(recurringModel.cloudId!)))
+        .write(
+          RecurringsCompanion(
+            name: Value(recurringModel.name),
+            description: Value(recurringModel.description),
+            walletId: Value(recurringModel.wallet.id!),
+            categoryId: Value(recurringModel.category.id!),
+            amount: Value(recurringModel.amount),
+            currency: Value(recurringModel.currency),
+            startDate: Value(recurringModel.startDate),
+            nextDueDate: Value(recurringModel.nextDueDate),
+            frequency: Value(recurringModel.frequency.toDbValue()),
+            customInterval: Value(recurringModel.customInterval),
+            customUnit: Value(recurringModel.customUnit),
+            billingDay: Value(recurringModel.billingDay),
+            endDate: Value(recurringModel.endDate),
+            status: Value(recurringModel.status.toDbValue()),
+            autoCreate: Value(recurringModel.autoCreate),
+            enableReminder: Value(recurringModel.enableReminder),
+            reminderDaysBefore: Value(recurringModel.reminderDaysBefore),
+            notes: Value(recurringModel.notes),
+            vendorName: Value(recurringModel.vendorName),
+            iconName: Value(recurringModel.iconName),
+            colorHex: Value(recurringModel.colorHex),
+            lastChargedDate: Value(recurringModel.lastChargedDate),
+            totalPayments: Value(recurringModel.totalPayments),
+            updatedAt: Value(recurringModel.updatedAt ?? DateTime.now()),
+          ),
+        );
+    return count > 0;
+  }
+
   /// Update an existing recurring payment
   Future<bool> updateRecurring(RecurringModel recurringModel) async {
     if (recurringModel.id == null) return false;
