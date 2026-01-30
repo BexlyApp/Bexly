@@ -39,6 +39,7 @@ class BudgetDetailsScreen extends ConsumerWidget {
           context: context,
           title: 'Budget Report',
           showBackButton: true,
+          showBalance: false,
           actions: [
             CustomIconButton(
               context,

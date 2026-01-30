@@ -3,11 +3,8 @@ import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/features/recurring/data/model/recurring_model.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
 
-/// Provider for RecurringDao
-final recurringDaoProvider = Provider((ref) {
-  final db = ref.watch(databaseProvider);
-  return db.recurringDao;
-});
+// RecurringDao provider is now imported from database_provider.dart with sync support
+// Use recurringDaoProvider from database_provider.dart instead of defining here
 
 /// Stream provider for all recurrings
 final allRecurringsProvider = StreamProvider.autoDispose<List<RecurringModel>>((ref) {

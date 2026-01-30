@@ -1064,15 +1064,15 @@ class SupabaseSyncService {
           final existingBudget = existingBudgets.where((b) => b.cloudId == budgetModel.cloudId).firstOrNull;
 
           if (existingBudget == null) {
-            // Budget doesn't exist → INSERT
-            await db.budgetDao.addBudget(budgetModel);
+            // Budget doesn't exist → INSERT using insertFromCloud (preserves cloudId, no re-upload)
+            await db.budgetDao.insertFromCloud(budgetModel);
             processedCount++;
           } else {
-            // Budget exists → UPDATE if cloud data is newer
+            // Budget exists → UPDATE if cloud data is newer (using updateFromCloud, no re-upload)
             if (budgetModel.updatedAt != null &&
                 (existingBudget.updatedAt == null || budgetModel.updatedAt!.isAfter(existingBudget.updatedAt!))) {
               Log.d('Updating existing budget with newer cloud data', label: _label);
-              await db.budgetDao.updateBudget(budgetModel);
+              await db.budgetDao.updateFromCloud(budgetModel);
               processedCount++;
             } else {
               Log.d('Budget already exists and local data is newer, skipping', label: _label);
@@ -1347,19 +1347,15 @@ class SupabaseSyncService {
           final existingRecurring = existingRecurrings.where((r) => r.cloudId == recurringModel.cloudId).firstOrNull;
 
           if (existingRecurring == null) {
-            // Recurring doesn't exist → INSERT
-            await db.recurringDao.addRecurring(recurringModel);
+            // Recurring doesn't exist → INSERT using insertFromCloud (preserves cloudId, no re-upload)
+            await db.recurringDao.insertFromCloud(recurringModel);
             processedCount++;
           } else {
-            // Recurring exists → UPDATE if cloud data is newer
-            if (recurringModel.updatedAt != null &&
-                (existingRecurring.updatedAt == null || recurringModel.updatedAt!.isAfter(existingRecurring.updatedAt!))) {
-              Log.d('Updating existing recurring with newer cloud data: ${recurringModel.name}', label: _label);
-              await db.recurringDao.updateRecurring(recurringModel);
-              processedCount++;
-            } else {
-              Log.d('Recurring already exists and local data is newer, skipping: ${recurringModel.name}', label: _label);
-            }
+            // Recurring exists → ALWAYS UPDATE to fix foreign keys (wallet/category may have changed)
+            // Using updateFromCloud which updates walletId/categoryId without re-uploading
+            Log.d('Updating existing recurring to fix foreign keys: ${recurringModel.name}', label: _label);
+            await db.recurringDao.updateFromCloud(recurringModel);
+            processedCount++;
           }
         } catch (e) {
           Log.e('Failed to process recurring: $e', label: _label);
