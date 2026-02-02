@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/stripe/stripe_service.dart';
-import 'package:bexly/core/services/firebase_init_service.dart';
+import 'package:bexly/core/services/supabase_init_service.dart';
 import 'package:bexly/features/bank_connections/data/models/linked_account_model.dart';
 
 /// Service for managing bank connections via Stripe Financial Connections
@@ -12,23 +12,17 @@ class BankConnectionService {
   static const String _baseUrl = 'https://api-v2.dos.me/bank';
   static const String _label = 'BankConnection';
 
-  /// Get Firebase ID token for authentication (force refresh to avoid expired token)
-  static Future<String> _getIdToken() async {
-    final dosmeApp = FirebaseInitService.dosmeApp;
-    if (dosmeApp == null) {
-      throw Exception('DOS-Me Firebase not initialized');
+  /// Get Supabase access token for authentication
+  static Future<String> _getAccessToken() async {
+    if (!SupabaseInitService.isInitialized) {
+      throw Exception('Supabase not initialized');
     }
-    final auth = FirebaseAuth.instanceFor(app: dosmeApp);
-    final user = auth.currentUser;
-    if (user == null) {
+    final session = SupabaseInitService.client.auth.currentSession;
+    if (session == null) {
       throw Exception('User not authenticated');
     }
-    // Force refresh token to ensure it's not expired
-    final token = await user.getIdToken(true);
-    if (token == null) {
-      throw Exception('Failed to get ID token');
-    }
-    Log.i('Got ID token for user: ${user.uid}', label: _label);
+    final token = session.accessToken;
+    Log.i('Got Supabase access token for user: ${session.user.id}', label: _label);
     return token;
   }
 
@@ -38,14 +32,14 @@ class BankConnectionService {
     Log.i('Starting bank account linking flow', label: _label);
 
     try {
-      final idToken = await _getIdToken();
+      final accessToken = await _getAccessToken();
       Log.d('Got token, creating session at $_baseUrl/session', label: _label);
 
       // Step 1: Create session via DOS-Me API
       final sessionResponse = await http.post(
         Uri.parse('$_baseUrl/session'),
         headers: {
-          'Authorization': 'Bearer $idToken',
+          'Authorization': 'Bearer $accessToken',
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
@@ -125,7 +119,7 @@ class BankConnectionService {
       final completeResponse = await http.post(
         Uri.parse('$_baseUrl/complete'),
         headers: {
-          'Authorization': 'Bearer $idToken',
+          'Authorization': 'Bearer $accessToken',
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
@@ -171,13 +165,13 @@ class BankConnectionService {
   static Future<List<LinkedAccount>> getLinkedAccounts() async {
     try {
       Log.d('getLinkedAccounts() called', label: _label);
-      final idToken = await _getIdToken();
+      final accessToken = await _getAccessToken();
       Log.d('Got token, calling GET /accounts', label: _label);
 
       final response = await http.get(
         Uri.parse('$_baseUrl/accounts'),
         headers: {
-          'Authorization': 'Bearer $idToken',
+          'Authorization': 'Bearer $accessToken',
         },
       );
 
@@ -232,12 +226,12 @@ class BankConnectionService {
     Log.i('Syncing transactions...', label: _label);
 
     try {
-      final idToken = await _getIdToken();
+      final accessToken = await _getAccessToken();
 
       final response = await http.post(
         Uri.parse('$_baseUrl/sync'),
         headers: {
-          'Authorization': 'Bearer $idToken',
+          'Authorization': 'Bearer $accessToken',
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
@@ -266,12 +260,12 @@ class BankConnectionService {
     Log.i('Disconnecting account: $accountId', label: _label);
 
     try {
-      final idToken = await _getIdToken();
+      final accessToken = await _getAccessToken();
 
       final response = await http.delete(
         Uri.parse('$_baseUrl/accounts/$accountId'),
         headers: {
-          'Authorization': 'Bearer $idToken',
+          'Authorization': 'Bearer $accessToken',
         },
       );
 
