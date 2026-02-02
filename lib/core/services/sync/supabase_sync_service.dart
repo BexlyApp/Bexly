@@ -1783,18 +1783,16 @@ class SupabaseSyncService {
     }
 
     try {
-      // Soft delete using Tombstone pattern (mark as deleted instead of hard delete)
+      // HARD DELETE - completely remove from cloud
+      // Local uses soft delete (Tombstone) for instant UX, cloud uses hard delete
       await _supabase
           .schema('bexly')
           .from('goals')
-          .update({
-            'is_deleted': true,
-            'deleted_at': DateTime.now().toUtc().toIso8601String(),
-          })
+          .delete()
           .eq('cloud_id', cloudId)
           .eq('user_id', _userId!);
 
-      Log.d('Goal soft deleted from cloud: $cloudId', label: _label);
+      Log.d('Goal HARD deleted from cloud: $cloudId', label: _label);
     } catch (e) {
       Log.e('Error deleting goal from cloud: $e', label: _label);
       rethrow;
