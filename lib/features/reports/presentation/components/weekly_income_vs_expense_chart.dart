@@ -14,11 +14,13 @@ import 'package:bexly/features/reports/presentation/riverpod/financial_health_pr
 import 'package:bexly/core/extensions/localization_extension.dart';
 
 class WeeklyIncomeExpenseChart extends ConsumerWidget {
-  const WeeklyIncomeExpenseChart({super.key});
+  final DateTime date;
+
+  const WeeklyIncomeExpenseChart({super.key, required this.date});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(weeklySummaryProvider);
+    final summaryAsync = ref.watch(weeklySummaryForMonthProvider(date));
 
     return ChartContainer(
       title: context.l10n.weeklyOverview,

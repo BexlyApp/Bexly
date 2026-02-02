@@ -74,7 +74,7 @@ class BasicMonthlyReportScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.spacing20),
 
                 // Weekly trend chart
-                const WeeklyIncomeExpenseChart(),
+                WeeklyIncomeExpenseChart(date: date),
                 const SizedBox(height: AppSpacing.spacing20),
 
                 // 6 months trend chart

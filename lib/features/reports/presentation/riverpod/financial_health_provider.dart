@@ -12,11 +12,18 @@ final sixMonthSummaryProvider =
   return repo.getLastMonthsSummary(6);
 });
 
-// Provider for weekly summary
+// Provider for weekly summary (current month - legacy)
 final weeklySummaryProvider =
     FutureProvider.autoDispose<List<WeeklyFinancialSummary>>((ref) async {
   final repo = ref.watch(financialHealthRepositoryProvider);
-  return repo.getCurrentMonthWeeklySummary();
+  return repo.getWeeklySummaryForMonth(DateTime.now());
+});
+
+// Provider for weekly summary with specific month
+final weeklySummaryForMonthProvider =
+    FutureProvider.autoDispose.family<List<WeeklyFinancialSummary>, DateTime>((ref, date) async {
+  final repo = ref.watch(financialHealthRepositoryProvider);
+  return repo.getWeeklySummaryForMonth(date);
 });
 
 // Repository provider

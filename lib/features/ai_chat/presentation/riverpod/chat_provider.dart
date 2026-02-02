@@ -3056,7 +3056,9 @@ Please create a transaction based on this receipt data.''';
   /// Get list of budgets for AI context
   Future<String> _getBudgetsListText(Map<String, dynamic> action) async {
     try {
-      final budgets = await ref.read(budgetListProvider.future);
+      // Use DAO directly instead of provider to avoid autoDispose issues
+      final budgetDao = ref.read(budgetDaoProvider);
+      final budgets = await budgetDao.watchAllBudgets().first;
       final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       final currency = wallet?.currency ?? 'VND';
 
@@ -3199,7 +3201,9 @@ Please create a transaction based on this receipt data.''';
     try {
       print('🗑️ [DELETE_ALL] Starting delete all budgets...');
       final period = action['period'] ?? 'all'; // Default to 'all' to delete everything
-      final budgets = await ref.read(budgetListProvider.future);
+      // Use DAO directly instead of provider to avoid autoDispose issues
+      final budgetDao = ref.read(budgetDaoProvider);
+      final budgets = await budgetDao.watchAllBudgets().first;
 
       print('🗑️ [DELETE_ALL] period=$period, total budgets=${budgets.length}');
       Log.d('Delete all budgets: period=$period, total budgets=${budgets.length}', label: 'DELETE_ALL_BUDGETS');
@@ -3208,7 +3212,6 @@ Please create a transaction based on this receipt data.''';
         return '📋 Không có budget nào để xoá.';
       }
 
-      final budgetDao = ref.read(budgetDaoProvider);
       final now = DateTime.now();
       final currentMonthStart = DateTime(now.year, now.month, 1);
       final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
@@ -3251,8 +3254,9 @@ Please create a transaction based on this receipt data.''';
       final budgetId = (action['budgetId'] as num).toInt();
       Log.d('Updating budget ID: $budgetId', label: 'UPDATE_BUDGET');
 
-      final budgets = await ref.read(budgetListProvider.future);
-      final budget = budgets.firstWhereOrNull((b) => b.id == budgetId);
+      // Use DAO directly instead of provider to avoid autoDispose issues
+      final budgetDao = ref.read(budgetDaoProvider);
+      final budget = await budgetDao.getBudgetById(budgetId);
 
       if (budget == null) {
         return '❌ Không tìm thấy budget #$budgetId.';
@@ -3269,7 +3273,6 @@ Please create a transaction based on this receipt data.''';
         updatedAt: DateTime.now(),
       );
 
-      final budgetDao = ref.read(budgetDaoProvider);
       await budgetDao.updateBudget(updatedBudget);
 
       // Invalidate providers to refresh UI
@@ -3352,11 +3355,13 @@ Please create a transaction based on this receipt data.''';
   Future<void> _updateBudgetsContext() async {
     try {
       print('[AI_CONTEXT] _updateBudgetsContext START');
-      final budgets = await ref.read(budgetListProvider.future).timeout(
+      // Use DAO directly instead of provider to avoid autoDispose issues
+      final budgetDao = ref.read(budgetDaoProvider);
+      final budgets = await budgetDao.watchAllBudgets().first.timeout(
         const Duration(seconds: 5),
         onTimeout: () {
           print('[AI_CONTEXT] Budget fetch TIMEOUT');
-          return [];
+          return <BudgetModel>[];
         },
       );
       print('[AI_CONTEXT] Got ${budgets.length} budgets');

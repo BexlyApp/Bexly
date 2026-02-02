@@ -310,6 +310,164 @@ class DeveloperPortalScreen extends HookConsumerWidget {
                         );
                       },
                     ),
+                  // Force Pull from Cloud (Goals & Budgets)
+                  if (isAuthenticated)
+                    MenuTileButton(
+                      label: 'Force Pull Goals & Budgets from Cloud',
+                      icon: HugeIcons.strokeRoundedCloudDownload,
+                      onTap: () async {
+                        context.openBottomSheet(
+                          isScrollControlled: false,
+                          child: AlertBottomSheet(
+                            title: 'Force Pull from Cloud',
+                            content: Text(
+                              'This will:\n\n'
+                              '• First sync wallets and categories (needed for budgets)\n'
+                              '• Pull goals from Supabase\n'
+                              '• Pull budgets from Supabase\n\n'
+                              'Check logs for details if data doesn\'t appear.',
+                              style: AppTextStyles.body2,
+                            ),
+                            onConfirm: () async {
+                              try {
+                                context.pop();
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) => const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+
+                                final syncService = ref.read(supabase_sync.supabaseSyncServiceProvider);
+
+                                Log.i('🔄 Starting force pull from cloud...');
+
+                                // Step 1: Pull wallets and categories first (needed for budgets)
+                                Log.i('📦 Pulling wallets from cloud...');
+                                await syncService.pullWalletsFromCloud();
+
+                                Log.i('📦 Pulling categories from cloud...');
+                                await syncService.pullCategoriesFromCloud();
+
+                                // Step 2: Pull goals (no dependencies)
+                                Log.i('🎯 Pulling goals from cloud...');
+                                await syncService.pullGoalsFromCloud();
+
+                                // Step 3: Pull budgets (depends on wallets and categories)
+                                Log.i('💰 Pulling budgets from cloud...');
+                                await syncService.pullBudgetsFromCloud();
+
+                                Log.i('✅ Force pull completed!');
+
+                                if (context.mounted) {
+                                  context.pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('✅ Goals & Budgets pulled from cloud!\nCheck logs for details.'),
+                                      backgroundColor: Colors.green,
+                                      duration: Duration(seconds: 5),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                Log.e('❌ Force pull failed: $e');
+                                if (context.mounted) {
+                                  context.pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('❌ Pull failed: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  // Debug CloudIds (check sync status)
+                  if (isAuthenticated)
+                    MenuTileButton(
+                      label: 'Debug: Check CloudIds Status',
+                      icon: HugeIcons.strokeRoundedBug01,
+                      onTap: () async {
+                        try {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+
+                          final db = ref.read(databaseProvider);
+
+                          // Check wallets
+                          final wallets = await db.walletDao.getAllWallets();
+                          final walletsWithCloudId = wallets.where((w) => w.cloudId != null).length;
+
+                          // Check categories
+                          final categories = await db.categoryDao.getAllCategories();
+                          final categoriesWithCloudId = categories.where((c) => c.cloudId != null).length;
+
+                          // Check budgets
+                          final budgets = await db.budgetDao.getAllBudgets();
+                          final budgetsWithCloudId = budgets.where((b) => b.cloudId != null).length;
+
+                          // Check goals
+                          final goals = await db.goalDao.getAllGoals();
+                          final goalsWithCloudId = goals.where((g) => g.cloudId != null).length;
+
+                          Log.i('📊 CloudId Status:', label: 'Debug');
+                          Log.i('  Wallets: $walletsWithCloudId/${wallets.length} have cloudId', label: 'Debug');
+                          Log.i('  Categories: $categoriesWithCloudId/${categories.length} have cloudId', label: 'Debug');
+                          Log.i('  Budgets: $budgetsWithCloudId/${budgets.length} have cloudId', label: 'Debug');
+                          Log.i('  Goals: $goalsWithCloudId/${goals.length} have cloudId', label: 'Debug');
+
+                          // List wallets without cloudId
+                          final walletsWithoutCloudId = wallets.where((w) => w.cloudId == null).toList();
+                          if (walletsWithoutCloudId.isNotEmpty) {
+                            Log.w('⚠️ Wallets WITHOUT cloudId:', label: 'Debug');
+                            for (final w in walletsWithoutCloudId) {
+                              Log.w('  - ${w.name} (id: ${w.id})', label: 'Debug');
+                            }
+                          }
+
+                          if (context.mounted) {
+                            context.pop();
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('CloudId Status'),
+                                content: Text(
+                                  'Wallets: $walletsWithCloudId/${wallets.length} have cloudId\n'
+                                  'Categories: $categoriesWithCloudId/${categories.length} have cloudId\n'
+                                  'Budgets: $budgetsWithCloudId/${budgets.length} have cloudId\n'
+                                  'Goals: $goalsWithCloudId/${goals.length} have cloudId\n\n'
+                                  '${walletsWithoutCloudId.isNotEmpty ? "⚠️ Some wallets missing cloudId!\nThis can cause budget sync to fail." : "✅ All wallets have cloudId"}\n\n'
+                                  'Check console logs for details.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            context.pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('❌ Error: $e')),
+                            );
+                          }
+                        }
+                      },
+                    ),
                   // Re-populate Categories
                   MenuTileButton(
                     label: context.l10n.repopulateCategories,
