@@ -20,6 +20,7 @@ import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
+import 'package:bexly/features/pending_transactions/data/models/pending_transaction_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/services/receipt_storage/receipt_storage_service_provider.dart';
@@ -366,34 +367,51 @@ TransactionFormState useTransactionFormState({
   required bool isEditing,
   TransactionModel? transaction,
   ReceiptScanResult? receiptData,
+  PendingTransactionModel? pendingTransaction,
 }) {
+  // Initialize title from transaction, receipt, or pending
   final titleController = useTextEditingController(
     text: isEditing
         ? transaction?.title
-        : receiptData?.merchant ?? '',
+        : receiptData?.merchant ?? pendingTransaction?.merchant ?? pendingTransaction?.title ?? '',
   );
+
+  // Initialize amount from transaction, receipt, or pending
   final amountController = useTextEditingController(
     text: isEditing && transaction != null
         ? '$defaultCurrency ${transaction.amount.toPriceFormat()}'
         : receiptData != null
             ? '${receiptData.currency ?? defaultCurrency} ${receiptData.amount.toPriceFormat()}'
-            : '',
+            : pendingTransaction != null
+                ? '${pendingTransaction.currency} ${pendingTransaction.amount.toPriceFormat()}'
+                : '',
   );
+
+  // Initialize notes from transaction, receipt, or pending transaction
   final notesController = useTextEditingController(
     text: isEditing
         ? transaction?.notes ?? ''
         : receiptData != null && receiptData.items.isNotEmpty
             ? receiptData.items.join(', ')
-            : '',
+            : pendingTransaction?.userNotes ?? '',
   );
   final categoryController = useTextEditingController();
   final walletController = useTextEditingController();
-  final dateFieldController = useTextEditingController();
 
+  // Initialize date from pending transaction if available
+  final dateFieldController = useTextEditingController(
+    text: pendingTransaction != null
+        ? pendingTransaction.transactionDate.toRelativeDayFormatted(showTime: true)
+        : '',
+  );
+
+  // Initialize transaction type from transaction or pending
   final selectedTransactionType = useState<TransactionType>(
     isEditing && transaction != null
         ? transaction.transactionType
-        : TransactionType.expense,
+        : pendingTransaction != null
+            ? (pendingTransaction.isIncome ? TransactionType.income : TransactionType.expense)
+            : TransactionType.expense,
   );
   final selectedCategory = useState<CategoryModel?>(
     isEditing ? transaction?.category : null,
@@ -597,6 +615,74 @@ TransactionFormState useTransactionFormState({
       return null;
     },
     [receiptData],
+  );
+
+  // Handle pending transaction pre-fill (from email sync or bank connection)
+  useEffect(
+    () {
+      if (pendingTransaction != null && !isEditing) {
+        Future.microtask(() async {
+          // Populate title from merchant or email subject
+          final displayTitle = pendingTransaction.merchant ?? pendingTransaction.title;
+          titleController.text = displayTitle;
+
+          // Populate amount with currency prefix
+          final currency = pendingTransaction.currency;
+          amountController.text = '$currency ${pendingTransaction.amount.toPriceFormat()}';
+
+          // Set transaction type based on pending
+          selectedTransactionType.value = pendingTransaction.isIncome
+              ? TransactionType.income
+              : TransactionType.expense;
+
+          // Set date
+          dateFieldController.text = pendingTransaction.transactionDate.toRelativeDayFormatted(showTime: true);
+
+          // Auto-select wallet matching currency
+          final db = ref.read(databaseProvider);
+          final wallets = await db.walletDao.watchAllWallets().first;
+
+          // Find wallet with matching currency
+          WalletModel? matchingWallet;
+          try {
+            matchingWallet = wallets.firstWhere(
+              (w) => w.currency.toUpperCase() == currency.toUpperCase(),
+            );
+          } catch (e) {
+            // No matching wallet found, use first available
+            matchingWallet = wallets.firstOrNull;
+          }
+
+          if (matchingWallet != null && matchingWallet.id != null) {
+            selectedWallet.value = matchingWallet;
+          }
+
+          // Auto-select category from categoryHint
+          if (pendingTransaction.categoryHint != null) {
+            final allCategories = await db.categoryDao.watchAllCategories().first;
+            final hintLower = pendingTransaction.categoryHint!.toLowerCase();
+            final transactionType = pendingTransaction.isIncome ? 'income' : 'expense';
+
+            CategoryModel? matchedCategory;
+            for (final dbCat in allCategories) {
+              if (dbCat.transactionType == transactionType) {
+                if (dbCat.title.toLowerCase().contains(hintLower) ||
+                    hintLower.contains(dbCat.title.toLowerCase())) {
+                  matchedCategory = dbCat.toModel();
+                  break;
+                }
+              }
+            }
+
+            if (matchedCategory != null) {
+              selectedCategory.value = matchedCategory;
+            }
+          }
+        });
+      }
+      return null;
+    },
+    [pendingTransaction],
   );
 
   useEffect(
