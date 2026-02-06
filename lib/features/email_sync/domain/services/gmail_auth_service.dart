@@ -21,11 +21,29 @@ class GmailConnectCancelled extends GmailConnectResult {
   const GmailConnectCancelled();
 }
 
+/// Indicates user needs to complete OAuth in browser (dos.me ID mode)
+class GmailConnectPendingBrowser extends GmailConnectResult {
+  final String connectUrl;
+
+  const GmailConnectPendingBrowser({required this.connectUrl});
+}
+
 class GmailConnectError extends GmailConnectResult {
   final String message;
   final Object? error;
 
   const GmailConnectError(this.message, [this.error]);
+}
+
+/// Result with auth code for server exchange (dos.me ID mode)
+class GmailConnectWithAuthCode extends GmailConnectResult {
+  final String email;
+  final String authCode;
+
+  const GmailConnectWithAuthCode({
+    required this.email,
+    required this.authCode,
+  });
 }
 
 /// Service for Gmail OAuth authentication for email sync feature.
@@ -92,6 +110,81 @@ class GmailAuthService {
       return GmailConnectSuccess(
         email: googleUser.email,
       );
+    } on PlatformException catch (e) {
+      if (e.code == 'sign_in_canceled') {
+        Log.i('Gmail connection cancelled by user', label: _label);
+        return const GmailConnectCancelled();
+      }
+      Log.e('Gmail connection failed: [${e.code}] ${e.message}', label: _label);
+      return GmailConnectError('[${e.code}] ${e.message ?? "Unknown error"}', e);
+    } catch (e) {
+      Log.e('Gmail connection failed: $e', label: _label);
+      return GmailConnectError(e.toString(), e);
+    }
+  }
+
+  /// Connect Gmail and get authorization code for server exchange.
+  ///
+  /// This is used for dos.me ID mode where:
+  /// 1. Native Google Sign In gets auth code via authorizeServer()
+  /// 2. Auth code is sent to dos.me ID for exchange
+  /// 3. dos.me ID stores refresh token securely
+  ///
+  /// Requires serverClientId to be configured in GoogleSignIn.
+  ///
+  /// Note: We intentionally DO NOT sign out before authenticate because:
+  /// - We want to keep the local session as a fallback
+  /// - If dos.me ID token refresh fails, local session can still work
+  /// - authorizeServer() will still return a fresh auth code
+  Future<GmailConnectResult> connectGmailWithAuthCode() async {
+    try {
+      Log.i('Starting Gmail connection with auth code for dos.me ID', label: _label);
+
+      // Authenticate with Google (don't sign out - keep local session as fallback)
+      final googleUser = await _signIn.authenticate(
+        scopeHint: _gmailScopes,
+      );
+
+      Log.i('Gmail authenticated: ${googleUser.email}', label: _label);
+
+      // Request server authorization code using authorizeServer()
+      // This is the google_sign_in 7.x way to get serverAuthCode
+      Log.i('Requesting server authorization code...', label: _label);
+      final serverAuth = await googleUser.authorizationClient.authorizeServer(_gmailScopes);
+
+      if (serverAuth != null && serverAuth.serverAuthCode.isNotEmpty) {
+        Log.i('Got server auth code for dos.me ID exchange', label: _label);
+
+        // Also get local access token as fallback in case dos.me exchange fails
+        try {
+          final authorization = await googleUser.authorizationClient.authorizeScopes(_gmailScopes);
+          if (_gmailApiService != null) {
+            _gmailApiService!.cacheAccessToken(authorization.accessToken);
+            Log.i('Access token cached as fallback', label: _label);
+          }
+        } catch (e) {
+          Log.w('Could not cache fallback access token: $e', label: _label);
+        }
+
+        return GmailConnectWithAuthCode(
+          email: googleUser.email,
+          authCode: serverAuth.serverAuthCode,
+        );
+      }
+
+      // No serverAuthCode - serverClientId might not be configured
+      // Fall back to getting authorization which gives access token
+      Log.w('No serverAuthCode returned - serverClientId may not be configured', label: _label);
+      Log.w('Falling back to access token flow', label: _label);
+
+      final authorization = await googleUser.authorizationClient.authorizeScopes(_gmailScopes);
+
+      // Cache the token in GmailApiService if available
+      if (_gmailApiService != null) {
+        _gmailApiService!.cacheAccessToken(authorization.accessToken);
+      }
+
+      return GmailConnectSuccess(email: googleUser.email);
     } on PlatformException catch (e) {
       if (e.code == 'sign_in_canceled') {
         Log.i('Gmail connection cancelled by user', label: _label);
