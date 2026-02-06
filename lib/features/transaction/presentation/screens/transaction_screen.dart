@@ -22,7 +22,7 @@ import 'package:bexly/features/transaction/presentation/riverpod/transaction_pro
 import 'package:bexly/features/transaction/presentation/screens/transaction_filter_form_dialog.dart';
 import 'package:bexly/features/pending_transactions/riverpod/pending_transaction_provider.dart';
 import 'package:bexly/features/pending_transactions/data/models/pending_transaction_model.dart';
-import 'package:bexly/features/pending_transactions/presentation/components/pending_transaction_tile.dart';
+import 'package:bexly/features/pending_transactions/presentation/components/pending_transaction_grouped_list.dart';
 import 'package:bexly/features/pending_transactions/presentation/screens/approve_transaction_sheet.dart';
 
 class TransactionScreen extends ConsumerWidget {
@@ -93,25 +93,30 @@ class TransactionScreen extends ConsumerWidget {
             lastMonthDate,
           );
 
+          // Read initial tab request (no subscription, avoids rebuild)
+          final initialTab = ref.read(requestedTransactionTabProvider) ?? 0;
+
           return DefaultTabController(
             length: 3, // This Month, Last Month, Pending
-            initialIndex: 0, // Start on This Month
-            child: Column(
-              children: [
-                TransactionTabBar(pendingCount: pendingCount),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      // Tab 1: This Month
-                      _buildMonthTab(context, thisMonthTransactions),
-                      // Tab 2: Last Month
-                      _buildMonthTab(context, lastMonthTransactions),
-                      // Tab 3: Pending
-                      _buildPendingTabContent(context, ref, pendingTransactionsAsync),
-                    ],
+            initialIndex: initialTab,
+            child: _TabRequestHandler(
+              child: Column(
+                children: [
+                  TransactionTabBar(pendingCount: pendingCount),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        // Tab 1: This Month
+                        _buildMonthTab(context, thisMonthTransactions),
+                        // Tab 2: Last Month
+                        _buildMonthTab(context, lastMonthTransactions),
+                        // Tab 3: Pending
+                        _buildPendingTabContent(context, ref, pendingTransactionsAsync),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -201,19 +206,11 @@ class TransactionScreen extends ConsumerWidget {
           );
         }
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(AppSpacing.spacing16),
-          itemCount: pending.length,
-          separatorBuilder: (_, __) => const Gap(AppSpacing.spacing12),
-          itemBuilder: (context, index) {
-            final item = pending[index];
-            return PendingTransactionTile(
-              pending: item,
-              onApprove: () => ApproveTransactionSheet.show(context, item),
-              onReject: () => _rejectTransaction(context, ref, item),
-              onTap: () => ApproveTransactionSheet.show(context, item),
-            );
-          },
+        return PendingTransactionGroupedList(
+          pendingTransactions: pending,
+          onApprove: (item) => ApproveTransactionSheet.show(context, item),
+          onReject: (item) => _rejectTransaction(context, ref, item),
+          onTap: (item) => ApproveTransactionSheet.show(context, item),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -238,5 +235,37 @@ class TransactionScreen extends ConsumerWidget {
         autoCloseDuration: const Duration(seconds: 2),
       );
     }
+  }
+}
+
+/// Handles tab navigation requests from other screens (e.g., email sync).
+/// Must be placed inside a DefaultTabController subtree.
+class _TabRequestHandler extends ConsumerWidget {
+  final Widget child;
+
+  const _TabRequestHandler({required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Listen for future tab change requests
+    ref.listen<int?>(requestedTransactionTabProvider, (prev, next) {
+      if (next != null) {
+        DefaultTabController.of(context).animateTo(next);
+        ref.read(requestedTransactionTabProvider.notifier).clear();
+      }
+    });
+
+    // Handle initial request when screen first builds
+    final initialRequest = ref.read(requestedTransactionTabProvider);
+    if (initialRequest != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          DefaultTabController.of(context).animateTo(initialRequest);
+        }
+        ref.read(requestedTransactionTabProvider.notifier).clear();
+      });
+    }
+
+    return child;
   }
 }

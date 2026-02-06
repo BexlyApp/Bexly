@@ -22,7 +22,8 @@ class LLMEmailParserService {
     this.baseUrl,
     this.model,
   })  : provider = provider ?? LLMDefaultConfig.provider,
-        apiKey = apiKey ?? _getDefaultApiKey(provider);
+        // Fix: use resolved provider value, not the null parameter
+        apiKey = apiKey ?? _getDefaultApiKey(provider ?? LLMDefaultConfig.provider);
 
   static String _getDefaultApiKey(String? provider) {
     switch (provider?.toLowerCase()) {
@@ -99,7 +100,8 @@ Extract the following information and respond ONLY with valid JSON (no markdown,
   "balanceAfter": <number>, // Account balance after transaction (if mentioned)
   "rawAmountText": "Original amount text from email",
   "bankName": "Bank Name", // Extract from email sender or content
-  "confidence": 0.9 // Your confidence score (0.0-1.0)
+  "confidence": 0.9, // Your confidence score (0.0-1.0)
+  "sourceDescription": "Short description" // A clean 1-2 line summary of the transaction from original content
 }
 
 RULES:
@@ -108,7 +110,8 @@ RULES:
 3. merchant: Extract business name, recipient, or transaction description
 4. categoryHint: Choose the most appropriate category from the list above
 5. If you cannot extract certain fields, use null
-6. Respond with ONLY the JSON object, no additional text
+6. sourceDescription: Create a clean, short summary (1-2 lines) in the original language that captures the key transaction info (who, what, when). Example: "ACB: TK xxx9999 giảm 150,000đ chuyển đến NGUYEN VAN A lúc 14:30"
+7. Respond with ONLY the JSON object, no additional text
 
 JSON:''';
   }
@@ -235,6 +238,7 @@ JSON:''';
         rawAmountText: json['rawAmountText'] as String? ?? amount.toString(),
         categoryHint: json['categoryHint'] as String?,
         bankName: json['bankName'] as String? ?? 'Unknown Bank',
+        sourceDescription: json['sourceDescription'] as String?,
       );
     } catch (e, stack) {
       Log.e('Error parsing JSON response: $e', label: _label);

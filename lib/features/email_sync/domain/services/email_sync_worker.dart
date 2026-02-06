@@ -145,6 +145,7 @@ class EmailSyncWorker {
               rawAmountText: parsed.rawAmountText,
               categoryHint: parsed.categoryHint,
               bankName: parsed.bankName,
+              sourceDescription: parsed.sourceDescription,
             ));
           }
         } catch (e) {
@@ -193,6 +194,7 @@ class EmailSyncWorker {
             rawAmountText: tx.rawAmountText,
             categoryHint: Value(tx.categoryHint),
             bankName: tx.bankName,
+            userNotes: Value(tx.sourceDescription),
           ),
         );
         savedCount++;
@@ -244,6 +246,7 @@ class ParsedEmailTransactionModel {
   final String rawAmountText;
   final String? categoryHint;
   final String bankName;
+  final String? sourceDescription;
 
   const ParsedEmailTransactionModel({
     required this.emailId,
@@ -261,5 +264,6 @@ class ParsedEmailTransactionModel {
     required this.rawAmountText,
     this.categoryHint,
     required this.bankName,
+    this.sourceDescription,
   });
 }

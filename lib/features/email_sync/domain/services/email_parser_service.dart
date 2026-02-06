@@ -18,6 +18,9 @@ class ParsedEmail {
   final String rawAmountText;
   final String? categoryHint;
   final String bankName;
+  /// Cleaned 1-2 line description from source content (email/SMS body)
+  /// This will be used to auto-populate transaction notes
+  final String? sourceDescription;
 
   const ParsedEmail({
     required this.emailId,
@@ -35,6 +38,7 @@ class ParsedEmail {
     required this.rawAmountText,
     this.categoryHint,
     required this.bankName,
+    this.sourceDescription,
   });
 
   @override

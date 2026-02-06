@@ -40,11 +40,27 @@ const List<BankSender> knownBankSenders = [
   BankSender(senderId: 'VIB', bankName: 'VIB', bankCode: 'VIB', country: 'VN'),
   BankSender(senderId: 'LienVietPostBank', bankName: 'LienVietPostBank', bankCode: 'LPB', country: 'VN'),
 
-  // E-wallets Vietnam
-  BankSender(senderId: 'MoMo', bankName: 'MoMo', bankCode: 'MOMO', country: 'VN'),
+  // More Vietnam Banks
+  BankSender(senderId: 'Eximbank', bankName: 'Eximbank', bankCode: 'EIB', country: 'VN'),
+  BankSender(senderId: 'ABBank', bankName: 'ABBank', bankCode: 'ABB', country: 'VN'),
+  BankSender(senderId: 'NCB', bankName: 'NCB', bankCode: 'NCB', country: 'VN'),
+  BankSender(senderId: 'PVcomBank', bankName: 'PVcomBank', bankCode: 'PVCB', country: 'VN'),
+  BankSender(senderId: 'NamABank', bankName: 'Nam A Bank', bankCode: 'NAB', country: 'VN'),
+  BankSender(senderId: 'KienLongBank', bankName: 'Kien Long Bank', bankCode: 'KLB', country: 'VN'),
+  BankSender(senderId: 'BaoVietBank', bankName: 'BaoViet Bank', bankCode: 'BVB', country: 'VN'),
+  BankSender(senderId: 'VietABank', bankName: 'VietA Bank', bankCode: 'VAB', country: 'VN'),
+  BankSender(senderId: 'GPBank', bankName: 'GP Bank', bankCode: 'GPB', country: 'VN'),
+  BankSender(senderId: 'Cake', bankName: 'Cake by VPBank', bankCode: 'CAKE', country: 'VN'),
+  BankSender(senderId: 'Timo', bankName: 'Timo', bankCode: 'TIMO', country: 'VN'),
+  BankSender(senderId: 'TNEX', bankName: 'TNEX', bankCode: 'TNEX', country: 'VN'),
+
+  // E-wallets Vietnam (MoMo removed - only sends ads, not transaction SMS)
   BankSender(senderId: 'ZaloPay', bankName: 'ZaloPay', bankCode: 'ZALO', country: 'VN'),
   BankSender(senderId: 'VNPay', bankName: 'VNPay', bankCode: 'VNPAY', country: 'VN'),
   BankSender(senderId: 'ShopeePay', bankName: 'ShopeePay', bankCode: 'SPAY', country: 'VN'),
+  BankSender(senderId: 'VTMONEY', bankName: 'Viettel Money', bankCode: 'VTMONEY', country: 'VN'),
+  BankSender(senderId: 'ViettelPay', bankName: 'Viettel Money', bankCode: 'VTMONEY', country: 'VN'),
+  BankSender(senderId: 'Grab', bankName: 'GrabPay', bankCode: 'GRAB', country: 'VN'),
 
   // International Banks
   BankSender(senderId: 'HSBC', bankName: 'HSBC', bankCode: 'HSBC', country: 'INTL'),

@@ -1,19 +1,27 @@
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/core/extensions/string_extension.dart';
 import 'package:bexly/core/extensions/text_style_extensions.dart';
+import 'package:bexly/features/category/data/model/icon_type.dart';
+import 'package:bexly/features/category_picker/presentation/components/category_icon.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
 import 'package:bexly/features/pending_transactions/data/models/pending_transaction_model.dart';
-import 'package:intl/intl.dart';
 
-/// Tile widget for displaying a pending transaction with source tag
-class PendingTransactionTile extends ConsumerWidget {
+/// Tile widget for displaying a pending transaction
+/// Design matches TransactionTile from the transaction list
+class PendingTransactionTile extends HookConsumerWidget {
   final PendingTransactionModel pending;
   final VoidCallback? onApprove;
   final VoidCallback? onReject;
@@ -29,7 +37,34 @@ class PendingTransactionTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isIncome = pending.isIncome;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Get currency info
+    final currencies = ref.watch(currenciesStaticProvider);
+    final currencyData = currencies.fromIsoCode(pending.currency);
+    final currencySymbol = currencyData?.symbol ?? pending.currency;
+
+    // Get display texts - handle garbage merchant names from parser
+    final rawTitle = pending.merchant ?? pending.title;
+    // If merchant is too short or looks like garbage, use bank name + transaction type
+    final displayTitle = (rawTitle.length <= 4 || !_isValidMerchantName(rawTitle))
+        ? '${pending.sourceDisplayName} ${pending.isIncome ? 'Credit' : 'Debit'}'
+        : rawTitle;
+    final displaySubtitle = pending.categoryHint ?? pending.sourceDisplayName;
+
+    // Watch for matching category
+    final db = ref.watch(databaseProvider);
+    final matchedCategory = useState<Category?>(null);
+
+    // Match category from categoryHint
+    useEffect(() {
+      final subscription = db.categoryDao.watchAllCategories().listen((categories) {
+        final matched = _findMatchingCategory(categories, pending);
+        matchedCategory.value = matched;
+      });
+      return subscription.cancel;
+    }, [pending.id]);
 
     return Dismissible(
       key: Key('pending_${pending.id}'),
@@ -49,213 +84,263 @@ class PendingTransactionTile extends ConsumerWidget {
         } else {
           onReject?.call();
         }
-        return false; // Don't auto-dismiss, let the callback handle it
+        return false;
       },
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.radius12),
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.spacing12),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.neutral800 : Colors.white,
-            borderRadius: BorderRadius.circular(AppRadius.radius12),
-            border: Border.all(
-              color: isDark ? AppColors.neutral700 : AppColors.neutral200,
-            ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.neutralAlpha25 : AppColors.neutral50,
+          borderRadius: BorderRadius.circular(AppRadius.radius12),
+          border: Border.all(
+            color: isDark ? AppColors.neutralAlpha25 : AppColors.neutralAlpha10,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Top row: Source tag + Date
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildSourceTag(context),
-                  Text(
-                    DateFormat('dd/MM/yyyy').format(pending.transactionDate),
-                    style: AppTextStyles.body5.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Main transaction row - EXACTLY like TransactionTile
+            InkWell(
+              onTap: onTap,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(AppRadius.radius12),
+                topRight: Radius.circular(AppRadius.radius12),
               ),
-              const Gap(AppSpacing.spacing8),
-
-              // Main content row
-              Row(
-                children: [
-                  // Source icon
-                  _buildSourceIcon(context, isDark),
-                  const Gap(AppSpacing.spacing12),
-
-                  // Title and source name
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AutoSizeText(
-                          pending.title,
-                          style: AppTextStyles.body3.bold,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+              child: Container(
+                height: 70,
+                padding: const EdgeInsets.only(right: AppSpacing.spacing12),
+                child: Row(
+                  children: [
+                    // Icon section (70x70) - same as TransactionTile
+                    Container(
+                      width: 70,
+                      height: 70,
+                      padding: const EdgeInsets.all(AppSpacing.spacing12),
+                      decoration: BoxDecoration(
+                        color: isIncome
+                            ? context.incomeBackground
+                            : context.expenseBackground,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(AppRadius.radius12 - 1),
                         ),
-                        const Gap(2),
-                        Row(
-                          children: [
-                            Flexible(
-                              child: AutoSizeText(
-                                pending.sourceDisplayName,
-                                style: AppTextStyles.body4.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                      ),
+                      child: matchedCategory.value != null
+                          ? CategoryIcon(
+                              iconType: _getIconType(matchedCategory.value!.iconType),
+                              icon: matchedCategory.value!.icon ?? '',
+                              iconBackground: matchedCategory.value!.iconBackground ?? '',
+                            )
+                          : CategoryIcon(
+                              iconType: IconType.initial,
+                              icon: displayTitle.isNotEmpty
+                                  ? displayTitle[0].toUpperCase()
+                                  : '?',
+                              iconBackground: '',
                             ),
-                            if (pending.accountIdentifier != null) ...[
-                              Text(
-                                ' • ',
-                                style: AppTextStyles.body5.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const Gap(AppSpacing.spacing12),
+                    // Content section - same as TransactionTile
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Title + Category
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                AutoSizeText(
+                                  displayTitle,
+                                  style: AppTextStyles.body3.bold,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const Gap(AppSpacing.spacing2),
+                                AutoSizeText(
+                                  displaySubtitle,
+                                  style: AppTextStyles.body4,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Source tag + Amount
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              // Source tag
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getSourceColor(pending.source).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  pending.source.displayName,
+                                  style: AppTextStyles.body5.copyWith(
+                                    color: _getSourceColor(pending.source),
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 10,
+                                  ),
                                 ),
                               ),
+                              const Gap(AppSpacing.spacing4),
                               Text(
-                                pending.accountIdentifier!,
-                                style: AppTextStyles.body5.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                formatAmountWithCurrency(
+                                  amount: pending.amount,
+                                  symbol: currencySymbol,
+                                  isoCode: pending.currency,
+                                  decimalDigits: currencyData?.decimalDigits ?? 0,
+                                  showSign: true,
+                                ),
+                                style: AppTextStyles.numericMedium.copyWith(
+                                  color: isIncome
+                                      ? AppColors.green200
+                                      : AppColors.red700,
+                                  height: 1.12,
                                 ),
                               ),
                             ],
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-
-                  // Amount
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${pending.isIncome ? '+' : '-'} ${pending.amount.toPriceFormat()}',
-                        style: AppTextStyles.numericMedium.copyWith(
-                          color: pending.isIncome
-                              ? AppColors.green200
-                              : AppColors.red600,
-                          height: 1.12,
-                        ),
-                      ),
-                      const Gap(2),
-                      Text(
-                        pending.currency,
-                        style: AppTextStyles.body5.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
-
-              // Action buttons row
-              const Gap(AppSpacing.spacing12),
-              Row(
+            ),
+            // Divider
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: isDark ? AppColors.neutralAlpha25 : AppColors.neutralAlpha10,
+            ),
+            // Action buttons row
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.spacing12),
+              child: Row(
                 children: [
+                  // Reject button - use theme outlined style
                   Expanded(
-                    child: _ActionButton(
-                      icon: HugeIcons.strokeRoundedCancel01,
-                      label: 'Reject',
-                      color: AppColors.red600,
-                      onTap: onReject,
+                    child: OutlinedButton(
+                      onPressed: onReject,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        backgroundColor: Colors.transparent,
+                        side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.radius8),
+                        ),
+                      ),
+                      child: const Text('Reject'),
                     ),
                   ),
                   const Gap(AppSpacing.spacing8),
+                  // Approve button - use theme filled style
                   Expanded(
-                    child: _ActionButton(
-                      icon: HugeIcons.strokeRoundedCheckmarkCircle02,
-                      label: 'Approve',
-                      color: AppColors.green200,
-                      isPrimary: true,
-                      onTap: onApprove,
+                    child: FilledButton(
+                      onPressed: onApprove,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.radius8),
+                        ),
+                      ),
+                      child: const Text('Approve'),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSourceTag(BuildContext context) {
-    final (color, bgColor) = _getSourceColors(pending.source);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          HugeIcon(
-            icon: _getSourceIcon(pending.source),
-            color: color,
-            size: 12,
-          ),
-          const Gap(4),
-          Text(
-            pending.source.displayName,
-            style: AppTextStyles.body5.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSourceIcon(BuildContext context, bool isDark) {
-    final (color, _) = _getSourceColors(pending.source);
+  /// Check if merchant name looks valid (not garbage from parser)
+  static bool _isValidMerchantName(String name) {
+    // Names that are all lowercase single words are likely garbage
+    if (name == name.toLowerCase() && !name.contains(' ')) {
+      return false;
+    }
+    // Names with only numbers or special chars are garbage
+    if (RegExp(r'^[\d\s\-_]+$').hasMatch(name)) {
+      return false;
+    }
+    return true;
+  }
 
-    // Try to use source icon URL if available
-    if (pending.sourceIconUrl != null && pending.sourceIconUrl!.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          pending.sourceIconUrl!,
-          width: 44,
-          height: 44,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildFallbackIcon(context, isDark, color),
-        ),
-      );
+  /// Find matching category from categoryHint
+  static Category? _findMatchingCategory(
+    List<Category> categories,
+    PendingTransactionModel pending,
+  ) {
+    // If already has selectedCategoryId, find that category
+    if (pending.selectedCategoryId != null) {
+      return categories.firstWhereOrNull((c) => c.id == pending.selectedCategoryId);
     }
 
-    return _buildFallbackIcon(context, isDark, color);
+    // Try to match by categoryHint
+    if (pending.categoryHint == null || pending.categoryHint!.isEmpty) {
+      return null;
+    }
+
+    final hint = pending.categoryHint!.toLowerCase();
+
+    // First try exact match (case-insensitive)
+    for (final category in categories) {
+      if (category.title.toLowerCase() == hint) {
+        return category;
+      }
+    }
+
+    // Then try contains match
+    for (final category in categories) {
+      if (category.title.toLowerCase().contains(hint) ||
+          hint.contains(category.title.toLowerCase())) {
+        return category;
+      }
+    }
+
+    return null;
   }
 
-  Widget _buildFallbackIcon(BuildContext context, bool isDark, Color color) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDark ? 0.2 : 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Center(
-        child: HugeIcon(
-          icon: _getSourceIcon(pending.source),
-          color: color,
-          size: 22,
-        ),
-      ),
-    );
+  /// Convert iconTypeValue string to IconType enum
+  static IconType _getIconType(String? iconTypeValue) {
+    switch (iconTypeValue) {
+      case 'emoji':
+        return IconType.emoji;
+      case 'initial':
+        return IconType.initial;
+      case 'asset':
+        return IconType.asset;
+      default:
+        return IconType.asset;
+    }
+  }
+
+  /// Get color for source tag
+  Color _getSourceColor(PendingTxSource source) {
+    switch (source) {
+      case PendingTxSource.email:
+        return AppColors.primary600; // Teal for email
+      case PendingTxSource.sms:
+        return AppColors.green200; // Green for SMS
+      case PendingTxSource.notification:
+        return AppColors.tertiary600; // Yellow/gold for notification
+      case PendingTxSource.bank:
+        return AppColors.purple500; // Purple for bank
+    }
   }
 
   Widget _buildSwipeBackground(
@@ -264,9 +349,6 @@ class PendingTransactionTile extends ConsumerWidget {
     required Alignment alignment,
   }) {
     final color = isApprove ? AppColors.green200 : AppColors.red600;
-    final icon = isApprove
-        ? HugeIcons.strokeRoundedCheckmarkCircle02
-        : HugeIcons.strokeRoundedCancel01;
     final label = isApprove ? 'Approve' : 'Reject';
 
     return Container(
@@ -276,110 +358,11 @@ class PendingTransactionTile extends ConsumerWidget {
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(AppRadius.radius12),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (!isApprove) ...[
-            Text(
-              label,
-              style: AppTextStyles.body3.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const Gap(8),
-          ],
-          HugeIcon(icon: icon, color: color, size: 24),
-          if (isApprove) ...[
-            const Gap(8),
-            Text(
-              label,
-              style: AppTextStyles.body3.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  dynamic _getSourceIcon(PendingTxSource source) {
-    switch (source) {
-      case PendingTxSource.email:
-        return HugeIcons.strokeRoundedMail01;
-      case PendingTxSource.bank:
-        return HugeIcons.strokeRoundedBank;
-      case PendingTxSource.sms:
-        return HugeIcons.strokeRoundedMessage01;
-      case PendingTxSource.notification:
-        return HugeIcons.strokeRoundedNotification02;
-    }
-  }
-
-  (Color, Color) _getSourceColors(PendingTxSource source) {
-    switch (source) {
-      case PendingTxSource.email:
-        return (const Color(0xFFEA4335), const Color(0xFFEA4335).withValues(alpha: 0.1));
-      case PendingTxSource.bank:
-        return (const Color(0xFF635BFF), const Color(0xFF635BFF).withValues(alpha: 0.1));
-      case PendingTxSource.sms:
-        return (const Color(0xFF34A853), const Color(0xFF34A853).withValues(alpha: 0.1));
-      case PendingTxSource.notification:
-        return (const Color(0xFFFBBC04), const Color(0xFFFBBC04).withValues(alpha: 0.1));
-    }
-  }
-}
-
-/// Action button for approve/reject
-class _ActionButton extends StatelessWidget {
-  final dynamic icon;
-  final String label;
-  final Color color;
-  final bool isPrimary;
-  final VoidCallback? onTap;
-
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.isPrimary = false,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Material(
-      color: isPrimary
-          ? color
-          : (isDark ? AppColors.neutral700 : AppColors.neutral100),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              HugeIcon(
-                icon: icon,
-                size: 18,
-                color: isPrimary ? Colors.white : color,
-              ),
-              const Gap(6),
-              Text(
-                label,
-                style: AppTextStyles.body4.copyWith(
-                  color: isPrimary ? Colors.white : color,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+      child: Text(
+        label,
+        style: AppTextStyles.body3.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

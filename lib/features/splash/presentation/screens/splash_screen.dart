@@ -12,6 +12,7 @@ import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/recurring_charge_service.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
+import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart' as local_auth;
 
 class SplashScreen extends HookConsumerWidget {
   const SplashScreen({super.key});
@@ -108,6 +109,27 @@ class SplashScreen extends HookConsumerWidget {
           if (isAuthenticated && currentUser != null) {
             // User is authenticated with Supabase (DOS-Me)
             Log.d('User authenticated (${currentUser.email}), checking wallet...', label: 'SplashScreen');
+
+            // Sync profile from Supabase metadata (avatar/name may change on dos.me ID)
+            try {
+              final authNotifier = ref.read(local_auth.authStateProvider.notifier);
+              final localUser = authNotifier.getUser();
+              final remoteAvatar = currentUser.userMetadata?['avatar_url'] as String?;
+              final remoteName = currentUser.userMetadata?['full_name'] as String?;
+
+              final avatarChanged = remoteAvatar != null && remoteAvatar != localUser.profilePicture;
+              final nameChanged = remoteName != null && remoteName.isNotEmpty && remoteName != localUser.name;
+
+              if (avatarChanged || nameChanged) {
+                authNotifier.setUser(localUser.copyWith(
+                  profilePicture: avatarChanged ? remoteAvatar : localUser.profilePicture,
+                  name: nameChanged ? remoteName! : localUser.name,
+                ));
+                Log.d('Synced profile from Supabase metadata (avatar: $avatarChanged, name: $nameChanged)', label: 'SplashScreen');
+              }
+            } catch (e) {
+              Log.e('Failed to sync profile from Supabase: $e', label: 'SplashScreen');
+            }
 
             // Trigger background sync (don't await - let it run in background)
             try {

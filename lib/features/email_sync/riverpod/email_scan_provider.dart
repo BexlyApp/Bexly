@@ -166,6 +166,7 @@ class EmailScanNotifier extends Notifier<EmailScanState> {
               rawAmountText: parsed.rawAmountText,
               categoryHint: parsed.categoryHint,
               bankName: parsed.bankName,
+              userNotes: parsed.sourceDescription,
               createdAt: DateTime.now(),
             ));
           }
@@ -212,6 +213,7 @@ class EmailScanNotifier extends Notifier<EmailScanState> {
             rawAmountText: tx.rawAmountText,
             categoryHint: Value(tx.categoryHint),
             bankName: tx.bankName,
+            userNotes: Value(tx.userNotes),
           ),
         );
         savedCount++;
