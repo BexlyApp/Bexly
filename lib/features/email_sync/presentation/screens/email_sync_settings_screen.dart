@@ -7,6 +7,8 @@ import 'package:toastification/toastification.dart';
 
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
+import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/components/buttons/button_state.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
@@ -100,7 +102,7 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
             if (settings.pendingReview > 0)
               _ReviewPendingCard(
                 pendingCount: settings.pendingReview,
-                onTap: () => context.push(Routes.emailReview),
+                onTap: () => _navigateToPendingTab(context, ref),
               ),
 
             if (settings.pendingReview > 0)
@@ -121,6 +123,8 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
 
     switch (result) {
       case GmailConnectSuccess(:final email):
+      case GmailConnectWithAuthCode(:final email):
+        // Both cases mean Gmail was connected successfully
         toastification.show(
           context: context,
           title: const Text('Gmail Connected'),
@@ -132,6 +136,16 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
       case GmailConnectCancelled():
         // User cancelled, do nothing
         break;
+      case GmailConnectPendingBrowser():
+        // dos.me ID mode: user needs to complete OAuth in browser
+        toastification.show(
+          context: context,
+          title: const Text('Complete in Browser'),
+          description: const Text('Please complete Gmail authorization in browser, then tap Refresh.'),
+          type: ToastificationType.info,
+          style: ToastificationStyle.fillColored,
+          autoCloseDuration: const Duration(seconds: 5),
+        );
       case GmailConnectError(:final message):
         toastification.show(
           context: context,
@@ -177,6 +191,13 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
     );
   }
 
+  /// Navigate to Pending tab in TransactionScreen
+  void _navigateToPendingTab(BuildContext context, WidgetRef ref) {
+    ref.read(requestedTransactionTabProvider.notifier).request(2);
+    ref.read(pageControllerProvider.notifier).setPage(2);
+    context.go(Routes.main);
+  }
+
   void _showScanPeriodSheet(BuildContext context, WidgetRef ref) {
     context.openBottomSheet<ScanPeriod>(
       child: const _ScanPeriodBottomSheet(),
@@ -214,8 +235,13 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
         description: Text('Found ${result.parsedCount} transactions from ${result.totalEmails} emails'),
         type: ToastificationType.success,
         style: ToastificationStyle.fillColored,
-        autoCloseDuration: const Duration(seconds: 4),
+        autoCloseDuration: const Duration(seconds: 3),
       );
+
+      // Auto-navigate to Pending tab if transactions were found
+      if (result.parsedCount > 0 && context.mounted) {
+        _navigateToPendingTab(context, ref);
+      }
     } else {
       final error = ref.read(emailScanProvider).error;
       toastification.show(
