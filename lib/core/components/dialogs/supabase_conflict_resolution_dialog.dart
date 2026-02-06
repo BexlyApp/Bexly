@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/constants/app_colors.dart';
@@ -42,7 +41,7 @@ class SupabaseConflictResolutionDialog extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Sync Conflict Detected',
-                    style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.bold),
+                    style: AppTextStyles.heading5.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -96,7 +95,7 @@ class SupabaseConflictResolutionDialog extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Warning: The data you DON\'T choose will be permanently deleted!',
-                      style: AppTextStyles.caption.copyWith(
+                      style: AppTextStyles.body4.copyWith(
                         color: Colors.orange.shade700,
                         fontWeight: FontWeight.bold,
                       ),
@@ -120,17 +119,23 @@ class SupabaseConflictResolutionDialog extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: PrimaryButton(
-                    text: 'Use Cloud',
+                  child: FilledButton(
                     onPressed: onUseCloudData,
-                    backgroundColor: AppColors.blue,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary600,
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.spacing12),
+                    ),
+                    child: Text('Use Cloud'),
                   ),
                 ),
                 Expanded(
-                  child: PrimaryButton(
-                    text: 'Use Local',
+                  child: FilledButton(
                     onPressed: onUseLocalData,
-                    backgroundColor: AppColors.green,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.green200,
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.spacing12),
+                    ),
+                    child: Text('Use Local'),
                   ),
                 ),
               ],
@@ -180,12 +185,12 @@ class _DataComparisonSection extends StatelessWidget {
         if (lastUpdate != null)
           Text(
             'Last updated: ${dateFormat.format(lastUpdate!)}',
-            style: AppTextStyles.caption.copyWith(color: Colors.grey),
+            style: AppTextStyles.body4.copyWith(color: Colors.grey),
           ),
         if (latestTransaction != null)
           Text(
             'Latest: $latestTransaction',
-            style: AppTextStyles.caption.copyWith(color: Colors.grey),
+            style: AppTextStyles.body4.copyWith(color: Colors.grey),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

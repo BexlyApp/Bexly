@@ -65,34 +65,38 @@ class SupabaseConflictResolutionService {
     try {
       Log.i('🔍 Checking for sync conflicts...', label: _label);
 
-      // Count cloud data
-      final cloudWalletsCount = await _supabase
+      // Count cloud data (using new Supabase v2 count API)
+      final cloudWalletsResult = await _supabase
           .schema('bexly')
           .from('wallets')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select()
           .eq('user_id', _userId)
           .count();
+      final cloudWalletsCount = cloudWalletsResult.count;
 
-      final cloudTransactionsCount = await _supabase
+      final cloudTransactionsResult = await _supabase
           .schema('bexly')
           .from('transactions')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select()
           .eq('user_id', _userId)
           .count();
+      final cloudTransactionsCount = cloudTransactionsResult.count;
 
-      final cloudGoalsCount = await _supabase
+      final cloudGoalsResult = await _supabase
           .schema('bexly')
           .from('goals')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select()
           .eq('user_id', _userId)
           .count();
+      final cloudGoalsCount = cloudGoalsResult.count;
 
-      final cloudBudgetsCount = await _supabase
+      final cloudBudgetsResult = await _supabase
           .schema('bexly')
           .from('budgets')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select()
           .eq('user_id', _userId)
           .count();
+      final cloudBudgetsCount = cloudBudgetsResult.count;
 
       // If no cloud data exists, no conflict
       if (cloudWalletsCount == 0 &&
