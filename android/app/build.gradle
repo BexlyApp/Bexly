@@ -73,9 +73,10 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.release
             }
-            // Disable code shrinking/minification to prevent HugeIcons crash
-            minifyEnabled false
-            shrinkResources false
+            // Enable R8 code shrinking for smaller APK and obfuscation
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             // Include native debug symbols for Play Console crash reporting
             ndk {
                 debugSymbolLevel = 'SYMBOL_TABLE'
