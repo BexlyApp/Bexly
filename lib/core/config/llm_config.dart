@@ -13,11 +13,12 @@ enum AIProvider {
 
 class LLMDefaultConfig {
   // Get AI provider from environment (openai, gemini, or custom)
+  // Default to 'custom' (Bexly Free AI) which has built-in credentials
   static String get provider {
     try {
-      return dotenv.env['AI_PROVIDER'] ?? 'openai';
+      return dotenv.env['AI_PROVIDER'] ?? 'custom';
     } catch (e) {
-      return 'openai';
+      return 'custom';
     }
   }
 
@@ -135,6 +136,17 @@ class LLMDefaultConfig {
       return _defaultBexlyFreeModel;
     } catch (e) {
       return _defaultBexlyFreeModel;
+    }
+  }
+
+  // DOS.AI / Custom LLM timeout (seconds)
+  static int get customTimeoutSeconds {
+    try {
+      final val = dotenv.env['DOS_AI_TIMEOUT'];
+      if (val != null && val.isNotEmpty) return int.parse(val);
+      return 10;
+    } catch (e) {
+      return 10;
     }
   }
 

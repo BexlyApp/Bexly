@@ -375,6 +375,18 @@ class GmailApiService {
   String? _cachedAccessToken;
   DateTime? _tokenExpiry;
 
+  // External token provider (e.g., from dos.me ID)
+  // When set, this will be used instead of local Google Sign In
+  Future<String?> Function()? _externalTokenProvider;
+
+  /// Set external token provider (for dos.me ID integration)
+  /// When set, _getAccessToken will try this first, then fallback to cached/local
+  void setExternalTokenProvider(Future<String?> Function()? provider) {
+    _externalTokenProvider = provider;
+    // Don't clear cached token - keep it as fallback
+    Log.d('External token provider ${provider != null ? "set" : "cleared"}', label: _label);
+  }
+
   /// Get access token from Google Sign In (silently, no UI)
   ///
   /// In google_sign_in 7.x:
@@ -382,8 +394,26 @@ class GmailApiService {
   /// - `authorizationForScopes()` returns null if UI needed (silent only)
   /// - We DO NOT call `authorizeScopes()` here to avoid showing login UI during scan
   /// - If token is expired/unavailable, user should reconnect Gmail manually
+  ///
+  /// When external token provider is set (dos.me ID mode):
+  /// - Tokens are fetched from dos.me ID API instead of local Google Sign In
+  /// - dos.me ID handles token refresh server-side
   Future<String?> _getAccessToken({bool forceRefresh = false}) async {
     try {
+      // Use external token provider if set (dos.me ID mode)
+      if (_externalTokenProvider != null) {
+        Log.d('Using external token provider (dos.me ID)', label: _label);
+        final token = await _externalTokenProvider!();
+        if (token != null) {
+          _cachedAccessToken = token;
+          // dos.me ID tokens are typically valid for 1 hour
+          _tokenExpiry = DateTime.now().add(const Duration(minutes: 50));
+          return token;
+        }
+        // External provider failed — fallback to cached/local token
+        Log.w('External token provider returned null, trying cached/local token', label: _label);
+      }
+
       // Return cached token if still valid (not expired and not forcing refresh)
       if (!forceRefresh &&
           _cachedAccessToken != null &&

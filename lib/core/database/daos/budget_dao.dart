@@ -64,9 +64,10 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
       final wallet = walletsMap[budgetData.walletId];
       final category = categoriesMap[budgetData.categoryId];
       if (wallet == null || category == null) {
-        // Log this issue or handle it more gracefully
         Log.e(
-          'Warning: Could not find wallet or category for budget ${budgetData.id}',
+          'Could not find wallet or category for budget ${budgetData.id}: '
+          'walletId=${budgetData.walletId} (found=${wallet != null}), '
+          'categoryId=${budgetData.categoryId} (found=${category != null})',
           label: 'budget',
         );
         continue; // Skip this budget if essential data is missing
@@ -232,6 +233,18 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
   // Get all budgets (for backup)
   Future<List<Budget>> getAllBudgets() {
     return select(budgets).get();
+  }
+
+  /// Repair stale wallet/category IDs on a budget record
+  /// Used when categories or wallets are re-created with new local IDs
+  Future<bool> repairBudgetIds(int budgetId, {int? walletId, int? categoryId}) async {
+    final updates = BudgetsCompanion(
+      walletId: walletId != null ? Value(walletId) : const Value.absent(),
+      categoryId: categoryId != null ? Value(categoryId) : const Value.absent(),
+    );
+    final count = await (update(budgets)..where((b) => b.id.equals(budgetId)))
+        .write(updates);
+    return count > 0;
   }
 
   // Update an existing budget

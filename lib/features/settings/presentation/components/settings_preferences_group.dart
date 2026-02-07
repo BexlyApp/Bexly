@@ -76,35 +76,15 @@ class SettingsPreferencesGroup extends ConsumerWidget {
             desktopWidget: const AIModelSettingsScreen(),
           ),
         ),
-        // Auto Transaction only available on Android (requires SMS permission)
-        if (!kIsWeb && Platform.isAndroid)
-          MenuTileButton(
-            label: l10n.autoTransaction,
-            icon: HugeIcons.strokeRoundedMessage01,
-            onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
-              context,
-              route: Routes.autoTransactionSettings,
-              desktopWidget: const AutoTransactionSettingsScreen(),
-            ),
-          ),
-        // Email Sync - available on all platforms
+        // Auto Transaction - hub for all auto import features
+        // Available on all platforms, but some sub-features are platform-specific
         MenuTileButton(
-          label: 'Email Sync',
-          icon: HugeIcons.strokeRoundedMail01,
+          label: l10n.autoTransaction,
+          icon: HugeIcons.strokeRoundedMessage01,
           onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
             context,
-            route: Routes.emailSyncSettings,
-            desktopWidget: const EmailSyncSettingsScreen(),
-          ),
-        ),
-        // Bank Connections (Stripe Financial Connections) - US only
-        MenuTileButton(
-          label: 'Bank Connections',
-          icon: HugeIcons.strokeRoundedBank,
-          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
-            context,
-            route: Routes.bankConnections,
-            desktopWidget: const BankConnectionsScreen(),
+            route: Routes.autoTransactionSettings,
+            desktopWidget: const AutoTransactionSettingsScreen(),
           ),
         ),
         // Bot Integration - Telegram & Messenger

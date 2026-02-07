@@ -20,6 +20,10 @@ import 'package:bexly/core/services/auto_transaction/auto_transaction_service.da
 import 'package:bexly/features/settings/presentation/widgets/sms_scan_results_dialog.dart';
 import 'package:bexly/features/settings/presentation/widgets/sms_permission_dialog.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/features/email_sync/presentation/screens/email_sync_settings_screen.dart';
+import 'package:bexly/features/bank_connections/presentation/screens/bank_connections_screen.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/core/utils/desktop_dialog_helper.dart';
 
 /// Date range options for SMS scanning
 enum SmsDateRange {
@@ -527,9 +531,6 @@ class _AutoTransactionSettingsScreenState
       );
     }
 
-    final smsEnabled = ref.watch(autoTransactionSmsEnabledProvider);
-    final notificationEnabled = ref.watch(autoTransactionNotificationEnabledProvider);
-
     return CustomScaffold(
       context: context,
       title: context.l10n.autoTransaction,
@@ -542,53 +543,169 @@ class _AutoTransactionSettingsScreenState
 
           const SizedBox(height: AppSpacing.spacing24),
 
-          // SMS Parsing Section (Android only)
-          if (isAndroid) ...[
-            _buildSectionTitle(context.l10n.autoTransactionSms),
-            const SizedBox(height: AppSpacing.spacing12),
+          // 4 Sub-menu cards
+          _buildSubMenuCard(
+            title: 'SMS Parsing',
+            subtitle: 'Auto-detect transactions from bank SMS',
+            icon: HugeIcons.strokeRoundedMessage01,
+            isEnabled: isAndroid,
+            disabledReason: 'Android only',
+            onTap: isAndroid ? _showSmsSettingsBottomSheet : null,
+          ),
+          const SizedBox(height: AppSpacing.spacing12),
 
-            _buildSettingCard(
-              title: context.l10n.autoTransactionSmsTitle,
-              subtitle: context.l10n.autoTransactionSmsDescription,
-              icon: HugeIcons.strokeRoundedMessage01,
-              value: smsEnabled,
-              onChanged: _toggleSmsSetting,
+          _buildSubMenuCard(
+            title: 'Notification Listener',
+            subtitle: 'Capture transactions from banking app notifications',
+            icon: HugeIcons.strokeRoundedNotification01,
+            isEnabled: isAndroid,
+            disabledReason: 'Android only',
+            onTap: isAndroid ? _showNotificationSettingsBottomSheet : null,
+          ),
+          const SizedBox(height: AppSpacing.spacing12),
+
+          _buildSubMenuCard(
+            title: 'Email Sync',
+            subtitle: 'Import transactions from bank emails',
+            icon: HugeIcons.strokeRoundedMail01,
+            isEnabled: true,
+            onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+              context,
+              route: Routes.emailSyncSettings,
+              desktopWidget: const EmailSyncSettingsScreen(),
             ),
+          ),
+          const SizedBox(height: AppSpacing.spacing12),
 
-            const SizedBox(height: AppSpacing.spacing12),
-
-            // Scan SMS Button
-            _buildScanSmsButton(),
-
-            const SizedBox(height: AppSpacing.spacing24),
-          ],
-
-          // Notification Listener Section (Android only)
-          if (isAndroid) ...[
-            _buildSectionTitle(context.l10n.autoTransactionNotification),
-            const SizedBox(height: AppSpacing.spacing12),
-
-            _buildSettingCard(
-              title: context.l10n.autoTransactionNotificationTitle,
-              subtitle: context.l10n.autoTransactionNotificationDescription,
-              icon: HugeIcons.strokeRoundedNotification01,
-              value: notificationEnabled,
-              onChanged: _toggleNotificationSetting,
+          _buildSubMenuCard(
+            title: 'Bank Connection',
+            subtitle: 'Connect directly to your bank account',
+            icon: HugeIcons.strokeRoundedBank,
+            isEnabled: true,
+            onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+              context,
+              route: Routes.bankConnections,
+              desktopWidget: const BankConnectionsScreen(),
             ),
+          ),
 
-            // Pending Notifications Section (only show if notification is enabled)
-            if (notificationEnabled) ...[
-              const SizedBox(height: AppSpacing.spacing12),
-              _buildPendingNotificationsSection(),
-            ],
-          ],
-
-          // Platform notice for iOS
+          // Platform notice for iOS (show only if no Android features)
           if (!isAndroid) ...[
             const SizedBox(height: AppSpacing.spacing24),
             _buildPlatformNotice(),
           ],
         ],
+      ),
+    );
+  }
+
+  void _showSmsSettingsBottomSheet() {
+    final smsEnabled = ref.read(autoTransactionSmsEnabledProvider);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => CustomBottomSheet(
+        title: context.l10n.autoTransactionSmsTitle,
+        subtitle: context.l10n.autoTransactionSmsDescription,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildSettingCard(
+              title: 'Enable SMS Parsing',
+              subtitle: 'Automatically detect transactions from bank SMS',
+              icon: HugeIcons.strokeRoundedMessage01,
+              value: smsEnabled,
+              onChanged: (value) {
+                Navigator.pop(ctx);
+                _toggleSmsSetting(value);
+              },
+            ),
+            const SizedBox(height: AppSpacing.spacing12),
+            _buildScanSmsButton(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showNotificationSettingsBottomSheet() {
+    final notificationEnabled = ref.read(autoTransactionNotificationEnabledProvider);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => CustomBottomSheet(
+        title: context.l10n.autoTransactionNotificationTitle,
+        subtitle: context.l10n.autoTransactionNotificationDescription,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildSettingCard(
+              title: 'Enable Notification Listener',
+              subtitle: 'Capture transactions from banking app notifications',
+              icon: HugeIcons.strokeRoundedNotification01,
+              value: notificationEnabled,
+              onChanged: (value) {
+                Navigator.pop(ctx);
+                _toggleNotificationSetting(value);
+              },
+            ),
+            // Show pending notifications if enabled
+            if (notificationEnabled) ...[
+              const SizedBox(height: AppSpacing.spacing12),
+              _buildPendingNotificationsSection(),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubMenuCard({
+    required String title,
+    required String subtitle,
+    required List<List> icon,
+    required bool isEnabled,
+    String? disabledReason,
+    VoidCallback? onTap,
+  }) {
+    // Use MenuTileButton-like style
+    return ListTile(
+      onTap: isEnabled ? onTap : null,
+      tileColor: isEnabled ? context.purpleBackground : context.purpleBackground.withValues(alpha: 0.5),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: context.purpleBorderLighter),
+      ),
+      leading: HugeIcon(
+        icon: icon,
+        color: isEnabled ? context.purpleIcon : AppColors.neutral400,
+      ),
+      title: Text(
+        title,
+        style: AppTextStyles.body3.copyWith(
+          color: isEnabled ? Theme.of(context).colorScheme.onSurface : AppColors.neutral500,
+        ),
+      ),
+      subtitle: Text(
+        isEnabled ? subtitle : disabledReason ?? subtitle,
+        style: AppTextStyles.body4.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: HugeIcon(
+        icon: HugeIcons.strokeRoundedArrowRight01,
+        color: isEnabled
+            ? (context.isDarkMode ? Theme.of(context).colorScheme.onSurfaceVariant : AppColors.purpleAlpha50)
+            : AppColors.neutral300,
+        size: 20,
+      ),
+      contentPadding: const EdgeInsets.fromLTRB(
+        AppSpacing.spacing16,
+        AppSpacing.spacing4,
+        AppSpacing.spacing12,
+        AppSpacing.spacing4,
       ),
     );
   }
@@ -650,15 +767,6 @@ class _AutoTransactionSettingsScreenState
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: AppTextStyles.heading5.copyWith(
-        color: Theme.of(context).colorScheme.primary,
       ),
     );
   }

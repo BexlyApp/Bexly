@@ -46,4 +46,12 @@ class SupabaseConfig {
   static bool get isConfigured =>
       publishableKey.isNotEmpty &&
       publishableKey != 'your_supabase_publishable_key_here';
+
+  /// Use dos.me ID for OAuth token storage
+  /// When enabled, Gmail tokens are stored/retrieved from dos.me ID API
+  /// When disabled, tokens are stored locally (default, for backward compatibility)
+  static bool get useDosmeOAuth {
+    final envValue = dotenv.env['USE_DOSME_OAUTH']?.toLowerCase();
+    return envValue == 'true' || envValue == '1';
+  }
 }

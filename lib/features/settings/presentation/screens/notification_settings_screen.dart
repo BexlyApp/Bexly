@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
@@ -47,30 +48,48 @@ class NotificationSettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationSettingsScreenState
-    extends ConsumerState<NotificationSettingsScreen> {
+    extends ConsumerState<NotificationSettingsScreen> with WidgetsBindingObserver {
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Re-check permission when user returns from Settings
+    if (state == AppLifecycleState.resumed) {
+      _loadSettings();
+    }
   }
 
   Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // Load all notification settings
+      // Check if notification permission is granted
+      final hasPermission = await NotificationService.areNotificationsEnabled();
+
+      // Only show toggles as ON if permission is granted
       ref.read(notificationRecurringPaymentsProvider.notifier).setValue(
-          prefs.getBool('notif_recurring_payments') ?? true);
+          hasPermission && (prefs.getBool('notif_recurring_payments') ?? true));
       ref.read(notificationDailyReminderProvider.notifier).setValue(
-          prefs.getBool('notif_daily_reminder') ?? false);
+          hasPermission && (prefs.getBool('notif_daily_reminder') ?? false));
       ref.read(notificationWeeklyReportProvider.notifier).setValue(
-          prefs.getBool('notif_weekly_report') ?? false);
+          hasPermission && (prefs.getBool('notif_weekly_report') ?? false));
       ref.read(notificationMonthlyReportProvider.notifier).setValue(
-          prefs.getBool('notif_monthly_report') ?? false);
+          hasPermission && (prefs.getBool('notif_monthly_report') ?? false));
       ref.read(notificationGoalMilestonesProvider.notifier).setValue(
-          prefs.getBool('notif_goal_milestones') ?? true);
+          hasPermission && (prefs.getBool('notif_goal_milestones') ?? true));
 
       setState(() => _isLoading = false);
     } catch (e) {
@@ -91,19 +110,32 @@ class _NotificationSettingsScreenState
 
   Future<void> _toggleSetting(String key, NotifierProvider<NotificationSettingNotifier, bool> provider, bool value) async {
     if (value) {
-      // Request permission when enabling any notification
-      final granted = await NotificationService.requestPermission();
-      if (!granted) {
-        // Permission denied, show message
+      // Check current permission status
+      final status = await Permission.notification.status;
+
+      if (status.isGranted) {
+        // Permission already granted, proceed
+      } else if (status.isPermanentlyDenied) {
+        // Permanently denied — open app settings so user can enable manually
+        // WidgetsBindingObserver will re-check on resume
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.notificationPermissionDenied),
-              duration: const Duration(seconds: 3),
-            ),
-          );
+          openAppSettings();
         }
         return;
+      } else {
+        // Request permission
+        final granted = await NotificationService.requestPermission();
+        if (!granted) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(context.l10n.notificationPermissionDenied),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
       }
     }
 

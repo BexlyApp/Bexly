@@ -458,6 +458,17 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return count;
   }
 
+  /// Delete a transaction by cloudId (for sync - when cloud soft-deletes)
+  /// Does NOT sync back to cloud to avoid infinite loop
+  Future<bool> deleteTransactionByCloudId(String cloudId) async {
+    Log.d('Deleting local transaction by cloudId: $cloudId', label: 'transaction');
+    final count = await (delete(transactions)..where((tbl) => tbl.cloudId.equals(cloudId))).go();
+    if (count > 0) {
+      Log.d('✅ Deleted local transaction with cloudId: $cloudId', label: 'transaction');
+    }
+    return count > 0;
+  }
+
   /// Upserts a transaction: inserts if new, updates if exists by ID.
   Future<void> upsertTransaction(TransactionModel transactionModel) {
     final companion = TransactionsCompanion(

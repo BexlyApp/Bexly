@@ -249,6 +249,7 @@ class SupabaseSyncService {
   }
 
   /// Upsert transaction to Supabase (from Drift Transaction entity)
+  /// Checks if transaction was soft-deleted on cloud before uploading
   Future<void> _upsertTransaction(dynamic transaction) async {
     try {
       // Resolve wallet and category cloudIds
@@ -259,6 +260,23 @@ class SupabaseSyncService {
       if (wallet == null || category == null) {
         Log.w('⚠️ Cannot sync transaction: wallet or category not found', label: _label);
         return;
+      }
+
+      // Check if this transaction was soft-deleted on cloud
+      // If so, delete local instead of uploading (prevents ghost transactions)
+      if (transaction.cloudId != null) {
+        final cloudCheck = await _supabase
+            .schema('bexly')
+            .from('transactions')
+            .select('is_deleted')
+            .eq('cloud_id', transaction.cloudId)
+            .maybeSingle();
+
+        if (cloudCheck != null && cloudCheck['is_deleted'] == true) {
+          Log.w('⚠️ Transaction ${transaction.title} was deleted on cloud, deleting local', label: _label);
+          await db.transactionDao.deleteTransactionByCloudId(transaction.cloudId);
+          return;
+        }
       }
 
       final data = {
@@ -273,6 +291,7 @@ class SupabaseSyncService {
         'title': transaction.title,
         'notes': transaction.notes,
         'parsed_from_email': false,
+        'is_deleted': false,
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -422,7 +441,8 @@ class SupabaseSyncService {
     }
   }
 
-  /// Delete transaction from Supabase
+  /// Delete transaction from Supabase (soft delete)
+  /// Sets is_deleted = true instead of hard delete to prevent ghost transactions
   Future<void> deleteTransactionFromCloud(String cloudId) async {
     if (_userId == null) {
       Log.w('Cannot delete transaction: user not authenticated', label: _label);
@@ -430,21 +450,27 @@ class SupabaseSyncService {
     }
 
     try {
+      // Soft delete: mark as deleted instead of removing
+      // This prevents ghost transactions from reappearing after failed deletes
       await _supabase
           .schema('bexly')
           .from('transactions')
-          .delete()
+          .update({
+            'is_deleted': true,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
           .eq('cloud_id', cloudId)
           .eq('user_id', _userId!);
 
-      Log.d('Transaction $cloudId deleted from cloud', label: _label);
+      Log.d('Transaction $cloudId soft-deleted from cloud', label: _label);
     } catch (e) {
-      Log.e('Error deleting transaction $cloudId: $e', label: _label);
+      Log.e('Error soft-deleting transaction $cloudId: $e', label: _label);
       rethrow;
     }
   }
 
   /// Fetch transactions from Supabase and update local database
+  /// Also removes local transactions that were deleted on cloud (soft delete sync)
   Future<void> pullTransactionsFromCloud() async {
     if (_userId == null) {
       Log.w('Cannot pull transactions: user not authenticated', label: _label);
@@ -452,16 +478,56 @@ class SupabaseSyncService {
     }
 
     try {
+      final db = _ref.read(databaseProvider);
+
+      // Step 1: Get ALL cloud transactions (including soft-deleted) to know what to delete locally
+      final allCloudResponse = await _supabase
+          .schema('bexly')
+          .from('transactions')
+          .select('cloud_id, is_deleted')
+          .eq('user_id', _userId!);
+
+      final allCloudData = (allCloudResponse as List);
+
+      // Build sets for active and deleted cloud IDs
+      final activeCloudIds = <String>{};
+      final deletedCloudIds = <String>{};
+      for (final data in allCloudData) {
+        final cloudId = data['cloud_id'] as String?;
+        if (cloudId != null) {
+          if (data['is_deleted'] == true) {
+            deletedCloudIds.add(cloudId);
+          } else {
+            activeCloudIds.add(cloudId);
+          }
+        }
+      }
+
+      Log.d('Cloud has ${activeCloudIds.length} active, ${deletedCloudIds.length} deleted transactions', label: _label);
+
+      // Step 2: Delete local transactions that are soft-deleted on cloud
+      if (deletedCloudIds.isNotEmpty) {
+        int deletedCount = 0;
+        for (final cloudId in deletedCloudIds) {
+          final deleted = await db.transactionDao.deleteTransactionByCloudId(cloudId);
+          if (deleted) deletedCount++;
+        }
+        if (deletedCount > 0) {
+          Log.i('🗑️ Deleted $deletedCount local transactions (soft-deleted on cloud)', label: _label);
+        }
+      }
+
+      // Step 3: Pull active transactions only
       final response = await _supabase
           .schema('bexly')
           .from('transactions')
           .select()
-          .eq('user_id', _userId!);
+          .eq('user_id', _userId!)
+          .eq('is_deleted', false);
 
-      final db = _ref.read(databaseProvider);
       final transactionData = (response as List);
 
-      Log.d('Found ${transactionData.length} transactions on Supabase', label: _label);
+      Log.d('Found ${transactionData.length} active transactions on Supabase', label: _label);
 
       int processedCount = 0;
       int skippedCount = 0;
@@ -1068,10 +1134,20 @@ class SupabaseSyncService {
             await db.budgetDao.insertFromCloud(budgetModel);
             processedCount++;
           } else {
-            // Budget exists → UPDATE if cloud data is newer (using updateFromCloud, no re-upload)
-            if (budgetModel.updatedAt != null &&
-                (existingBudget.updatedAt == null || budgetModel.updatedAt!.isAfter(existingBudget.updatedAt!))) {
-              Log.d('Updating existing budget with newer cloud data', label: _label);
+            // Check if local category/wallet IDs are still valid
+            final localWallet = await db.walletDao.getWalletById(existingBudget.walletId);
+            final localCategory = await db.categoryDao.getCategoryById(existingBudget.categoryId);
+            final hasStaleIds = localWallet == null || localCategory == null;
+
+            // Update if cloud data is newer OR if local IDs are stale (category/wallet was re-created)
+            if (hasStaleIds ||
+                (budgetModel.updatedAt != null &&
+                    (existingBudget.updatedAt == null || budgetModel.updatedAt!.isAfter(existingBudget.updatedAt!)))) {
+              if (hasStaleIds) {
+                Log.w('Budget ${existingBudget.id} has stale IDs (walletId=${existingBudget.walletId}, '
+                    'categoryId=${existingBudget.categoryId}), re-mapping from cloud', label: _label);
+              }
+              Log.d('Updating existing budget with cloud data', label: _label);
               await db.budgetDao.updateFromCloud(budgetModel);
               processedCount++;
             } else {
@@ -1516,7 +1592,46 @@ class SupabaseSyncService {
           final category = await db.categoryDao.getCategoryById(budget.categoryId);
 
           if (wallet == null || category == null) {
-            Log.w('Skipping budget ${budget.id}: wallet or category not found', label: _label);
+            // Stale local IDs — attempt repair by looking up cloud data for this budget
+            if (budget.cloudId != null) {
+              Log.w('Budget ${budget.id} has stale IDs (walletId=${budget.walletId}, '
+                  'categoryId=${budget.categoryId}), attempting repair from cloud', label: _label);
+              try {
+                final cloudBudget = await _supabase
+                    .schema('bexly')
+                    .from('budgets')
+                    .select()
+                    .eq('cloud_id', budget.cloudId!)
+                    .maybeSingle();
+
+                if (cloudBudget != null) {
+                  final repairedWallet = await db.walletDao.getWalletByCloudId(cloudBudget['wallet_id']);
+                  final repairedCategory = await db.categoryDao.getCategoryByCloudId(cloudBudget['category_id']);
+
+                  if (repairedWallet != null && repairedCategory != null) {
+                    // Repair local budget with correct IDs
+                    await db.budgetDao.repairBudgetIds(
+                      budget.id,
+                      walletId: repairedWallet.id,
+                      categoryId: repairedCategory.id,
+                    );
+                    Log.i('Repaired budget ${budget.id}: categoryId ${budget.categoryId} → ${repairedCategory.id}, '
+                        'walletId ${budget.walletId} → ${repairedWallet.id}', label: _label);
+                    // Now continue with the repaired data for upload
+                    final repairedBudgetModel = budget.toModel(
+                      category: repairedCategory.toModel(),
+                      wallet: repairedWallet.toModel(),
+                    );
+                    await uploadBudget(repairedBudgetModel);
+                    continue;
+                  }
+                }
+              } catch (e) {
+                Log.e('Failed to repair budget ${budget.id}: $e', label: _label);
+              }
+            }
+            Log.w('Skipping budget ${budget.id}: walletId=${budget.walletId} (found=${wallet != null}), '
+                'categoryId=${budget.categoryId} (found=${category != null})', label: _label);
             continue;
           }
 

@@ -51,6 +51,10 @@ class Transactions extends Table {
   /// Null if this is a manual transaction
   IntColumn get recurringId => integer().nullable()();
 
+  /// Soft delete flag for cloud sync
+  /// When true, transaction is considered deleted but kept for sync purposes
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+
   /// Firebase UID of the user who created this transaction (for family sharing)
   /// Null for transactions created before family sharing was enabled
   TextColumn get createdByUserId => text().nullable()();
@@ -81,6 +85,7 @@ extension TransactionExtension on Transaction {
       imagePath: json['imagePath'] as String?,
       isRecurring: json['isRecurring'] as bool?,
       recurringId: json['recurringId'] as int?,
+      isDeleted: json['isDeleted'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );

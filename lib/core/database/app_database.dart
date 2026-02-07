@@ -75,7 +75,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 22; // Add unified pending_transactions table
+  int get schemaVersion => 23; // Add isDeleted to transactions for soft delete sync
 
   @override
   MigrationStrategy get migration {
@@ -304,6 +304,16 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Created pending_transactions table for unified pending review', label: 'database');
           } catch (e) {
             Log.e('Failed to create pending_transactions table: $e', label: 'database');
+          }
+        }
+
+        // For version 23, add isDeleted column to transactions for soft delete sync
+        if (from < 23) {
+          try {
+            await m.addColumn(transactions, transactions.isDeleted);
+            Log.i('Added isDeleted column to transactions for soft delete sync', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add isDeleted column: $e', label: 'database');
           }
         }
 
