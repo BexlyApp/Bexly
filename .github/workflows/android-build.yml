@@ -109,10 +109,14 @@ jobs:
 
       - name: Build App Bundle (${{ steps.version.outputs.build_number }})
         run: |
-          flutter build appbundle --release 2>&1 | tee build.log
+          flutter build appbundle --release \
+            --obfuscate \
+            --split-debug-info=build/app/outputs/symbols \
+            2>&1 | tee build.log
           # Check if AAB was created (ignore strip debug symbols warning)
           if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
             echo "✅ AAB built successfully!"
+            ls -la build/app/outputs/symbols/ || true
             exit 0
           else
             echo "❌ AAB not found"
@@ -155,6 +159,36 @@ jobs:
               sys.exit(1)
           "
 
+      - name: Prepare debug symbols for Play Console
+        run: |
+          # Create native debug symbols zip (required format for Play Console)
+          NATIVE_LIBS_DIR="build/app/intermediates/merged_native_libs/release/mergeReleaseNativeLibs/out/lib"
+          SYMBOLS_ZIP="build/app/outputs/native-debug-symbols.zip"
+
+          if [ -d "$NATIVE_LIBS_DIR" ]; then
+            cd "$NATIVE_LIBS_DIR"
+            zip -r "$OLDPWD/$SYMBOLS_ZIP" .
+            cd -
+            echo "✅ Native debug symbols prepared: $SYMBOLS_ZIP"
+            ls -la "$SYMBOLS_ZIP"
+          else
+            echo "⚠️ Native libs directory not found at: $NATIVE_LIBS_DIR"
+            # Try alternative path
+            ALT_DIR="build/app/intermediates/stripped_native_libs/release/stripReleaseDebugSymbols/out/lib"
+            if [ -d "$ALT_DIR" ]; then
+              cd "$ALT_DIR"
+              zip -r "$OLDPWD/$SYMBOLS_ZIP" .
+              cd -
+              echo "✅ Native debug symbols prepared from alt path"
+            else
+              echo "⚠️ No native libs found, skipping symbols upload"
+            fi
+          fi
+
+          # List Dart debug symbols from --split-debug-info
+          echo "📦 Dart debug symbols:"
+          ls -la build/app/outputs/symbols/ 2>/dev/null || echo "No Dart symbols found"
+
       - name: Upload to Google Play Internal
         uses: r0adkll/upload-google-play@v1.1.3
         with:
@@ -163,3 +197,13 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: completed
+
+      - name: Upload debug symbols artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-symbols-${{ steps.version.outputs.build_number }}
+          path: |
+            build/app/outputs/symbols/
+            build/app/outputs/native-debug-symbols.zip
+          retention-days: 90
+          if-no-files-found: warn

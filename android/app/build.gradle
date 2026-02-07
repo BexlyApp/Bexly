@@ -76,9 +76,9 @@ android {
             // Disable code shrinking/minification to prevent HugeIcons crash
             minifyEnabled false
             shrinkResources false
-            // Disable native debug symbol stripping for bundle builds
+            // Include native debug symbols for Play Console crash reporting
             ndk {
-                debugSymbolLevel = 'NONE'
+                debugSymbolLevel = 'SYMBOL_TABLE'
             }
         }
     }
