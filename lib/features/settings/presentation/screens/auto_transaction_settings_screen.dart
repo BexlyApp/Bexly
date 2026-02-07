@@ -282,55 +282,34 @@ class _AutoTransactionSettingsScreenState
     if (value) {
       // Show permission explanation bottom sheet first
       final shouldProceed = await NotificationPermissionBottomSheet.show(context);
-      if (!shouldProceed) {
-        return;
-      }
+      if (!shouldProceed) return;
 
-      // Initialize auto transaction service and request notification permission
+      // Initialize auto transaction service
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.initialize();
 
-      // Check if permission is granted
+      // Check if permission is already granted
       final hasPermission = await autoService.hasNotificationPermission();
-      if (!hasPermission) {
-        // Set flag before opening system settings
-        // This allows us to check permission when app resumes
-        _awaitingNotificationPermission = true;
-
-        // Save to SharedPreferences in case app gets killed while in settings
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('pending_notification_permission_request', true);
-
-        // Open system settings - app may be killed while in settings
-        await autoService.requestNotificationPermission();
-
-        // If we get here, app wasn't killed - check permission directly
-        // Wait a bit for settings to apply
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        if (!mounted) return;
-
-        final granted = await autoService.hasNotificationPermission();
-        if (granted) {
-          _awaitingNotificationPermission = false;
-          // Clear the persistent flag
-          await prefs.remove('pending_notification_permission_request');
-          await autoService.setNotificationEnabled(true);
-          ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(true);
-          await _saveSetting('auto_transaction_notification_enabled', true);
-        } else {
-          _awaitingNotificationPermission = false;
-          // Clear the persistent flag
-          await prefs.remove('pending_notification_permission_request');
-          Log.w('Notification permission not granted', label: 'AutoTransaction');
-        }
+      if (hasPermission) {
+        // Already granted - just enable
+        await autoService.setNotificationEnabled(true);
+        ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(true);
+        await _saveSetting('auto_transaction_notification_enabled', true);
         return;
       }
 
-      // Permission already granted
-      await autoService.setNotificationEnabled(true);
-      ref.read(autoTransactionNotificationEnabledProvider.notifier).state = true;
-      await _saveSetting('auto_transaction_notification_enabled', true);
+      // Set flags BEFORE opening system settings.
+      // Android may kill the app when notification listener permission is toggled,
+      // so we persist this flag to handle the restart case.
+      _awaitingNotificationPermission = true;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('pending_notification_permission_request', true);
+
+      // Open system settings — app may be killed after this point.
+      // DO NOT check permission or clear flags here.
+      // didChangeAppLifecycleState(resumed) handles the "app survived" case.
+      // main.dart startup handles the "app was killed" case.
+      await autoService.requestNotificationPermission();
     } else {
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.setNotificationEnabled(false);

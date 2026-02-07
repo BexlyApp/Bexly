@@ -139,19 +139,18 @@ class NotificationListenerServiceWrapper {
     }
   }
 
-  /// Request notification listener permission (opens system settings)
-  Future<bool> requestPermission() async {
-    if (!Platform.isAndroid) return false;
+  /// Request notification listener permission (opens system settings).
+  ///
+  /// This just opens the Notification Access settings page.
+  /// Android may kill the app when the user toggles the permission,
+  /// so the caller must persist state before calling this.
+  Future<void> requestPermission() async {
+    if (!Platform.isAndroid) return;
 
     try {
-      // This opens the notification access settings page
       await NotificationListenerService.requestPermission();
-      // User needs to manually enable, so check after a delay
-      await Future.delayed(const Duration(seconds: 1));
-      return await hasPermission();
     } catch (e) {
       Log.e('Error requesting notification permission: $e', label: 'NotificationService');
-      return false;
     }
   }
 
