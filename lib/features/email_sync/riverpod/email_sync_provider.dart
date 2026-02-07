@@ -4,14 +4,36 @@ import 'package:bexly/features/email_sync/domain/services/gmail_auth_service.dar
 import 'package:bexly/features/email_sync/domain/services/gmail_api_service.dart';
 import 'package:bexly/features/email_sync/domain/services/email_sync_worker.dart';
 import 'package:bexly/features/email_sync/data/models/email_sync_settings_model.dart';
+import 'package:bexly/core/config/supabase_config.dart';
+import 'package:bexly/core/services/dosme_oauth/dosme_oauth.dart';
+import 'package:bexly/core/services/supabase_init_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 
 /// Provider for GmailApiService (shared singleton)
 final _gmailApiServiceInstance = GmailApiService();
 
 /// Provider for GmailApiService
+/// When USE_DOSME_OAUTH=true, this will use dos.me ID for token management
 final gmailApiServiceProvider = Provider<GmailApiService>((ref) {
-  return _gmailApiServiceInstance;
+  final service = _gmailApiServiceInstance;
+
+  // Configure dos.me ID token provider when enabled
+  if (SupabaseConfig.useDosmeOAuth) {
+    final dosmeService = ref.watch(dosmeOAuthServiceProvider);
+    service.setExternalTokenProvider(() async {
+      final result = await dosmeService.getGmailAccessToken();
+      switch (result) {
+        case DosmeOAuthSuccess(data: final token):
+          return token.accessToken;
+        case DosmeOAuthFailure(error: final err):
+          Log.w('dos.me OAuth error: ${err.code} - ${err.message}', label: 'EmailSync');
+          return null;
+      }
+    });
+    Log.i('GmailApiService configured with dos.me ID token provider', label: 'EmailSync');
+  }
+
+  return service;
 });
 
 /// Provider for GmailAuthService
@@ -20,6 +42,7 @@ final gmailAuthServiceProvider = Provider<GmailAuthService>((ref) {
   // Link to GmailApiService so it can cache token after connect
   authService.setGmailApiService(_gmailApiServiceInstance);
   return authService;
+
 });
 
 /// Keys for SharedPreferences storage
@@ -65,7 +88,36 @@ const List<String> defaultBankDomains = [
 class EmailSyncNotifier extends AsyncNotifier<EmailSyncSettingsModel?> {
   @override
   Future<EmailSyncSettingsModel?> build() async {
-    return await _loadSettings();
+    final local = await _loadSettings();
+    if (local != null) return local;
+
+    // No local settings — try to restore from dos.me ID server
+    return await _tryRestoreFromDosme();
+  }
+
+  /// Check dos.me ID server for existing Gmail connection and restore locally
+  Future<EmailSyncSettingsModel?> _tryRestoreFromDosme() async {
+    if (!SupabaseConfig.useDosmeOAuth) return null;
+
+    // Only restore if user is authenticated
+    final session = SupabaseInitService.currentSession;
+    if (session == null) return null;
+
+    try {
+      Log.i('Checking dos.me ID for existing Gmail connection...', label: 'EmailSync');
+      final dosmeService = ref.read(dosmeOAuthServiceProvider);
+      final email = await dosmeService.getConnectedGmailEmail();
+
+      if (email != null) {
+        Log.i('Restored Gmail connection from dos.me ID: $email', label: 'EmailSync');
+        await _saveGmailConnection(email);
+        return await _loadSettings();
+      }
+    } catch (e) {
+      Log.w('Failed to restore email sync from dos.me ID: $e', label: 'EmailSync');
+    }
+
+    return null;
   }
 
   /// Load settings from SharedPreferences
@@ -126,28 +178,138 @@ class EmailSyncNotifier extends AsyncNotifier<EmailSyncSettingsModel?> {
   }
 
   /// Connect Gmail account for email sync
+  ///
+  /// When USE_DOSME_OAUTH=true:
+  /// - Opens dos.me ID connect URL in browser
+  /// - Returns GmailConnectPendingBrowser
+  /// - User completes OAuth in browser, then call refreshDosmeConnection()
+  ///
+  /// When USE_DOSME_OAUTH=false:
+  /// - Uses local Google Sign In
   Future<GmailConnectResult> connectGmail() async {
+    // dos.me ID mode: open browser for OAuth
+    if (SupabaseConfig.useDosmeOAuth) {
+      return _connectGmailViaDosme();
+    }
+
+    // Local mode: use Google Sign In
     final authService = ref.read(gmailAuthServiceProvider);
     final result = await authService.connectGmail();
 
     if (result is GmailConnectSuccess) {
-      final settings = EmailSyncSettingsModel(
-        gmailEmail: result.email,
-        isEnabled: true,
-        enabledBanks: defaultBankDomains,
-        syncFrequency: SyncFrequency.every24Hours, // Default to 24h
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      await _saveSettings(settings);
-      state = AsyncData(settings);
-
-      // Register background sync (default: 24 hours)
-      await _registerBackgroundSync(settings.syncFrequency);
+      await _saveGmailConnection(result.email);
     }
 
     return result;
+  }
+
+  /// Connect Gmail via dos.me ID using native auth + exchange
+  ///
+  /// Flow:
+  /// 1. Native Google Sign In → get auth code
+  /// 2. Send auth code to dos.me ID for exchange
+  /// 3. dos.me ID stores refresh token securely
+  Future<GmailConnectResult> _connectGmailViaDosme() async {
+    try {
+      final dosmeService = ref.read(dosmeOAuthServiceProvider);
+      final authService = ref.read(gmailAuthServiceProvider);
+
+      // Check if already connected via dos.me ID
+      final existingEmail = await dosmeService.getConnectedGmailEmail();
+      if (existingEmail != null) {
+        Log.i('Gmail already connected via dos.me ID: $existingEmail', label: 'EmailSync');
+        await _saveGmailConnection(existingEmail);
+        return GmailConnectSuccess(email: existingEmail);
+      }
+
+      // Step 1: Native Google Sign In to get auth code
+      Log.i('Starting native Google Sign In for dos.me ID...', label: 'EmailSync');
+      final authResult = await authService.connectGmailWithAuthCode();
+
+      // Handle auth result
+      switch (authResult) {
+        case GmailConnectWithAuthCode(email: final email, authCode: final code):
+          // Step 2: Exchange auth code with dos.me ID
+          Log.i('Got auth code, exchanging with dos.me ID...', label: 'EmailSync');
+          final exchangeResult = await dosmeService.exchangeGmailAuthCode(code: code);
+
+          switch (exchangeResult) {
+            case DosmeOAuthSuccess(data: final response):
+              Log.i('Gmail connected via dos.me ID: ${response.email}', label: 'EmailSync');
+              await _saveGmailConnection(response.email);
+              return GmailConnectSuccess(email: response.email);
+
+            case DosmeOAuthFailure(error: final error):
+              Log.e('dos.me ID exchange failed: ${error.code} - ${error.message}', label: 'EmailSync');
+              // Fallback: use local token (already cached during auth)
+              Log.w('Falling back to local token mode for $email', label: 'EmailSync');
+              await _saveGmailConnection(email);
+              return GmailConnectSuccess(email: email);
+          }
+
+        case GmailConnectSuccess(email: final email):
+          // Fallback: No auth code available, but got access token
+          // This happens when serverClientId is not configured
+          Log.w('No auth code available, using local token only', label: 'EmailSync');
+          await _saveGmailConnection(email);
+          return GmailConnectSuccess(email: email);
+
+        case GmailConnectCancelled():
+          return const GmailConnectCancelled();
+
+        case GmailConnectError(message: final msg, error: final err):
+          return GmailConnectError(msg, err);
+
+        case GmailConnectPendingBrowser():
+          // This shouldn't happen in native flow
+          return const GmailConnectError('Unexpected browser flow in native mode');
+      }
+    } catch (e) {
+      Log.e('Error connecting Gmail via dos.me ID: $e', label: 'EmailSync');
+      return GmailConnectError('Failed to connect Gmail: $e', e);
+    }
+  }
+
+  /// Refresh dos.me ID connection status (call after user returns from browser)
+  Future<GmailConnectResult> refreshDosmeConnection() async {
+    if (!SupabaseConfig.useDosmeOAuth) {
+      return const GmailConnectError('dos.me OAuth mode is not enabled');
+    }
+
+    try {
+      final dosmeService = ref.read(dosmeOAuthServiceProvider);
+      final email = await dosmeService.getConnectedGmailEmail();
+
+      if (email != null) {
+        Log.i('Gmail connected via dos.me ID: $email', label: 'EmailSync');
+        await _saveGmailConnection(email);
+        return GmailConnectSuccess(email: email);
+      } else {
+        Log.w('Gmail not connected via dos.me ID', label: 'EmailSync');
+        return const GmailConnectError('Gmail not connected. Please complete the connection in browser.');
+      }
+    } catch (e) {
+      Log.e('Error checking dos.me ID connection: $e', label: 'EmailSync');
+      return GmailConnectError('Failed to check connection: $e', e);
+    }
+  }
+
+  /// Save Gmail connection settings
+  Future<void> _saveGmailConnection(String email) async {
+    final settings = EmailSyncSettingsModel(
+      gmailEmail: email,
+      isEnabled: true,
+      enabledBanks: defaultBankDomains,
+      syncFrequency: SyncFrequency.every24Hours,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    await _saveSettings(settings);
+    state = AsyncData(settings);
+
+    // Register background sync (default: 24 hours)
+    await _registerBackgroundSync(settings.syncFrequency);
   }
 
   /// Disconnect Gmail account
