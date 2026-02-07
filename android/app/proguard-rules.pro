@@ -83,6 +83,11 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 
+# Google Play Core (deferred components) - not used but referenced by Flutter
+-dontwarn com.google.android.play.core.splitcompat.**
+-dontwarn com.google.android.play.core.splitinstall.**
+-dontwarn com.google.android.play.core.tasks.**
+
 # Keep enum classes
 -keepclassmembers enum * {
     public static **[] values();
