@@ -335,9 +335,10 @@ class AutoTransactionService {
     return _notificationService?.hasPermission() ?? Future.value(false);
   }
 
-  /// Request notification permissions (opens system settings)
-  Future<bool> requestNotificationPermission() async {
-    return _notificationService?.requestPermission() ?? Future.value(false);
+  /// Request notification permissions (opens system settings).
+  /// Android may kill the app when the user toggles the permission.
+  Future<void> requestNotificationPermission() async {
+    await _notificationService?.requestPermission();
   }
 
   /// Dispose the service

@@ -20,6 +20,8 @@ import 'package:bexly/core/services/supabase_init_service.dart';
 import 'package:bexly/core/config/supabase_config.dart';
 import 'package:bexly/features/email_sync/domain/services/email_sync_worker.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'dart:io' show Platform;
+import 'package:notification_listener_service/notification_listener_service.dart';
 
 /// Background callback dispatcher for WorkManager
 ///
@@ -149,6 +151,11 @@ Future<void> main() async {
   // Initialize SharedPreferences for AI usage tracking
   final sharedPrefs = await SharedPreferences.getInstance();
 
+  // Check if there's a pending notification listener permission request.
+  // Android may kill the app when user toggles notification listener permission
+  // in system settings, so we persist a flag and check it on restart.
+  await _checkPendingNotificationPermission(sharedPrefs);
+
   // Initialize AdMob
   try {
     await AdService().initialize();
@@ -166,4 +173,49 @@ Future<void> main() async {
       child: const MyApp(),
     ),
   );
+}
+
+/// Check if there's a pending notification listener permission request.
+///
+/// When the user opens Android's "Notification Access" settings to grant
+/// permission, Android often kills the app process. On restart, we check
+/// if the permission was granted and auto-enable the notification listener.
+Future<void> _checkPendingNotificationPermission(SharedPreferences prefs) async {
+  if (!Platform.isAndroid) return;
+
+  final pendingRequest = prefs.getBool('pending_notification_permission_request') ?? false;
+  if (!pendingRequest) return;
+
+  print('[Startup] Detected pending notification permission request');
+
+  try {
+    // Dynamic import to avoid issues on non-Android platforms
+    final granted = await _isNotificationListenerPermissionGranted();
+
+    // Clear the pending flag regardless of outcome
+    await prefs.remove('pending_notification_permission_request');
+
+    if (granted) {
+      // Permission was granted while we were away — enable notification listener
+      await prefs.setBool('auto_transaction_notification_enabled', true);
+      print('[Startup] Notification listener permission granted — auto-enabled');
+    } else {
+      print('[Startup] Notification listener permission NOT granted');
+    }
+  } catch (e) {
+    print('[Startup] Error checking notification permission: $e');
+    await prefs.remove('pending_notification_permission_request');
+  }
+}
+
+/// Check if notification listener permission is granted (Android only).
+Future<bool> _isNotificationListenerPermissionGranted() async {
+  try {
+    // Use the notification_listener_service package directly
+    final granted = await NotificationListenerService.isPermissionGranted();
+    return granted ?? false;
+  } catch (e) {
+    print('[Startup] NotificationListenerService check failed: $e');
+    return false;
+  }
 }
