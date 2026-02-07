@@ -69,6 +69,12 @@ class AutoTransactionService {
       deduplicationService: deduplicationService,
     );
 
+    // Check if there's a pending notification permission request.
+    // Android may kill the app when the user toggles notification listener
+    // permission in system settings. On restart, this check detects that
+    // the permission was granted and auto-enables the listener.
+    await _checkPendingNotificationPermissionOnStartup();
+
     // Start listening if SMS is enabled
     if (_smsEnabled && _smsService!.isAvailable) {
       await _startSmsListening();
@@ -92,6 +98,38 @@ class AutoTransactionService {
 
     Log.d('Settings loaded: SMS=$_smsEnabled, Notification=$_notificationEnabled, WalletId=$_defaultWalletId',
         label: 'AutoTransaction');
+  }
+
+  /// Check if there's a pending notification permission request from before
+  /// the app was killed by Android.
+  Future<void> _checkPendingNotificationPermissionOnStartup() async {
+    if (_notificationService == null) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pendingRequest = prefs.getBool('pending_notification_permission_request') ?? false;
+      if (!pendingRequest) return;
+
+      Log.d('Detected pending notification permission request from before app kill',
+          label: 'AutoTransaction');
+
+      final granted = await _notificationService!.hasPermission();
+
+      // Clear the flag regardless
+      await prefs.remove('pending_notification_permission_request');
+
+      if (granted) {
+        _notificationEnabled = true;
+        await prefs.setBool('auto_transaction_notification_enabled', true);
+        Log.d('Notification listener permission granted after app restart — auto-enabled',
+            label: 'AutoTransaction');
+      } else {
+        Log.w('Notification listener permission NOT granted after app restart',
+            label: 'AutoTransaction');
+      }
+    } catch (e) {
+      Log.e('Error checking pending notification permission: $e', label: 'AutoTransaction');
+    }
   }
 
   /// Start listening for SMS messages
