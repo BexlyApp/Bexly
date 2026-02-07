@@ -3860,6 +3860,21 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdByUserIdMeta = const VerificationMeta(
     'createdByUserId',
   );
@@ -3920,6 +3935,7 @@ class $TransactionsTable extends Transactions
     imagePath,
     isRecurring,
     recurringId,
+    isDeleted,
     createdByUserId,
     lastModifiedByUserId,
     createdAt,
@@ -4027,6 +4043,12 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
     if (data.containsKey('created_by_user_id')) {
       context.handle(
         _createdByUserIdMeta,
@@ -4114,6 +4136,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.int,
         data['${effectivePrefix}recurring_id'],
       ),
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
       createdByUserId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}created_by_user_id'],
@@ -4180,6 +4206,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   /// Null if this is a manual transaction
   final int? recurringId;
 
+  /// Soft delete flag for cloud sync
+  /// When true, transaction is considered deleted but kept for sync purposes
+  final bool isDeleted;
+
   /// Firebase UID of the user who created this transaction (for family sharing)
   /// Null for transactions created before family sharing was enabled
   final String? createdByUserId;
@@ -4206,6 +4236,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     this.imagePath,
     this.isRecurring,
     this.recurringId,
+    required this.isDeleted,
     this.createdByUserId,
     this.lastModifiedByUserId,
     required this.createdAt,
@@ -4236,6 +4267,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     if (!nullToAbsent || recurringId != null) {
       map['recurring_id'] = Variable<int>(recurringId);
     }
+    map['is_deleted'] = Variable<bool>(isDeleted);
     if (!nullToAbsent || createdByUserId != null) {
       map['created_by_user_id'] = Variable<String>(createdByUserId);
     }
@@ -4271,6 +4303,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       recurringId: recurringId == null && nullToAbsent
           ? const Value.absent()
           : Value(recurringId),
+      isDeleted: Value(isDeleted),
       createdByUserId: createdByUserId == null && nullToAbsent
           ? const Value.absent()
           : Value(createdByUserId),
@@ -4300,6 +4333,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       imagePath: serializer.fromJson<String?>(json['imagePath']),
       isRecurring: serializer.fromJson<bool?>(json['isRecurring']),
       recurringId: serializer.fromJson<int?>(json['recurringId']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       createdByUserId: serializer.fromJson<String?>(json['createdByUserId']),
       lastModifiedByUserId: serializer.fromJson<String?>(
         json['lastModifiedByUserId'],
@@ -4324,6 +4358,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'imagePath': serializer.toJson<String?>(imagePath),
       'isRecurring': serializer.toJson<bool?>(isRecurring),
       'recurringId': serializer.toJson<int?>(recurringId),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
       'createdByUserId': serializer.toJson<String?>(createdByUserId),
       'lastModifiedByUserId': serializer.toJson<String?>(lastModifiedByUserId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -4344,6 +4379,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     Value<String?> imagePath = const Value.absent(),
     Value<bool?> isRecurring = const Value.absent(),
     Value<int?> recurringId = const Value.absent(),
+    bool? isDeleted,
     Value<String?> createdByUserId = const Value.absent(),
     Value<String?> lastModifiedByUserId = const Value.absent(),
     DateTime? createdAt,
@@ -4361,6 +4397,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     imagePath: imagePath.present ? imagePath.value : this.imagePath,
     isRecurring: isRecurring.present ? isRecurring.value : this.isRecurring,
     recurringId: recurringId.present ? recurringId.value : this.recurringId,
+    isDeleted: isDeleted ?? this.isDeleted,
     createdByUserId: createdByUserId.present
         ? createdByUserId.value
         : this.createdByUserId,
@@ -4392,6 +4429,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       recurringId: data.recurringId.present
           ? data.recurringId.value
           : this.recurringId,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       createdByUserId: data.createdByUserId.present
           ? data.createdByUserId.value
           : this.createdByUserId,
@@ -4418,6 +4456,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('imagePath: $imagePath, ')
           ..write('isRecurring: $isRecurring, ')
           ..write('recurringId: $recurringId, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('createdByUserId: $createdByUserId, ')
           ..write('lastModifiedByUserId: $lastModifiedByUserId, ')
           ..write('createdAt: $createdAt, ')
@@ -4440,6 +4479,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     imagePath,
     isRecurring,
     recurringId,
+    isDeleted,
     createdByUserId,
     lastModifiedByUserId,
     createdAt,
@@ -4461,6 +4501,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.imagePath == this.imagePath &&
           other.isRecurring == this.isRecurring &&
           other.recurringId == this.recurringId &&
+          other.isDeleted == this.isDeleted &&
           other.createdByUserId == this.createdByUserId &&
           other.lastModifiedByUserId == this.lastModifiedByUserId &&
           other.createdAt == this.createdAt &&
@@ -4480,6 +4521,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String?> imagePath;
   final Value<bool?> isRecurring;
   final Value<int?> recurringId;
+  final Value<bool> isDeleted;
   final Value<String?> createdByUserId;
   final Value<String?> lastModifiedByUserId;
   final Value<DateTime> createdAt;
@@ -4497,6 +4539,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.imagePath = const Value.absent(),
     this.isRecurring = const Value.absent(),
     this.recurringId = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.createdByUserId = const Value.absent(),
     this.lastModifiedByUserId = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -4515,6 +4558,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.imagePath = const Value.absent(),
     this.isRecurring = const Value.absent(),
     this.recurringId = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.createdByUserId = const Value.absent(),
     this.lastModifiedByUserId = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -4538,6 +4582,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? imagePath,
     Expression<bool>? isRecurring,
     Expression<int>? recurringId,
+    Expression<bool>? isDeleted,
     Expression<String>? createdByUserId,
     Expression<String>? lastModifiedByUserId,
     Expression<DateTime>? createdAt,
@@ -4556,6 +4601,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (imagePath != null) 'image_path': imagePath,
       if (isRecurring != null) 'is_recurring': isRecurring,
       if (recurringId != null) 'recurring_id': recurringId,
+      if (isDeleted != null) 'is_deleted': isDeleted,
       if (createdByUserId != null) 'created_by_user_id': createdByUserId,
       if (lastModifiedByUserId != null)
         'last_modified_by_user_id': lastModifiedByUserId,
@@ -4577,6 +4623,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<String?>? imagePath,
     Value<bool?>? isRecurring,
     Value<int?>? recurringId,
+    Value<bool>? isDeleted,
     Value<String?>? createdByUserId,
     Value<String?>? lastModifiedByUserId,
     Value<DateTime>? createdAt,
@@ -4595,6 +4642,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       imagePath: imagePath ?? this.imagePath,
       isRecurring: isRecurring ?? this.isRecurring,
       recurringId: recurringId ?? this.recurringId,
+      isDeleted: isDeleted ?? this.isDeleted,
       createdByUserId: createdByUserId ?? this.createdByUserId,
       lastModifiedByUserId: lastModifiedByUserId ?? this.lastModifiedByUserId,
       createdAt: createdAt ?? this.createdAt,
@@ -4641,6 +4689,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (recurringId.present) {
       map['recurring_id'] = Variable<int>(recurringId.value);
     }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
     if (createdByUserId.present) {
       map['created_by_user_id'] = Variable<String>(createdByUserId.value);
     }
@@ -4673,6 +4724,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('imagePath: $imagePath, ')
           ..write('isRecurring: $isRecurring, ')
           ..write('recurringId: $recurringId, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('createdByUserId: $createdByUserId, ')
           ..write('lastModifiedByUserId: $lastModifiedByUserId, ')
           ..write('createdAt: $createdAt, ')
@@ -16074,6 +16126,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> imagePath,
       Value<bool?> isRecurring,
       Value<int?> recurringId,
+      Value<bool> isDeleted,
       Value<String?> createdByUserId,
       Value<String?> lastModifiedByUserId,
       Value<DateTime> createdAt,
@@ -16093,6 +16146,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> imagePath,
       Value<bool?> isRecurring,
       Value<int?> recurringId,
+      Value<bool> isDeleted,
       Value<String?> createdByUserId,
       Value<String?> lastModifiedByUserId,
       Value<DateTime> createdAt,
@@ -16198,6 +16252,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<int> get recurringId => $composableBuilder(
     column: $table.recurringId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16327,6 +16386,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get createdByUserId => $composableBuilder(
     column: $table.createdByUserId,
     builder: (column) => ColumnOrderings(column),
@@ -16439,6 +16503,9 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
   GeneratedColumn<String> get createdByUserId => $composableBuilder(
     column: $table.createdByUserId,
     builder: (column) => column,
@@ -16542,6 +16609,7 @@ class $$TransactionsTableTableManager
                 Value<String?> imagePath = const Value.absent(),
                 Value<bool?> isRecurring = const Value.absent(),
                 Value<int?> recurringId = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<String?> createdByUserId = const Value.absent(),
                 Value<String?> lastModifiedByUserId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -16559,6 +16627,7 @@ class $$TransactionsTableTableManager
                 imagePath: imagePath,
                 isRecurring: isRecurring,
                 recurringId: recurringId,
+                isDeleted: isDeleted,
                 createdByUserId: createdByUserId,
                 lastModifiedByUserId: lastModifiedByUserId,
                 createdAt: createdAt,
@@ -16578,6 +16647,7 @@ class $$TransactionsTableTableManager
                 Value<String?> imagePath = const Value.absent(),
                 Value<bool?> isRecurring = const Value.absent(),
                 Value<int?> recurringId = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<String?> createdByUserId = const Value.absent(),
                 Value<String?> lastModifiedByUserId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -16595,6 +16665,7 @@ class $$TransactionsTableTableManager
                 imagePath: imagePath,
                 isRecurring: isRecurring,
                 recurringId: recurringId,
+                isDeleted: isDeleted,
                 createdByUserId: createdByUserId,
                 lastModifiedByUserId: lastModifiedByUserId,
                 createdAt: createdAt,

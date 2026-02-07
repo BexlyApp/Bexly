@@ -1,7 +1,7 @@
 # Bexly Architecture Documentation
 
-**Last Updated**: 2026-01-25
-**Version**: 0.0.10+477
+**Last Updated**: 2026-02-07
+**Version**: 0.0.10+493
 
 ---
 
@@ -13,10 +13,13 @@
 4. [Database Architecture](#database-architecture)
 5. [Authentication & Sync](#authentication--sync)
 6. [Feature Modules](#feature-modules)
-7. [State Management](#state-management)
-8. [Data Flow](#data-flow)
-9. [Security](#security)
-10. [Performance](#performance)
+7. [Transaction Automation Pipeline](#transaction-automation-pipeline)
+8. [dos.me ID OAuth Integration](#dosme-id-oauth-integration)
+9. [State Management](#state-management)
+10. [Data Flow](#data-flow)
+11. [Build & Release](#build--release)
+12. [Security](#security)
+13. [Performance](#performance)
 
 ---
 
@@ -48,7 +51,7 @@ State Management: Riverpod 2.x + Hooks
 UI Components: Material 3 + Custom widgets
 Routing: Go Router (declarative)
 Theme: FlexColorScheme
-Icons: Font Awesome Flutter
+Icons: HugeIcons
 ```
 
 ### Backend & Services
@@ -62,6 +65,7 @@ AI Services:
   - Google Gemini (Primary)
   - OpenAI GPT-4o (Fallback)
   - Anthropic Claude (Optional)
+OAuth Token Management: dos.me ID API (https://api.dos.me)
 Payment Processing: Stripe
 Bank Connections: Plaid
 ```
@@ -239,7 +243,27 @@ table chat_messages {
   createdAt: DATETIME
 }
 
-// Parsed Email Transactions - Gmail-parsed transactions
+// Pending Transactions - Unified pending review queue
+table pending_transactions {
+  id: INTEGER PRIMARY KEY
+  source: TEXT                      // 'email', 'sms', 'notification', 'bank'
+  sourceId: TEXT                    // Gmail ID / SMS hash / notification hash
+  amount: REAL
+  transactionType: TEXT             // 'income' or 'expense'
+  title: TEXT
+  notes: TEXT?
+  currency: TEXT
+  transactionDate: DATETIME
+  status: TEXT                      // 'pending_review', 'approved', 'rejected', 'imported'
+  targetWalletId: INTEGER?          // User-selected wallet
+  selectedCategoryId: INTEGER?      // User-selected category
+  importedTransactionId: INTEGER?   // FK to transactions after import
+  confidence: REAL                  // 0.0-1.0 AI confidence
+  createdAt: DATETIME
+  UNIQUE(source, sourceId)          // Deduplicate per source
+}
+
+// Parsed Email Transactions - Gmail-parsed transactions (legacy)
 table parsed_email_transactions {
   id: INTEGER PRIMARY KEY
   gmailMessageId: TEXT UNIQUE
@@ -1674,6 +1698,168 @@ const code = linkToken.slice(-6).toUpperCase();
 
 ---
 
+## Transaction Automation Pipeline
+
+### Overview
+
+Bexly has multiple sources that can create transactions automatically. Each source has different approval flows:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│            TRANSACTION AUTOMATION PIPELINE                        │
+└──────────────────────────────────────────────────────────────────┘
+
+ ┌─────────────┐   ┌─────────────┐   ┌──────────────────┐
+ │ Email Sync  │   │ SMS Parser  │   │ Notification     │
+ │ (Gmail API) │   │ (Android)   │   │ Listener         │
+ └──────┬──────┘   └──────┬──────┘   └────────┬─────────┘
+        │                 │                    │
+        ▼                 ▼                    ▼
+   ┌─────────┐      ┌──────────┐        ┌──────────┐
+   │ LLM     │      │ LLM/     │        │ LLM/     │
+   │ Parse   │      │ Regex    │        │ Regex    │
+   └────┬────┘      └────┬─────┘        └────┬─────┘
+        │                │                    │
+        ▼                ▼                    ▼
+   ┌─────────┐      ┌──────────┐        ┌──────────┐
+   │ Dedup   │      │ Dedup    │        │ Dedup    │
+   │(emailId)│      │ (hash)   │        │ (hash)   │
+   └────┬────┘      └────┬─────┘        └────┬─────┘
+        │                │                    │
+        ▼                ▼                    ▼
+  ┌───────────────┐ ┌────────────┐     ┌────────────┐
+  │ PENDING TAB   │ │ DIRECT     │     │ DIRECT     │
+  │ (User Review) │ │ INSERT ⚠️   │     │ INSERT ⚠️   │
+  └───────┬───────┘ └────────────┘     └────────────┘
+          │
+          ▼
+  ┌───────────────┐
+  │ User Approves │
+  │ → transactions│
+  └───────────────┘
+```
+
+### Automation Sources
+
+| Source | Destination | Pending Tab | Approval | Dedup Method |
+|--------|------------|-------------|----------|-------------|
+| Email Sync | `parsed_email_transactions` | ✅ YES | ✅ Required | `emailId` (Gmail ID) |
+| SMS Parser | `transactions` directly | ❌ NO | ❌ Auto | Hash (amount+date+merchant) |
+| Notification | `transactions` directly | ❌ NO | ❌ Auto | Hash (amount+date+merchant) |
+| AI Chat | Not implemented | — | — | — |
+| Recurring | Not implemented | — | — | — |
+
+### Unified Pending Tab
+
+The Pending tab combines transactions from multiple sources:
+
+**Provider**: `lib/features/pending_transactions/riverpod/pending_transaction_provider.dart`
+
+```dart
+// Combines both sources into unified list
+final allPendingTransactionsProvider = StreamProvider<List<PendingTransactionModel>>((ref) {
+  // Watch pending_transactions table (new unified source)
+  pendingDao.watchAllPending()
+  // Watch parsed_email_transactions table (legacy email source)
+  emailDao.watchPendingReview()
+  // Merge both into PendingTransactionModel list
+});
+```
+
+### Duplicate Detection
+
+**Email Sync**: Checks `emailId` (Gmail message ID) — guaranteed unique per email.
+
+**SMS/Notification**: Hash-based deduplication service:
+- **File**: `lib/core/services/auto_transaction/transaction_parser_service.dart`
+- **Hash**: `SHA256(amount + date + merchant + type)`
+- **Cache**: SharedPreferences, 30-day retention, max 1000 entries
+- **No AI-based detection**: Only exact hash match
+
+### Key Files
+
+- Email worker: `lib/features/email_sync/domain/services/email_sync_worker.dart`
+- SMS service: `lib/core/services/auto_transaction/sms_service.dart`
+- Notification service: `lib/core/services/auto_transaction/notification_service.dart`
+- Auto transaction: `lib/core/services/auto_transaction/auto_transaction_service.dart`
+- Pending provider: `lib/features/pending_transactions/riverpod/pending_transaction_provider.dart`
+- Approval sheet: `lib/features/pending_transactions/presentation/screens/approve_transaction_sheet.dart`
+- Dedup service: `lib/core/services/auto_transaction/transaction_parser_service.dart`
+
+---
+
+## dos.me ID OAuth Integration
+
+### Overview
+
+dos.me ID provides centralized OAuth token management for external services (Gmail, Outlook).
+
+**API Base**: `https://api.dos.me`
+**Service**: `lib/core/services/dosme_oauth/dosme_oauth_service.dart`
+
+### Token Flow
+
+```
+┌───────────────────────────────────────────────────────┐
+│           dos.me ID OAuth Token Flow                    │
+└───────────────────────────────────────────────────────┘
+
+CONNECT (First Time):
+  1. Native Google Sign In → get auth code
+  2. Send auth code to dos.me ID: POST /oauth/tokens/exchange
+  3. dos.me ID exchanges code → stores refresh token server-side
+  4. App saves connection state in SharedPreferences
+
+GET TOKEN (Subsequent):
+  1. App calls: POST /oauth/tokens/access-token
+  2. dos.me ID refreshes token if expired (server-side)
+  3. Returns fresh access token (valid ~50 min)
+  4. App uses token for Gmail API calls
+
+AUTO-RESTORE (After Reinstall):
+  1. App starts → SharedPreferences empty (reinstalled)
+  2. User is authenticated (Supabase session)
+  3. App calls: GET /oauth/tokens/connections
+  4. If Gmail connection exists → auto-restore local settings
+  5. No re-authentication needed!
+```
+
+### API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/oauth/tokens/exchange` | POST | Exchange auth code for stored refresh token |
+| `/oauth/tokens/access-token` | POST | Get fresh access token (auto-refresh) |
+| `/oauth/tokens/connections` | GET | List user's OAuth connections |
+| `/oauth/gmail/connect` | GET | Web-based Gmail OAuth connect URL |
+
+### Auto-Restore After Reinstall
+
+Email sync settings are stored in SharedPreferences (lost on reinstall). But dos.me ID server retains the Gmail OAuth token. On app start, `EmailSyncNotifier.build()` checks dos.me ID for existing connections:
+
+```dart
+Future<EmailSyncSettingsModel?> _tryRestoreFromDosme() async {
+  if (!SupabaseConfig.useDosmeOAuth) return null;
+  if (SupabaseInitService.currentSession == null) return null;
+
+  final email = await dosmeService.getConnectedGmailEmail();
+  if (email != null) {
+    await _saveGmailConnection(email);  // Restore to SharedPreferences
+    return await _loadSettings();
+  }
+  return null;
+}
+```
+
+### Key Files
+
+- Service: `lib/core/services/dosme_oauth/dosme_oauth_service.dart`
+- Models: `lib/core/services/dosme_oauth/dosme_oauth_models.dart`
+- Provider: `lib/core/services/dosme_oauth/dosme_oauth.dart`
+- Email sync restore: `lib/features/email_sync/riverpod/email_sync_provider.dart`
+
+---
+
 ## State Management
 
 ### Riverpod Architecture
@@ -1929,6 +2115,59 @@ Update local SQLite
     ↓
 UI updates in real-time
 ```
+
+---
+
+## Build & Release
+
+### Android Build
+
+**R8 Code Shrinking**: Enabled with ProGuard rules for smaller APK and obfuscation.
+
+```groovy
+// android/app/build.gradle
+release {
+    minifyEnabled true
+    shrinkResources true
+    proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+    ndk {
+        debugSymbolLevel = 'SYMBOL_TABLE'  // For Play Console crash reports
+    }
+}
+```
+
+**ProGuard Rules** (`android/app/proguard-rules.pro`):
+- Keep Flutter, HugeIcons, Google Sign In, Firebase, Stripe
+- Keep Supabase, SQLite/Drift, Facebook Auth
+- Suppress warnings for Play Core deferred components
+
+**Dart Obfuscation**: Enabled in CI for crash debugging.
+```bash
+flutter build appbundle --release \
+  --obfuscate \
+  --split-debug-info=build/app/outputs/symbols
+```
+
+**Debug Symbols**: Uploaded as GitHub artifacts for crash analysis.
+
+### CI/CD (GitHub Actions)
+
+**Workflows** (triggered by push to `main`):
+
+| Platform | Workflow | Auto-Deploy |
+|----------|----------|-------------|
+| Android | `android-build.yml` | Google Play Internal |
+| iOS | `ios-build.yml` | TestFlight |
+| Web | `web-build.yml` | Artifact only |
+| Linux | `linux-build.yml` | Artifact only |
+| macOS | `macos-build.yml` | App Store Connect |
+
+**Android Pipeline**:
+1. Auto Version Bump (increment build number)
+2. Build AAB with R8 + obfuscation
+3. Prepare native debug symbols (zip)
+4. Upload to Google Play Internal track
+5. Save debug symbols as artifact (90 days)
 
 ---
 
@@ -2369,8 +2608,13 @@ Checklist:
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Last Updated By**: Claude (AI Assistant)
-**Next Review Date**: 2026-02-25
+**Next Review Date**: 2026-03-07
 **Recent Updates**:
+- Added Transaction Automation Pipeline section (Email, SMS, Notification flows)
+- Added dos.me ID OAuth Integration section (token management, auto-restore)
+- Added Build & Release section (R8, ProGuard, debug symbols, CI/CD)
+- Updated Technology Stack (HugeIcons, dos.me ID OAuth)
+- Added Pending Transactions table schema
 - Added Telegram Bot Integration section (deep link flow, JWT verification, Edge Functions)

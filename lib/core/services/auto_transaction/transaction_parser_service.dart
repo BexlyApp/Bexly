@@ -1,29 +1,16 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/core/services/auto_transaction/parsed_transaction.dart';
+import 'package:bexly/core/services/ai/background_ai_service.dart';
 
-/// Service to parse bank messages using AI (Gemini)
+/// Service to parse bank messages using AI (uses configured provider)
 class TransactionParserService {
-  final String apiKey;
-  GenerativeModel? _model;
+  final BackgroundAIService _ai;
 
-  TransactionParserService({required this.apiKey});
-
-  GenerativeModel get _geminiModel {
-    _model ??= GenerativeModel(
-      model: 'gemini-2.0-flash',
-      apiKey: apiKey,
-      generationConfig: GenerationConfig(
-        temperature: 0.1, // Low temperature for consistent parsing
-        maxOutputTokens: 500,
-      ),
-    );
-    return _model!;
-  }
+  TransactionParserService({required BackgroundAIService ai}) : _ai = ai;
 
   /// Parse a bank SMS/notification message
   Future<ParsedTransaction?> parseMessage({
@@ -37,8 +24,7 @@ class TransactionParserService {
       Log.d('Parsing $source message from $senderId', label: 'TransactionParser');
 
       final prompt = _buildParsingPrompt(message, senderId, bankName);
-      final response = await _geminiModel.generateContent([Content.text(prompt)]);
-      final responseText = response.text;
+      final responseText = await _ai.complete(prompt);
 
       if (responseText == null || responseText.isEmpty) {
         Log.w('Empty response from AI', label: 'TransactionParser');
@@ -143,7 +129,90 @@ JSON:''';
   }
 }
 
-/// Service to check for duplicate transactions
+/// Service to check for semantic duplicates using AI
+///
+/// Pre-filters candidates by amount/date in DB, then asks AI
+/// to determine if the new transaction is a duplicate.
+class AIDuplicateCheckService {
+  final BackgroundAIService _ai;
+
+  AIDuplicateCheckService({required BackgroundAIService ai}) : _ai = ai;
+
+  /// Check if a parsed transaction is a duplicate of any existing transaction.
+  ///
+  /// [parsed] - The new transaction to check
+  /// [candidates] - Recent DB transactions with similar amount/date (pre-filtered)
+  ///   Each map should have: amount, date, title, notes
+  ///
+  /// Returns true if AI determines this is likely a duplicate.
+  Future<bool> isDuplicate({
+    required ParsedTransaction parsed,
+    required List<Map<String, dynamic>> candidates,
+  }) async {
+    if (candidates.isEmpty) return false;
+
+    try {
+      final prompt = _buildDuplicateCheckPrompt(parsed, candidates);
+      final text = await _ai.complete(prompt, maxTokens: 200);
+
+      if (text == null || text.isEmpty) {
+        Log.w('Empty AI duplicate check response', label: 'AIDuplicateCheck');
+        return false;
+      }
+
+      Log.d('AI duplicate check response: $text', label: 'AIDuplicateCheck');
+
+      // Parse response
+      String jsonStr = text;
+      if (jsonStr.startsWith('```json')) jsonStr = jsonStr.substring(7);
+      if (jsonStr.startsWith('```')) jsonStr = jsonStr.substring(3);
+      if (jsonStr.endsWith('```')) jsonStr = jsonStr.substring(0, jsonStr.length - 3);
+      jsonStr = jsonStr.trim();
+
+      final json = jsonDecode(jsonStr) as Map<String, dynamic>;
+      return json['isDuplicate'] == true;
+    } catch (e) {
+      Log.w('AI duplicate check failed, assuming not duplicate: $e',
+          label: 'AIDuplicateCheck');
+      return false; // On error, allow the transaction through
+    }
+  }
+
+  String _buildDuplicateCheckPrompt(
+    ParsedTransaction parsed,
+    List<Map<String, dynamic>> candidates,
+  ) {
+    final candidateLines = candidates.asMap().entries.map((e) {
+      final c = e.value;
+      return '${e.key + 1}. Amount: ${c['amount']}, Date: ${c['date']}, '
+          'Title: "${c['title']}", Notes: "${c['notes'] ?? ''}"';
+    }).join('\n');
+
+    return '''
+You are a financial transaction duplicate detector. Determine if the NEW transaction is a duplicate of any EXISTING transaction.
+
+NEW transaction (from ${parsed.source}):
+- Amount: ${parsed.amount}
+- Date: ${parsed.dateTime.toIso8601String()}
+- Merchant: "${parsed.merchant ?? 'unknown'}"
+- Bank: "${parsed.bankName ?? 'unknown'}"
+- Reference: "${parsed.reference ?? ''}"
+
+EXISTING transactions in database:
+$candidateLines
+
+Rules:
+- Same amount within 1 day AND similar merchant/description → DUPLICATE
+- Same amount within 1 hour even with different description → LIKELY DUPLICATE
+- Different amounts → NOT duplicate
+- Same amount but more than 3 days apart → NOT duplicate (could be recurring)
+
+Return ONLY JSON: {"isDuplicate": true/false, "reason": "brief explanation"}
+JSON:''';
+  }
+}
+
+/// Service to check for duplicate transactions using hash cache
 class TransactionDeduplicationService {
   static const String _cacheKey = 'auto_transaction_hashes';
   static const int _maxCacheSize = 1000;

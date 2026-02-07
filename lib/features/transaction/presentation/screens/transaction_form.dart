@@ -24,12 +24,19 @@ import 'package:bexly/features/transaction/presentation/riverpod/transaction_pro
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
+import 'package:bexly/features/pending_transactions/data/models/pending_transaction_model.dart';
 
 class TransactionForm extends HookConsumerWidget {
   // Change to HookConsumerWidget
   final int? transactionId;
   final ReceiptScanResult? receiptData;
-  const TransactionForm({super.key, this.transactionId, this.receiptData});
+  final PendingTransactionModel? pendingTransaction;
+  const TransactionForm({
+    super.key,
+    this.transactionId,
+    this.receiptData,
+    this.pendingTransaction,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -54,6 +61,7 @@ class TransactionForm extends HookConsumerWidget {
       transaction:
           asyncTransaction?.value, // Pass current data, hook handles null
       receiptData: receiptData,
+      pendingTransaction: pendingTransaction,
     );
 
     return CustomScaffold(

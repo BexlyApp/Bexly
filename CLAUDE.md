@@ -20,10 +20,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Bexly is a Flutter-based personal finance and budget tracking application with a focus on cross-platform sync and AI agent capabilities. The project uses a feature-based clean architecture with Riverpod for state management, Drift for local database storage, and Firebase for cloud sync and authentication.
+Bexly is a Flutter-based personal finance and budget tracking application with a focus on cross-platform sync and AI agent capabilities. The project uses a feature-based clean architecture with Riverpod for state management, Drift for local database storage, and Supabase for authentication.
 
-## IMPORTANT: Firebase Configuration
-**Firebase Project ID: `bexly-app`** - App sử dụng Firebase project `bexly-app` cho toàn bộ authentication, Firestore và các services. Firestore database ID là `bexly`.
+## IMPORTANT: Backend Architecture
+- **Authentication**: Supabase (dos.me ID) - `https://dos.supabase.co`
+- **Local Database**: Drift/SQLite - source of truth for offline
+- **Cloud Sync**: Supabase PostgreSQL (schema `bexly`) - bidirectional sync when authenticated
+- **OAuth Token Storage**: dos.me ID API (`https://api.dos.me`) - centralized OAuth token management
+- **NO Firebase** - Project đã migrate hoàn toàn sang Supabase
 
 ## Essential Commands
 
@@ -156,7 +160,7 @@ feature_name/
 - Each developer has different keystores with different SHA-1s
 - Each environment (dev/staging/prod) may need different configs
 - Already in `.gitignore` - keep it there
-- Each developer must download their own from Firebase Console after adding their keystore's SHA-1 fingerprint
+- Each developer must download their own from Google Cloud Console after adding their keystore's SHA-1 fingerprint
 
 **Before EVERY commit:**
 1. Run `git status` and carefully review ALL files

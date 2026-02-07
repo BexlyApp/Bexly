@@ -630,9 +630,9 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
             }),
           )
           .timeout(
-            const Duration(seconds: 5), // Quick timeout for fast fallback
+            Duration(seconds: LLMDefaultConfig.customTimeoutSeconds),
             onTimeout: () {
-              Log.e('Custom LLM request timed out after 5 seconds', label: 'Custom LLM');
+              Log.e('Custom LLM request timed out after ${LLMDefaultConfig.customTimeoutSeconds}s', label: 'Custom LLM');
               throw Exception('DOS_AI_TIMEOUT');
             },
           );
