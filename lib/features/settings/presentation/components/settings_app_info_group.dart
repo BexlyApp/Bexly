@@ -41,6 +41,28 @@ class SettingsAppInfoGroup extends ConsumerWidget {
             desktopWidget: const DeveloperPortalScreen(),
           ),
         ),
+        MenuTileButton(
+          label: context.l10n.signOut,
+          icon: HugeIcons.strokeRoundedLogout01,
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              showDragHandle: true,
+              builder: (context) => AlertBottomSheet(
+                title: context.l10n.signOut,
+                content: Text(
+                  context.l10n.signOutConfirm,
+                  style: AppTextStyles.body2,
+                ),
+                onConfirm: () {
+                  context.pop();
+                  ref.read(authStateProvider.notifier).logout();
+                  context.replace(Routes.onboarding);
+                },
+              ),
+            );
+          },
+        ),
       ],
     );
   }
