@@ -11,7 +11,9 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/database/tables/category_table.dart'; // For Category.toModel() extension
 import 'package:bexly/core/extensions/date_time_extension.dart';
+import 'package:bexly/core/extensions/currency_extension.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/extensions/string_extension.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
@@ -38,6 +40,7 @@ class TransactionFormState {
   final ValueNotifier<CategoryModel?> selectedCategory;
   final ValueNotifier<WalletModel?> selectedWallet;
   final String defaultCurrency;
+  final String defaultIsoCode;
   final bool isEditing;
   final TransactionModel? initialTransaction;
 
@@ -52,6 +55,7 @@ class TransactionFormState {
     required this.selectedWallet,
     required this.dateFieldController,
     required this.defaultCurrency,
+    required this.defaultIsoCode,
     required this.isEditing,
     this.initialTransaction,
   });
@@ -364,6 +368,7 @@ class TransactionFormState {
 TransactionFormState useTransactionFormState({
   required WidgetRef ref,
   required String defaultCurrency,
+  required String defaultIsoCode,
   required bool isEditing,
   TransactionModel? transaction,
   ReceiptScanResult? receiptData,
@@ -379,11 +384,11 @@ TransactionFormState useTransactionFormState({
   // Initialize amount from transaction, receipt, or pending
   final amountController = useTextEditingController(
     text: isEditing && transaction != null
-        ? '$defaultCurrency ${transaction.amount.toPriceFormat()}'
+        ? formatCurrency(transaction.amount.toPriceFormat(), defaultCurrency, defaultIsoCode)
         : receiptData != null
-            ? '${receiptData.currency ?? defaultCurrency} ${receiptData.amount.toPriceFormat()}'
+            ? formatCurrency(receiptData.amount.toPriceFormat(), (receiptData.currency ?? defaultIsoCode).currencySymbol, receiptData.currency ?? defaultIsoCode)
             : pendingTransaction != null
-                ? '${pendingTransaction.currency} ${pendingTransaction.amount.toPriceFormat()}'
+                ? formatCurrency(pendingTransaction.amount.toPriceFormat(), pendingTransaction.currency.currencySymbol, pendingTransaction.currency)
                 : '',
   );
 
@@ -435,6 +440,7 @@ TransactionFormState useTransactionFormState({
       selectedWallet: selectedWallet,
       dateFieldController: dateFieldController,
       defaultCurrency: defaultCurrency,
+      defaultIsoCode: defaultIsoCode,
       isEditing: isEditing,
       initialTransaction: transaction,
     ),
@@ -526,9 +532,9 @@ TransactionFormState useTransactionFormState({
           // Populate title from merchant
           titleController.text = receiptData.merchant;
 
-          // Populate amount with currency prefix for UI display
+          // Populate amount with currency symbol for UI display
           final currency = receiptData.currency ?? 'VND';
-          amountController.text = '$currency ${receiptData.amount.toPriceFormat()}';
+          amountController.text = formatCurrency(receiptData.amount.toPriceFormat(), currency.currencySymbol, currency);
 
           // Populate notes from items
           if (receiptData.items.isNotEmpty) {
@@ -626,9 +632,9 @@ TransactionFormState useTransactionFormState({
           final displayTitle = pendingTransaction.merchant ?? pendingTransaction.title;
           titleController.text = displayTitle;
 
-          // Populate amount with currency prefix
+          // Populate amount with currency symbol
           final currency = pendingTransaction.currency;
-          amountController.text = '$currency ${pendingTransaction.amount.toPriceFormat()}';
+          amountController.text = formatCurrency(pendingTransaction.amount.toPriceFormat(), currency.currencySymbol, currency);
 
           // Set transaction type based on pending
           selectedTransactionType.value = pendingTransaction.isIncome

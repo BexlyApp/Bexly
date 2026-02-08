@@ -119,7 +119,7 @@ class TransactionGroupedCard extends ConsumerWidget {
                       builder: (context, snapshot) {
                         final dayTotal = snapshot.data ?? 0;
                         return Text(
-                          '$currency ${dayTotal.toPriceFormat()}',
+                          formatCurrency(dayTotal.toPriceFormat(), currency, baseCurrency),
                           textAlign: TextAlign.end,
                           style: AppTextStyles.numericMedium.copyWith(
                             color: dayTotal > 0

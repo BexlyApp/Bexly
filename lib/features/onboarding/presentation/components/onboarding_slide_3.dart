@@ -11,6 +11,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/core/services/device_location_service.dart';
@@ -114,14 +115,14 @@ class OnboardingSlide3 extends HookConsumerWidget {
     );
 
     final walletText = wallet != null
-        ? '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}'
+        ? formatCurrency(wallet.balance.toPriceFormat(), wallet.currencyByIsoCode(ref).symbol, wallet.currency)
         : 'Tap to setup your first wallet';
 
     final walletTextController = useTextEditingController(text: walletText);
 
     useEffect(() {
       final newText = wallet != null
-          ? '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}'
+          ? formatCurrency(wallet.balance.toPriceFormat(), wallet.currencyByIsoCode(ref).symbol, wallet.currency)
           : 'Tap to setup your first wallet';
       if (walletTextController.text != newText) {
         walletTextController.text = newText;
@@ -209,7 +210,7 @@ class OnboardingSlide3 extends HookConsumerWidget {
                     child: MenuTileButton(
                       label: w.name,
                       subtitle: Text(
-                        '${w.currencyByIsoCode(ref).symbol} ${w.balance.toPriceFormat()}',
+                        formatCurrency(w.balance.toPriceFormat(), w.currencyByIsoCode(ref).symbol, w.currency),
                         style: AppTextStyles.body3,
                       ),
                       icon: _getWalletIcon(w.walletType),

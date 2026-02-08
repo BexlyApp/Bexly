@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/extensions/string_extension.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
@@ -138,12 +139,12 @@ TransactionFilterFormState useTransactionFilterFormState({
   final minAmountController = useTextEditingController(
     text: initialFilter?.minAmount == null
         ? ''
-        : '${activeWallet.value?.currencyByIsoCode(ref).symbol} ${initialFilter?.minAmount?.toPriceFormat()}',
+        : formatCurrency(initialFilter!.minAmount!.toPriceFormat(), activeWallet.value?.currencyByIsoCode(ref).symbol ?? '', activeWallet.value?.currency ?? 'VND'),
   );
   final maxAmountController = useTextEditingController(
     text: initialFilter?.maxAmount == null
         ? ''
-        : '${activeWallet.value?.currencyByIsoCode(ref).symbol} ${initialFilter?.maxAmount?.toPriceFormat()}',
+        : formatCurrency(initialFilter!.maxAmount!.toPriceFormat(), activeWallet.value?.currencyByIsoCode(ref).symbol ?? '', activeWallet.value?.currency ?? 'VND'),
   );
   final notesController = useTextEditingController(
     text: initialFilter?.notes ?? '',

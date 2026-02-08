@@ -18,6 +18,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/features/goal/data/model/goal_model.dart';
 import 'package:bexly/features/goal/presentation/components/goal_checklist_holder.dart';
@@ -178,8 +179,9 @@ class GoalDetailsScreen extends ConsumerWidget {
                         (sum, item) => sum + item.amount,
                       );
                       final currencySymbol = wallet.value?.currencyByIsoCode(ref).symbol ?? '';
+                      final isoCode = wallet.value?.currency ?? 'VND';
                       return Text(
-                        '$currencySymbol ${total.toPriceFormat()}',
+                        formatCurrency(total.toPriceFormat(), currencySymbol, isoCode),
                         style: AppTextStyles.numericLarge,
                       );
                     },

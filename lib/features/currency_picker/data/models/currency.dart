@@ -45,12 +45,30 @@ String formatAmountWithCurrency({
   final absAmount = _formatPrice(amount.abs(), decimalDigits ?? 0);
 
   // VND, JPY, KRW use symbol after amount
-  final symbolAfterCurrencies = ['VND', 'JPY', 'KRW'];
-  if (symbolAfterCurrencies.contains(isoCode.toUpperCase())) {
+  if (_symbolAfterCurrencies.contains(isoCode.toUpperCase())) {
     return '$sign $absAmount $symbol'.trim();
   }
   // Others use symbol before amount
   return '$sign $symbol $absAmount'.trim();
+}
+
+/// Currencies where symbol appears after the amount
+const _symbolAfterCurrencies = ['VND', 'JPY', 'KRW'];
+
+/// Whether this currency places the symbol after the amount (e.g., VND, JPY, KRW)
+bool isSymbolAfterAmount(String isoCode) {
+  return _symbolAfterCurrencies.contains(isoCode.toUpperCase());
+}
+
+/// Position a currency symbol around a pre-formatted amount string.
+///
+/// For VND/JPY/KRW: "14,800,555 ₫"
+/// For others: "$ 100.50"
+String formatCurrency(String formattedAmount, String symbol, String isoCode) {
+  if (_symbolAfterCurrencies.contains(isoCode.toUpperCase())) {
+    return '$formattedAmount$symbol';
+  }
+  return '$symbol$formattedAmount';
 }
 
 String _formatPrice(double value, int decimalDigits) {

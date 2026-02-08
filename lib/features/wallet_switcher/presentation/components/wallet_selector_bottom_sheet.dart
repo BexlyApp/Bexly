@@ -6,6 +6,7 @@ import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_filter_provider.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
@@ -109,7 +110,7 @@ class WalletSelectorBottomSheet extends ConsumerWidget {
                     color: isDisabled ? Colors.grey : null,
                   ),
                   subtitle: Text(
-                    '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}',
+                    formatCurrency(wallet.balance.toPriceFormat(), wallet.currencyByIsoCode(ref).symbol, wallet.currency),
                     style: AppTextStyles.body3.copyWith(
                       color: isDisabled ? Colors.grey : null,
                     ),

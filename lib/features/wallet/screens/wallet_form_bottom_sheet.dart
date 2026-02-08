@@ -81,7 +81,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
         nameController.text = wallet!.name;
         balanceController.text = wallet!.balance == 0
             ? ''
-            : '${wallet?.currencyByIsoCode(ref).symbol} ${wallet?.balance.toPriceFormat()}';
+            : formatCurrency(wallet!.balance.toPriceFormat(), wallet!.currencyByIsoCode(ref).symbol, wallet!.currency);
         currencyController.text = wallet!.currency;
         walletType.value = wallet!.walletType;
 

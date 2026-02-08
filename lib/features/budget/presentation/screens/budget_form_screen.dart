@@ -15,6 +15,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/extensions/string_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/database/database_provider.dart';
@@ -62,19 +63,19 @@ class BudgetFormScreen extends HookConsumerWidget {
       if (!isEditing && selectedWallet.value == null && activeWalletsAsync.value != null) {
         selectedWallet.value = activeWalletsAsync.value;
         walletController.text =
-            '${activeWalletsAsync.value?.currencyByIsoCode(ref).symbol} ${activeWalletsAsync.value?.balance.toPriceFormat()}';
+            formatCurrency(activeWalletsAsync.value?.balance.toPriceFormat() ?? '0', activeWalletsAsync.value?.currencyByIsoCode(ref).symbol ?? '', activeWalletsAsync.value?.currency ?? 'VND');
       }
 
       if (isEditing && budgetDetails is AsyncData<BudgetModel?>) {
         final budget = budgetDetails.value;
         if (budget != null) {
           amountController.text =
-              '$defaultCurrency ${budget.amount.toPriceFormat()}';
+              formatCurrency(budget.amount.toPriceFormat(), defaultCurrency ?? 'đ', wallet.value?.currency ?? 'VND');
           selectedCategory.value = budget.category;
           categoryController.text = budget.category.title; // Simplified display
           selectedWallet.value = budget.wallet;
           walletController.text =
-              '${budget.wallet.currencyByIsoCode(ref).symbol} ${budget.wallet.balance.toPriceFormat()}';
+              formatCurrency(budget.wallet.balance.toPriceFormat(), budget.wallet.currencyByIsoCode(ref).symbol, budget.wallet.currency);
           isRoutine.value = budget.isRoutine;
         }
       }
@@ -274,7 +275,7 @@ class BudgetFormScreen extends HookConsumerWidget {
                             onWalletSelected: (WalletModel wallet) {
                               selectedWallet.value = wallet;
                               walletController.text =
-                                '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}';
+                                formatCurrency(wallet.balance.toPriceFormat(), wallet.currencyByIsoCode(ref).symbol, wallet.currency);
                               Navigator.pop(context);
                             },
                           ),

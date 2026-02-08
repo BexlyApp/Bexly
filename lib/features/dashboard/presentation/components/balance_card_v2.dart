@@ -129,50 +129,52 @@ class BalanceCard extends ConsumerWidget {
                       if (selectedWallet != null) {
                         // Show individual wallet balance
                         final currency = selectedWallet.currencyByIsoCode(ref);
+                        final symbolWidget = Text(
+                          currency.symbol,
+                          style: AppTextStyles.body3,
+                        );
+                        final amountWidget = Text(
+                          selectedWallet.balance.toPriceFormat(
+                            decimalDigits: currency.decimalDigits,
+                          ),
+                          style: AppTextStyles.numericHeading.copyWith(
+                            height: 1,
+                          ),
+                        );
 
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           mainAxisSize: MainAxisSize.min,
                           spacing: AppSpacing.spacing2,
-                          children: [
-                            Text(
-                              currency.symbol,
-                              style: AppTextStyles.body3,
-                            ),
-                            Text(
-                              selectedWallet.balance.toPriceFormat(
-                                decimalDigits: currency.decimalDigits,
-                              ),
-                              style: AppTextStyles.numericHeading.copyWith(
-                                height: 1,
-                              ),
-                            ),
-                          ],
+                          children: isSymbolAfterAmount(currency.isoCode)
+                              ? [amountWidget, symbolWidget]
+                              : [symbolWidget, amountWidget],
                         );
                       } else {
                         // Show total balance in base currency
                         final currencies = ref.read(currenciesStaticProvider);
                         final currency = currencies.fromIsoCode(baseCurrency);
                         final symbol = currency?.symbol ?? baseCurrency;
+                        final symbolWidget = Text(
+                          symbol,
+                          style: AppTextStyles.body3,
+                        );
+                        final amountWidget = Text(
+                          totalBalance.toPriceFormat(
+                            decimalDigits: currency?.decimalDigits,
+                          ),
+                          style: AppTextStyles.numericHeading.copyWith(
+                            height: 1,
+                          ),
+                        );
 
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           mainAxisSize: MainAxisSize.min,
                           spacing: AppSpacing.spacing2,
-                          children: [
-                            Text(
-                              symbol,
-                              style: AppTextStyles.body3,
-                            ),
-                            Text(
-                              totalBalance.toPriceFormat(
-                                decimalDigits: currency?.decimalDigits,
-                              ),
-                              style: AppTextStyles.numericHeading.copyWith(
-                                height: 1,
-                              ),
-                            ),
-                          ],
+                          children: isSymbolAfterAmount(baseCurrency)
+                              ? [amountWidget, symbolWidget]
+                              : [symbolWidget, amountWidget],
                         );
                       }
                     },
