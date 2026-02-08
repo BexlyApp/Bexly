@@ -828,7 +828,7 @@ class _TransactionCard extends HookConsumerWidget {
                               style: AppTextStyles.body5,
                             ),
                             Text(
-                              '${isIncome ? '+' : '-'} ${currencyData?.symbol ?? ''} ${transaction.amount.toPriceFormat(decimalDigits: currencyData?.decimalDigits ?? 0)}',
+                              '${isIncome ? '+' : '-'} ${formatCurrency(transaction.amount.toPriceFormat(decimalDigits: currencyData?.decimalDigits ?? 0), currencyData?.symbol ?? '', currencyData?.isoCode ?? 'VND')}',
                               style: AppTextStyles.numericMedium.copyWith(
                                 color: isIncome ? AppColors.green200 : AppColors.red700,
                                 height: 1.12,

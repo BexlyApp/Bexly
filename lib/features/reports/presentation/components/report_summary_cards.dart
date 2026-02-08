@@ -284,7 +284,7 @@ class _SummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.spacing4),
           Text(
-            amount.toShortPriceFormat(currencySymbol: currency.currencySymbol),
+            amount.toShortPriceFormat(currencySymbol: currency.currencySymbol, isoCode: currency),
             style: AppTextStyles.body1.copyWith(
               color: color,
               fontWeight: FontWeight.w700,

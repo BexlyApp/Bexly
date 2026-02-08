@@ -87,7 +87,7 @@ class TransactionSummaryCard extends ConsumerWidget {
                   Text(context.l10n.earning, style: AppTextStyles.body3),
                   Expanded(
                     child: Text(
-                      '$currency ${income.toPriceFormat()}',
+                      formatCurrency(income.toPriceFormat(), currency, baseCurrency),
                       textAlign: TextAlign.end,
                       style: AppTextStyles.numericMedium.copyWith(
                         color: context.incomeText,
@@ -103,7 +103,7 @@ class TransactionSummaryCard extends ConsumerWidget {
                   Text(context.l10n.spending, style: AppTextStyles.body3),
                   Expanded(
                     child: Text(
-                      '- $currency ${expenses.toPriceFormat()}',
+                      '- ${formatCurrency(expenses.toPriceFormat(), currency, baseCurrency)}',
                       textAlign: TextAlign.end,
                       style: AppTextStyles.numericMedium.copyWith(
                         color: context.expenseText,
@@ -124,7 +124,7 @@ class TransactionSummaryCard extends ConsumerWidget {
                   ),
                   Expanded(
                     child: Text(
-                      '$currency ${total.toPriceFormat()}',
+                      formatCurrency(total.toPriceFormat(), currency, baseCurrency),
                       textAlign: TextAlign.end,
                       style: AppTextStyles.numericMedium,
                     ),

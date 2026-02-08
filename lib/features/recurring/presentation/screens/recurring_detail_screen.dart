@@ -6,7 +6,9 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/currency_extension.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/features/recurring/data/model/recurring_model.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
@@ -78,7 +80,7 @@ class RecurringDetailScreen extends HookConsumerWidget {
                           ),
                         ),
                         Text(
-                          '${currentRecurring.amount.toPriceFormat()} ${currentRecurring.currency}',
+                          formatCurrency(currentRecurring.amount.toPriceFormat(), currentRecurring.currency.currencySymbol, currentRecurring.currency),
                           style: AppTextStyles.numericLarge.copyWith(
                             color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.bold,
@@ -587,7 +589,7 @@ class _PaymentHistoryItem extends StatelessWidget {
           ),
         ),
         trailing: Text(
-          '${payment.amount.toPriceFormat()} $currency',
+          formatCurrency(payment.amount.toPriceFormat(), currency.currencySymbol, currency),
           style: AppTextStyles.numericMedium.copyWith(
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.primary,

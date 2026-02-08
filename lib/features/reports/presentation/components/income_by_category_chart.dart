@@ -64,6 +64,7 @@ class IncomeByCategoryChart extends ConsumerWidget {
                           Text(
                             totalIncome.toShortPriceFormat(
                               currencySymbol: baseCurrency.currencySymbol,
+                              isoCode: baseCurrency,
                             ),
                             style: AppTextStyles.body2,
                           ),

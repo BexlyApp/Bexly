@@ -13,6 +13,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/recurring/presentation/riverpod/recurring_form_state.dart';
@@ -94,7 +95,7 @@ class RecurringFormScreen extends HookConsumerWidget {
             // Only 1 wallet - auto-select it
             final wallet = wallets.first;
             formNotifier.setWallet(wallet);
-            walletController.text = '${wallet.name} - ${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}';
+            walletController.text = '${wallet.name} - ${formatCurrency(wallet.balance.toPriceFormat(), wallet.currencyByIsoCode(ref).symbol, wallet.currency)}';
           }
         });
       }
@@ -102,7 +103,7 @@ class RecurringFormScreen extends HookConsumerWidget {
       // Update controllers when form state changes
       if (formState.wallet != null && walletController.text.isEmpty) {
         final wallet = formState.wallet!;
-        walletController.text = '${wallet.name} - ${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}';
+        walletController.text = '${wallet.name} - ${formatCurrency(wallet.balance.toPriceFormat(), wallet.currencyByIsoCode(ref).symbol, wallet.currency)}';
       }
       if (formState.category != null && categoryController.text.isEmpty) {
         categoryController.text = formState.category!.title;
@@ -181,7 +182,7 @@ class RecurringFormScreen extends HookConsumerWidget {
                             filterByCurrency: recurringId != null ? formState.wallet?.currency : null,
                             onWalletSelected: (WalletModel wallet) {
                               formNotifier.setWallet(wallet);
-                              walletController.text = '${wallet.name} - ${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}';
+                              walletController.text = '${wallet.name} - ${formatCurrency(wallet.balance.toPriceFormat(), wallet.currencyByIsoCode(ref).symbol, wallet.currency)}';
                               // No need to pop - WalletSelectorBottomSheet already handles it
                             },
                           ),

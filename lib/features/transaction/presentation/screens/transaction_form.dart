@@ -45,7 +45,8 @@ class TransactionForm extends HookConsumerWidget {
     final wallet = ref.watch(activeWalletProvider);
     final defaultCurrency = wallet.value
         ?.currencyByIsoCode(ref)
-        .symbol; // Determine if we are in "edit" mode
+        .symbol;
+    final defaultIsoCode = wallet.value?.currency ?? 'VND';
     final isEditing = transactionId != null;
 
     // Fetch transaction details if in edit mode
@@ -57,6 +58,7 @@ class TransactionForm extends HookConsumerWidget {
     final formState = useTransactionFormState(
       ref: ref,
       defaultCurrency: defaultCurrency ?? CurrencyLocalDataSource.dummy.symbol,
+      defaultIsoCode: defaultIsoCode,
       isEditing: isEditing,
       transaction:
           asyncTransaction?.value, // Pass current data, hook handles null

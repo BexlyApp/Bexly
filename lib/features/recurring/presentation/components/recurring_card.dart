@@ -6,6 +6,7 @@ import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/extensions/text_style_extensions.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/category_picker/presentation/components/category_icon.dart';
@@ -209,7 +210,7 @@ class RecurringCard extends StatelessWidget {
 
                       // Amount with +/- sign based on transaction type
                       AutoSizeText(
-                        '${recurring.category.transactionType == 'income' ? '+' : '-'}${recurring.amount.toPriceFormat()} ${_getCurrencySymbol(recurring.currency)}',
+                        '${recurring.category.transactionType == 'income' ? '+' : '-'}${formatCurrency(recurring.amount.toPriceFormat(), _getCurrencySymbol(recurring.currency), recurring.currency)}',
                         style: AppTextStyles.numericRegular.copyWith(
                           color: recurring.category.transactionType == 'income'
                               ? AppColors.green200

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/core/extensions/currency_extension.dart';
 import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/features/currency_picker/data/sources/currency_local_source.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart'; // For currency formatting in the extension
@@ -71,7 +72,7 @@ abstract class WalletModel with _$WalletModel {
 /// Utility extensions for the [WalletModel].
 extension WalletModelUtils on WalletModel {
   String get formattedBalance {
-    return '$currency ${balance.toPriceFormat()}';
+    return formatCurrency(balance.toPriceFormat(), currency.currencySymbol, currency);
   }
 
   Currency currencyByIsoCode(WidgetRef ref) {

@@ -41,8 +41,9 @@ extension DoubleFormattingExtensions on double {
 
   /// Formats the double as a human-readable short price (e.g., 1K, 2,5M)
   /// Uses comma as decimal separator and up to 2 decimals for M, K, etc.
-  /// Optionally adds currency symbol prefix (e.g., "$1.5K" or "₫500K")
-  String toShortPriceFormat({String? currencySymbol}) {
+  /// Optionally adds currency symbol with correct positioning based on [isoCode].
+  /// For VND/JPY/KRW: "14,8M₫", others: "$14.8M"
+  String toShortPriceFormat({String? currencySymbol, String? isoCode}) {
     final absValue = abs();
     String suffix = '';
     double divisor = 1;
@@ -70,7 +71,13 @@ extension DoubleFormattingExtensions on double {
     }
     // Add currency symbol if provided
     if (currencySymbol != null && currencySymbol.isNotEmpty) {
-      return '$currencySymbol$formatted$suffix';
+      final base = '$formatted$suffix';
+      // VND, JPY, KRW: symbol after
+      const symbolAfter = ['VND', 'JPY', 'KRW'];
+      if (isoCode != null && symbolAfter.contains(isoCode.toUpperCase())) {
+        return '$base$currencySymbol';
+      }
+      return '$currencySymbol$base';
     }
     return '$formatted$suffix';
   }

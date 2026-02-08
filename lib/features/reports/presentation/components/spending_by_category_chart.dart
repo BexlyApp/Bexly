@@ -64,6 +64,7 @@ class SpendingByCategoryChart extends ConsumerWidget {
                           Text(
                             totalExpenses.toShortPriceFormat(
                               currencySymbol: baseCurrency.currencySymbol,
+                              isoCode: baseCurrency,
                             ),
                             style: AppTextStyles.body2,
                           ),
