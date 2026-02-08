@@ -374,11 +374,12 @@ TransactionFormState useTransactionFormState({
   ReceiptScanResult? receiptData,
   PendingTransactionModel? pendingTransaction,
 }) {
-  // Initialize title from transaction, receipt, or pending
+  // Initialize title from transaction, receipt, or pending (cleaned up)
+  final pendingTitle = pendingTransaction?.merchant ?? pendingTransaction?.title;
   final titleController = useTextEditingController(
     text: isEditing
         ? transaction?.title
-        : receiptData?.merchant ?? pendingTransaction?.merchant ?? pendingTransaction?.title ?? '',
+        : receiptData?.merchant ?? (pendingTitle != null ? _cleanMerchantTitle(pendingTitle) : ''),
   );
 
   // Initialize amount from transaction, receipt, or pending
@@ -490,8 +491,8 @@ TransactionFormState useTransactionFormState({
               () => ref.read(imageProvider.notifier).clearImage(),
             );
           }
-        } else if (!isEditing) {
-          // Only reset for new, not if transaction is just null during edit loading
+        } else if (!isEditing && pendingTransaction == null && receiptData == null) {
+          // Only reset for truly new transactions (not pending or receipt pre-fills)
           titleController.clear();
           amountController.clear();
           notesController.clear();
@@ -628,9 +629,9 @@ TransactionFormState useTransactionFormState({
     () {
       if (pendingTransaction != null && !isEditing) {
         Future.microtask(() async {
-          // Populate title from merchant or email subject
-          final displayTitle = pendingTransaction.merchant ?? pendingTransaction.title;
-          titleController.text = displayTitle;
+          // Populate title from merchant or email subject, cleaned up
+          final rawTitle = pendingTransaction.merchant ?? pendingTransaction.title;
+          titleController.text = _cleanMerchantTitle(rawTitle);
 
           // Populate amount with currency symbol
           final currency = pendingTransaction.currency;
@@ -721,4 +722,37 @@ TransactionFormState useTransactionFormState({
   // For now, assuming standard hook cleanup is sufficient.
 
   return formState;
+}
+
+/// Clean up raw merchant/title from email/SMS/notification
+/// - Remove payment gateway prefixes (.OP*, TT*, VNP*, etc.)
+/// - Convert ALL CAPS to Title Case
+String _cleanMerchantTitle(String name) {
+  var cleaned = name.trim();
+
+  // Remove common payment gateway prefixes
+  final prefixPattern = RegExp(r'^[.\s]*(OP\*|TT\*|VNP\*|VNPAY\*|PP\*|SQ\*|SP\*|GG\*|MOMO\*)', caseSensitive: false);
+  cleaned = cleaned.replaceFirst(prefixPattern, '');
+  cleaned = cleaned.trim();
+
+  // Convert ALL CAPS to Title Case (if most chars are uppercase)
+  final upperCount = cleaned.runes.where((r) {
+    final c = String.fromCharCode(r);
+    return c.toUpperCase() == c && c.toLowerCase() != c;
+  }).length;
+  final letterCount = cleaned.runes.where((r) {
+    final c = String.fromCharCode(r);
+    return c.toUpperCase() != c || c.toLowerCase() != c;
+  }).length;
+
+  if (letterCount > 0 && upperCount / letterCount > 0.7) {
+    cleaned = cleaned.split(RegExp(r'[\s\-_.]+')).map((word) {
+      if (word.isEmpty) return word;
+      // Keep short acronyms (AI, SM, etc.) uppercase
+      if (word.length <= 3 && word == word.toUpperCase()) return word;
+      return '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}';
+    }).join(' ');
+  }
+
+  return cleaned;
 }

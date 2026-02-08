@@ -347,13 +347,26 @@ class EmailSyncNotifier extends AsyncNotifier<EmailSyncSettingsModel?> {
     final current = _getCurrentValue();
     if (current == null) return;
 
+    // When enabling, ensure frequency is not manual (default to 24h)
+    final frequency = enabled && current.syncFrequency == SyncFrequency.manual
+        ? SyncFrequency.every24Hours
+        : current.syncFrequency;
+
     final updated = current.copyWith(
       isEnabled: enabled,
+      syncFrequency: frequency,
       updatedAt: DateTime.now(),
     );
 
     await _saveSettings(updated);
     state = AsyncData(updated);
+
+    // Update background sync accordingly
+    if (enabled) {
+      await _registerBackgroundSync(frequency);
+    } else {
+      await EmailSyncWorker.cancelPeriodicSync();
+    }
   }
 
   /// Toggle a specific bank domain

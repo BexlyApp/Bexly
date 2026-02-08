@@ -50,7 +50,7 @@ class PendingTransactionTile extends HookConsumerWidget {
     // If merchant is too short or looks like garbage, use bank name + transaction type
     final displayTitle = (rawTitle.length <= 4 || !_isValidMerchantName(rawTitle))
         ? '${pending.sourceDisplayName} ${pending.isIncome ? 'Credit' : 'Debit'}'
-        : rawTitle;
+        : _cleanMerchantName(rawTitle);
     final displaySubtitle = pending.categoryHint ?? pending.sourceDisplayName;
 
     // Watch for matching category
@@ -193,7 +193,7 @@ class PendingTransactionTile extends HookConsumerWidget {
                               const Gap(AppSpacing.spacing4),
                               Text(
                                 formatAmountWithCurrency(
-                                  amount: pending.amount,
+                                  amount: isIncome ? pending.amount : -pending.amount,
                                   symbol: currencySymbol,
                                   isoCode: pending.currency,
                                   decimalDigits: currencyData?.decimalDigits ?? 0,
@@ -265,6 +265,34 @@ class PendingTransactionTile extends HookConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Clean up raw merchant names from email/SMS/notification
+  /// - Remove payment gateway prefixes (.OP*, TT*, VNP*, etc.)
+  /// - Convert ALL CAPS to Title Case
+  /// - Trim trailing whitespace
+  static String _cleanMerchantName(String name) {
+    var cleaned = name.trim();
+
+    // Remove common payment gateway prefixes
+    final prefixPattern = RegExp(r'^[.\s]*(OP\*|TT\*|VNP\*|VNPAY\*|PP\*|SQ\*|SP\*|GG\*|MOMO\*)', caseSensitive: false);
+    cleaned = cleaned.replaceFirst(prefixPattern, '');
+    cleaned = cleaned.trim();
+
+    // Convert ALL CAPS to Title Case (if most chars are uppercase)
+    final upperCount = cleaned.runes.where((r) => String.fromCharCode(r).toUpperCase() == String.fromCharCode(r) && String.fromCharCode(r).toLowerCase() != String.fromCharCode(r)).length;
+    final letterCount = cleaned.runes.where((r) => String.fromCharCode(r).toUpperCase() != String.fromCharCode(r) || String.fromCharCode(r).toLowerCase() != String.fromCharCode(r)).length;
+
+    if (letterCount > 0 && upperCount / letterCount > 0.7) {
+      cleaned = cleaned.split(RegExp(r'[\s\-_.]+')).map((word) {
+        if (word.isEmpty) return word;
+        // Keep short acronyms (AI, SM, etc.) uppercase
+        if (word.length <= 3 && word == word.toUpperCase()) return word;
+        return '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}';
+      }).join(' ');
+    }
+
+    return cleaned;
   }
 
   /// Check if merchant name looks valid (not garbage from parser)

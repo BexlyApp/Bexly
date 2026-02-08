@@ -79,15 +79,16 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
               },
             ),
 
-            const Gap(AppSpacing.spacing24),
-
-            // Sync Frequency Selector
-            _SyncFrequencyCard(
-              currentFrequency: settings.syncFrequency,
-              onFrequencyChanged: (frequency) {
-                ref.read(emailSyncProvider.notifier).setSyncFrequency(frequency);
-              },
-            ),
+            // Sync Frequency Selector (only visible when auto-sync is enabled)
+            if (settings.isEnabled) ...[
+              const Gap(AppSpacing.spacing24),
+              _SyncFrequencyCard(
+                currentFrequency: settings.syncFrequency,
+                onFrequencyChanged: (frequency) {
+                  ref.read(emailSyncProvider.notifier).setSyncFrequency(frequency);
+                },
+              ),
+            ],
 
             const Gap(AppSpacing.spacing24),
 
@@ -938,8 +939,8 @@ class _SyncFrequencyCard extends StatelessWidget {
             ],
           ),
           const Gap(AppSpacing.spacing12),
-          // Compact frequency options
-          ...SyncFrequency.values.map((frequency) => InkWell(
+          // Compact frequency options (exclude manual — handled by auto-sync toggle)
+          ...SyncFrequency.values.where((f) => f != SyncFrequency.manual).map((frequency) => InkWell(
                 onTap: () => onFrequencyChanged(frequency),
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
