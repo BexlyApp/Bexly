@@ -1527,21 +1527,57 @@ Please create a transaction based on this receipt data.''';
       Log.d('Looking for category: "$categoryName"', label: 'TRANSACTION_DEBUG');
       Log.d('Available flattened categories: ${allCategories.map((c) => c.title).join(", ")}', label: 'TRANSACTION_DEBUG');
 
-      // Simple exact match (case insensitive) - Trust LLM output, just validate
-      final category = allCategories.firstWhereOrNull(
+      // Step 1: Exact match (case insensitive)
+      CategoryModel? category = allCategories.firstWhereOrNull(
         (c) => c.title.toLowerCase() == categoryName.toLowerCase(),
       );
 
       if (category != null) {
-        Log.d('✅ Category matched: "${category.title}" (id: ${category.id})', label: 'TRANSACTION_DEBUG');
-      } else {
-        // LLM sent invalid category - fail loudly to improve prompt
+        Log.d('✅ Category matched (exact): "${category.title}" (id: ${category.id})', label: 'TRANSACTION_DEBUG');
+      }
+
+      // Step 2: Translation map fallback (AI returns English, DB may have localized names)
+      if (category == null) {
+        final availableTitles = allCategories.map((c) => c.title).toList();
+        final matchedTitle = CategoryTranslationMap.findMatchingCategory(
+          categoryName,
+          availableTitles,
+        );
+        if (matchedTitle != null) {
+          category = allCategories.firstWhereOrNull((c) => c.title == matchedTitle);
+          Log.d('✅ Category matched (translation): "$categoryName" → "${category?.title}"', label: 'TRANSACTION_DEBUG');
+        }
+      }
+
+      // Step 3: Partial/contains match (e.g. "Coffee & Tea" matches "Coffee")
+      if (category == null) {
+        category = allCategories.firstWhereOrNull(
+          (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
+                 categoryName.toLowerCase().contains(c.title.toLowerCase()),
+        );
+        if (category != null) {
+          Log.d('✅ Category matched (partial): "$categoryName" → "${category.title}" (id: ${category.id})', label: 'TRANSACTION_DEBUG');
+        }
+      }
+
+      // Step 4: If matched a parent category, use first subcategory
+      if (category != null && category.subCategories != null && category.subCategories!.isNotEmpty) {
+        Log.w('⚠️ Matched parent category "${category.title}", using first subcategory', label: 'TRANSACTION_DEBUG');
+        category = category.subCategories!.first;
+        Log.d('   → Switched to: "${category.title}" (id: ${category.id})', label: 'TRANSACTION_DEBUG');
+      }
+
+      // Step 5: Fallback to "Others"
+      if (category == null) {
         final availableCategories = allCategories.map((c) => c.title).join(', ');
         Log.e('❌ Invalid category "$categoryName" from LLM. Available: $availableCategories', label: 'TRANSACTION_DEBUG');
-        print('[TRANSACTION_ERROR] ❌ Invalid category "$categoryName" from LLM');
-        print('[TRANSACTION_ERROR] Available categories: $availableCategories');
-        _addErrorMessage('❌ Category "$categoryName" not found. Please try again with a valid category.');
-        return null;
+        category = allCategories.firstWhereOrNull((c) => c.title == 'Others' && (c.subCategories == null || c.subCategories!.isEmpty));
+        category ??= allCategories.firstWhereOrNull((c) => c.subCategories == null || c.subCategories!.isEmpty);
+        if (category == null) {
+          _addErrorMessage('❌ Category "$categoryName" not found. Please try again with a valid category.');
+          return null;
+        }
+        Log.w('⚠️ Using fallback category: "${category.title}" (id: ${category.id})', label: 'TRANSACTION_DEBUG');
       }
 
       // Create transaction model

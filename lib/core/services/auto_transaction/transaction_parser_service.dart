@@ -52,8 +52,9 @@ Message from ${senderId ?? 'Unknown'} (${bankName ?? 'Unknown Bank'}):
 
 Extract and return ONLY a JSON object with these fields:
 - amount: number (the transaction amount, always positive)
+- currency: string (currency code: "VND", "USD", "EUR", "THB", "SGD", "IDR", "MYR", "JPY", "KRW", "CNY", etc.)
 - type: "income" or "expense" (income = money received/credited, expense = money spent/debited)
-- merchant: string or null (who the payment was to/from)
+- merchant: string or null (who the payment was to/from, cleaned up and COMPLETED if truncated)
 - accountNumber: string or null (last 4 digits of account if visible)
 - balance: number or null (account balance after transaction if shown)
 - reference: string or null (transaction reference/ID if shown)
@@ -63,6 +64,20 @@ Important rules:
 - "credit", "received", "deposit", "incoming", "CR" → type: "income"
 - "debit", "spent", "paid", "payment", "withdrawal", "DR" → type: "expense"
 - Amount should always be a positive number
+- CURRENCY (CRITICAL): Extract the EXACT currency stated in the message!
+  - "200.00 USD" → currency: "USD"
+  - "500,000 VND" → currency: "VND"
+  - "100 EUR" → currency: "EUR"
+  - "฿500" or "500 THB" → currency: "THB"
+  - "¥10,000" from Japanese bank → currency: "JPY"
+  - "₩50,000" → currency: "KRW"
+  - If no currency explicitly stated, infer from bank/sender context or default to the most common currency for that bank's country
+- MERCHANT NAME: Clean up and COMPLETE truncated merchant names (bank SMS often truncates):
+  - "CLAUDE.AI SUBSCRIPTI" → "Claude AI Subscription"
+  - "GRAB*TRANSPORT SER" → "Grab Transport Service"
+  - "NETFLIX.COM INTERNATIO" → "Netflix.com International"
+  - "APPLE.COM/BILL CUPER" → "Apple.com/Bill Cupertino"
+  - Use proper Title Case, remove unnecessary dots/asterisks
 - If the message is not a transaction (OTP, promo, etc.), set isTransaction: false
 - Return ONLY the JSON object, no explanation
 
@@ -109,8 +124,12 @@ JSON:''';
       final typeStr = json['type'] as String?;
       final type = typeStr == 'income' ? TransactionType.income : TransactionType.expense;
 
+      // Extract currency - default to VND if not provided
+      final currency = (json['currency'] as String?) ?? 'VND';
+
       return ParsedTransaction(
         amount: amount,
+        currency: currency.toUpperCase(),
         type: type,
         dateTime: messageTime ?? DateTime.now(),
         merchant: json['merchant'] as String?,

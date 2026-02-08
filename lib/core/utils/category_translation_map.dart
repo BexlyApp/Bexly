@@ -33,9 +33,11 @@ class CategoryTranslationMap {
     ],
     'Coffee': [
       'Coffee',
+      'Coffee & Tea',
       'Café',
       'Cà phê',
       '咖啡',
+      '茶',
     ],
     'Snacks': [
       'Snacks',

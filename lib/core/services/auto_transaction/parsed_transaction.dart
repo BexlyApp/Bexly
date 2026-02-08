@@ -3,6 +3,7 @@ import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 /// Represents a parsed transaction from SMS or notification
 class ParsedTransaction {
   final double amount;
+  final String currency; // Currency code extracted from message (USD, VND, etc.)
   final TransactionType type;
   final DateTime dateTime;
   final String? merchant;
@@ -16,6 +17,7 @@ class ParsedTransaction {
 
   const ParsedTransaction({
     required this.amount,
+    this.currency = 'VND',
     required this.type,
     required this.dateTime,
     this.merchant,
@@ -63,6 +65,7 @@ class ParsedTransaction {
 
   Map<String, dynamic> toJson() => {
     'amount': amount,
+    'currency': currency,
     'type': type.name,
     'dateTime': dateTime.toIso8601String(),
     'merchant': merchant,
@@ -76,5 +79,5 @@ class ParsedTransaction {
   };
 
   @override
-  String toString() => 'ParsedTransaction(${type.name}: $amount, merchant: $merchant, date: $dateTime)';
+  String toString() => 'ParsedTransaction(${type.name}: $amount $currency, merchant: $merchant, date: $dateTime)';
 }

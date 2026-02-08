@@ -54,6 +54,24 @@ Future<void> main() async {
   // Preserve native splash until explicitly removed
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
+  // In release mode, show a user-friendly error widget instead of grey screen
+  if (!kDebugMode) {
+    ErrorWidget.builder = (FlutterErrorDetails details) {
+      return Material(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              'Something went wrong. Please restart the app.',
+              style: const TextStyle(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    };
+  }
+
   // Load environment variables
   try {
     await dotenv.load(fileName: ".env");

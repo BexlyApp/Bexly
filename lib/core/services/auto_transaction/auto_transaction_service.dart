@@ -200,7 +200,7 @@ class AutoTransactionService {
       source: Value(parsed.source),
       sourceId: Value(sourceId),
       amount: Value(parsed.amount),
-      currency: const Value('VND'),
+      currency: Value(parsed.currency),
       transactionType: Value(
         parsed.type == TransactionType.income ? 'income' : 'expense',
       ),

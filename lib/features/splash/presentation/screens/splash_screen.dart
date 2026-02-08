@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:go_router/go_router.dart';
@@ -46,6 +47,16 @@ class SplashScreen extends HookConsumerWidget {
 
     useEffect(() {
       Log.d('📍 useEffect registered, scheduling postFrameCallback', label: 'SplashScreen');
+
+      // Safety timeout: if splash gets stuck for 10s, force navigate to login
+      Timer? safetyTimer;
+      safetyTimer = Timer(const Duration(seconds: 10), () {
+        if (context.mounted) {
+          Log.e('⚠️ Splash screen timeout (10s), forcing navigation to login', label: 'SplashScreen');
+          FlutterNativeSplash.remove();
+          context.go('/login');
+        }
+      });
 
       // Schedule navigation after frame is built
       WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -103,7 +114,8 @@ class SplashScreen extends HookConsumerWidget {
 
           if (!context.mounted) return;
 
-          // Remove native splash before navigating
+          // Remove native splash before navigating and cancel safety timer
+          safetyTimer?.cancel();
           FlutterNativeSplash.remove();
 
           if (isAuthenticated && currentUser != null) {
@@ -199,6 +211,7 @@ class SplashScreen extends HookConsumerWidget {
         } catch (e) {
           Log.e('Navigation error: $e', label: 'SplashScreen');
           // Remove splash and go to login on error
+          safetyTimer?.cancel();
           FlutterNativeSplash.remove();
           if (context.mounted) {
             context.go('/login');
@@ -206,7 +219,7 @@ class SplashScreen extends HookConsumerWidget {
         }
       });
 
-      return null;
+      return () => safetyTimer?.cancel();
     }, const []);
 
     // Show splash UI (needed for web where native splash doesn't persist)
