@@ -79,7 +79,7 @@ class LLMEmailParserService {
   /// Build prompt for LLM
   String _buildPrompt(String emailContent, String fromEmail) {
     return '''
-You are a banking email transaction parser. Extract transaction information from Vietnamese banking emails.
+You are a banking email transaction parser. Extract transaction information from banking emails.
 
 EMAIL FROM: $fromEmail
 
@@ -92,7 +92,7 @@ Extract the following information and respond ONLY with valid JSON (no markdown,
 
 {
   "amount": <number>, // Transaction amount (positive number, no currency symbols)
-  "currency": "VND", // Always VND for Vietnamese banks
+  "currency": "USD", // ISO currency code extracted from email: "VND", "USD", "EUR", "THB", "JPY", "KRW", etc.
   "transactionType": "expense" or "income", // "expense" for debit/spending, "income" for credit/receiving
   "merchant": "Merchant Name", // Store/business name or transaction description
   "categoryHint": "Category Name", // Suggested category (Food & Dining, Transportation, Shopping, Bills & Utilities, Entertainment, Health, Education, Transfer, Salary, Other)
@@ -106,12 +106,13 @@ Extract the following information and respond ONLY with valid JSON (no markdown,
 
 RULES:
 1. Amount must be a positive number (no commas, no currency symbols)
-2. transactionType: Use "expense" for debit (chi, trừ, rút, thanh toán), "income" for credit (có, nhận, nạp, chuyển đến)
-3. merchant: Extract business name, recipient, or transaction description
-4. categoryHint: Choose the most appropriate category from the list above
-5. If you cannot extract certain fields, use null
-6. sourceDescription: Create a clean, short summary (1-2 lines) in the original language that captures the key transaction info (who, what, when). Example: "ACB: TK xxx9999 giảm 150,000đ chuyển đến NGUYEN VAN A lúc 14:30"
-7. Respond with ONLY the JSON object, no additional text
+2. CURRENCY: Extract the EXACT currency from the email! "\$200" → "USD", "500,000 VND" → "VND", "€100" → "EUR", "฿500" → "THB", "¥10,000" → "JPY"/"CNY" (based on context). Infer from bank/sender country if not explicit.
+3. transactionType: Use "expense" for debit/spending (debit, spent, paid, withdrawal, chi, trừ, rút, thanh toán, ถอน, 支出), "income" for credit/receiving (credit, received, deposit, có, nhận, nạp, ฝาก, 收入)
+4. merchant: Extract business name, recipient, or transaction description. COMPLETE truncated names (e.g., "SUBSCRIPTI" → "Subscription")
+5. categoryHint: Choose the most appropriate category from the list above
+6. If you cannot extract certain fields, use null
+7. sourceDescription: Create a clean, short summary (1-2 lines) in the original language. Examples: "ACB: TK xxx9999 -150,000đ to NGUYEN VAN A", "Chase: Card ending 4321 - \$200.00 at NETFLIX.COM"
+8. Respond with ONLY the JSON object, no additional text
 
 JSON:''';
   }

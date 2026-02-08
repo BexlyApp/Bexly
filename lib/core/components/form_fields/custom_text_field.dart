@@ -85,9 +85,11 @@ class CustomTextField extends TextField {
                    padding: const EdgeInsets.symmetric(
                      horizontal: AppSpacing.spacing12,
                    ),
-                   child: prefixIcon is IconData
-                       ? Icon(prefixIcon, size: 24)
-                       : HugeIcon(icon: prefixIcon, size: 24),
+                   child: prefixIcon is Widget
+                       ? prefixIcon
+                       : prefixIcon is IconData
+                           ? Icon(prefixIcon, size: 24)
+                           : HugeIcon(icon: prefixIcon, size: 24),
                  ),
            suffixIcon: suffixIcon == null
                ? null

@@ -106,50 +106,61 @@ Shorthand notation (CONTEXT-AWARE):
 
 Determine currency for "k" notation (SMART INFERENCE):
 
-⚠️ CRITICAL CURRENCY CONFIRMATION RULES:
+⚠️ CRITICAL CURRENCY RULES (FOLLOW IN ORDER - STOP AT FIRST MATCH):
 
-1. User specifies wallet explicitly → Use THAT WALLET's currency (no confirmation!)
-   - "ăn sáng 50k ví My VND" + any default → 50,000 VND ✅
-   - "lunch 50k on USD wallet" + any default → 50,000 USD ✅
-   - Explicit wallet overrides everything!
+RULE 1 - Explicit currency symbol/word → ALWAYS wins, NEVER ask!
+- "\$100" / "50 đô" / "150k VND" / "150k USD" → use that currency ✅
+- ⚠️ "\$" symbol = USD always. NEVER ask "is this USD or VND?"
 
-2. Language MATCHES default wallet currency → Use default currency (no confirmation!)
-   - Default USD + English "lunch 50k" → 50,000 USD ✅ (check sanity if unreasonable)
-   - Default VND + Vietnamese "ăn sáng 50k" → 50,000 VND ✅
-   - Default CNY + Chinese "午餐 50k" → 50,000 CNY ✅
-   - Default JPY + Japanese "ランチ 50k" → 50,000 JPY ✅
-   - Language-currency mapping: English↔USD, Vietnamese↔VND, Chinese↔CNY, Japanese↔JPY, Korean↔KRW, Thai↔THB
+RULE 2 - "tr" (triệu) → VND ALWAYS (Vietnamese-specific shorthand)
+- "2.5tr" / "2tr5" = 2,500,000 VND ✅
+- "tr" ONLY applies to VND, never any other currency
 
-3. Language DIFFERS from default wallet currency → MUST CONFIRM!
-   - Default USD + Vietnamese "ăn sáng 50k" → ❓ "VND hay USD?"
-   - Default VND + English "lunch 50k" → ❓ "VND or USD?"
-   - Default USD + Chinese "午餐 50k" → ❓ "CNY or USD?"
-   - User chose wallet in one currency but speaks another language = ambiguous!
+RULE 3 - "k" = ×1,000 in THE WALLET'S CURRENCY (universal shorthand!)
+- "k" means thousand in ANY currency (English, Vietnamese, Chinese, etc.)
+- "50k" in VND wallet → 50,000 VND ✅
+- "50k" in USD wallet → \$50,000 USD ✅
+- "50k" in JPY wallet → ¥50,000 JPY ✅
+- NEVER assume "k" means VND! It means ×1,000 of the active wallet's currency.
 
-4. Explicit currency symbol/word ALWAYS wins → NEVER ask confirmation!
-   - "\$100" → 100 USD ✅ (\$ symbol = USD, auto-create!)
-   - "\$50" → 50 USD ✅ (NEVER ask "is this USD or VND?")
-   - "150k VND" → 150,000 VND ✅
-   - "150k USD" → 150,000 USD ✅
-   - "50 đô" / "50 dollars" → 50 USD ✅
-   - "dinner \$100" → create expense 100 USD immediately, NO confirmation!
-   ⚠️ When user types \$ symbol, they EXPLICITLY mean USD - do NOT ask!
+RULE 4 - Single wallet = NEVER ask currency confirmation!
+- 1 wallet only → ALWAYS use that wallet's currency. No other option exists!
+- VND wallet + "Netflix 350k" → 350,000 VND ✅ (just create it!)
+- USD wallet + "lunch 15k" → \$15,000 USD ✅ (just create it!)
+- NEVER ask "VND or USD?" when there's only 1 wallet!
+
+RULE 5 - Multiple wallets + ambiguous → CONFIRM
+- ONLY ask when user has multiple wallets with different currencies AND it's genuinely ambiguous
 
 Vietnamese-specific:
 - Numbers may use dots/spaces: 1.000.000 = 1,000,000
 - "đô" = USD (đô la)
 
-Currency priority:
-1. Explicit currency symbol/word (\$, dollar, VND, đô) → use that currency
-2. Vietnamese input + "k/tr" → VND (high confidence)
-3. Wallet specified in input → use that wallet's currency (but confirm if unreasonable)
-4. No currency + English input → use active wallet's currency (but CONFIRM if amount seems wrong)
-
 Chinese/Japanese specific:
 - Chinese input + "万/千" → RMB (e.g., "300元" = 300 RMB)
 - Japanese input + "円" → JPY
 
-Always include "currency" field in JSON.''';
+Always include "currency" field in JSON.
+
+BANK SMS/NOTIFICATION PARSING (CRITICAL):
+When user pastes a bank notification/SMS text, EXTRACT ALL information carefully:
+- AMOUNT: the exact number (e.g., "200.00" from "giao dịch 200.00 USD")
+- CURRENCY: ⚠️ ALWAYS use the currency STATED IN THE SMS! This is RULE 1 (explicit currency wins)!
+  - "200.00 USD" → currency is USD, NOT VND! Even if wallet is VND!
+  - "500,000 VND" → currency is VND
+  - SMS currency OVERRIDES wallet currency — the bank knows the real currency!
+- MERCHANT NAME: extract and COMPLETE if truncated (bank SMS often truncates names):
+  - "CLAUDE.AI SUBSCRIPTI" → "Claude AI Subscription"
+  - "GRAB*TRANSPORT SER" → "Grab Transport Service"
+  - "NETFLIX.COM INTERNATIO" → "Netflix.com International"
+  - Remove unnecessary dots/asterisks, use proper Title Case
+- DATE/TIME: extract from SMS (e.g., "lúc 2026-02-07 21:29:42" → date="2026-02-07", time="21:29")
+- TYPE: "rút tiền"/"thanh toán"/"chuyển khoản"/"mua hàng" → expense; "nhận tiền"/"chuyển đến" → income
+
+Common Vietnamese bank SMS patterns:
+- "Thẻ XXXX giao dịch [AMOUNT] [CURRENCY] (rút tiền) lúc [DATETIME] tại [MERCHANT]"
+- "TK XXXX -[AMOUNT][CURRENCY] lúc [DATETIME] Ref [MERCHANT]"
+- "Số dư TK XXXX giảm [AMOUNT][CURRENCY]"''';
 
   /// Build date parsing rules dynamically
   static String buildDateParsingRules() {
@@ -351,6 +362,17 @@ Show conversion ONLY when transaction currency differs from wallet currency:
   - VND transaction to VND wallet → just show amount
   - USD transaction to USD wallet → just show amount
 
+DESCRIPTION/TITLE RULES (for "description" field in ACTION_JSON):
+- Generate a clean, readable, COMPLETE title
+- If source text has truncated words (common in bank SMS), COMPLETE them:
+  - "SUBSCRIPTI" → "Subscription"
+  - "TRANSPORT SER" → "Transport Service"
+  - "INTERNATIO" → "International"
+  - "RESTAU" → "Restaurant"
+- Use proper Title Case: "Claude AI Subscription" (NOT "CLAUDE.AI SUBSCRIPTI")
+- Remove unnecessary dots/asterisks from merchant names
+- Keep description meaningful and concise
+
 RESPONSE FORMAT:
 - Keep response concise (1-2 sentences max)
 - ⚠️ CRITICAL: ALWAYS mention BOTH wallet name AND category in response - NEVER skip category!
@@ -391,8 +413,8 @@ OUT: ✅ Recorded **\$100 USD** (Converted to 2,631,500 VND) expense for **dinne
 ACTION_JSON: {"action":"create_expense","amount":100,"currency":"USD","description":"Dinner with family","category":"Restaurants","date":"[YESTERDAY]","time":"19:00"}
 
 IN: "coffee \$5" (wallet uses VND) [EXPLICIT \$ = USD → auto-create, convert to wallet currency]
-OUT: ✅ Recorded **\$5 USD** (Converted to 131,575 VND) expense for **coffee** (**Coffee & Tea**)
-ACTION_JSON: {"action":"create_expense","amount":5,"currency":"USD","description":"Coffee","category":"Coffee & Tea"}
+OUT: ✅ Recorded **\$5 USD** (Converted to 131,575 VND) expense for **coffee** (**Coffee**)
+ACTION_JSON: {"action":"create_expense","amount":5,"currency":"USD","description":"Coffee","category":"Coffee"}
 
 IN: "Tôi mua card đồ họa"
 OUT: ❓ Bạn đã mua card đồ họa, nhưng mình cần biết giá để ghi nhận. Giá bao nhiêu?
@@ -475,6 +497,17 @@ RECURRING DETECTION EXAMPLES (semantic understanding across languages):
 ❌ "bought Netflix 300k" → one-time expense (past tense, no recurring indicator)
 ❌ "Netflix 300k" (without frequency) → ask for clarification if recurring or one-time
 
+BANK SMS PARSING EXAMPLES:
+IN: "Thẻ 4365***9240 giao dịch 200.00 USD (rút tiền) lúc 2026-02-07 21:29:42 tại CLAUDE.AI SUBSCRIPTI. Số dư khả dụng: 1,234.56 USD" (wallet VND)
+OUT: ✅ Đã ghi nhận chi tiêu **\$200.00 USD** (quy đổi thành 5,263,000 VND) cho **Claude AI Subscription** (**Software**) vào ví **My VND Cash**
+ACTION_JSON: {"action":"create_expense","amount":200,"currency":"USD","description":"Claude AI Subscription","category":"Software","date":"2026-02-07","time":"21:29"}
+[NOTE: currency=USD from SMS text, NOT VND! Title completed: "SUBSCRIPTI" → "Subscription"]
+
+IN: "TK 0123456789 -500,000VND lúc 07/02/2026 15:30 Ref GRAB*TRANSPORT SER" (wallet VND)
+OUT: ✅ Đã ghi nhận chi tiêu **500,000 VND** cho **Grab Transport Service** (**Ride Hailing**) vào ví **My VND Cash**
+ACTION_JSON: {"action":"create_expense","amount":500000,"currency":"VND","description":"Grab Transport Service","category":"Ride Hailing","date":"2026-02-07","time":"15:30"}
+[NOTE: Title completed: "TRANSPORT SER" → "Transport Service"]
+
 COUNTER-EXAMPLES (what NOT to do):
 ❌ User: "265tr" (answering price) → Don't create ACTION_JSON yet, need context
 ✅ User: "265tr" (after AI asked price) → Create ACTION_JSON with full context
@@ -511,7 +544,7 @@ FOOD CATEGORY RULES:
 - Use "Food & Drinks" for general food expenses (breakfast, lunch, snacks, groceries eaten)
 - Use "Restaurants" ONLY when explicitly mentioned or clear dining out context
 - Use "Groceries" for grocery shopping
-- Use "Coffee & Tea" for cafes, coffee shops
+- Use "Coffee" for cafes, coffee shops, tea
 
 ⚠️⚠️⚠️ BUDGET DELETION/UPDATE FLOW - MUST FOLLOW EXACTLY:
 When user asks to delete/update budget, you MUST respond with BOTH:
@@ -568,7 +601,7 @@ CRITICAL RULES:
         : 'CATEGORIES: ${categories.isEmpty ? "(none)" : categories.join(", ")}';
 
     final walletsSection = (wallets != null && wallets.isNotEmpty)
-        ? '\n\nAVAILABLE WALLETS: ${wallets.join(", ")}'
+        ? '\n\nAVAILABLE WALLETS (${wallets.length}): ${wallets.join(", ")}${wallets.length == 1 ? '\n⚠️ User has ONLY 1 wallet → ALWAYS use its currency. NEVER ask currency confirmation!' : ''}'
         : '';
 
     return '''

@@ -134,10 +134,18 @@ class CustomNumericField extends ConsumerWidget {
       }
     }
 
+    // Use currency symbol as prefix icon when useSelectedCurrency is true
+    final effectiveIcon = useSelectedCurrency
+        ? Text(
+            defaultCurrency,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+          )
+        : icon;
+
     return CustomTextField(
       controller: controller,
       label: label,
-      prefixIcon: icon,
+      prefixIcon: effectiveIcon,
       hint: hint,
       textInputAction: TextInputAction.done,
       suffixIcon: suffixIcon,

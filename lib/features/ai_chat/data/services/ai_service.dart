@@ -590,85 +590,145 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
     Log.d('Conversation history cleared', label: 'Custom LLM');
   }
 
+  // Retry helper with exponential backoff
+  Future<T> _retryWithBackoff<T>(
+    Future<T> Function() operation, {
+    int maxRetries = 3,
+    Duration initialDelay = const Duration(milliseconds: 500),
+  }) async {
+    int attempt = 0;
+    Duration delay = initialDelay;
+
+    while (true) {
+      try {
+        attempt++;
+        if (attempt > 1) {
+          Log.d('🔄 Retry attempt $attempt/$maxRetries', label: 'Custom LLM');
+        }
+        return await operation();
+      } catch (e) {
+        // Don't retry on API key or quota errors
+        if (e.toString().contains('API key') ||
+            e.toString().contains('quota') ||
+            attempt >= maxRetries) {
+          rethrow;
+        }
+
+        // Retry on timeout/network errors
+        if (attempt < maxRetries) {
+          Log.w('⚠️ Attempt $attempt failed, retrying in ${delay.inMilliseconds}ms...', label: 'Custom LLM');
+          await Future.delayed(delay);
+          delay *= 2; // Exponential backoff
+        } else {
+          rethrow;
+        }
+      }
+    }
+  }
+
+  Future<String> _sendMessageInternal(String message) async {
+    Log.d('Sending message to Custom LLM ($baseUrl): $message', label: 'Custom LLM');
+
+    // Build messages array with history
+    final messages = [
+      {
+        'role': 'system',
+        'content': systemPrompt,
+      },
+      ..._conversationHistory,
+      {
+        'role': 'user',
+        'content': message,
+      }
+    ];
+
+    // Prepare headers
+    // User-Agent is REQUIRED - Cloudflare WAF blocks requests without a proper UA
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'User-Agent': 'Bexly/1.0 (Dart; Flutter)',
+      'Accept': 'application/json',
+    };
+
+    // Add Authorization header if API key is provided
+    if (apiKey.isNotEmpty && apiKey != 'no-key-required') {
+      headers['Authorization'] = 'Bearer $apiKey';
+    }
+
+    // Use 30s timeout (system prompt can be large with 100+ categories)
+    final timeoutSeconds = LLMDefaultConfig.customTimeoutSeconds < 30
+        ? 30
+        : LLMDefaultConfig.customTimeoutSeconds;
+
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/chat/completions'),
+          headers: headers,
+          body: jsonEncode({
+            'model': model,
+            'messages': messages,
+            'temperature': 0.3,
+            'max_tokens': 2000,
+            // Disable Qwen3 thinking mode to reduce latency
+            'chat_template_kwargs': {'enable_thinking': false},
+          }),
+        )
+        .timeout(
+          Duration(seconds: timeoutSeconds),
+          onTimeout: () {
+            Log.e('Custom LLM request timed out after ${timeoutSeconds}s', label: 'Custom LLM');
+            throw Exception('DOS_AI_TIMEOUT');
+          },
+        );
+
+    Log.d('Custom LLM Response status: ${response.statusCode}', label: 'Custom LLM');
+
+    // Cloudflare WAF block detection
+    if (response.statusCode == 403) {
+      Log.e('403 Forbidden - likely Cloudflare WAF block. Response: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}', label: 'Custom LLM');
+      throw Exception('DOS AI blocked by firewall (403). Please try again.');
+    }
+
+    if (response.statusCode == 200) {
+      try {
+        final data = jsonDecode(response.body);
+        final content = data['choices'][0]['message']['content'];
+        Log.d('Custom LLM Response: $content', label: 'Custom LLM');
+
+        // Save conversation to history
+        _conversationHistory.add({
+          'role': 'user',
+          'content': message,
+        });
+        _conversationHistory.add({
+          'role': 'assistant',
+          'content': content,
+        });
+
+        return content.trim();
+      } catch (e) {
+        Log.e('Failed to parse Custom LLM response: $e', label: 'Custom LLM');
+        throw Exception('Invalid response format from Custom LLM.');
+      }
+    } else {
+      Log.e('Custom LLM API error: ${response.statusCode} - ${response.body}', label: 'Custom LLM');
+
+      if (response.statusCode == 503) {
+        throw Exception('Self-hosted LLM server is not available. Please check if vLLM/Ollama is running.');
+      } else {
+        throw Exception('Custom LLM Error: ${response.statusCode}');
+      }
+    }
+  }
+
   @override
   Future<String> sendMessage(String message) async {
     try {
-      Log.d('Sending message to Custom LLM ($baseUrl): $message', label: 'Custom LLM');
-
-      // Build messages array with history
-      final messages = [
-        {
-          'role': 'system',
-          'content': systemPrompt,
-        },
-        ..._conversationHistory,
-        {
-          'role': 'user',
-          'content': message,
-        }
-      ];
-
-      // Prepare headers
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-      };
-
-      // Add Authorization header if API key is provided
-      if (apiKey.isNotEmpty && apiKey != 'no-key-required') {
-        headers['Authorization'] = 'Bearer $apiKey';
-      }
-
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/chat/completions'),
-            headers: headers,
-            body: jsonEncode({
-              'model': model,
-              'messages': messages,
-              'temperature': 0.3,
-              'max_tokens': 2000,
-            }),
-          )
-          .timeout(
-            Duration(seconds: LLMDefaultConfig.customTimeoutSeconds),
-            onTimeout: () {
-              Log.e('Custom LLM request timed out after ${LLMDefaultConfig.customTimeoutSeconds}s', label: 'Custom LLM');
-              throw Exception('DOS_AI_TIMEOUT');
-            },
-          );
-
-      Log.d('Custom LLM Response status: ${response.statusCode}', label: 'Custom LLM');
-
-      if (response.statusCode == 200) {
-        try {
-          final data = jsonDecode(response.body);
-          final content = data['choices'][0]['message']['content'];
-          Log.d('Custom LLM Response: $content', label: 'Custom LLM');
-
-          // Save conversation to history
-          _conversationHistory.add({
-            'role': 'user',
-            'content': message,
-          });
-          _conversationHistory.add({
-            'role': 'assistant',
-            'content': content,
-          });
-
-          return content.trim();
-        } catch (e) {
-          Log.e('Failed to parse Custom LLM response: $e', label: 'Custom LLM');
-          throw Exception('Invalid response format from Custom LLM.');
-        }
-      } else {
-        Log.e('Custom LLM API error: ${response.statusCode} - ${response.body}', label: 'Custom LLM');
-
-        if (response.statusCode == 503) {
-          throw Exception('Self-hosted LLM server is not available. Please check if vLLM/Ollama is running.');
-        } else {
-          throw Exception('Custom LLM Error: ${response.statusCode}');
-        }
-      }
+      return await _retryWithBackoff(
+        () => _sendMessageInternal(message),
+        maxRetries: 3,
+        initialDelay: const Duration(milliseconds: 500),
+      );
     } catch (e) {
       Log.e('Error calling Custom LLM API: $e', label: 'Custom LLM');
       rethrow;

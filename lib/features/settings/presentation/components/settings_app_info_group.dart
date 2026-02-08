@@ -45,19 +45,22 @@ class SettingsAppInfoGroup extends ConsumerWidget {
           label: context.l10n.signOut,
           icon: HugeIcons.strokeRoundedLogout01,
           onTap: () {
+            final parentContext = context;
             showModalBottomSheet(
               context: context,
               showDragHandle: true,
-              builder: (context) => AlertBottomSheet(
-                title: context.l10n.signOut,
+              builder: (sheetContext) => AlertBottomSheet(
+                title: sheetContext.l10n.signOut,
                 content: Text(
-                  context.l10n.signOutConfirm,
+                  sheetContext.l10n.signOutConfirm,
                   style: AppTextStyles.body2,
                 ),
-                onConfirm: () {
-                  context.pop();
-                  ref.read(authStateProvider.notifier).logout();
-                  context.replace(Routes.onboarding);
+                onConfirm: () async {
+                  sheetContext.pop(); // Close bottom sheet
+                  await ref.read(authStateProvider.notifier).logout();
+                  if (parentContext.mounted) {
+                    parentContext.go('/login'); // Use parent context for navigation
+                  }
                 },
               ),
             );

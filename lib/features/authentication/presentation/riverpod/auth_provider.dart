@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/database/daos/user_dao.dart';
 import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/services/supabase_init_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/authentication/data/repositories/user_repository.dart';
 import 'package:bexly/features/authentication/data/models/user_model.dart';
@@ -79,8 +81,32 @@ class AuthProvider extends Notifier<UserModel> {
   }
 
   Future<void> logout() async {
-    await _userDao.deleteAllUsers();
+    // Clear ALL local data for security (finance app - sensitive data)
+    try {
+      final db = ref.read(databaseProvider);
+      await db.clearAllTables();
+      Log.i('✅ All local tables cleared', label: 'AuthProvider');
+    } catch (e) {
+      Log.e('⚠️ Failed to clear local tables: $e', label: 'AuthProvider');
+    }
     state = UserRepository.dummy;
+
+    // Clear guest mode flag
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('hasSkippedAuth', false);
+    } catch (e) {
+      Log.e('⚠️ Failed to clear SharedPreferences: $e', label: 'AuthProvider');
+    }
+
+    // Clear Supabase session (fire-and-forget, don't block UI)
+    SupabaseInitService.client.auth.signOut().then((_) {
+      Log.i('✅ Supabase session cleared', label: 'AuthProvider');
+    }).catchError((e) {
+      Log.e('⚠️ Failed to clear Supabase session: $e', label: 'AuthProvider');
+    });
+
+    Log.i('✅ Logout complete', label: 'AuthProvider');
   }
 }
 
