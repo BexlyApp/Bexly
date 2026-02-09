@@ -1,5 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:intl/intl.dart';
+import 'package:bexly/core/config/number_format_config.dart';
 
 part 'currency.freezed.dart';
 part 'currency.g.dart';
@@ -66,7 +68,7 @@ bool isSymbolAfterAmount(String isoCode) {
 /// For others: "$ 100.50"
 String formatCurrency(String formattedAmount, String symbol, String isoCode) {
   if (_symbolAfterCurrencies.contains(isoCode.toUpperCase())) {
-    return '$formattedAmount$symbol';
+    return '$formattedAmount $symbol';
   }
   return '$symbol$formattedAmount';
 }
@@ -74,23 +76,9 @@ String formatCurrency(String formattedAmount, String symbol, String isoCode) {
 String _formatPrice(double value, int decimalDigits) {
   // Handle negative zero
   final v = value.abs() < 0.005 ? 0.0 : value;
+  final locale = NumberFormatConfig.locale;
   if (decimalDigits == 0) {
-    return _numberWithCommas(v.round());
+    return NumberFormat('#,##0', locale).format(v.round());
   }
-  return _numberWithCommas(v, decimalDigits: decimalDigits);
-}
-
-String _numberWithCommas(num value, {int decimalDigits = 0}) {
-  if (decimalDigits == 0) {
-    return value.toInt().toString().replaceAllMapped(
-          RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]},',
-        );
-  }
-  final parts = value.toStringAsFixed(decimalDigits).split('.');
-  parts[0] = parts[0].replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-    (Match m) => '${m[1]},',
-  );
-  return parts.join('.');
+  return NumberFormat('#,##0.${'0' * decimalDigits}', locale).format(v);
 }

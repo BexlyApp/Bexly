@@ -6,6 +6,7 @@ import 'package:gap/gap.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 import 'package:vibration/vibration.dart';
+import 'package:bexly/core/config/number_format_config.dart';
 
 class CustomKeyboard extends StatefulWidget {
   final TextEditingController controller;
@@ -21,35 +22,36 @@ class CustomKeyboard extends StatefulWidget {
 }
 
 class _CustomKeyboardState extends State<CustomKeyboard> {
-  final NumberFormat _numberFormat = NumberFormat("#,##0.###", "en_US");
   Timer? _backspaceHoldTimer;
-  final keys = [
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    '.',
-    '0',
-    '{backspace}',
+
+  NumberFormat get _numberFormat => NumberFormat("#,##0.###", NumberFormatConfig.locale);
+  String get _thousandSep => NumberFormatConfig.thousandSeparator;
+  String get _decimalSep => NumberFormatConfig.decimalSeparator;
+
+  List<String> get keys => [
+    '1', '2', '3',
+    '4', '5', '6',
+    '7', '8', '9',
+    _decimalSep, '0', '{backspace}',
   ];
 
-  final quickAmount = [
-    '10.000',
-    '50.000',
-    '100.000',
-    '500.000',
-    '1.000.000',
-  ];
+  List<String> get quickAmount {
+    final t = _thousandSep;
+    return [
+      '10${t}000',
+      '50${t}000',
+      '100${t}000',
+      '500${t}000',
+      '1${t}000${t}000',
+    ];
+  }
 
   // Method to format input with thousand separators and custom symbols
   void _formatAndSetText(String input) {
-    // Remove existing formatting to get the raw number
-    String sanitizedText = input.replaceAll(".", "").replaceAll(",", "");
+    // Remove all separators to get the raw number
+    String sanitizedText = input
+        .replaceAll(_thousandSep, '')
+        .replaceAll(_decimalSep, '.');
 
     // Limit input to a maximum of 14 characters
     if (sanitizedText.length > 15) {
@@ -59,11 +61,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
     double? value = double.tryParse(sanitizedText);
 
     if (value != null) {
-      // Format the number with default separators (en_US locale)
+      // Format the number using locale-aware formatter
       String formattedText = _numberFormat.format(value);
-
-      // Replace commas with dots and dots with commas for the desired format
-      formattedText = formattedText.replaceAll(',', '.').replaceAll('.', ',');
 
       widget.controller.text = formattedText;
       widget.controller.selection = TextSelection.collapsed(
@@ -75,7 +74,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
   // Called on each key press to update the value
   void _onKeyPressed(String key) {
     Vibration.vibrate(duration: 50);
-    String currentText = widget.controller.text.replaceAll(".", "");
+    // Remove thousand separators for processing
+    String currentText = widget.controller.text.replaceAll(_thousandSep, '');
 
     setState(() {
       if (key == '{backspace}') {
@@ -87,8 +87,8 @@ class _CustomKeyboardState extends State<CustomKeyboard> {
           debugPrint('$key: $currentText');
           _formatAndSetText(currentText);
         }
-      } else if (key == ',' && currentText.contains('.')) {
-        // Prevent adding another decimal point
+      } else if (key == _decimalSep && currentText.contains(_decimalSep)) {
+        // Prevent adding another decimal separator
         return;
       } else {
         currentText += key;
