@@ -27,15 +27,22 @@ import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/transaction/presentation/components/form/transaction_type_selector.dart';
 import 'package:bexly/core/database/database_provider.dart';
-import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 import 'package:bexly/core/services/notification_permission_service.dart';
 
 class RecurringFormScreen extends HookConsumerWidget {
   final int? recurringId;
 
+  /// Pre-fill fields when creating from AI suggestion
+  final String? prefillName;
+  final double? prefillAmount;
+  final String? prefillFrequency;
+
   const RecurringFormScreen({
     super.key,
     this.recurringId,
+    this.prefillName,
+    this.prefillAmount,
+    this.prefillFrequency,
   });
 
   @override
@@ -71,9 +78,18 @@ class RecurringFormScreen extends HookConsumerWidget {
           formNotifier.initializeWithRecurring(recurringAsync!.value!);
         });
       } else if (recurringId == null) {
-        // Reset form if creating new
+        // Reset form if creating new, then apply prefill from AI suggestion
         WidgetsBinding.instance.addPostFrameCallback((_) {
           formNotifier.reset();
+          if (prefillName != null) formNotifier.setName(prefillName!);
+          if (prefillAmount != null) formNotifier.setAmount(prefillAmount!);
+          if (prefillFrequency != null) {
+            final freq = RecurringFrequency.values.firstWhere(
+              (f) => f.name == prefillFrequency,
+              orElse: () => RecurringFrequency.monthly,
+            );
+            formNotifier.setFrequency(freq);
+          }
         });
       }
       return null;

@@ -736,4 +736,32 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       Log.d('Created new transaction $id from cloud', label: 'transaction');
     }
   }
+
+  /// Get recent transactions with details for recurring pattern detection.
+  /// Returns non-deleted transactions from the last [days] days.
+  Future<List<TransactionModel>> getRecentTransactionsForDetection({int days = 90}) async {
+    final cutoff = DateTime.now().subtract(Duration(days: days));
+
+    final query = select(transactions).join([
+      leftOuterJoin(categories, categories.id.equalsExp(transactions.categoryId)),
+      leftOuterJoin(db.wallets, db.wallets.id.equalsExp(transactions.walletId)),
+    ])
+      ..where(transactions.date.isBiggerOrEqualValue(cutoff))
+      ..where(transactions.isDeleted.equals(false))
+      ..orderBy([OrderingTerm.desc(transactions.date)]);
+
+    final rows = await query.get();
+    final results = <TransactionModel>[];
+
+    for (final row in rows) {
+      final txn = row.readTable(transactions);
+      final cat = row.readTableOrNull(categories);
+      final wal = row.readTableOrNull(db.wallets);
+      if (cat != null && wal != null) {
+        results.add(await _mapToTransactionModel(txn, cat, wal));
+      }
+    }
+
+    return results;
+  }
 }
