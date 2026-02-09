@@ -536,4 +536,12 @@ class RecurringDao extends DatabaseAccessor<AppDatabase> with _$RecurringDaoMixi
       return addRecurring(recurringModel);
     }
   }
+
+  /// Get names of all active recurring payments (for filtering out already-tracked patterns)
+  Future<Set<String>> getActiveRecurringNames() async {
+    final query = select(recurrings)
+      ..where((r) => r.status.equals(RecurringStatus.active.index));
+    final rows = await query.get();
+    return rows.map((r) => r.name.toLowerCase().trim()).toSet();
+  }
 }
