@@ -37,6 +37,8 @@ import 'package:bexly/features/developer_portal/presentation/screens/developer_p
 import 'package:bexly/features/settings/presentation/components/report_log_file_dialog.dart';
 import 'package:bexly/features/settings/presentation/components/settings_group_holder.dart';
 import 'package:bexly/features/settings/presentation/riverpod/language_provider.dart';
+import 'package:bexly/features/settings/presentation/riverpod/number_format_provider.dart';
+import 'package:bexly/core/config/number_format_config.dart';
 import 'package:bexly/features/settings/presentation/screens/account_deletion_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/ai_model_settings_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/auto_transaction_settings_screen.dart';
