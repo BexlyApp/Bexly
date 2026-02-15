@@ -57,14 +57,30 @@ Future<void> main() async {
   // In release mode, show a user-friendly error widget instead of grey screen
   if (!kDebugMode) {
     ErrorWidget.builder = (FlutterErrorDetails details) {
+      // Log the error for Crashlytics
+      debugPrint('ErrorWidget: ${details.exception}');
+      debugPrint('ErrorWidget stack: ${details.stack}');
       return Material(
-        child: Center(
-          child: Padding(
+        child: SafeArea(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
-            child: Text(
-              'Something went wrong. Please restart the app.',
-              style: const TextStyle(fontSize: 16),
-              textAlign: TextAlign.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Something went wrong.',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '${details.exception}',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF666666)),
+                  textAlign: TextAlign.center,
+                  maxLines: 10,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
         ),
