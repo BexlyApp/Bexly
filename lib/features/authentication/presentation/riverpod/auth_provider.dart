@@ -100,11 +100,13 @@ class AuthProvider extends Notifier<UserModel> {
     }
 
     // Clear Supabase session (fire-and-forget, don't block UI)
-    SupabaseInitService.client.auth.signOut().then((_) {
-      Log.i('✅ Supabase session cleared', label: 'AuthProvider');
-    }).catchError((e) {
-      Log.e('⚠️ Failed to clear Supabase session: $e', label: 'AuthProvider');
-    });
+    if (SupabaseInitService.isInitialized) {
+      SupabaseInitService.client.auth.signOut().then((_) {
+        Log.i('✅ Supabase session cleared', label: 'AuthProvider');
+      }).catchError((e) {
+        Log.e('⚠️ Failed to clear Supabase session: $e', label: 'AuthProvider');
+      });
+    }
 
     Log.i('✅ Logout complete', label: 'AuthProvider');
   }

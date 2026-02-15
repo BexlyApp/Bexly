@@ -17,6 +17,10 @@ class TelegramBotService {
   /// Pass the telegram_id from Telegram bot
   static Future<bool> linkTelegramAccount(String telegramId) async {
     try {
+      if (!SupabaseInitService.isInitialized) {
+        Log.w('Cannot link Telegram: Supabase not initialized', label: _label);
+        return false;
+      }
       final supabase = SupabaseInitService.client;
       final session = supabase.auth.currentSession;
 
@@ -58,6 +62,10 @@ class TelegramBotService {
   /// Unlink Telegram account from current Bexly user
   static Future<bool> unlinkTelegramAccount() async {
     try {
+      if (!SupabaseInitService.isInitialized) {
+        Log.w('Cannot unlink Telegram: Supabase not initialized', label: _label);
+        return false;
+      }
       final supabase = SupabaseInitService.client;
       final session = supabase.auth.currentSession;
 
@@ -98,6 +106,7 @@ class TelegramBotService {
   /// Returns true if current user has linked Telegram account
   static Future<bool> isLinked() async {
     try {
+      if (!SupabaseInitService.isInitialized) return false;
       final supabase = SupabaseInitService.client;
       final userId = supabase.auth.currentUser?.id;
 
@@ -125,6 +134,7 @@ class TelegramBotService {
   /// Returns null if not linked
   static Future<String?> getLinkedTelegramId() async {
     try {
+      if (!SupabaseInitService.isInitialized) return null;
       final supabase = SupabaseInitService.client;
       final userId = supabase.auth.currentUser?.id;
 

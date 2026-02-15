@@ -82,8 +82,9 @@ jobs:
         env:
           BEXLY_FREE_AI_KEY: ${{ secrets.BEXLY_FREE_AI_KEY }}
         run: |
-          # Create .env file with Bexly Free AI configuration
           cat > .env << EOF
+          SUPABASE_URL=https://dos.supabase.co
+          SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1bHB0d2R1Y2hzamNzYm5kbXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1OTI4NzQsImV4cCI6MjA4MjE2ODg3NH0.rRf1P8DhC_iK9KM2TSOU0XnjwoXmlBgZymGuhUdPazs
           BEXLY_FREE_AI_URL=https://api.dos.ai/v1
           BEXLY_FREE_AI_KEY=${BEXLY_FREE_AI_KEY}
           BEXLY_FREE_AI_MODEL=Qwen/Qwen3-VL-30B-A3B-Instruct
