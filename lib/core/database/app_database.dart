@@ -396,6 +396,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _deleteAllChecklistItems() => delete(checklistItems).go();
   Future<void> _deleteAllBudgets() => delete(budgets).go();
   Future<void> _deleteAllTransactions() => delete(transactions).go();
+  Future<void> _deleteAllRecurrings() => delete(recurrings).go();
   Future<void> _deleteAllGoals() => delete(goals).go();
   Future<void> _deleteAllUsers() => delete(users).go();
   Future<void> _deleteAllWallets() => delete(wallets).go();
@@ -409,8 +410,9 @@ class AppDatabase extends _$AppDatabase {
       await _deleteAllChecklistItems();
       await _deleteAllBudgets();
       await _deleteAllTransactions();
+      await _deleteAllRecurrings();
       await _deleteAllGoals();
-      await _deleteAllUsers(); // Users table has no incoming FKs from other tables
+      await _deleteAllUsers();
       await _deleteAllWallets();
       await _deleteAllCategories();
     });

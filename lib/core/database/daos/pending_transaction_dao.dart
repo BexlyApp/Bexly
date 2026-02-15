@@ -191,6 +191,18 @@ class PendingTransactionDao extends DatabaseAccessor<AppDatabase>
   // Delete Methods
   // ============================================================================
 
+  /// Reject all pending review transactions
+  Future<int> rejectAllPending() async {
+    final count = await (update(pendingTransactions)
+          ..where((t) => t.status.equals(PendingStatus.pendingReview)))
+        .write(PendingTransactionsCompanion(
+      status: const Value(PendingStatus.rejected),
+      updatedAt: Value(DateTime.now()),
+    ));
+    Log.d('Rejected $count pending transactions', label: _label);
+    return count;
+  }
+
   /// Delete a pending transaction
   Future<void> deletePending(int id) async {
     await (delete(pendingTransactions)..where((t) => t.id.equals(id))).go();

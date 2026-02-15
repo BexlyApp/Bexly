@@ -6,6 +6,7 @@ import 'package:toastification/toastification.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/pending_transactions/data/models/pending_transaction_model.dart';
 import 'package:bexly/features/pending_transactions/presentation/components/pending_transaction_tile.dart';
 import 'package:bexly/features/pending_transactions/riverpod/pending_transaction_provider.dart';
@@ -72,13 +73,13 @@ class PendingTransactionsSheet extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Pending Transactions',
+                      context.l10n.pendingTransactions,
                       style: AppTextStyles.heading3.copyWith(
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     Text(
-                      'Review and import transactions',
+                      context.l10n.reviewAndImport,
                       style: AppTextStyles.body4.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -151,14 +152,14 @@ class PendingTransactionsSheet extends ConsumerWidget {
           ),
           const Gap(AppSpacing.spacing16),
           Text(
-            'All caught up!',
+            context.l10n.allCaughtUp,
             style: AppTextStyles.heading3.copyWith(
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const Gap(AppSpacing.spacing8),
           Text(
-            'No pending transactions to review',
+            context.l10n.noPendingToReview,
             style: AppTextStyles.body3.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -189,7 +190,7 @@ class PendingTransactionsSheet extends ConsumerWidget {
       toastification.show(
         context: context,
         type: ToastificationType.info,
-        title: const Text('Transaction rejected'),
+        title: Text(context.l10n.transactionRejected),
         autoCloseDuration: const Duration(seconds: 2),
       );
     }

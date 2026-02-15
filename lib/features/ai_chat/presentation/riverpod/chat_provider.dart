@@ -3393,14 +3393,25 @@ Please create a transaction based on this receipt data.''';
       print('[AI_CONTEXT] _updateBudgetsContext START');
       // Use DAO directly instead of provider to avoid autoDispose issues
       final budgetDao = ref.read(budgetDaoProvider);
-      final budgets = await budgetDao.watchAllBudgets().first.timeout(
+      final allBudgets = await budgetDao.watchAllBudgets().first.timeout(
         const Duration(seconds: 5),
         onTimeout: () {
           print('[AI_CONTEXT] Budget fetch TIMEOUT');
           return <BudgetModel>[];
         },
       );
-      print('[AI_CONTEXT] Got ${budgets.length} budgets');
+      print('[AI_CONTEXT] Got ${allBudgets.length} budgets total');
+
+      // Filter to current month only (same logic as _getBudgetsListText)
+      final now = DateTime.now();
+      final currentMonthStart = DateTime(now.year, now.month, 1);
+      final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
+      final budgets = allBudgets.where((b) {
+        return (b.startDate.isBefore(currentMonthEnd) || b.startDate.isAtSameMomentAs(currentMonthEnd)) &&
+            (b.endDate.isAfter(currentMonthStart) || b.endDate.isAtSameMomentAs(currentMonthStart));
+      }).toList();
+      print('[AI_CONTEXT] Got ${budgets.length} budgets for current month');
+
       final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       final currency = wallet?.currency ?? 'VND';
 

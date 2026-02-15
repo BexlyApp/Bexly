@@ -7,6 +7,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:toastification/toastification.dart';
 
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
@@ -63,13 +64,13 @@ class EmailReviewScreen extends HookConsumerWidget {
 
     return CustomScaffold(
       context: context,
-      title: 'Review Transactions',
+      title: context.l10n.reviewTransactions,
       showBalance: false,
       actions: [
         IconButton(
           onPressed: () => _approveAll(context, ref, db, walletSelections.value),
           icon: const Icon(Icons.done_all),
-          tooltip: 'Approve All',
+          tooltip: context.l10n.approveAll,
         ),
       ],
       body: StreamBuilder<List<ParsedEmailTransaction>>(
@@ -153,7 +154,7 @@ class EmailReviewScreen extends HookConsumerWidget {
           ),
           const Gap(AppSpacing.spacing24),
           Text(
-            'No transactions to review',
+            context.l10n.noTransactionsToReview,
             style: AppTextStyles.body1.copyWith(
               color: AppColors.neutral600,
               fontWeight: FontWeight.w600,
@@ -161,14 +162,14 @@ class EmailReviewScreen extends HookConsumerWidget {
           ),
           const Gap(AppSpacing.spacing8),
           Text(
-            'Scan your emails to find banking transactions',
+            context.l10n.scanEmailsDesc,
             style: AppTextStyles.body4.copyWith(
               color: AppColors.neutral500,
             ),
           ),
           const Gap(AppSpacing.spacing32),
           PrimaryButton(
-            label: 'Go Back',
+            label: context.l10n.goBack,
             icon: Icons.arrow_back,
             onPressed: () {
               if (Navigator.of(context).canPop()) {
@@ -201,8 +202,8 @@ class EmailReviewScreen extends HookConsumerWidget {
       if (context.mounted) {
         toastification.show(
           context: context,
-          title: const Text('Please select wallets'),
-          description: Text('${missingWallet.length} transactions need a wallet selected'),
+          title: Text(context.l10n.pleaseSelectWallets),
+          description: Text(context.l10n.transactionsNeedWallet(missingWallet.length)),
           type: ToastificationType.warning,
           autoCloseDuration: const Duration(seconds: 3),
         );
@@ -228,9 +229,9 @@ class EmailReviewScreen extends HookConsumerWidget {
     if (context.mounted) {
       toastification.show(
         context: context,
-        title: Text('Imported ${result.successCount} transactions'),
+        title: Text(context.l10n.importedCount(result.successCount)),
         description: result.failedCount > 0
-            ? Text('${result.failedCount} failed')
+            ? Text(context.l10n.failedCount(result.failedCount))
             : null,
         type: result.failedCount > 0
             ? ToastificationType.warning
@@ -250,8 +251,8 @@ class EmailReviewScreen extends HookConsumerWidget {
     if (selectedWallet == null) {
       toastification.show(
         context: context,
-        title: const Text('No wallet selected'),
-        description: const Text('Please select a wallet first'),
+        title: Text(context.l10n.noWalletSelected),
+        description: Text(context.l10n.pleaseSelectWalletFirst),
         type: ToastificationType.warning,
         autoCloseDuration: const Duration(seconds: 3),
       );
@@ -273,14 +274,14 @@ class EmailReviewScreen extends HookConsumerWidget {
         if (result != null) {
           toastification.show(
             context: context,
-            title: const Text('Transaction imported'),
+            title: Text(context.l10n.transactionImported),
             type: ToastificationType.success,
             autoCloseDuration: const Duration(seconds: 2),
           );
         } else {
           toastification.show(
             context: context,
-            title: const Text('Approved but import failed'),
+            title: Text(context.l10n.approvedButImportFailed),
             type: ToastificationType.warning,
             autoCloseDuration: const Duration(seconds: 2),
           );
@@ -299,7 +300,7 @@ class EmailReviewScreen extends HookConsumerWidget {
     if (context.mounted) {
       toastification.show(
         context: context,
-        title: const Text('Transaction rejected'),
+        title: Text(context.l10n.transactionRejected),
         type: ToastificationType.info,
         autoCloseDuration: const Duration(seconds: 2),
       );
@@ -334,7 +335,7 @@ class EmailReviewScreen extends HookConsumerWidget {
       if (context.mounted) {
         toastification.show(
           context: context,
-          title: const Text('Transaction updated'),
+          title: Text(context.l10n.transactionUpdated),
           type: ToastificationType.success,
           autoCloseDuration: const Duration(seconds: 2),
         );
@@ -408,7 +409,7 @@ class _EditTransactionBottomSheet extends HookConsumerWidget {
                 ),
                 const Gap(AppSpacing.spacing8),
                 Text(
-                  'Edit Transaction',
+                  context.l10n.editTransaction,
                   style: AppTextStyles.body1.copyWith(
                     fontWeight: FontWeight.w700,
                     fontSize: 20,
@@ -447,7 +448,7 @@ class _EditTransactionBottomSheet extends HookConsumerWidget {
                           ),
                           const Gap(AppSpacing.spacing4),
                           Text(
-                            'Income',
+                            context.l10n.income,
                             style: AppTextStyles.body4.copyWith(
                               color: isIncome.value ? Colors.green : Colors.grey.shade500,
                               fontWeight: isIncome.value ? FontWeight.w600 : FontWeight.normal,
@@ -486,7 +487,7 @@ class _EditTransactionBottomSheet extends HookConsumerWidget {
                           ),
                           const Gap(AppSpacing.spacing4),
                           Text(
-                            'Expense',
+                            context.l10n.expense,
                             style: AppTextStyles.body4.copyWith(
                               color: !isIncome.value ? Colors.red : Colors.grey.shade500,
                               fontWeight: !isIncome.value ? FontWeight.w600 : FontWeight.normal,
@@ -507,7 +508,7 @@ class _EditTransactionBottomSheet extends HookConsumerWidget {
               controller: amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: 'Amount',
+                labelText: context.l10n.amount,
                 prefixText: '$currencySymbol ',
                 border: const OutlineInputBorder(),
               ),
@@ -518,9 +519,9 @@ class _EditTransactionBottomSheet extends HookConsumerWidget {
             // Merchant field
             TextField(
               controller: merchantController,
-              decoration: const InputDecoration(
-                labelText: 'Merchant / Description',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.merchantDescription,
+                border: const OutlineInputBorder(),
               ),
             ),
 
@@ -529,9 +530,9 @@ class _EditTransactionBottomSheet extends HookConsumerWidget {
             // Category hint field
             TextField(
               controller: categoryController,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.category,
+                border: const OutlineInputBorder(),
               ),
             ),
 
@@ -599,7 +600,7 @@ class _EditTransactionBottomSheet extends HookConsumerWidget {
                         borderRadius: BorderRadius.circular(AppRadius.radius8),
                       ),
                     ),
-                    child: const Text('Cancel'),
+                    child: Text(context.l10n.cancel),
                   ),
                 ),
                 const Gap(AppSpacing.spacing12),
@@ -642,7 +643,7 @@ class _EditTransactionBottomSheet extends HookConsumerWidget {
                         borderRadius: BorderRadius.circular(AppRadius.radius8),
                       ),
                     ),
-                    child: const Text('Save'),
+                    child: Text(context.l10n.save),
                   ),
                 ),
               ],
@@ -883,7 +884,7 @@ class _TransactionCard extends HookConsumerWidget {
                             borderRadius: BorderRadius.circular(AppRadius.radius8),
                           ),
                         ),
-                        child: const Text('Reject'),
+                        child: Text(context.l10n.reject),
                       ),
                     ),
                     const Gap(AppSpacing.spacing8),
@@ -899,7 +900,7 @@ class _TransactionCard extends HookConsumerWidget {
                             borderRadius: BorderRadius.circular(AppRadius.radius8),
                           ),
                         ),
-                        child: const Text('Approve'),
+                        child: Text(context.l10n.approve),
                       ),
                     ),
                   ],

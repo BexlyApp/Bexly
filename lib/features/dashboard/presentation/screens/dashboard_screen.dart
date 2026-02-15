@@ -40,6 +40,7 @@ import 'package:bexly/features/wallet_switcher/presentation/screens/wallet_switc
 import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_filter_provider.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/selected_month_provider.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/cash_flow_providers.dart';
+import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_category_spending_provider.dart';
 import 'package:bexly/features/notification/presentation/riverpod/notification_providers.dart';
 import 'package:bexly/features/notification/presentation/screens/notification_list_screen.dart';
 import 'package:bexly/core/utils/desktop_dialog_helper.dart';
