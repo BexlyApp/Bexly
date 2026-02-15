@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart'; // Import hooks_riverpod
 import 'package:hugeicons/hugeicons.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/components/buttons/button_state.dart';
 import 'package:bexly/core/components/buttons/custom_icon_button.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
@@ -56,6 +57,7 @@ class TransactionForm extends HookConsumerWidget {
 
     // Instantiate the hook. It will get the transaction data when it's ready.
     final formState = useTransactionFormState(
+      context: context,
       ref: ref,
       defaultCurrency: defaultCurrency ?? CurrencyLocalDataSource.dummy.symbol,
       defaultIsoCode: defaultIsoCode,
@@ -68,7 +70,7 @@ class TransactionForm extends HookConsumerWidget {
 
     return CustomScaffold(
       context: context,
-      title: !isEditing ? 'Add Transaction' : 'Edit Transaction',
+      title: !isEditing ? context.l10n.addTransaction : context.l10n.editTransaction,
       showBalance: false,
       actions: [
         if (isEditing)
@@ -101,7 +103,7 @@ class TransactionForm extends HookConsumerWidget {
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
                       error: (err, stack) => Center(
-                        child: Text('Error loading transaction: $err'),
+                        child: Text('${context.l10n.error}: $err'),
                       ),
                     )
                   // For new transactions, asyncTransaction is null, formState is initialized for 'new'.
@@ -109,7 +111,7 @@ class TransactionForm extends HookConsumerWidget {
             ),
           ),
           PrimaryButton(
-            label: 'Save',
+            label: context.l10n.save,
             state: ButtonState.active,
             // Now formState is available in this scope
             onPressed: () => formState.saveTransaction(ref, context),
@@ -161,6 +163,7 @@ class TransactionForm extends HookConsumerWidget {
             formState.selectedCategory.value = category;
             formState.categoryController.text = formState.getCategoryText(
               parentCategory: parentCategory,
+              context: context,
             );
           },
         ),

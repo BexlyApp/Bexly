@@ -56,7 +56,7 @@ class TransactionTabBar extends HookConsumerWidget {
             color: AppColors.primary600,
           ),
           const SizedBox(width: 6),
-          const Text('Pending'),
+          Text(context.l10n.pending),
           if (pendingCount > 0) ...[
             const SizedBox(width: 6),
             Container(

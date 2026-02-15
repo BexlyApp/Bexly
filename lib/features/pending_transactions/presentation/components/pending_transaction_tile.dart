@@ -8,6 +8,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
@@ -239,7 +240,7 @@ class PendingTransactionTile extends HookConsumerWidget {
                           borderRadius: BorderRadius.circular(AppRadius.radius8),
                         ),
                       ),
-                      child: const Text('Reject'),
+                      child: Text(context.l10n.reject),
                     ),
                   ),
                   const Gap(AppSpacing.spacing8),
@@ -255,7 +256,7 @@ class PendingTransactionTile extends HookConsumerWidget {
                           borderRadius: BorderRadius.circular(AppRadius.radius8),
                         ),
                       ),
-                      child: const Text('Approve'),
+                      child: Text(context.l10n.approve),
                     ),
                   ),
                 ],
@@ -377,7 +378,7 @@ class PendingTransactionTile extends HookConsumerWidget {
     required Alignment alignment,
   }) {
     final color = isApprove ? AppColors.green200 : AppColors.red600;
-    final label = isApprove ? 'Approve' : 'Reject';
+    final label = isApprove ? context.l10n.approve : context.l10n.reject;
 
     return Container(
       alignment: alignment,

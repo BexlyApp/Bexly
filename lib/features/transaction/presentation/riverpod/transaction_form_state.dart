@@ -14,6 +14,7 @@ import 'package:bexly/core/extensions/date_time_extension.dart';
 import 'package:bexly/core/extensions/currency_extension.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/extensions/string_extension.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
@@ -60,16 +61,24 @@ class TransactionFormState {
     this.initialTransaction,
   });
 
-  String getCategoryText({CategoryModel? parentCategory}) {
+  String getCategoryText({CategoryModel? parentCategory, BuildContext? context}) {
     final category = selectedCategory.value;
     if (category == null) return '';
 
+    String _localizedName(CategoryModel cat) {
+      if (context != null && cat.id != null && cat.id! <= 1005) {
+        final localized = context.l10n.getCategoryName(cat.id);
+        if (localized != 'Unknown Category') return localized;
+      }
+      return cat.title;
+    }
+
     if (parentCategory != null) {
       // It's a subcategory, find its parent to display "Parent • Sub"
-      return '${parentCategory.title} • ${category.title}';
+      return '${_localizedName(parentCategory)} • ${_localizedName(category)}';
     } else {
       // It's a parent category
-      return category.title;
+      return _localizedName(category);
     }
   }
 
@@ -366,6 +375,7 @@ class TransactionFormState {
 }
 
 TransactionFormState useTransactionFormState({
+  required BuildContext context,
   required WidgetRef ref,
   required String defaultCurrency,
   required String defaultIsoCode,
@@ -698,6 +708,7 @@ TransactionFormState useTransactionFormState({
         selectedCategory.value?.getParentCategory(ref).then((parentCategory) {
           categoryController.text = formState.getCategoryText(
             parentCategory: parentCategory,
+            context: context,
           );
         });
       });

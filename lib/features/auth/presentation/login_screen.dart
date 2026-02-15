@@ -15,7 +15,6 @@ import 'package:bexly/core/services/supabase_init_service.dart';
 import 'package:bexly/core/services/sync/supabase_sync_service.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/package_info/package_info_provider.dart';
-import 'package:bexly/core/services/auth/supabase_auth_service.dart';
 import 'package:bexly/core/config/supabase_config.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -28,6 +27,111 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 
 class LoginScreen extends HookConsumerWidget {
   const LoginScreen({super.key});
+
+  /// Shared post-login flow: clear stale data (only for different user),
+  /// sync profile, sync data from cloud, navigate to main or onboarding.
+  static Future<void> _postLoginFlow({
+    required BuildContext context,
+    required WidgetRef ref,
+    required User user,
+    required SupabaseClient supabase,
+    String? displayNameOverride,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastUserId = prefs.getString('lastSupabaseUserId');
+    final db = ref.read(databaseProvider);
+
+    // Only clear tables if a DIFFERENT user is logging in
+    if (lastUserId != null && lastUserId != user.id) {
+      Log.i('⚠️ Different user detected (was: $lastUserId, now: ${user.id}), clearing stale data', label: 'auth');
+      await db.clearAllTables();
+    }
+
+    // Save current user ID for future comparison
+    await prefs.setString('lastSupabaseUserId', user.id);
+
+    // Sync user profile to local database
+    final authProvider = ref.read(local_auth.authStateProvider.notifier);
+    final currentUser = authProvider.getUser();
+
+    // Get avatar URL: try metadata first, then fallback to Storage URL
+    String? avatarUrl = user.userMetadata?['avatar_url'] as String?;
+    if (avatarUrl == null || avatarUrl.isEmpty) {
+      final storagePath = 'Avatars/${user.id}/avatar.jpg';
+      avatarUrl = supabase.storage.from('Assets').getPublicUrl(storagePath);
+    }
+
+    final name = displayNameOverride
+        ?? user.userMetadata?['full_name']
+        ?? user.email?.split('@').first
+        ?? currentUser.name;
+
+    authProvider.setUser(currentUser.copyWith(
+      name: name,
+      email: user.email ?? currentUser.email,
+      profilePicture: avatarUrl ?? currentUser.profilePicture,
+    ));
+
+    Log.i('✅ Synced profile (${user.email}), avatar: $avatarUrl', label: 'auth');
+
+    // Trigger initial Supabase sync to pull data from cloud
+    if (!context.mounted) return;
+
+    try {
+      final syncService = ref.read(supabaseSyncServiceProvider);
+      Log.i('🔄 Pulling data from Supabase... (userId: ${user.id})', label: 'auth');
+      await syncService.performFullSync(pushFirst: false);
+      Log.i('✅ Initial sync completed', label: 'auth');
+    } catch (e, stackTrace) {
+      Log.e('⚠️ Failed to sync from cloud: $e', label: 'auth');
+      Log.e('⚠️ Stack trace: $stackTrace', label: 'auth');
+    }
+
+    if (!context.mounted) return;
+
+    // Check if user has any wallets locally
+    final wallets = await db.walletDao.getAllWallets();
+    Log.i('📊 Wallet check after sync: found ${wallets.length} wallets', label: 'auth');
+
+    if (wallets.isNotEmpty) {
+      Log.i('Found ${wallets.length} wallets, going to home', label: 'auth');
+      context.go('/');
+      return;
+    }
+
+    // Wallets empty - sync may have failed. Query cloud directly as fallback.
+    try {
+      Log.i('🔍 No local wallets, checking cloud directly...', label: 'auth');
+      final cloudWallets = await supabase
+          .schema('bexly')
+          .from('wallets')
+          .select('cloud_id')
+          .eq('user_id', user.id)
+          .eq('is_active', true);
+
+      if ((cloudWallets as List).isNotEmpty) {
+        Log.i('☁️ Found ${cloudWallets.length} wallets on cloud, retrying wallet sync...', label: 'auth');
+        // Retry pulling wallets only
+        final syncService = ref.read(supabaseSyncServiceProvider);
+        await syncService.pullWalletsFromCloud();
+
+        final retryWallets = await db.walletDao.getAllWallets();
+        if (retryWallets.isNotEmpty && context.mounted) {
+          Log.i('✅ Retry succeeded, ${retryWallets.length} wallets pulled', label: 'auth');
+          context.go('/');
+          return;
+        }
+      }
+    } catch (e) {
+      Log.e('⚠️ Failed to check cloud wallets: $e', label: 'auth');
+    }
+
+    // Genuinely no wallets anywhere - show onboarding
+    if (context.mounted) {
+      Log.i('No wallets found anywhere, showing onboarding', label: 'auth');
+      context.go('/onboarding');
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,65 +162,13 @@ class LoginScreen extends HookConsumerWidget {
         final user = response.user!;
         Log.i('✅ Supabase authentication successful: ${user.email}', label: 'auth');
 
-        // Safety check: clear stale data if any exists from a previous account
-        final db = ref.read(databaseProvider);
-        final existingWallets = await db.walletDao.getAllWallets();
-        if (existingWallets.isNotEmpty) {
-          Log.i('⚠️ Found ${existingWallets.length} stale wallets, clearing for clean login', label: 'auth');
-          await db.clearAllTables();
-        }
-
-        // Sync user profile to local database
-        final authProvider = ref.read(local_auth.authStateProvider.notifier);
-        final currentUser = authProvider.getUser();
-
-        // Get avatar URL: try metadata first, then fallback to Storage URL
-        String? avatarUrl = user.userMetadata?['avatar_url'] as String?;
-        if (avatarUrl == null || avatarUrl.isEmpty) {
-          // Try constructing Supabase Storage URL (predictable path)
-          final storagePath = 'Avatars/${user.id}/avatar.jpg';
-          avatarUrl = supabase.storage.from('Assets').getPublicUrl(storagePath);
-          Log.i('No avatar in metadata, trying Storage URL: $avatarUrl', label: 'auth');
-        }
-
-        authProvider.setUser(currentUser.copyWith(
-          name: user.userMetadata?['full_name'] ?? user.email?.split('@').first ?? currentUser.name,
-          email: user.email ?? currentUser.email,
-          profilePicture: avatarUrl ?? currentUser.profilePicture,
-        ));
-
-        Log.i('✅ Synced profile from Supabase Auth (Email), avatar: $avatarUrl', label: 'auth');
-
-        // Trigger initial Supabase sync to pull data from cloud
         if (context.mounted) {
-          try {
-            final syncService = ref.read(supabaseSyncServiceProvider);
-            Log.i('🔄 Pulling data from Supabase... (userId: ${SupabaseInitService.currentUser?.id}, isAuth: ${syncService.isAuthenticated})', label: 'auth');
-
-            // Pull data from cloud (pull-first mode)
-            await syncService.performFullSync(pushFirst: false);
-
-            Log.i('✅ Initial sync completed', label: 'auth');
-          } catch (e, stackTrace) {
-            Log.e('⚠️ Failed to sync from cloud: $e', label: 'auth');
-            Log.e('⚠️ Sync stack trace: $stackTrace', label: 'auth');
-            // Continue anyway - user might be offline or have no cloud data
-          }
-
-          // Check if user has any wallets (either from cloud or existing local)
-          final db = ref.read(databaseProvider);
-          final wallets = await db.walletDao.getAllWallets();
-          Log.i('📊 Wallet check after sync: found ${wallets.length} wallets', label: 'auth');
-
-          if (wallets.isEmpty) {
-            // No wallets in local DB and cloud - new user, show onboarding
-            Log.i('No wallets found, showing onboarding', label: 'auth');
-            context.go('/onboarding');
-          } else {
-            // Has wallets (synced from cloud or existing local) - go to home
-            Log.i('Found ${wallets.length} wallets, going to home', label: 'auth');
-            context.go('/');
-          }
+          await _postLoginFlow(
+            context: context,
+            ref: ref,
+            user: user,
+            supabase: supabase,
+          );
         }
       } on AuthException catch (e) {
         Log.e('Supabase auth error: ${e.message}', label: 'auth');
@@ -240,62 +292,13 @@ class LoginScreen extends HookConsumerWidget {
           final user = response.user!;
           Log.i('✅ Supabase authentication successful: ${user.email}', label: 'auth');
 
-          // Safety check: clear stale data if any exists from a previous account
-          final db = ref.read(databaseProvider);
-          final existingWallets = await db.walletDao.getAllWallets();
-          if (existingWallets.isNotEmpty) {
-            Log.i('⚠️ Found ${existingWallets.length} stale wallets, clearing for clean login', label: 'auth');
-            await db.clearAllTables();
-          }
-
-          // Sync profile from Supabase to local
-          final authProvider = ref.read(local_auth.authStateProvider.notifier);
-          final currentUser = authProvider.getUser();
-
-          // Get avatar URL: try metadata first, then fallback to Storage URL
-          String? avatarUrl = user.userMetadata?['avatar_url'] as String?;
-          if (avatarUrl == null || avatarUrl.isEmpty) {
-            final storagePath = 'Avatars/${user.id}/avatar.jpg';
-            avatarUrl = supabase.storage.from('Assets').getPublicUrl(storagePath);
-            Log.i('No avatar in metadata, trying Storage URL: $avatarUrl', label: 'auth');
-          }
-
-          authProvider.setUser(currentUser.copyWith(
-            name: user.userMetadata?['full_name'] ?? user.email?.split('@').first ?? currentUser.name,
-            email: user.email ?? currentUser.email,
-            profilePicture: avatarUrl ?? currentUser.profilePicture,
-          ));
-
-          Log.i('✅ Synced profile from Supabase (Google), avatar: $avatarUrl', label: 'auth');
-
-          // Trigger initial Supabase sync to pull data from cloud
           if (context.mounted) {
-            try {
-              Log.i('🔄 Pulling data from Supabase...', label: 'auth');
-              final syncService = ref.read(supabaseSyncServiceProvider);
-
-              // Pull data from cloud (pull-first mode)
-              await syncService.performFullSync(pushFirst: false);
-
-              Log.i('✅ Initial sync completed', label: 'auth');
-            } catch (e) {
-              Log.e('⚠️ Failed to sync from cloud: $e', label: 'auth');
-              // Continue anyway - user might be offline or have no cloud data
-            }
-
-            // Check if user has any wallets (either from cloud or existing local)
-            final db = ref.read(databaseProvider);
-            final wallets = await db.walletDao.getAllWallets();
-
-            if (wallets.isEmpty) {
-              // No wallets in local DB and cloud - new user, show onboarding
-              Log.i('No wallets found, showing onboarding', label: 'auth');
-              context.go('/onboarding');
-            } else {
-              // Has wallets (synced from cloud or existing local) - go to home
-              Log.i('Found ${wallets.length} wallets, going to home', label: 'auth');
-              context.go('/');
-            }
+            await _postLoginFlow(
+              context: context,
+              ref: ref,
+              user: user,
+              supabase: supabase,
+            );
           }
         }
       } on AuthException catch (e) {
@@ -367,50 +370,13 @@ class LoginScreen extends HookConsumerWidget {
             final user = response.user!;
             Log.i('✅ Supabase authentication successful: ${user.email}', label: 'auth');
 
-            // Safety check: clear stale data if any exists from a previous account
-            final db = ref.read(databaseProvider);
-            final existingWallets = await db.walletDao.getAllWallets();
-            if (existingWallets.isNotEmpty) {
-              Log.i('⚠️ Found ${existingWallets.length} stale wallets, clearing for clean login', label: 'auth');
-              await db.clearAllTables();
-            }
-
-            // Sync user profile to local database
-            final authProvider = ref.read(local_auth.authStateProvider.notifier);
-            final currentUser = authProvider.getUser();
-
-            // Get avatar URL: try metadata first, then fallback to Storage URL
-            String? avatarUrl = user.userMetadata?['avatar_url'] as String?;
-            if (avatarUrl == null || avatarUrl.isEmpty) {
-              final storagePath = 'Avatars/${user.id}/avatar.jpg';
-              avatarUrl = supabase.storage.from('Assets').getPublicUrl(storagePath);
-              Log.i('No avatar in metadata, trying Storage URL: $avatarUrl', label: 'auth');
-            }
-
-            authProvider.setUser(currentUser.copyWith(
-              name: user.userMetadata?['full_name'] ?? user.email?.split('@').first ?? currentUser.name,
-              email: user.email ?? currentUser.email,
-              profilePicture: avatarUrl ?? currentUser.profilePicture,
-            ));
-
-            Log.i('✅ Synced profile from Supabase Auth (Facebook), avatar: $avatarUrl', label: 'auth');
-
-            // Trigger initial Supabase sync
             if (context.mounted) {
-              try {
-                final syncService = ref.read(supabaseSyncServiceProvider);
-                await syncService.performFullSync(pushFirst: false);
-                Log.i('✅ Initial sync completed', label: 'auth');
-              } catch (e) {
-                Log.e('⚠️ Failed to sync from cloud: $e', label: 'auth');
-              }
-
-              final wallets = await db.walletDao.getAllWallets();
-              if (wallets.isEmpty) {
-                context.go('/onboarding');
-              } else {
-                context.go('/');
-              }
+              await _postLoginFlow(
+                context: context,
+                ref: ref,
+                user: user,
+                supabase: supabase,
+              );
             }
           }
         } else if (result.status == LoginStatus.cancelled) {
@@ -479,56 +445,20 @@ class LoginScreen extends HookConsumerWidget {
         final user = response.user!;
         Log.i('✅ Supabase authentication successful: ${user.email}', label: 'auth');
 
-        // Safety check: clear stale data if any exists from a previous account
-        final db = ref.read(databaseProvider);
-        final existingWallets = await db.walletDao.getAllWallets();
-        if (existingWallets.isNotEmpty) {
-          Log.i('⚠️ Found ${existingWallets.length} stale wallets, clearing for clean login', label: 'auth');
-          await db.clearAllTables();
-        }
-
-        // Sync user profile to local database
-        final authProvider = ref.read(local_auth.authStateProvider.notifier);
-        final currentUser = authProvider.getUser();
-
         // For Apple, combine givenName and familyName if full_name is null
         String? displayName = user.userMetadata?['full_name'];
         if (displayName == null && credential.givenName != null) {
           displayName = '${credential.givenName ?? ''} ${credential.familyName ?? ''}'.trim();
         }
 
-        // Get avatar URL: try metadata first, then fallback to Storage URL
-        String? avatarUrl = user.userMetadata?['avatar_url'] as String?;
-        if (avatarUrl == null || avatarUrl.isEmpty) {
-          final storagePath = 'Avatars/${user.id}/avatar.jpg';
-          avatarUrl = supabase.storage.from('Assets').getPublicUrl(storagePath);
-          Log.i('No avatar in metadata, trying Storage URL: $avatarUrl', label: 'auth');
-        }
-
-        authProvider.setUser(currentUser.copyWith(
-          name: displayName ?? user.email?.split('@').first ?? currentUser.name,
-          email: user.email ?? credential.email ?? currentUser.email,
-          profilePicture: avatarUrl ?? currentUser.profilePicture,
-        ));
-
-        Log.i('✅ Synced profile from Supabase Auth (Apple), avatar: $avatarUrl', label: 'auth');
-
-        // Trigger initial Supabase sync
         if (context.mounted) {
-          try {
-            final syncService = ref.read(supabaseSyncServiceProvider);
-            await syncService.performFullSync(pushFirst: false);
-            Log.i('✅ Initial sync completed', label: 'auth');
-          } catch (e) {
-            Log.e('⚠️ Failed to sync from cloud: $e', label: 'auth');
-          }
-
-          final wallets = await db.walletDao.getAllWallets();
-          if (wallets.isEmpty) {
-            context.go('/onboarding');
-          } else {
-            context.go('/');
-          }
+          await _postLoginFlow(
+            context: context,
+            ref: ref,
+            user: user,
+            supabase: supabase,
+            displayNameOverride: displayName,
+          );
         }
       } on AuthException catch (e) {
         Log.e('Supabase auth error: ${e.message}', label: 'auth');

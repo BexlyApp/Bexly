@@ -262,6 +262,24 @@ class SupabaseSyncService {
         return;
       }
 
+      // Ensure wallet has cloudId before uploading
+      String? walletCloudId = wallet.cloudId;
+      if (walletCloudId == null) {
+        walletCloudId = const Uuid().v7();
+        await (db.update(db.wallets)..where((t) => t.id.equals(wallet.id)))
+            .write(WalletsCompanion(cloudId: Value(walletCloudId)));
+        Log.w('Auto-assigned cloudId to wallet ${wallet.id}: $walletCloudId', label: _label);
+      }
+
+      // Ensure category has cloudId before uploading
+      String? categoryCloudId = category.cloudId;
+      if (categoryCloudId == null) {
+        categoryCloudId = const Uuid().v7();
+        await (db.update(db.categories)..where((t) => t.id.equals(category.id)))
+            .write(CategoriesCompanion(cloudId: Value(categoryCloudId)));
+        Log.w('Auto-assigned cloudId to category ${category.id}: $categoryCloudId', label: _label);
+      }
+
       // Check if this transaction was soft-deleted on cloud
       // If so, delete local instead of uploading (prevents ghost transactions)
       if (transaction.cloudId != null) {
@@ -282,8 +300,8 @@ class SupabaseSyncService {
       final data = {
         'cloud_id': transaction.cloudId,
         'user_id': _userId,
-        'wallet_id': wallet.cloudId,
-        'category_id': category.cloudId,
+        'wallet_id': walletCloudId,
+        'category_id': categoryCloudId,
         'transaction_type': _mapTransactionType(transaction.transactionType),
         'amount': transaction.amount,
         'currency': wallet.currency,

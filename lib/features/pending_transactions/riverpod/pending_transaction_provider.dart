@@ -287,6 +287,82 @@ class PendingTransactionNotifier extends Notifier<PendingTransactionState> {
     }
   }
 
+  /// Approve all pending review transactions using their suggested wallet/category
+  /// Returns the number of successfully approved transactions
+  Future<int> approveAll(List<PendingTransactionModel> pendingItems, {required int defaultWalletId}) async {
+    try {
+      state = state.copyWith(isApproving: true, error: null);
+      final db = ref.read(databaseProvider);
+      final transactionDao = db.transactionDao;
+      int successCount = 0;
+
+      for (final pending in pendingItems) {
+        try {
+          final walletId = pending.targetWalletId ?? defaultWalletId;
+          final categoryId = pending.selectedCategoryId;
+
+          if (categoryId == null) {
+            Log.w('Skipping pending ${pending.id}: no category', label: _label);
+            continue;
+          }
+
+          final walletEntity = await db.walletDao.getWalletById(walletId);
+          if (walletEntity == null) continue;
+
+          final categoryEntity = await db.categoryDao.getCategoryById(categoryId);
+          if (categoryEntity == null) continue;
+
+          final transactionModel = TransactionModel(
+            transactionType: pending.isIncome ? TransactionType.income : TransactionType.expense,
+            amount: pending.amount,
+            date: pending.transactionDate,
+            title: pending.title,
+            category: categoryEntity.toModel(),
+            wallet: walletEntity.toModel(),
+            notes: pending.userNotes ?? 'Imported from ${pending.source.displayName}',
+          );
+
+          final txId = await transactionDao.addTransaction(transactionModel);
+
+          final pendingId = pending.id!;
+          if (_isEmailSourceId(pendingId)) {
+            await _emailDao.markAsImported(_getRealEmailId(pendingId), txId);
+          } else {
+            await _dao.markAsImported(pendingId, txId);
+          }
+          successCount++;
+        } catch (e) {
+          Log.w('Failed to approve pending ${pending.id}: $e', label: _label);
+        }
+      }
+
+      Log.i('Approved all: $successCount/${pendingItems.length} transactions', label: _label);
+      state = state.copyWith(isApproving: false);
+      return successCount;
+    } catch (e) {
+      Log.e('Failed to approve all: $e', label: _label);
+      state = state.copyWith(isApproving: false, error: e.toString());
+      return 0;
+    }
+  }
+
+  /// Reject all pending review transactions from both sources
+  Future<int> rejectAll() async {
+    try {
+      state = state.copyWith(isRejecting: true, error: null);
+      final pendingCount = await _dao.rejectAllPending();
+      final emailCount = await _emailDao.rejectAllPending();
+      final total = pendingCount + emailCount;
+      Log.i('Rejected all: $pendingCount pending + $emailCount email = $total total', label: _label);
+      state = state.copyWith(isRejecting: false);
+      return total;
+    } catch (e) {
+      Log.e('Failed to reject all: $e', label: _label);
+      state = state.copyWith(isRejecting: false, error: e.toString());
+      return 0;
+    }
+  }
+
   /// Delete all rejected transactions
   Future<int> clearRejected() async {
     return await _dao.deleteRejected();

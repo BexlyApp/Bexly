@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
@@ -62,23 +63,56 @@ const _chartColorPalette = [
   AppColors.purple800,
 ];
 
+/// Resolve parent category names for subcategories so charts group by parent
+Future<Map<int, String>> _resolveParentCategoryNames(
+  List<TransactionModel> transactions,
+  AppDatabase db,
+) async {
+  final parentIds = transactions
+      .where((t) => t.category.parentId != null)
+      .map((t) => t.category.parentId!)
+      .toSet()
+      .toList();
+
+  if (parentIds.isEmpty) return {};
+
+  final parents = await db.categoryDao.getCategoriesByIds(parentIds);
+  return {for (var p in parents) p.id: p.title};
+}
+
+/// Get the display name for grouping: use parent category name if subcategory
+String _getGroupCategoryName(
+  TransactionModel transaction,
+  Map<int, String> parentNames,
+) {
+  final category = transaction.category;
+  if (category.parentId != null && parentNames.containsKey(category.parentId)) {
+    return parentNames[category.parentId]!;
+  }
+  return category.title;
+}
+
 /// Provider for spending by category chart data (cached, no FutureBuilder jitter)
 final spendingByCategoryChartProvider =
     FutureProvider.family.autoDispose<List<ChartSegmentData>, DateTime>((ref, date) async {
       final transactionsAsync = ref.watch(monthlyTransactionsProvider(date));
       final baseCurrency = ref.watch(baseCurrencyProvider);
       final exchangeRateService = ref.watch(exchangeRateServiceProvider);
+      final db = ref.read(databaseProvider);
 
       final transactions = transactionsAsync.value ?? [];
+      final expenseTransactions = transactions
+          .where((t) => t.transactionType == TransactionType.expense)
+          .toList();
+
+      // Resolve parent category names for subcategories
+      final parentNames = await _resolveParentCategoryNames(expenseTransactions, db);
+
       final Map<String, double> categoryExpenses = {};
 
-      // Process ONLY expense transactions
-      for (var transaction in transactions) {
-        if (transaction.transactionType == TransactionType.income) {
-          continue;
-        }
-
-        final categoryTitle = transaction.category.title;
+      // Process ONLY expense transactions, grouped by parent category
+      for (var transaction in expenseTransactions) {
+        final groupName = _getGroupCategoryName(transaction, parentNames);
         double amountInBaseCurrency;
 
         if (transaction.wallet.currency == baseCurrency) {
@@ -97,7 +131,7 @@ final spendingByCategoryChartProvider =
         }
 
         categoryExpenses.update(
-          categoryTitle,
+          groupName,
           (value) => value + amountInBaseCurrency,
           ifAbsent: () => amountInBaseCurrency,
         );
@@ -119,17 +153,21 @@ final incomeByCategoryChartProvider =
       final transactionsAsync = ref.watch(monthlyTransactionsProvider(date));
       final baseCurrency = ref.watch(baseCurrencyProvider);
       final exchangeRateService = ref.watch(exchangeRateServiceProvider);
+      final db = ref.read(databaseProvider);
 
       final transactions = transactionsAsync.value ?? [];
+      final incomeTransactions = transactions
+          .where((t) => t.transactionType == TransactionType.income)
+          .toList();
+
+      // Resolve parent category names for subcategories
+      final parentNames = await _resolveParentCategoryNames(incomeTransactions, db);
+
       final Map<String, double> categoryIncome = {};
 
-      // Process ONLY income transactions
-      for (var transaction in transactions) {
-        if (transaction.transactionType == TransactionType.expense) {
-          continue;
-        }
-
-        final categoryTitle = transaction.category.title;
+      // Process ONLY income transactions, grouped by parent category
+      for (var transaction in incomeTransactions) {
+        final groupName = _getGroupCategoryName(transaction, parentNames);
         double amountInBaseCurrency;
 
         if (transaction.wallet.currency == baseCurrency) {
@@ -148,7 +186,7 @@ final incomeByCategoryChartProvider =
         }
 
         categoryIncome.update(
-          categoryTitle,
+          groupName,
           (value) => value + amountInBaseCurrency,
           ifAbsent: () => amountInBaseCurrency,
         );

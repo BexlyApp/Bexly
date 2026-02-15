@@ -170,6 +170,18 @@ class ParsedEmailTransactionDao extends DatabaseAccessor<AppDatabase>
     Log.d('Deleted parsed transaction $id', label: _label);
   }
 
+  /// Reject all pending review transactions
+  Future<int> rejectAllPending() async {
+    final count = await (update(parsedEmailTransactions)
+          ..where((t) => t.status.equals(ParsedEmailTransactionStatus.pendingReview)))
+        .write(ParsedEmailTransactionsCompanion(
+      status: const Value(ParsedEmailTransactionStatus.rejected),
+      updatedAt: Value(DateTime.now()),
+    ));
+    Log.d('Rejected $count pending email transactions', label: _label);
+    return count;
+  }
+
   /// Delete all rejected transactions
   Future<int> deleteRejected() async {
     final count = await (delete(parsedEmailTransactions)
