@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:bexly/core/services/supabase_init_service.dart';
 import 'package:gap/gap.dart';
 import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
@@ -33,7 +34,10 @@ class PersonalDetailsScreen extends HookConsumerWidget {
 
       // Use Supabase Storage with 'Assets' bucket
       // Structure: Assets/Avatars/{userId}/avatar.jpg (shared across all products)
-      final supabase = Supabase.instance.client;
+      if (!SupabaseInitService.isInitialized) {
+        return (null, 'Supabase not initialized');
+      }
+      final supabase = SupabaseInitService.client;
 
       // Create file path: Avatars/{userId}/avatar.jpg
       final filePath = 'Avatars/$userId/avatar.jpg';

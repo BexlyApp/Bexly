@@ -39,14 +39,15 @@ class SupabaseSyncService {
   static const _label = 'SupabaseSync';
   final Ref _ref;
 
-  /// Supabase client instance
+  /// Supabase client instance (use only after isAuthenticated check)
   SupabaseClient get _supabase => SupabaseInitService.client;
 
   /// Current user ID (Supabase auth)
   String? get _userId => SupabaseInitService.currentUser?.id;
 
-  /// Check if user is authenticated
-  bool get isAuthenticated => _userId != null;
+  /// Check if user is authenticated and Supabase is initialized
+  bool get isAuthenticated =>
+      SupabaseInitService.isInitialized && _userId != null;
 
   SupabaseSyncService(this._ref);
 

@@ -10,6 +10,10 @@ class TelegramDeepLinkHandler {
   /// Returns telegram_id if successful, null otherwise
   static Future<String?> linkWithToken(String token) async {
     try {
+      if (!SupabaseInitService.isInitialized) {
+        Log.w('Cannot link: Supabase not initialized', label: _label);
+        return null;
+      }
       final supabase = SupabaseInitService.client;
       final session = supabase.auth.currentSession;
 
