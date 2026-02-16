@@ -15,7 +15,6 @@ import 'package:bexly/core/services/supabase_init_service.dart';
 import 'package:bexly/core/services/sync/supabase_sync_service.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/package_info/package_info_provider.dart';
-import 'package:bexly/core/config/supabase_config.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
@@ -233,20 +232,10 @@ class LoginScreen extends HookConsumerWidget {
           final googleSignIn = GoogleSignIn.instance;
 
           Log.i('📱 Starting native Google Sign In flow', label: 'auth');
-          Log.i('🔑 Expected client ID: ${SupabaseConfig.googleWebClientId}', label: 'auth');
           Log.i('🔍 Debug mode: ${kDebugMode}', label: 'auth');
 
-          // Sign out first to show account picker
-          try {
-            await googleSignIn.signOut();
-            Log.i('🔓 Signed out from previous session', label: 'auth');
-          } catch (e) {
-            Log.w('Sign out error (safe to ignore): $e', label: 'auth');
-          }
-
-          // Show native Google account picker and authenticate
-          // Note: authenticate() replaced signIn() in google_sign_in v7.0
-          // It throws exception if user cancels (doesn't return null)
+          // google_sign_in v7: authenticate() shows account picker or
+          // re-uses previous account. No need to signOut() first.
           Log.i('👤 Showing Google account picker...', label: 'auth');
           final googleUser = await googleSignIn.authenticate();
 
