@@ -136,9 +136,7 @@ Future<void> main() async {
   try {
     print('🔑 Initializing Google Sign-In with explicit serverClientId...');
     await GoogleSignIn.instance.initialize(
-      const GoogleSignInInitParameters(
-        serverClientId: '368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com',
-      ),
+      serverClientId: '368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com',
     );
     print('✅ Google Sign-In initialized successfully');
   } catch (e) {
