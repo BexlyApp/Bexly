@@ -130,12 +130,16 @@ Future<void> main() async {
     // Continue without Crashlytics if Firebase fails
   }
 
-  // Initialize Google Sign-In (google_sign_in 7.x requires explicit initialization)
-  // serverClientId is auto-detected from google-services.json (web client)
-  // See: https://pub.dev/packages/google_sign_in_android
+  // Initialize Google Sign-In (google_sign_in 7.x + Credential Manager)
+  // serverClientId MUST be the Web client ID (client_type: 3) from Google Cloud Console
+  // Auto-detect from google-services.json is unreliable with Credential Manager
   try {
-    print('🔑 Initializing Google Sign-In (auto-detect from google-services.json)...');
-    await GoogleSignIn.instance.initialize();
+    print('🔑 Initializing Google Sign-In with explicit serverClientId...');
+    await GoogleSignIn.instance.initialize(
+      const GoogleSignInInitParameters(
+        serverClientId: '368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com',
+      ),
+    );
     print('✅ Google Sign-In initialized successfully');
   } catch (e) {
     print('❌ Google Sign-In init error: $e');
