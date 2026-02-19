@@ -1024,9 +1024,9 @@ Login Method → Supabase Auth → JWT Token → DOS-Me API
 
 **Supported Methods**:
 1. **Email/Password**: Native Supabase auth
-2. **Google OAuth**: Configured with Google Cloud Console
-3. **Facebook OAuth**: Configured with Facebook App
-4. **Apple Sign-In**: Configured with Apple Developer
+2. **Google OAuth**: Native SDK (google_sign_in v7) → Supabase signInWithIdToken
+3. **Facebook OAuth**: Native SDK → Supabase signInWithIdToken
+4. **Apple Sign-In**: Native SDK → Supabase signInWithIdToken
 
 **Configuration**:
 - OAuth Redirect URL: `bexly://login-callback`
@@ -1034,31 +1034,49 @@ Login Method → Supabase Auth → JWT Token → DOS-Me API
 - JWT expiry: 3600s (1 hour)
 - Refresh token rotation: Enabled
 
-**Code Implementation**:
+#### Google Sign-In Configuration (CRITICAL)
 
+**Google Cloud Console** (project: `dos-me`):
+
+| OAuth Client | Type | SHA-1 | Purpose |
+|---|---|---|---|
+| `...2i3h1mmsrmjn30865q883lioaruhpbqu` | Android | `79cf106c...` | Debug builds |
+| `...lu2v4fapus52k6sjcs0edneglm3spuu4` | Android | `5583317a...` | **Play Store App Signing** key |
+| `...ch5cd0afri6pilfipeersbtqkpf6huj6` | Web | N/A | serverClientId (token generation) |
+
+**IMPORTANT — Play Store App Signing**:
+- Google Play re-signs the APK with its own App Signing key
+- The Android OAuth client for release MUST use the **Play Store App Signing SHA-1**, NOT the upload keystore SHA-1
+- Get the SHA-1 from: Google Play Console → App → Setup → App signing → "App signing key certificate"
+- The `google-services.json` must include this SHA-1 (stored in GitHub secret `GOOGLE_SERVICES_JSON_BASE64`)
+
+**Initialization** (`lib/main.dart`):
 ```dart
-// lib/core/services/supabase_init_service.dart
-class SupabaseInitService {
-  static SupabaseClient get client => Supabase.instance.client;
-
-  static Future<void> initialize() async {
-    await Supabase.initialize(
-      url: SupabaseConfig.supabaseUrl,
-      anonKey: SupabaseConfig.supabaseAnonKey,
-    );
-  }
-}
-
-// Sign in with email/password
-final result = await supabase.auth.signInWithPassword(
-  email: email,
-  password: password,
+// google_sign_in v7 + Credential Manager requires explicit serverClientId
+// Auto-detect from google-services.json is UNRELIABLE
+await GoogleSignIn.instance.initialize(
+  serverClientId: '368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com',
 );
+```
 
-// Sign in with Google OAuth
-await supabase.auth.signInWithOAuth(
-  OAuthProvider.google,
-  redirectTo: 'bexly://login-callback',
+**Authentication Flow** (`lib/features/auth/presentation/login_screen.dart`):
+```dart
+// 1. Authenticate (shows account picker)
+final googleUser = await GoogleSignIn.instance.authenticate();
+
+// 2. Get ID token
+final idToken = googleUser.authentication.idToken;
+
+// 3. Get access token (Supabase requires BOTH tokens)
+final clientAuth = await googleUser.authorizationClient
+    .authorizationForScopes(['email']);
+final accessToken = clientAuth.accessToken;
+
+// 4. Exchange with Supabase
+await supabase.auth.signInWithIdToken(
+  provider: OAuthProvider.google,
+  idToken: idToken,
+  accessToken: accessToken,
 );
 ```
 
