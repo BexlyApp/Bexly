@@ -75,7 +75,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 23; // Add isDeleted to transactions for soft delete sync
+  int get schemaVersion => 24; // Add isDeleted to goals and categories for soft delete sync
 
   @override
   MigrationStrategy get migration {
@@ -313,7 +313,24 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(transactions, transactions.isDeleted);
             Log.i('Added isDeleted column to transactions for soft delete sync', label: 'database');
           } catch (e) {
-            Log.e('Failed to add isDeleted column: $e', label: 'database');
+            Log.e('Failed to add isDeleted column to transactions: $e', label: 'database');
+          }
+        }
+
+        // For version 24, add isDeleted/deletedAt to goals and isDeleted to categories
+        if (from < 24) {
+          try {
+            await m.addColumn(goals, goals.isDeleted);
+            await m.addColumn(goals, goals.deletedAt);
+            Log.i('Added isDeleted + deletedAt columns to goals', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add soft delete columns to goals: $e', label: 'database');
+          }
+          try {
+            await m.addColumn(categories, categories.isDeleted);
+            Log.i('Added isDeleted column to categories', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add isDeleted column to categories: $e', label: 'database');
           }
         }
 
