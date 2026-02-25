@@ -5,8 +5,8 @@
 Module gamification tăng user engagement và retention thông qua streaks, achievements, XP/levels và challenges. Thiết kế tinh tế, opt-in/opt-out, chỉ reward hành vi tài chính tốt.
 
 **Phases:**
-- Phase 0 (quick win): Confetti + progress bar màu cho goals/budgets
-- Phase 1 (MVP): Streaks + 15 achievements + dashboard widget
+- Phase 0 (quick win): Level badge trong Header + trang Gamification Profile (mock data, không cần DB)
+- Phase 1 (MVP): DB streaks/achievements + 15 achievements + evaluation engine + achievement unlocked sheet
 - Phase 2: XP/Levels + challenges + monthly report card
 - Phase 3: Seasonal challenges + family challenges + AI chat integration
 
@@ -54,6 +54,10 @@ class UserAchievements extends Table {
   TextColumn get achievementKey => text()();        // "first_transaction", "streak_7"
   IntColumn get xpEarned => integer()
       .withDefault(const Constant(0))();
+  IntColumn get tokenEarned => integer()            // BEX tokens earned (pending on-chain mint)
+      .withDefault(const Constant(0))();
+  BoolColumn get tokenClaimed => boolean()          // true = minted on DOS Chain (Phase 4)
+      .withDefault(const Constant(false))();
   DateTimeColumn get unlockedAt => dateTime()();
   BoolColumn get isDeleted => boolean()
       .withDefault(const Constant(false))();
@@ -110,6 +114,8 @@ class Challenges extends Table {
 
 ```sql
 -- Phase 1
+-- token_earned: BEX amount recorded locally, pending on-chain mint (Phase 4)
+-- token_claimed: false until DOS Chain mint tx confirmed
 CREATE TABLE bexly.user_streaks (
     cloud_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id),
@@ -127,6 +133,8 @@ CREATE TABLE bexly.user_achievements (
     user_id UUID NOT NULL REFERENCES auth.users(id),
     achievement_key TEXT NOT NULL,
     xp_earned INTEGER NOT NULL DEFAULT 0,
+    token_earned INTEGER NOT NULL DEFAULT 0,       -- BEX tokens (pending mint)
+    token_claimed BOOLEAN NOT NULL DEFAULT FALSE,  -- true after DOS Chain mint
     unlocked_at TIMESTAMPTZ NOT NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -186,23 +194,25 @@ enum AchievementTier { bronze, silver, gold, platinum }
 
 ### Phase 1: 15 Achievements
 
-| Key | Title (VI) | Title (EN) | Tier | XP | Criteria |
-|-----|-----------|-----------|------|-----|----------|
-| `first_transaction` | Bước đầu tiên | First Step | Bronze | 10 | 1 transaction |
-| `fifty_transactions` | Siêng năng | Diligent | Silver | 50 | 50 transactions |
-| `century_transactions` | Bậc thầy ghi chép | Record Master | Gold | 100 | 100 transactions |
-| `streak_7` | Tuần hoàn hảo | Perfect Week | Bronze | 25 | 7-day streak |
-| `streak_30` | Tháng kỷ luật | Disciplined Month | Silver | 100 | 30-day streak |
-| `streak_100` | Bền bỉ | Unstoppable | Gold | 300 | 100-day streak |
-| `first_budget` | Nhà hoạch định | The Planner | Bronze | 15 | Create 1 budget |
-| `budget_keeper` | Giữ ngân sách | Budget Keeper | Silver | 50 | Stay within budget 1 month |
-| `budget_master` | Bậc thầy ngân sách | Budget Master | Gold | 150 | Stay within budget 3 months |
-| `first_goal` | Có mục tiêu | Goal Setter | Bronze | 15 | Create 1 goal |
-| `goal_halfway` | Nửa đường | Halfway There | Silver | 50 | Reach 50% of a goal |
-| `goal_achieved` | Thành tựu | Goal Achieved | Gold | 200 | Complete first goal |
-| `first_category` | Tổ chức | Organized | Bronze | 10 | Create 1 custom category |
-| `multi_wallet` | Đa ví | Multi Wallet | Silver | 25 | Create 3+ wallets |
-| `ai_chat_first` | Bạn AI | AI Friend | Bronze | 10 | Chat with AI once |
+Token rewards are in **BEX** (DOS Chain). Phase 1 records token amounts locally only — actual on-chain minting happens in Phase 4 (DOS Chain integration). Tokens are claimable once, shown in UI immediately on unlock.
+
+| Key | Title (EN) | Tier | XP | BEX | Criteria |
+|-----|-----------|------|-----|-----|----------|
+| `first_transaction` | First Step | Bronze | 10 | 1 | 1 transaction |
+| `fifty_transactions` | Diligent | Silver | 50 | 5 | 50 transactions |
+| `century_transactions` | Record Master | Gold | 100 | 15 | 100 transactions |
+| `streak_7` | Perfect Week | Bronze | 25 | 3 | 7-day streak |
+| `streak_30` | Disciplined Month | Silver | 100 | 10 | 30-day streak |
+| `streak_100` | Unstoppable | Gold | 300 | 30 | 100-day streak |
+| `first_budget` | The Planner | Bronze | 15 | 2 | Create 1 budget |
+| `budget_keeper` | Budget Keeper | Silver | 50 | 8 | Stay within budget 1 month |
+| `budget_master` | Budget Master | Gold | 150 | 20 | Stay within budget 3 months |
+| `first_goal` | Goal Setter | Bronze | 15 | 2 | Create 1 goal |
+| `goal_halfway` | Halfway There | Silver | 50 | 5 | Reach 50% of a goal |
+| `goal_achieved` | Goal Achieved | Gold | 200 | 25 | Complete first goal |
+| `first_category` | Organized | Bronze | 10 | 1 | Create 1 custom category |
+| `multi_wallet` | Multi Wallet | Silver | 25 | 3 | Create 3+ wallets |
+| `ai_chat_first` | AI Friend | Bronze | 10 | 1 | Chat with AI once |
 
 ---
 
@@ -311,23 +321,35 @@ lib/features/gamification/
 ┌──────────────────────────────────────┐
 │            ─── (drag handle)         │
 │         🏆 (large badge icon)        │
-│       "Tuần hoàn hảo" (title)        │
-│   Ghi chép 7 ngày liên tiếp (desc)  │
-│          +25 XP (reward)             │
-│    [  Xem tất cả  ]  [  Đóng  ]     │
+│       "Perfect Week" (title)         │
+│   Record 7 days in a row (desc)      │
+│      +25 XP  ·  +3 BEX              │  ← XP + token reward
+│    [  See all  ]  [  Close  ]        │
 └──────────────────────────────────────┘
 ```
 
 ### Achievements Screen
 ```
-┌─ Thành tựu ──────────────────────────
-│  Header: "8/15 đã đạt" + XP bar
-│  Filter: Tất cả | Ghi chép | Ngân sách | Tiết kiệm | Streaks
-│  Grid (3 columns):
-│     [🏆 color] First Step    ✓
-│     [🏆 color] Perfect Week  ✓
-│     [🔒 grey]  Disciplined Month
-│     ...
+┌─ Achievements ───────────────────────
+│  Header: "8/15 unlocked" + total BEX earned badge
+│  Filter: All | Recording | Budget | Savings | Streaks
+│  Grid (3 columns, each card shows):
+│     [🏅 icon]
+│     "First Step"
+│     +1 BEX          ← token reward always visible
+│     ✓ unlocked / 🔒 locked
+```
+
+### Achievement Detail Card (locked state)
+```
+┌─────────────────────────┐
+│  🔒  (greyed icon)      │
+│  Disciplined Month      │
+│  Record 30 days in a   │
+│  row to unlock          │
+│  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄   │
+│  +100 XP  ·  +10 BEX   │  ← reward info always shown
+└─────────────────────────┘
 ```
 
 ### Streak Card (Dashboard)
@@ -393,11 +415,82 @@ confetti_widget: ^0.4.0    # Confetti for goal + badge unlock
 
 ## Phase Breakdown
 
-### Phase 0 — Quick Wins (~2-3 days)
-1. Add `confetti_widget` package
-2. Confetti animation when goal completed
-3. Color-coded progress bar for budgets
-4. No schema changes needed
+### Phase 0 — Level Badge & Gamification Profile UI (~2-3 ngày, không cần DB)
+
+**Mục tiêu:** Hiển thị level ngay trên Home, tạo trang Gamification Profile với mock data.
+Không thay đổi schema — dùng hardcode XP/level để validate UI trước.
+
+#### 0.1 — Level Badge trong Header (greeting_card.dart)
+```
+[Avatar]  Good evening,
+          Anh Le  ✦ Lv.5      ← badge nhỏ, tap được
+```
+- Badge dạng chip nhỏ: `✦ Lv.5` với màu primary
+- Tap → navigate tới `/gamification-profile`
+- Level được tính từ total XP (mock data Phase 0, thật Phase 2)
+
+#### 0.2 — Trang Gamification Profile (Settings > Profile)
+Thêm tile mới vào `settings_profile_group.dart`:
+```
+Profile
+├── Personal Details
+├── Subscription
+├── Family Sharing
+└── [NEW] Thành tựu & Cấp độ   ← navigate → /gamification-profile
+```
+
+Layout trang `/gamification-profile`:
+```
+┌─────────────────────────────────┐
+│  ← Cấp độ & Thành tựu          │
+├─────────────────────────────────┤
+│  ✦ Cấp 5 — Nhà Hoạch Định      │
+│  [████████░░░░░░] 420/500 XP    │
+│  Cấp tiếp: Chuyên Gia Tiết Kiệm │
+├─────────────────────────────────┤
+│  🔥 Streak ghi chép             │
+│  7 ngày · Kỷ lục: 14 ngày      │
+├─────────────────────────────────┤
+│  THÀNH TỰU (3/15)               │
+│  [🥉][🥈][🥇][🔒][🔒][🔒]...  │
+│                  → Xem tất cả   │
+└─────────────────────────────────┘
+```
+
+#### 0.3 — XP Levels Table (static const, dùng lại Phase 1+)
+```dart
+// lib/features/gamification/utils/xp_calculator.dart
+const levels = [
+  (level: 1,  name: 'Newcomer',         xpRequired: 0),
+  (level: 2,  name: 'Tracker',          xpRequired: 50),
+  (level: 3,  name: 'Planner',          xpRequired: 150),
+  (level: 4,  name: 'Saver',            xpRequired: 300),
+  (level: 5,  name: 'Strategist',       xpRequired: 500),
+  (level: 6,  name: 'Budget Pro',       xpRequired: 800),
+  (level: 7,  name: 'Finance Manager',  xpRequired: 1200),
+  (level: 8,  name: 'Finance Expert',   xpRequired: 1800),
+  (level: 9,  name: 'Finance Master',   xpRequired: 2500),
+  (level: 10, name: 'Finance Legend',   xpRequired: 3500),
+];
+```
+
+#### Files cần tạo (Phase 0):
+```
+lib/features/gamification/
+├── utils/
+│   └── xp_calculator.dart               ← level table + helper methods
+├── presentation/
+│   ├── screens/
+│   │   └── gamification_profile_screen.dart  ← trang chính
+│   └── components/
+│       └── level_badge_widget.dart       ← chip ✦ Lv.X dùng ở Header
+```
+
+#### Files cần sửa (Phase 0):
+- `greeting_card.dart` — thêm `LevelBadgeWidget` cạnh tên
+- `settings_profile_group.dart` — thêm tile "Thành tựu & Cấp độ"
+- `lib/core/router/routes.dart` — thêm route `/gamification-profile`
+- Router config — đăng ký route mới
 
 ### Phase 1 — MVP Gamification (~2-3 weeks)
 1. Drift tables: `user_streaks`, `user_achievements` + migration
@@ -429,3 +522,36 @@ confetti_widget: ^0.4.0    # Confetti for goal + badge unlock
 3. Family streak leaderboard
 4. AI chat integration: congratulate achievements, suggest challenges
 5. Premium tier: advanced badges, custom themes
+
+### Phase 4 — DOS Chain Token Integration (~2-3 weeks after Phase 3)
+
+**Architecture:**
+```
+Achievement unlocked (local)
+       ↓
+token_earned recorded in DB (off-chain)
+       ↓  [Phase 4 trigger]
+Bexly backend API → DOS Chain RPC
+       ↓
+Mint BEX to user's custodial wallet
+       ↓
+token_claimed = true
+```
+
+**Custodial wallet:**
+- Each user gets 1 DOS Chain wallet auto-created on first achievement
+- Bexly holds private key server-side (or MPC — TBD based on DOS Chain SDK)
+- User sees only "BEX balance" — no address/key exposed in Phase 4
+- Phase 5+: allow export wallet, transfer, cashout
+
+**Token model:**
+- `token_earned` stored locally when achievement unlocks (Phase 1)
+- Actual mint deferred to Phase 4 (batch mint or per-unlock — TBD)
+- "Pending BEX" shown in UI until minted: `💰 125 BEX (15 pending)`
+
+**DOS Chain specifics** (to be researched):
+- Chain ID, RPC endpoint
+- BEX token contract address
+- SDK: EVM-compatible (ethers.dart / web3dart) or DOS Chain native SDK
+- Wallet creation API
+- Gas fee strategy (app pays gas for users)

@@ -16,6 +16,7 @@ import 'package:bexly/features/settings/presentation/screens/ai_model_settings_s
 import 'package:bexly/features/subscription/presentation/screens/subscription_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/bot_integration_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/bot_integration_screen_wrapper.dart';
+import 'package:bexly/features/gamification/presentation/screens/gamification_profile_screen.dart';
 
 class SettingsRouter {
   static final routes = <GoRoute>[
@@ -70,6 +71,10 @@ class SettingsRouter {
     GoRoute(
       path: Routes.developerPortal,
       builder: (context, state) => const DeveloperPortalScreen(),
+    ),
+    GoRoute(
+      path: Routes.gamificationProfile,
+      builder: (context, state) => const GamificationProfileScreen(),
     ),
     GoRoute(
       path: Routes.botIntegration,

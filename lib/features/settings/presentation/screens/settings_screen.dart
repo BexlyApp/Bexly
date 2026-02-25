@@ -60,6 +60,7 @@ import 'package:bexly/core/components/loading_indicators/loading_indicator.dart'
 import 'package:bexly/core/services/data_population_service/category_population_service.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/components/ads/native_ad_widget.dart';
+import 'package:bexly/features/gamification/presentation/screens/gamification_profile_screen.dart';
 
 part '../components/app_version_info.dart';
 part '../components/profile_card.dart';
