@@ -1,216 +1,250 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { validateApiKey } from './supabase.js';
-import {
-  listWalletsSchema, listWallets,
-  listTransactionsSchema, listTransactions,
-  getSpendingSummarySchema, getSpendingSummary,
-  listBudgetsSchema, listBudgets,
-  listGoalsSchema, listGoals,
-  listCategoriesSchema, listCategories,
-  getBalanceSchema, getBalance,
-} from './tools/read.js';
-import {
-  addTransactionSchema, addTransaction,
-  updateTransactionSchema, updateTransaction,
-  deleteTransactionSchema, deleteTransaction,
-} from './tools/write.js';
+import { createSupabase, validateApiKey } from './supabase.js';
+import { listWallets, listTransactions, getSpendingSummary, listBudgets, listGoals, listCategories, getBalance } from './tools/read.js';
+import { addTransaction, updateTransaction, deleteTransaction } from './tools/write.js';
 
-const PORT = parseInt(process.env.PORT ?? '8080', 10);
+export interface Env {
+  SUPABASE_URL: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
+}
 
-// Extract API key from request headers or query string
-function extractApiKey(req: IncomingMessage): string | null {
-  // Authorization: Bearer bex_live_xxx
-  const auth = req.headers['authorization'];
+// ── Tool definitions (for tools/list response) ───────────────────────────────
+
+const TOOLS = [
+  {
+    name: 'list_wallets',
+    description: 'List all your Bexly wallets with balances and currencies',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'list_transactions',
+    description: 'Query transactions with optional filters (wallet, date range, category, type)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        wallet_id: { type: 'number', description: 'Filter by wallet ID' },
+        start_date: { type: 'string', description: 'Start date YYYY-MM-DD' },
+        end_date: { type: 'string', description: 'End date YYYY-MM-DD' },
+        category: { type: 'string', description: 'Filter by category name (partial match)' },
+        type: { type: 'string', enum: ['income', 'expense'], description: 'Transaction type' },
+        limit: { type: 'number', description: 'Max results (default 50, max 200)' },
+      },
+    },
+  },
+  {
+    name: 'get_spending_summary',
+    description: 'Get income/expense summary and top spending categories for a time period',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['this_month', 'last_month', 'this_year', 'last_7_days', 'last_30_days'], description: 'Time period (default: this_month)' },
+        wallet_id: { type: 'number', description: 'Limit to a specific wallet' },
+      },
+    },
+  },
+  {
+    name: 'list_budgets',
+    description: 'Get budgets with spending progress for a month',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        month: { type: 'string', description: 'Month YYYY-MM (default: current month)' },
+      },
+    },
+  },
+  {
+    name: 'list_goals',
+    description: 'List savings goals with progress',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'list_categories',
+    description: 'List transaction categories',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        type: { type: 'string', enum: ['income', 'expense'], description: 'Filter by type' },
+      },
+    },
+  },
+  {
+    name: 'get_balance',
+    description: 'Get current balance of all wallets',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'add_transaction',
+    description: 'Add a new income or expense transaction',
+    inputSchema: {
+      type: 'object',
+      required: ['wallet_id', 'amount', 'type', 'category_id'],
+      properties: {
+        wallet_id: { type: 'number', description: 'Wallet ID' },
+        amount: { type: 'number', description: 'Amount (positive)' },
+        type: { type: 'string', enum: ['income', 'expense'] },
+        category_id: { type: 'number', description: 'Category ID' },
+        note: { type: 'string', description: 'Optional note' },
+        date: { type: 'string', description: 'Date YYYY-MM-DD (default: today)' },
+      },
+    },
+  },
+  {
+    name: 'update_transaction',
+    description: 'Update an existing transaction',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: { type: 'number', description: 'Transaction ID' },
+        amount: { type: 'number' },
+        type: { type: 'string', enum: ['income', 'expense'] },
+        category_id: { type: 'number' },
+        note: { type: 'string' },
+        date: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'delete_transaction',
+    description: 'Delete a transaction by ID',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: { type: 'number', description: 'Transaction ID' },
+      },
+    },
+  },
+];
+
+// ── Tool dispatcher ───────────────────────────────────────────────────────────
+
+async function callTool(name: string, args: any, userId: string, supabase: any): Promise<any> {
+  switch (name) {
+    case 'list_wallets':         return listWallets(supabase, userId);
+    case 'list_transactions':    return listTransactions(supabase, userId, args);
+    case 'get_spending_summary': return getSpendingSummary(supabase, userId, args);
+    case 'list_budgets':         return listBudgets(supabase, userId, args.month);
+    case 'list_goals':           return listGoals(supabase, userId);
+    case 'list_categories':      return listCategories(supabase, userId, args.type);
+    case 'get_balance':          return getBalance(supabase, userId);
+    case 'add_transaction':      return addTransaction(supabase, userId, args);
+    case 'update_transaction':   return updateTransaction(supabase, userId, args);
+    case 'delete_transaction':   return deleteTransaction(supabase, userId, args.id);
+    default: throw new Error(`Unknown tool: ${name}`);
+  }
+}
+
+// ── MCP JSON-RPC handler ──────────────────────────────────────────────────────
+
+async function handleMcp(body: any, userId: string, supabase: any): Promise<any> {
+  const { jsonrpc, id, method, params } = body;
+
+  try {
+    switch (method) {
+      case 'initialize':
+        return {
+          jsonrpc: '2.0', id,
+          result: {
+            protocolVersion: '2024-11-05',
+            serverInfo: { name: 'bexly', version: '1.0.0' },
+            capabilities: { tools: {} },
+          },
+        };
+
+      case 'tools/list':
+        return { jsonrpc: '2.0', id, result: { tools: TOOLS } };
+
+      case 'tools/call': {
+        const result = await callTool(params.name, params.arguments ?? {}, userId, supabase);
+        return {
+          jsonrpc: '2.0', id,
+          result: { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] },
+        };
+      }
+
+      case 'ping':
+        return { jsonrpc: '2.0', id, result: {} };
+
+      case 'notifications/initialized':
+      case 'notifications/cancelled':
+        return null; // no response for notifications
+
+      default:
+        return { jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${method}` } };
+    }
+  } catch (err: any) {
+    return { jsonrpc: '2.0', id, error: { code: -32000, message: err.message } };
+  }
+}
+
+// ── Auth helper ───────────────────────────────────────────────────────────────
+
+function extractApiKey(request: Request): string | null {
+  const auth = request.headers.get('authorization');
   if (auth?.startsWith('Bearer ')) return auth.slice(7);
-
-  // X-API-Key: bex_live_xxx
-  const header = req.headers['x-api-key'];
-  if (typeof header === 'string') return header;
-
-  // ?key=bex_live_xxx (for SSE URL pasting in Claude.ai web)
-  const url = new URL(req.url ?? '/', `http://localhost`);
-  const queryKey = url.searchParams.get('key');
-  if (queryKey) return queryKey;
-
-  return null;
+  const header = request.headers.get('x-api-key');
+  if (header) return header;
+  const url = new URL(request.url);
+  return url.searchParams.get('key');
 }
 
-function createBexlyMcpServer(userId: string): McpServer {
-  const server = new McpServer({
-    name: 'bexly',
-    version: '1.0.0',
-  });
+// ── CORS ──────────────────────────────────────────────────────────────────────
 
-  // ── Read Tools ─────────────────────────────────────────────────────────────
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+};
 
-  server.tool(
-    'list_wallets',
-    'List all your Bexly wallets with balances and currencies',
-    listWalletsSchema.shape,
-    async () => {
-      const data = await listWallets(userId);
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-    },
-  );
+// ── Workers fetch export ──────────────────────────────────────────────────────
 
-  server.tool(
-    'list_transactions',
-    'Query your transactions with optional filters (wallet, date range, category, type)',
-    listTransactionsSchema.shape,
-    async (params) => {
-      const data = await listTransactions(userId, params as any);
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-    },
-  );
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
 
-  server.tool(
-    'get_spending_summary',
-    'Get income/expense summary and top spending categories for a time period',
-    getSpendingSummarySchema.shape,
-    async (params) => {
-      const data = await getSpendingSummary(userId, params as any);
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-    },
-  );
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
 
-  server.tool(
-    'list_budgets',
-    'Get budgets with current spending progress for a month',
-    listBudgetsSchema.shape,
-    async (params) => {
-      const data = await listBudgets(userId, params as any);
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-    },
-  );
+    if (url.pathname === '/health') {
+      return Response.json({ status: 'ok', service: 'bexly-mcp' }, { headers: CORS_HEADERS });
+    }
 
-  server.tool(
-    'list_goals',
-    'List your savings goals with progress',
-    listGoalsSchema.shape,
-    async () => {
-      const data = await listGoals(userId);
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-    },
-  );
+    if (url.pathname !== '/mcp') {
+      return new Response('Not found', { status: 404 });
+    }
 
-  server.tool(
-    'list_categories',
-    'List transaction categories (income or expense)',
-    listCategoriesSchema.shape,
-    async (params) => {
-      const data = await listCategories(userId, params as any);
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-    },
-  );
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405 });
+    }
 
-  server.tool(
-    'get_balance',
-    'Get current balance of all wallets',
-    getBalanceSchema.shape,
-    async () => {
-      const data = await getBalance(userId);
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-    },
-  );
+    // Auth
+    const rawKey = extractApiKey(request);
+    if (!rawKey) {
+      return Response.json({ error: 'Missing API key. Use Authorization: Bearer <key> or X-API-Key header.' }, { status: 401, headers: CORS_HEADERS });
+    }
 
-  // ── Write Tools ────────────────────────────────────────────────────────────
+    const supabase = createSupabase(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const userId = await validateApiKey(supabase, rawKey);
+    if (!userId) {
+      return Response.json({ error: 'Invalid or inactive API key.' }, { status: 403, headers: CORS_HEADERS });
+    }
 
-  server.tool(
-    'add_transaction',
-    'Add a new income or expense transaction to a wallet',
-    addTransactionSchema.shape,
-    async (params) => {
-      const data = await addTransaction(userId, params as any);
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-    },
-  );
+    // Parse + handle MCP
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return Response.json({ error: 'Invalid JSON body' }, { status: 400, headers: CORS_HEADERS });
+    }
 
-  server.tool(
-    'update_transaction',
-    'Update an existing transaction (amount, category, note, date)',
-    updateTransactionSchema.shape,
-    async (params) => {
-      const data = await updateTransaction(userId, params as any);
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-    },
-  );
+    const result = await handleMcp(body, userId, supabase);
 
-  server.tool(
-    'delete_transaction',
-    'Delete (soft-delete) a transaction by ID',
-    deleteTransactionSchema.shape,
-    async (params) => {
-      const data = await deleteTransaction(userId, params as any);
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-    },
-  );
+    // Notifications return null (no response)
+    if (result === null) {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
 
-  return server;
-}
-
-// ── HTTP Server ───────────────────────────────────────────────────────────────
-
-const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
-  const url = new URL(req.url ?? '/', `http://localhost`);
-
-  // Health check
-  if (url.pathname === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', service: 'bexly-mcp' }));
-    return;
-  }
-
-  // Only handle /mcp endpoint
-  if (url.pathname !== '/mcp' && url.pathname !== '/') {
-    res.writeHead(404);
-    res.end('Not found');
-    return;
-  }
-
-  // CORS headers (for Claude.ai web)
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
-
-  if (req.method === 'OPTIONS') {
-    res.writeHead(204);
-    res.end();
-    return;
-  }
-
-  // Auth
-  const rawKey = extractApiKey(req);
-  if (!rawKey) {
-    res.writeHead(401, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Missing API key. Provide via Authorization: Bearer <key> or X-API-Key header.' }));
-    return;
-  }
-
-  const userId = await validateApiKey(rawKey);
-  if (!userId) {
-    res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Invalid or inactive API key.' }));
-    return;
-  }
-
-  // Create per-request MCP server scoped to this user
-  const mcpServer = createBexlyMcpServer(userId);
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined, // stateless
-  });
-
-  res.on('close', () => {
-    transport.close();
-    mcpServer.close();
-  });
-
-  await mcpServer.connect(transport);
-  await transport.handleRequest(req, res);
-});
-
-httpServer.listen(PORT, () => {
-  console.log(`Bexly MCP Server running on port ${PORT}`);
-  console.log(`Endpoint: http://localhost:${PORT}/mcp`);
-});
+    return Response.json(result, { headers: CORS_HEADERS });
+  },
+};

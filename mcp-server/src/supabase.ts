@@ -1,40 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL ?? 'https://gulptwduchsjcsbndmua.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Supabase = any;
 
-// Minimal Database type so Supabase SDK accepts custom schema 'bexly'
-type BexlyDatabase = {
-  bexly: {
-    Tables: { [key: string]: { Row: any; Insert: any; Update: any } };
-    Views: { [key: string]: { Row: any } };
-    Functions: { [key: string]: any };
-    Enums: { [key: string]: any };
-  };
-};
-
-// Service role client — bypasses RLS, scoped per-query using user_id filter
-const _client = createClient<BexlyDatabase, 'bexly'>(
-  SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
-  { db: { schema: 'bexly' } },
-);
-
-// Cast to any to avoid per-query TypeScript gymnastics (no generated DB types)
-export const supabase = _client as any;
-
-export interface ApiKey {
-  user_id: string;
-  key_prefix: string;
-  name: string | null;
-  last_used: string | null;
+/** Create a per-request Supabase service-role client for schema bexly. */
+export function createSupabase(url: string, serviceRoleKey: string): Supabase {
+  // Cast to any to avoid TypeScript schema type mismatch (no generated DB types)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return createClient(url, serviceRoleKey, {
+    db: { schema: 'bexly' as any },
+  }) as any;
 }
 
 /**
- * Validate an API key and return the associated user_id.
- * The key is stored hashed (SHA-256) in mcp_api_keys.
+ * Validate a Bexly API key and return the associated user_id.
+ * Keys are stored hashed (SHA-256) in bexly.mcp_api_keys.
  */
-export async function validateApiKey(rawKey: string): Promise<string | null> {
+export async function validateApiKey(
+  supabase: Supabase,
+  rawKey: string,
+): Promise<string | null> {
   if (!rawKey.startsWith('bex_live_')) return null;
 
   const hash = await sha256(rawKey);
@@ -48,7 +33,7 @@ export async function validateApiKey(rawKey: string): Promise<string | null> {
 
   if (error || !data) return null;
 
-  // Update last_used timestamp (fire-and-forget)
+  // Fire-and-forget: update last_used
   supabase
     .from('mcp_api_keys')
     .update({ last_used: new Date().toISOString() })
@@ -59,9 +44,9 @@ export async function validateApiKey(rawKey: string): Promise<string | null> {
 }
 
 async function sha256(text: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  const data = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
