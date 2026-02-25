@@ -45,6 +45,9 @@ class Routes {
   static const String inviteMember = '/family-invite';
   static const String shareWallet = '/family-share-wallet';
 
+  /// Gamification
+  static const String gamificationProfile = '/gamification-profile';
+
   /// Bot Integration
   static const String botIntegration = '/bot-integration';
   static const String telegramLinked = '/telegram/linked'; // Deep link from id.dos.me (deprecated)

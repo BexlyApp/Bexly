@@ -44,6 +44,7 @@ import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_categor
 import 'package:bexly/features/notification/presentation/riverpod/notification_providers.dart';
 import 'package:bexly/features/notification/presentation/screens/notification_list_screen.dart';
 import 'package:bexly/core/utils/desktop_dialog_helper.dart';
+import 'package:bexly/features/gamification/presentation/components/level_badge_widget.dart';
 
 part '../components/action_button.dart';
 // part '../components/balance_card.dart'; // Legacy - using balance_card_v2 instead

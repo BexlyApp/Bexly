@@ -35,6 +35,15 @@ class SettingsProfileGroup extends ConsumerWidget {
             desktopWidget: const FamilySettingsScreen(),
           ),
         ),
+        MenuTileButton(
+          label: 'Quests & Rewards',
+          icon: HugeIcons.strokeRoundedAward01,
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.gamificationProfile,
+            desktopWidget: const GamificationProfileScreen(),
+          ),
+        ),
       ],
     );
   }
