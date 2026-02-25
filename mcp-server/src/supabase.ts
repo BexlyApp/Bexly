@@ -3,11 +3,11 @@ import { createClient } from '@supabase/supabase-js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Supabase = any;
 
-/** Create a per-request Supabase service-role client for schema bexly. */
-export function createSupabase(url: string, serviceRoleKey: string): Supabase {
+/** Create a per-request Supabase client using secret key for schema bexly. */
+export function createSupabase(url: string, secretKey: string): Supabase {
   // Cast to any to avoid TypeScript schema type mismatch (no generated DB types)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return createClient(url, serviceRoleKey, {
+  return createClient(url, secretKey, {
     db: { schema: 'bexly' as any },
   }) as any;
 }

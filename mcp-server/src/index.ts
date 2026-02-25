@@ -4,7 +4,7 @@ import { addTransaction, updateTransaction, deleteTransaction } from './tools/wr
 
 export interface Env {
   SUPABASE_URL: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
+  SUPABASE_SECRET_KEY: string;
 }
 
 // ── Tool definitions (for tools/list response) ───────────────────────────────
@@ -224,7 +224,7 @@ export default {
       return Response.json({ error: 'Missing API key. Use Authorization: Bearer <key> or X-API-Key header.' }, { status: 401, headers: CORS_HEADERS });
     }
 
-    const supabase = createSupabase(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createSupabase(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY);
     const userId = await validateApiKey(supabase, rawKey);
     if (!userId) {
       return Response.json({ error: 'Invalid or inactive API key.' }, { status: 403, headers: CORS_HEADERS });
