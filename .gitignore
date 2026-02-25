@@ -108,3 +108,5 @@ tmpclaude-*-cwd
 
 .vercel
 .env*.local
+mcp-server/dist/
+mcp-server/.env
