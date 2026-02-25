@@ -7,4 +7,4 @@ compatibility_flags = ["nodejs_compat"]
 SUPABASE_URL = "https://gulptwduchsjcsbndmua.supabase.co"
 
 # Set secrets via:
-#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+#   wrangler secret put SUPABASE_SECRET_KEY
