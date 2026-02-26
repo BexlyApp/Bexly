@@ -5,18 +5,24 @@ import type { Supabase } from '../supabase.js';
 export async function listWallets(supabase: Supabase, userId: string) {
   const { data, error } = await supabase
     .from('wallets')
-    .select('id, name, currency, balance, type, color')
+    .select('cloud_id, name, currency, balance, wallet_type')
     .eq('user_id', userId)
-    .eq('is_deleted', false)
+    .eq('is_active', true)
     .order('created_at');
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []).map((w: any) => ({
+    id: w.cloud_id,
+    name: w.name,
+    currency: w.currency,
+    balance: Number(w.balance),
+    type: w.wallet_type,
+  }));
 }
 
 // ── list_transactions ────────────────────────────────────────────────────────
 
 export interface ListTransactionsParams {
-  wallet_id?: number;
+  wallet_id?: string;
   start_date?: string;
   end_date?: string;
   category?: string;
@@ -32,24 +38,36 @@ export async function listTransactions(
   const limit = params.limit ?? 50;
   let query = supabase
     .from('transactions')
-    .select('id, amount, type, note, date, wallet:wallets(name, currency), category:categories(name, icon)')
+    .select('cloud_id, amount, transaction_type, title, notes, transaction_date, wallet:wallets(name, currency), category:categories(name, icon)')
     .eq('user_id', userId)
     .eq('is_deleted', false)
-    .order('date', { ascending: false })
+    .order('transaction_date', { ascending: false })
     .limit(limit);
 
   if (params.wallet_id) query = query.eq('wallet_id', params.wallet_id);
-  if (params.start_date) query = query.gte('date', params.start_date);
-  if (params.end_date) query = query.lte('date', params.end_date);
-  if (params.type) query = query.eq('type', params.type);
+  if (params.start_date) query = query.gte('transaction_date', params.start_date);
+  if (params.end_date) query = query.lte('transaction_date', params.end_date);
+  if (params.type) query = query.eq('transaction_type', params.type);
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
 
-  let rows = data ?? [];
+  let rows = (data ?? []).map((t: any) => ({
+    id: t.cloud_id,
+    amount: Number(t.amount),
+    type: t.transaction_type,
+    title: t.title,
+    notes: t.notes,
+    date: t.transaction_date?.slice(0, 10),
+    wallet: t.wallet?.name,
+    currency: t.wallet?.currency,
+    category: t.category?.name,
+    category_icon: t.category?.icon,
+  }));
+
   if (params.category) {
     const cat = params.category.toLowerCase();
-    rows = rows.filter((t: any) => t.category?.name?.toLowerCase().includes(cat));
+    rows = rows.filter((t: any) => t.category?.toLowerCase().includes(cat));
   }
   return rows;
 }
@@ -58,7 +76,7 @@ export async function listTransactions(
 
 export interface SpendingSummaryParams {
   period?: 'this_month' | 'last_month' | 'this_year' | 'last_7_days' | 'last_30_days';
-  wallet_id?: number;
+  wallet_id?: string;
 }
 
 export async function getSpendingSummary(
@@ -69,23 +87,23 @@ export async function getSpendingSummary(
   const { start, end } = periodToDates(params.period ?? 'this_month');
   let query = supabase
     .from('transactions')
-    .select('amount, type, category:categories(name)')
+    .select('amount, transaction_type, category:categories(name)')
     .eq('user_id', userId)
     .eq('is_deleted', false)
-    .gte('date', start)
-    .lte('date', end);
+    .gte('transaction_date', start)
+    .lte('transaction_date', end);
 
   if (params.wallet_id) query = query.eq('wallet_id', params.wallet_id);
   const { data, error } = await query;
   if (error) throw new Error(error.message);
 
   const rows = data ?? [];
-  const totalIncome = rows.filter((r: any) => r.type === 'income').reduce((s: number, r: any) => s + Number(r.amount), 0);
-  const totalExpense = rows.filter((r: any) => r.type === 'expense').reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const totalIncome = rows.filter((r: any) => r.transaction_type === 'income').reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const totalExpense = rows.filter((r: any) => r.transaction_type === 'expense').reduce((s: number, r: any) => s + Number(r.amount), 0);
 
   const byCategory: Record<string, number> = {};
   for (const r of rows as any[]) {
-    if (r.type !== 'expense') continue;
+    if (r.transaction_type !== 'expense') continue;
     const name = r.category?.name ?? 'Uncategorized';
     byCategory[name] = (byCategory[name] ?? 0) + Number(r.amount);
   }
@@ -110,18 +128,25 @@ export async function getSpendingSummary(
 
 export async function listBudgets(supabase: Supabase, userId: string, month?: string) {
   const m = month ?? new Date().toISOString().slice(0, 7);
+  const monthStart = `${m}-01`;
+  // Last day of the month
+  const [y, mo] = m.split('-').map(Number);
+  const monthEnd = new Date(y, mo, 0).toISOString().slice(0, 10);
+
   const { data, error } = await supabase
     .from('budgets')
-    .select('id, amount, spent, period, category:categories(name, icon)')
+    .select('cloud_id, amount, start_date, end_date, category:categories(name, icon)')
     .eq('user_id', userId)
-    .eq('is_deleted', false)
-    .like('period', `${m}%`);
+    .lte('start_date', monthEnd)
+    .gte('end_date', monthStart);
   if (error) throw new Error(error.message);
   return (data ?? []).map((b: any) => ({
-    id: b.id, category: b.category?.name ?? 'Unknown', icon: b.category?.icon,
-    budget: Number(b.amount), spent: Number(b.spent ?? 0),
-    remaining: Number(b.amount) - Number(b.spent ?? 0),
-    percent_used: b.amount > 0 ? Math.round((Number(b.spent ?? 0) / Number(b.amount)) * 100) : 0,
+    id: b.cloud_id,
+    category: b.category?.name ?? 'Unknown',
+    icon: b.category?.icon,
+    budget: Number(b.amount),
+    start_date: b.start_date?.slice(0, 10),
+    end_date: b.end_date?.slice(0, 10),
   }));
 }
 
@@ -130,35 +155,52 @@ export async function listBudgets(supabase: Supabase, userId: string, month?: st
 export async function listGoals(supabase: Supabase, userId: string) {
   const { data, error } = await supabase
     .from('goals')
-    .select('id, name, target_amount, current_amount, deadline, wallet:wallets(name, currency)')
+    .select('cloud_id, name, target_amount, current_amount, deadline, wallet:wallets(name, currency)')
     .eq('user_id', userId)
     .eq('is_deleted', false)
     .order('created_at');
   if (error) throw new Error(error.message);
   return (data ?? []).map((g: any) => ({
-    id: g.id, name: g.name,
+    id: g.cloud_id,
+    name: g.name,
     target: Number(g.target_amount),
     current: Number(g.current_amount ?? 0),
     remaining: Number(g.target_amount) - Number(g.current_amount ?? 0),
     percent: g.target_amount > 0 ? Math.round((Number(g.current_amount ?? 0) / Number(g.target_amount)) * 100) : 0,
-    deadline: g.deadline, wallet: g.wallet?.name, currency: g.wallet?.currency,
+    deadline: g.deadline,
+    wallet: g.wallet?.name,
+    currency: g.wallet?.currency,
   }));
 }
 
 // ── list_categories ──────────────────────────────────────────────────────────
 
 export async function listCategories(supabase: Supabase, userId: string, type?: 'income' | 'expense') {
-  let query = supabase.from('categories').select('id, name, icon, type').eq('user_id', userId).eq('is_deleted', false).order('name');
-  if (type) query = query.eq('type', type);
+  let query = supabase
+    .from('categories')
+    .select('cloud_id, name, icon, category_type')
+    .eq('user_id', userId)
+    .eq('is_deleted', false)
+    .order('name');
+  if (type) query = query.eq('category_type', type);
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []).map((c: any) => ({
+    id: c.cloud_id,
+    name: c.name,
+    icon: c.icon,
+    type: c.category_type,
+  }));
 }
 
 // ── get_balance ──────────────────────────────────────────────────────────────
 
 export async function getBalance(supabase: Supabase, userId: string) {
-  const { data, error } = await supabase.from('wallets').select('name, balance, currency').eq('user_id', userId).eq('is_deleted', false);
+  const { data, error } = await supabase
+    .from('wallets')
+    .select('name, balance, currency')
+    .eq('user_id', userId)
+    .eq('is_active', true);
   if (error) throw new Error(error.message);
   const wallets = (data ?? []).map((w: any) => ({ name: w.name, balance: Number(w.balance), currency: w.currency }));
   return { wallets, total_wallets: wallets.length };

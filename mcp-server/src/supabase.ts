@@ -20,7 +20,7 @@ export async function validateApiKey(
   supabase: Supabase,
   rawKey: string,
 ): Promise<string | null> {
-  if (!rawKey.startsWith('bex_live_')) return null;
+  if (!rawKey.startsWith('bex_')) return null;
 
   const hash = await sha256(rawKey);
 
@@ -36,7 +36,7 @@ export async function validateApiKey(
   // Fire-and-forget: update last_used
   supabase
     .from('mcp_api_keys')
-    .update({ last_used: new Date().toISOString() })
+    .update({ last_used_at: new Date().toISOString() })
     .eq('key_hash', hash)
     .then(() => {});
 
