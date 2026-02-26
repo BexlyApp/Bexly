@@ -21,7 +21,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        wallet_id: { type: 'number', description: 'Filter by wallet ID' },
+        wallet_id: { type: 'string', description: 'Filter by wallet ID (UUID from list_wallets)' },
         start_date: { type: 'string', description: 'Start date YYYY-MM-DD' },
         end_date: { type: 'string', description: 'End date YYYY-MM-DD' },
         category: { type: 'string', description: 'Filter by category name (partial match)' },
@@ -78,11 +78,11 @@ const TOOLS = [
       type: 'object',
       required: ['wallet_id', 'amount', 'type', 'category_id'],
       properties: {
-        wallet_id: { type: 'number', description: 'Wallet ID' },
+        wallet_id: { type: 'string', description: 'Wallet ID (UUID from list_wallets)' },
         amount: { type: 'number', description: 'Amount (positive)' },
         type: { type: 'string', enum: ['income', 'expense'] },
-        category_id: { type: 'number', description: 'Category ID' },
-        note: { type: 'string', description: 'Optional note' },
+        category_id: { type: 'string', description: 'Category ID (UUID from list_categories)' },
+        note: { type: 'string', description: 'Optional note/title' },
         date: { type: 'string', description: 'Date YYYY-MM-DD (default: today)' },
       },
     },
@@ -94,10 +94,10 @@ const TOOLS = [
       type: 'object',
       required: ['id'],
       properties: {
-        id: { type: 'number', description: 'Transaction ID' },
+        id: { type: 'string', description: 'Transaction ID (UUID from list_transactions)' },
         amount: { type: 'number' },
         type: { type: 'string', enum: ['income', 'expense'] },
-        category_id: { type: 'number' },
+        category_id: { type: 'string', description: 'Category ID (UUID)' },
         note: { type: 'string' },
         date: { type: 'string' },
       },
@@ -110,7 +110,7 @@ const TOOLS = [
       type: 'object',
       required: ['id'],
       properties: {
-        id: { type: 'number', description: 'Transaction ID' },
+        id: { type: 'string', description: 'Transaction ID (UUID from list_transactions)' },
       },
     },
   },
