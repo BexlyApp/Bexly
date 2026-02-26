@@ -599,6 +599,7 @@ class _MessageBubble extends ConsumerWidget {
       'claude-3-sonnet': 'Claude 3 Sonnet',
       'claude-3-haiku': 'Claude 3 Haiku',
       'Qwen/Qwen3-VL-30B-A3B-Instruct-FP8': 'Qwen3-VL',
+      'Qwen/Qwen3.5-35B-A3B-FP8': 'Qwen3.5',
     };
 
     return mappings[modelName] ?? modelName;
