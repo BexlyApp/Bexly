@@ -75,7 +75,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 24; // Add isDeleted to goals and categories for soft delete sync
+  int get schemaVersion => 25; // Add source/builtInId/hasBeenModified columns to categories
 
   @override
   MigrationStrategy get migration {
@@ -331,6 +331,28 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Added isDeleted column to categories', label: 'database');
           } catch (e) {
             Log.e('Failed to add isDeleted column to categories: $e', label: 'database');
+          }
+        }
+
+        // For version 25, add source/builtInId/hasBeenModified columns to categories
+        if (from < 25) {
+          try {
+            await m.addColumn(categories, categories.source);
+            Log.i('Added source column to categories', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add source column to categories: $e', label: 'database');
+          }
+          try {
+            await m.addColumn(categories, categories.builtInId);
+            Log.i('Added builtInId column to categories', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add builtInId column to categories: $e', label: 'database');
+          }
+          try {
+            await m.addColumn(categories, categories.hasBeenModified);
+            Log.i('Added hasBeenModified column to categories', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add hasBeenModified column to categories: $e', label: 'database');
           }
         }
 
