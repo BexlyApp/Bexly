@@ -9,6 +9,7 @@ import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/utils/desktop_dialog_helper.dart';
 import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
+import 'package:bexly/features/transaction/presentation/screens/transaction_screen.dart';
 import 'package:bexly/features/planning/presentation/riverpod/planning_tab_provider.dart';
 import 'package:bexly/features/settings/presentation/screens/settings_screen.dart';
 
@@ -50,27 +51,27 @@ class DesktopSidebar extends ConsumerWidget {
             ref: ref,
             title: l10n.history,
             icon: HugeIcons.strokeRoundedReceiptDollar,
-            pageIndex: 2,
-            onTap: () => pageController.jumpToPage(2),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const TransactionScreen()),
+            ),
           ),
           _buildSidebarItem(
             context: context,
             ref: ref,
             title: l10n.recurring,
             icon: Icons.repeat,
-            pageIndex: 3,
-            onTap: () => pageController.jumpToPage(3),
+            pageIndex: 2,
+            onTap: () => pageController.jumpToPage(2),
           ),
           _buildSidebarItem(
             context: context,
             ref: ref,
             title: l10n.goals,
             icon: HugeIcons.strokeRoundedTarget01,
-            pageIndex: 4,
+            pageIndex: 3,
             onTap: () {
-              // Set planning tab to Goals (index 1) before navigating
               ref.read(planningTabProvider.notifier).setTab(1);
-              pageController.jumpToPage(4);
+              pageController.jumpToPage(3);
             },
           ),
           _buildSidebarItem(
@@ -78,11 +79,10 @@ class DesktopSidebar extends ConsumerWidget {
             ref: ref,
             title: l10n.budget,
             icon: HugeIcons.strokeRoundedDatabase,
-            pageIndex: 4,
+            pageIndex: 3,
             onTap: () {
-              // Set planning tab to Budgets (index 0) before navigating
               ref.read(planningTabProvider.notifier).setTab(0);
-              pageController.jumpToPage(4);
+              pageController.jumpToPage(3);
             },
           ),
           const Spacer(),
