@@ -669,8 +669,8 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
             'messages': messages,
             'temperature': 0.3,
             'max_tokens': 2000,
-            // Disable Qwen3 thinking mode to reduce latency
-            'chat_template_kwargs': {'enable_thinking': false},
+            // Disable Qwen3 thinking mode to reduce latency (must be in extra_body for vLLM)
+            'extra_body': {'chat_template_kwargs': {'enable_thinking': false}},
           }),
         )
         .timeout(
