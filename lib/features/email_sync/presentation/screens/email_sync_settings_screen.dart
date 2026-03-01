@@ -7,8 +7,8 @@ import 'package:toastification/toastification.dart';
 
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
-import 'package:bexly/features/transaction/presentation/screens/transaction_screen.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/components/buttons/button_state.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
@@ -195,10 +195,8 @@ class EmailSyncSettingsScreen extends HookConsumerWidget {
   /// Navigate to Pending tab in TransactionScreen
   void _navigateToPendingTab(BuildContext context, WidgetRef ref) {
     ref.read(requestedTransactionTabProvider.notifier).request(2);
+    ref.read(pageControllerProvider.notifier).setPage(2);
     context.go(Routes.main);
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const TransactionScreen()),
-    );
   }
 
   void _showScanPeriodSheet(BuildContext context, WidgetRef ref) {
