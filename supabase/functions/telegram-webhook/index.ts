@@ -145,8 +145,7 @@ async function getDefaultWallet(userId: string) {
     .from("wallets")
     .select("cloud_id, name, currency, balance")
     .eq("user_id", userId)
-    .eq("is_deleted", false)
-    .order("is_default", { ascending: false })
+    .eq("is_active", true)
     .limit(1)
     .single();
   return data ?? null;
@@ -155,34 +154,34 @@ async function getDefaultWallet(userId: string) {
 async function getCategories(userId: string): Promise<UserCategory[]> {
   const { data } = await getSupabaseClient()
     .from("categories")
-    .select("cloud_id, title, transaction_type")
+    .select("cloud_id, name, category_type")
     .eq("user_id", userId)
     .eq("is_deleted", false);
 
   return (data ?? []).map((c: any) => ({
     id: c.cloud_id,
-    title: c.title,
-    transactionType: c.transaction_type,
+    title: c.name,
+    transactionType: c.category_type,
   }));
 }
 
 async function findCategoryId(userId: string, title: string): Promise<string | null> {
   const { data } = await getSupabaseClient()
     .from("categories")
-    .select("cloud_id, title")
+    .select("cloud_id, name")
     .eq("user_id", userId)
     .eq("is_deleted", false);
 
   if (!data?.length) return null;
 
   // Exact match
-  const exact = data.find((c: any) => c.title.toLowerCase() === title.toLowerCase());
+  const exact = data.find((c: any) => c.name.toLowerCase() === title.toLowerCase());
   if (exact) return exact.cloud_id;
 
   // Partial match
   const partial = data.find((c: any) =>
-    c.title.toLowerCase().includes(title.toLowerCase()) ||
-    title.toLowerCase().includes(c.title.toLowerCase())
+    c.name.toLowerCase().includes(title.toLowerCase()) ||
+    title.toLowerCase().includes(c.name.toLowerCase())
   );
   return partial?.cloud_id ?? null;
 }
@@ -320,10 +319,10 @@ async function handleConfirm(
         wallet_id: pending.wallet_id,
         category_id: pending.category_id,
         amount: pending.amount,
-        type: pending.type,
-        description: pending.description,
+        transaction_type: pending.type,
+        title: pending.description,
+        notes: "via Telegram",
         transaction_date: pending.transaction_date,
-        source: "telegram",
       });
 
     if (error) throw error;
