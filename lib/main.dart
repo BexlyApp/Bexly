@@ -49,15 +49,23 @@ void callbackDispatcher() {
   });
 }
 
+/// Safely initializes a non-critical service, catching and logging errors.
+Future<void> _safeInit(String name, Future<void> Function() init) async {
+  try {
+    await init();
+    print('✅ $name initialized');
+  } catch (e) {
+    print('⚠️ $name init error: $e');
+  }
+}
+
 Future<void> main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  // Preserve native splash until explicitly removed
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   // In release mode, show a user-friendly error widget instead of grey screen
   if (!kDebugMode) {
     ErrorWidget.builder = (FlutterErrorDetails details) {
-      // Log the error for Crashlytics
       debugPrint('ErrorWidget: ${details.exception}');
       debugPrint('ErrorWidget stack: ${details.stack}');
       return Material(
@@ -88,21 +96,16 @@ Future<void> main() async {
     };
   }
 
-  // Load environment variables
+  // ── Phase 1: Fast critical setup (sequential, each <50ms) ──
   try {
     await dotenv.load(fileName: ".env");
     print('✅ .env loaded successfully');
-    print('STRIPE_PUBLISHABLE_KEY exists: ${dotenv.env.containsKey('STRIPE_PUBLISHABLE_KEY')}');
-    print('STRIPE_PUBLISHABLE_KEY length: ${(dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '').length}');
   } catch (e) {
     print('❌ Could not load .env file: $e');
-    // App can continue without .env file
   }
 
-  // Load number format preference (before UI renders)
   await NumberFormatNotifier.initFromPrefs();
 
-  // Lock orientation only on Android
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -110,95 +113,47 @@ Future<void> main() async {
     ]);
   }
 
-  // Initialize Supabase (primary auth provider)
-  try {
-    await SupabaseInitService.initialize();
-    print('✅ Supabase initialized');
-  } catch (e) {
-    print('⚠️ Supabase init error: $e');
-    // Continue without Supabase - will fallback to Firebase
-  }
+  // ── Phase 2: Auth providers (parallel — independent of each other) ──
+  await Future.wait([
+    _safeInit('Supabase', () => SupabaseInitService.initialize()),
+    _safeInit('Firebase', () async {
+      await FirebaseInitService.initialize();
+      FlutterError.onError =
+          FirebaseCrashlytics.instance.recordFlutterFatalError;
+    }),
+  ]);
 
-  // Initialize Firebase apps (for Firestore, Analytics, Crashlytics, etc.)
-  try {
-    await FirebaseInitService.initialize();
-    // Only setup Crashlytics after successful Firebase init
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-    print('✅ Firebase initialized');
-  } catch (e) {
-    print('Firebase init error in main: $e');
-    // Continue without Crashlytics if Firebase fails
-  }
-
-  // Initialize Google Sign-In (google_sign_in 7.x + Credential Manager)
-  // serverClientId MUST be the Web client ID (client_type: 3) from Google Cloud Console
-  // Auto-detect from google-services.json is unreliable with Credential Manager
-  try {
-    print('🔑 Initializing Google Sign-In with explicit serverClientId...');
-    await GoogleSignIn.instance.initialize(
-      serverClientId: '368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com',
-    );
-    print('✅ Google Sign-In initialized successfully');
-  } catch (e) {
-    print('❌ Google Sign-In init error: $e');
-    // Continue without Google Sign-In if init fails
-  }
-
-  // Initialize PackageInfo service
+  // ── Phase 3: All remaining services (parallel) ──
+  // PackageInfoService and SharedPreferences are needed for ProviderScope
+  // overrides; the rest are non-critical and wrapped in _safeInit.
   final packageInfoService = PackageInfoService();
-  await packageInfoService.init();
+  final results = await Future.wait<dynamic>([
+    packageInfoService.init(), // index 0
+    SharedPreferences.getInstance(), // index 1
+    _safeInit(
+      'GoogleSignIn',
+      () => GoogleSignIn.instance.initialize(
+        serverClientId:
+            '368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com',
+      ),
+    ),
+    _safeInit('Notifications', () => NotificationService.initialize()),
+    _safeInit('FCM', () => FirebaseMessagingService.initialize()),
+    _safeInit('BackgroundService', () async {
+      await BackgroundService.initialize();
+      await BackgroundService.scheduleRecurringChargeTask();
+    }),
+    _safeInit(
+      'WorkManager',
+      () => Workmanager().initialize(
+        callbackDispatcher,
+        isInDebugMode: kDebugMode,
+      ),
+    ),
+    _safeInit('AdService', () => AdService().initialize()),
+  ]);
 
-  // Initialize notification service
-  try {
-    await NotificationService.initialize();
-  } catch (e) {
-    print('Notification service init error: $e');
-    // Continue without notifications if init fails
-  }
-
-  // Initialize Firebase Cloud Messaging
-  try {
-    await FirebaseMessagingService.initialize();
-  } catch (e) {
-    print('FCM init error: $e');
-    // Continue without FCM if init fails
-  }
-
-  // Initialize Background Service for recurring payments (Android/iOS only)
-  try {
-    await BackgroundService.initialize();
-    await BackgroundService.scheduleRecurringChargeTask();
-  } catch (e) {
-    print('BackgroundService init error: $e');
-    // Continue without background service if init fails
-  }
-
-  // Initialize WorkManager for email sync (Android/iOS only)
-  try {
-    await Workmanager().initialize(
-      callbackDispatcher,
-      isInDebugMode: kDebugMode,
-    );
-    print('✅ WorkManager initialized for email sync');
-  } catch (e) {
-    print('❌ WorkManager init error: $e');
-    // Continue without WorkManager if init fails
-  }
-
-  // Initialize SharedPreferences for AI usage tracking
-  final sharedPrefs = await SharedPreferences.getInstance();
-
-  // Pending notification listener permission check is handled by
-  // AutoTransactionService.initialize() — not here, because calling
-  // native plugins before runApp() can cause grey screen on some devices.
-
-  // Initialize AdMob
-  try {
-    await AdService().initialize();
-  } catch (e) {
-    debugPrint('AdMob init error: $e');
-    // Continue without ads if init fails
-  }
+  final sharedPrefs = results[1] as SharedPreferences;
 
   runApp(
     ProviderScope(
