@@ -1,6 +1,5 @@
 // Telegram Webhook - Full Version with AI Transaction Processing
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { create } from "https://deno.land/x/djwt@v3.0.2/mod.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { parseTransactionWithAI } from "../_shared/ai-providers.ts";
 import type { UserCategory } from "../_shared/types.ts";
@@ -44,23 +43,27 @@ async function answerCallbackQuery(id: string, text?: string) {
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
-async function generateLinkToken(telegramId: string): Promise<string> {
-  const jwtSecret = Deno.env.get("TELEGRAM_JWT_SECRET")!;
-  const payload = {
-    telegram_id: telegramId,
-    app: "bexly",
-    bot_username: "BexlyBot",
-    api_url: `${SUPABASE_URL}/functions/v1/link-telegram`,
-    exp: Math.floor(Date.now() / 1000) + 600,
-  };
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(jwtSecret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  return await create({ alg: "HS256", typ: "JWT" }, payload, key);
+// Generate a random 6-char alphanumeric link code and store in DB
+async function generateLinkCode(telegramId: string): Promise<string> {
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  // Delete any existing codes for this user
+  await getSupabaseClient()
+    .from("bot_link_codes")
+    .delete()
+    .eq("platform", "telegram")
+    .eq("platform_user_id", telegramId);
+
+  // Insert new code
+  await getSupabaseClient()
+    .from("bot_link_codes")
+    .insert({
+      code,
+      platform: "telegram",
+      platform_user_id: telegramId,
+    });
+
+  return code;
 }
 
 async function getUserId(telegramId: string): Promise<string | null> {
@@ -98,6 +101,7 @@ async function savePendingTransaction(
     categoryId: string;
     walletId: string;
     description: string | null;
+    notes: string | null;
     transactionDate: string;
     language: string;
   },
@@ -115,6 +119,7 @@ async function savePendingTransaction(
       category_id: data.categoryId,
       wallet_id: data.walletId,
       description: data.description,
+      notes: data.notes,
       transaction_date: data.transactionDate,
       language: data.language,
     });
@@ -223,6 +228,10 @@ function resolveDate(timeHint: string | null): string {
   return now.toISOString();
 }
 
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function formatAmount(amount: number, currency: string): string {
   if (currency === "VND") return `${amount.toLocaleString("vi-VN")}đ`;
   return new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 0 }).format(amount);
@@ -239,13 +248,17 @@ async function handleTransactionMessage(
   const loc = LOCALIZATIONS[lang] ?? LOCALIZATIONS.en;
 
   const wallet = await getDefaultWallet(userId);
+  console.log("Wallet:", wallet ? `${wallet.name} (${wallet.currency})` : "null");
   if (!wallet) { await sendMessage(chatId, loc.noWallet); return; }
 
   const categories = await getCategories(userId);
+  console.log("Categories count:", categories.length, "first 5:", categories.slice(0, 5).map(c => c.title));
   if (!categories.length) { await sendMessage(chatId, loc.noCategory); return; }
 
   // AI parse
+  console.log("Parsing with AI:", text, "lang:", lang, "currency:", wallet.currency);
   const parsed = await parseTransactionWithAI(text, categories, wallet.currency);
+  console.log("AI parsed result:", parsed);
 
   if (!parsed) {
     const hint = lang === "vi"
@@ -265,10 +278,20 @@ async function handleTransactionMessage(
   const fmt = formatAmount(parsed.amount, wallet.currency);
   const emoji = parsed.type === "expense" ? "💸" : "💰";
   const typeLabel = parsed.type === "expense" ? loc.expenseDetected : loc.incomeDetected;
+  const dateStr = new Date(txDate).toLocaleString(lang === "vi" ? "vi-VN" : "en-US", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+
+  const desc = capitalize(parsed.description || parsed.category);
+  const note = parsed.note ? capitalize(parsed.note) : null;
+  const noteLine = note
+    ? (lang === "vi" ? `\n📋 Ghi chú: ${note}` : `\n📋 Note: ${note}`)
+    : "";
 
   const confirmText = lang === "vi"
-    ? `${emoji} *${typeLabel}*\n\n📝 ${parsed.description || parsed.category}\n💵 ${fmt}\n🏷 ${parsed.category}\n🏦 ${wallet.name}\n\nXác nhận ghi lại?`
-    : `${emoji} *${typeLabel}*\n\n📝 ${parsed.description || parsed.category}\n💵 ${fmt}\n🏷 ${parsed.category}\n🏦 ${wallet.name}\n\nConfirm?`;
+    ? `${emoji} *${typeLabel}*\n\n📝 Nội dung: ${desc}\n💵 Số tiền: ${fmt}\n🏷 Danh mục: ${parsed.category}\n🏦 Ví: ${wallet.name}\n🕐 Thời gian: ${dateStr}${noteLine}\n\nXác nhận ghi lại?`
+    : `${emoji} *${typeLabel}*\n\n📝 Description: ${desc}\n💵 Amount: ${fmt}\n🏷 Category: ${parsed.category}\n🏦 Wallet: ${wallet.name}\n🕐 Time: ${dateStr}${noteLine}\n\nConfirm?`;
 
   // Save to DB, use short ID in callback
   const pendingId = await savePendingTransaction(userId, chatId, {
@@ -276,7 +299,8 @@ async function handleTransactionMessage(
     amount: parsed.amount,
     categoryId,
     walletId: wallet.cloud_id,
-    description: parsed.description || null,
+    description: desc,
+    notes: note,
     transactionDate: txDate,
     language: lang,
   });
@@ -294,6 +318,7 @@ async function handleTransactionMessage(
 async function handleConfirm(
   chatId: number,
   messageId: number,
+  originalText: string,
   userId: string,
   callbackId: string,
   pendingId: string,
@@ -302,7 +327,7 @@ async function handleConfirm(
 
   const pending = await getPendingTransaction(pendingId);
   if (!pending) {
-    await editMessageText(chatId, messageId, "⏰ Transaction expired. Please send again.");
+    await editMessageText(chatId, messageId, originalText + "\n\n⏰ Expired.");
     return;
   }
 
@@ -310,6 +335,10 @@ async function handleConfirm(
   const loc = LOCALIZATIONS[lang] ?? LOCALIZATIONS.en;
 
   try {
+    // Get wallet currency
+    const wallet = await getDefaultWallet(userId);
+    const currency = wallet?.currency ?? "VND";
+
     const cloudId = crypto.randomUUID();
     const { error } = await getSupabaseClient()
       .from("transactions")
@@ -320,9 +349,12 @@ async function handleConfirm(
         category_id: pending.category_id,
         amount: pending.amount,
         transaction_type: pending.type,
-        title: pending.description,
-        notes: "via Telegram",
+        currency,
+        title: pending.description || pending.type,
+        notes: pending.notes || null,
         transaction_date: pending.transaction_date,
+        is_deleted: false,
+        updated_at: new Date().toISOString(),
       });
 
     if (error) throw error;
@@ -344,15 +376,13 @@ async function handleConfirm(
 
     await deletePendingTransaction(pendingId);
 
-    const emoji = pending.type === "expense" ? "💸" : "💰";
-    const successText = lang === "vi"
-      ? `${emoji} *${loc.recorded}!*\n\n✅ Đã ghi lại thành công vào Bexly.`
-      : `${emoji} *${loc.recorded}!*\n\n✅ Successfully recorded in Bexly.`;
-
-    await editMessageText(chatId, messageId, successText);
+    // Keep original card, replace buttons with status line
+    const statusLine = lang === "vi" ? `\n\n✅ ${loc.recorded}!` : `\n\n✅ ${loc.recorded}!`;
+    await editMessageText(chatId, messageId, originalText + statusLine);
   } catch (e) {
     console.error("Error creating transaction:", e);
-    await editMessageText(chatId, messageId, "❌ Failed to record. Please try again.");
+    const failLine = lang === "vi" ? "\n\n❌ Ghi lỗi. Thử lại nhé." : "\n\n❌ Failed. Try again.";
+    await editMessageText(chatId, messageId, originalText + failLine);
   }
 }
 
@@ -372,15 +402,18 @@ serve(async (req) => {
       const data: string = cb.data ?? "";
       const cbId: string = cb.id;
 
+      // Get original message text to preserve it
+      const originalText = cb.message?.text ?? "";
+
       if (data.startsWith("ctx_")) {
         const userId = await getUserId(telegramUserId);
         if (!userId) { await answerCallbackQuery(cbId, "Not linked!"); return new Response("OK"); }
-        await handleConfirm(chatId, messageId, userId, cbId, data.slice(4));
+        await handleConfirm(chatId, messageId, originalText, userId, cbId, data.slice(4));
 
       } else if (data.startsWith("cxl_")) {
         await answerCallbackQuery(cbId);
         await deletePendingTransaction(data.slice(4));
-        await editMessageText(chatId, messageId, "❌ Cancelled.");
+        await editMessageText(chatId, messageId, originalText + "\n\n❌ Cancelled.");
 
       } else if (data.startsWith("unlink_confirm_")) {
         const ok = await unlinkUser(telegramUserId);
@@ -406,7 +439,10 @@ serve(async (req) => {
     const chatId: number = msg.chat.id;
     const telegramUserId = String(msg.from.id);
     const text = (msg.text ?? "").trim();
-    const lang = msg.from.language_code === "vi" ? "vi" : "en";
+
+    // Detect Vietnamese from text content or Telegram language_code
+    const hasVietnamese = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(text);
+    const lang = hasVietnamese || msg.from.language_code === "vi" ? "vi" : "en";
 
     if (text === "/start") {
       await sendMessage(chatId,
@@ -443,14 +479,13 @@ serve(async (req) => {
         await sendMessage(chatId, "✅ Already linked! Just send a message to record a transaction.");
         return new Response("OK");
       }
-      const token = await generateLinkToken(telegramUserId);
-      const code = token.slice(-6).toUpperCase();
+      const code = await generateLinkCode(telegramUserId);
       await sendMessage(chatId,
         `🔗 *Link your Bexly account*\n\n` +
-        `📱 Tap the button below, or\n` +
-        `⌨️ Enter code \`${code}\` in Bexly app\n` +
-        `_(Settings → Integrations → Telegram)_`,
-        { reply_markup: { inline_keyboard: [[{ text: "🔗 Link Account", url: `bexly://telegram/link?token=${token}` }]] } }
+        `⌨️ Enter this code in Bexly app:\n\n` +
+        `\`${code}\`\n\n` +
+        `_(Settings → Integrations → Telegram)_\n` +
+        `⏰ Code expires in 10 minutes.`
       );
       return new Response("OK");
     }

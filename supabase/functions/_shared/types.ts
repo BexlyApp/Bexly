@@ -17,6 +17,7 @@ export interface ParsedTransaction {
   currency: string | null;
   category: string;
   description: string;
+  note: string | null;
   responseText: string;
   language: string;
   datetime: string | null;
@@ -138,7 +139,7 @@ export type AIProvider = "gemini" | "openai" | "claude";
 export const AI_CONFIG = {
   provider: "gemini" as AIProvider,
   models: {
-    gemini: "gemini-2.0-flash-exp",
+    gemini: "gemini-2.0-flash",
     openai: "gpt-4o-mini",
     claude: "claude-sonnet-4-20250514",
   },

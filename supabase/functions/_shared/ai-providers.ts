@@ -21,7 +21,7 @@ function buildDynamicPrompt(
     ? incomeCategories.join("|")
     : "Other Income";
 
-  return `Parse→JSON.{"action":"create_expense"|"create_income"|"none","amount":num,"currency":"VND"|"USD"|null,"lang":"vi"|"en","desc":"str","cat":"EXACT_CATEGORY_NAME","time":"TIME_HINT"}
+  return `Parse→JSON.{"action":"create_expense"|"create_income"|"none","amount":num,"currency":"VND"|"USD"|null,"lang":"vi"|"en","desc":"str","note":"str|null","cat":"EXACT_CATEGORY_NAME","time":"TIME_HINT"}
 k=×1000,tr=×1000000→VND.$→USD.No symbol→null.
 
 ⚠️CRITICAL CATEGORY RULES:
@@ -31,6 +31,12 @@ k=×1000,tr=×1000000→VND.$→USD.No symbol→null.
 4. If no good match, use first expense category for expenses, first income category for income
 5. NEVER use generic names like "Shopping", "Food" unless they're in the list above!
 6. NEVER make up category names!
+
+📝NOTE EXTRACTION (note field):
+- "ghi chú là X" / "note: X" / "memo: X" → note=X
+- Extra context after the main transaction → note
+- If no note mentioned → null
+- desc = short title (e.g. "ăn trưa"), note = extra detail (e.g. "bao cả nhà đi nhà hàng")
 
 ⏰TIME EXTRACTION (time field):
 - "ăn sáng/breakfast/早餐"→"morning" (7:00)
@@ -47,13 +53,16 @@ k=×1000,tr=×1000000→VND.$→USD.No symbol→null.
 - No time hint→null
 
 Examples:
-"50k ăn sáng"→{"action":"create_expense","amount":50000,"currency":"VND","lang":"vi","desc":"ăn sáng","cat":"${
+"50k ăn sáng"→{"action":"create_expense","amount":50000,"currency":"VND","lang":"vi","desc":"ăn sáng","note":null,"cat":"${
     expenseCategories[0] || "Other"
   }","time":"morning"}
-"lunch $20"→{"action":"create_expense","amount":20,"currency":"USD","lang":"en","desc":"lunch","cat":"${
+"ăn trưa 150k. Ghi chú là bao cả nhà đi nhà hàng"→{"action":"create_expense","amount":150000,"currency":"VND","lang":"vi","desc":"ăn trưa","note":"bao cả nhà đi nhà hàng","cat":"${
     expenseCategories[0] || "Other"
   }","time":"noon"}
-"hi"→{"action":"none","amount":0,"currency":null,"lang":"en","desc":"","cat":"","time":null}`;
+"lunch $20"→{"action":"create_expense","amount":20,"currency":"USD","lang":"en","desc":"lunch","note":null,"cat":"${
+    expenseCategories[0] || "Other"
+  }","time":"noon"}
+"hi"→{"action":"none","amount":0,"currency":null,"lang":"en","desc":"","note":null,"cat":"","time":null}`;
 }
 
 // Parse with Gemini
@@ -244,6 +253,7 @@ export async function parseTransactionWithAI(
       currency: parsed.currency,
       category: parsed.cat,
       description: parsed.desc,
+      note: parsed.note || null,
       responseText: `${type === "expense" ? "💸" : "💰"} ${
         parsed.lang === "vi" ? "Đã phát hiện" : "Detected"
       } ${type}!`,
