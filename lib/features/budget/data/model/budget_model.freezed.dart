@@ -22,7 +22,8 @@ mixin _$BudgetModel {
  double get amount;/// The start date of the budget period.
  DateTime get startDate;/// The end date of the budget period.
  DateTime get endDate;/// Indicates whether this budget is a recurring or routine budget.
- bool get isRoutine;/// Timestamp when budget was created
+ bool get isRoutine;/// Routine period: 'weekly', 'monthly', or null (one-time)
+ String? get routinePeriod;/// Timestamp when budget was created
  DateTime? get createdAt;/// Timestamp when budget was last updated
  DateTime? get updatedAt;
 /// Create a copy of BudgetModel
@@ -37,16 +38,16 @@ $BudgetModelCopyWith<BudgetModel> get copyWith => _$BudgetModelCopyWithImpl<Budg
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BudgetModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.category, category) || other.category == category)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.isRoutine, isRoutine) || other.isRoutine == isRoutine)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BudgetModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.category, category) || other.category == category)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.isRoutine, isRoutine) || other.isRoutine == isRoutine)&&(identical(other.routinePeriod, routinePeriod) || other.routinePeriod == routinePeriod)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,wallet,category,amount,startDate,endDate,isRoutine,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,wallet,category,amount,startDate,endDate,isRoutine,routinePeriod,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'BudgetModel(id: $id, cloudId: $cloudId, wallet: $wallet, category: $category, amount: $amount, startDate: $startDate, endDate: $endDate, isRoutine: $isRoutine, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'BudgetModel(id: $id, cloudId: $cloudId, wallet: $wallet, category: $category, amount: $amount, startDate: $startDate, endDate: $endDate, isRoutine: $isRoutine, routinePeriod: $routinePeriod, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -57,7 +58,7 @@ abstract mixin class $BudgetModelCopyWith<$Res>  {
   factory $BudgetModelCopyWith(BudgetModel value, $Res Function(BudgetModel) _then) = _$BudgetModelCopyWithImpl;
 @useResult
 $Res call({
- int? id, String? cloudId, WalletModel wallet, CategoryModel category, double amount, DateTime startDate, DateTime endDate, bool isRoutine, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, WalletModel wallet, CategoryModel category, double amount, DateTime startDate, DateTime endDate, bool isRoutine, String? routinePeriod, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -74,7 +75,7 @@ class _$BudgetModelCopyWithImpl<$Res>
 
 /// Create a copy of BudgetModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? wallet = null,Object? category = null,Object? amount = null,Object? startDate = null,Object? endDate = null,Object? isRoutine = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cloudId = freezed,Object? wallet = null,Object? category = null,Object? amount = null,Object? startDate = null,Object? endDate = null,Object? isRoutine = null,Object? routinePeriod = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -84,7 +85,8 @@ as CategoryModel,amount: null == amount ? _self.amount : amount // ignore: cast_
 as double,startDate: null == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
 as DateTime,endDate: null == endDate ? _self.endDate : endDate // ignore: cast_nullable_to_non_nullable
 as DateTime,isRoutine: null == isRoutine ? _self.isRoutine : isRoutine // ignore: cast_nullable_to_non_nullable
-as bool,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as bool,routinePeriod: freezed == routinePeriod ? _self.routinePeriod : routinePeriod // ignore: cast_nullable_to_non_nullable
+as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
@@ -189,10 +191,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  WalletModel wallet,  CategoryModel category,  double amount,  DateTime startDate,  DateTime endDate,  bool isRoutine,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  WalletModel wallet,  CategoryModel category,  double amount,  DateTime startDate,  DateTime endDate,  bool isRoutine,  String? routinePeriod,  DateTime? createdAt,  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BudgetModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.wallet,_that.category,_that.amount,_that.startDate,_that.endDate,_that.isRoutine,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.wallet,_that.category,_that.amount,_that.startDate,_that.endDate,_that.isRoutine,_that.routinePeriod,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -210,10 +212,10 @@ return $default(_that.id,_that.cloudId,_that.wallet,_that.category,_that.amount,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  WalletModel wallet,  CategoryModel category,  double amount,  DateTime startDate,  DateTime endDate,  bool isRoutine,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int? id,  String? cloudId,  WalletModel wallet,  CategoryModel category,  double amount,  DateTime startDate,  DateTime endDate,  bool isRoutine,  String? routinePeriod,  DateTime? createdAt,  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _BudgetModel():
-return $default(_that.id,_that.cloudId,_that.wallet,_that.category,_that.amount,_that.startDate,_that.endDate,_that.isRoutine,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.wallet,_that.category,_that.amount,_that.startDate,_that.endDate,_that.isRoutine,_that.routinePeriod,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -230,10 +232,10 @@ return $default(_that.id,_that.cloudId,_that.wallet,_that.category,_that.amount,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  WalletModel wallet,  CategoryModel category,  double amount,  DateTime startDate,  DateTime endDate,  bool isRoutine,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int? id,  String? cloudId,  WalletModel wallet,  CategoryModel category,  double amount,  DateTime startDate,  DateTime endDate,  bool isRoutine,  String? routinePeriod,  DateTime? createdAt,  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _BudgetModel() when $default != null:
-return $default(_that.id,_that.cloudId,_that.wallet,_that.category,_that.amount,_that.startDate,_that.endDate,_that.isRoutine,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.cloudId,_that.wallet,_that.category,_that.amount,_that.startDate,_that.endDate,_that.isRoutine,_that.routinePeriod,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -245,7 +247,7 @@ return $default(_that.id,_that.cloudId,_that.wallet,_that.category,_that.amount,
 @JsonSerializable()
 
 class _BudgetModel implements BudgetModel {
-  const _BudgetModel({this.id, this.cloudId, required this.wallet, required this.category, required this.amount, required this.startDate, required this.endDate, required this.isRoutine, this.createdAt, this.updatedAt});
+  const _BudgetModel({this.id, this.cloudId, required this.wallet, required this.category, required this.amount, required this.startDate, required this.endDate, required this.isRoutine, this.routinePeriod, this.createdAt, this.updatedAt});
   factory _BudgetModel.fromJson(Map<String, dynamic> json) => _$BudgetModelFromJson(json);
 
 @override final  int? id;
@@ -263,6 +265,8 @@ class _BudgetModel implements BudgetModel {
 @override final  DateTime endDate;
 /// Indicates whether this budget is a recurring or routine budget.
 @override final  bool isRoutine;
+/// Routine period: 'weekly', 'monthly', or null (one-time)
+@override final  String? routinePeriod;
 /// Timestamp when budget was created
 @override final  DateTime? createdAt;
 /// Timestamp when budget was last updated
@@ -281,16 +285,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BudgetModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.category, category) || other.category == category)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.isRoutine, isRoutine) || other.isRoutine == isRoutine)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BudgetModel&&(identical(other.id, id) || other.id == id)&&(identical(other.cloudId, cloudId) || other.cloudId == cloudId)&&(identical(other.wallet, wallet) || other.wallet == wallet)&&(identical(other.category, category) || other.category == category)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.isRoutine, isRoutine) || other.isRoutine == isRoutine)&&(identical(other.routinePeriod, routinePeriod) || other.routinePeriod == routinePeriod)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cloudId,wallet,category,amount,startDate,endDate,isRoutine,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,cloudId,wallet,category,amount,startDate,endDate,isRoutine,routinePeriod,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'BudgetModel(id: $id, cloudId: $cloudId, wallet: $wallet, category: $category, amount: $amount, startDate: $startDate, endDate: $endDate, isRoutine: $isRoutine, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'BudgetModel(id: $id, cloudId: $cloudId, wallet: $wallet, category: $category, amount: $amount, startDate: $startDate, endDate: $endDate, isRoutine: $isRoutine, routinePeriod: $routinePeriod, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -301,7 +305,7 @@ abstract mixin class _$BudgetModelCopyWith<$Res> implements $BudgetModelCopyWith
   factory _$BudgetModelCopyWith(_BudgetModel value, $Res Function(_BudgetModel) _then) = __$BudgetModelCopyWithImpl;
 @override @useResult
 $Res call({
- int? id, String? cloudId, WalletModel wallet, CategoryModel category, double amount, DateTime startDate, DateTime endDate, bool isRoutine, DateTime? createdAt, DateTime? updatedAt
+ int? id, String? cloudId, WalletModel wallet, CategoryModel category, double amount, DateTime startDate, DateTime endDate, bool isRoutine, String? routinePeriod, DateTime? createdAt, DateTime? updatedAt
 });
 
 
@@ -318,7 +322,7 @@ class __$BudgetModelCopyWithImpl<$Res>
 
 /// Create a copy of BudgetModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? wallet = null,Object? category = null,Object? amount = null,Object? startDate = null,Object? endDate = null,Object? isRoutine = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cloudId = freezed,Object? wallet = null,Object? category = null,Object? amount = null,Object? startDate = null,Object? endDate = null,Object? isRoutine = null,Object? routinePeriod = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
   return _then(_BudgetModel(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,cloudId: freezed == cloudId ? _self.cloudId : cloudId // ignore: cast_nullable_to_non_nullable
@@ -328,7 +332,8 @@ as CategoryModel,amount: null == amount ? _self.amount : amount // ignore: cast_
 as double,startDate: null == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
 as DateTime,endDate: null == endDate ? _self.endDate : endDate // ignore: cast_nullable_to_non_nullable
 as DateTime,isRoutine: null == isRoutine ? _self.isRoutine : isRoutine // ignore: cast_nullable_to_non_nullable
-as bool,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as bool,routinePeriod: freezed == routinePeriod ? _self.routinePeriod : routinePeriod // ignore: cast_nullable_to_non_nullable
+as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));

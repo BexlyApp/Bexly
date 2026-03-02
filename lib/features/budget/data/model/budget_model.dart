@@ -33,6 +33,9 @@ abstract class BudgetModel with _$BudgetModel {
     /// Indicates whether this budget is a recurring or routine budget.
     required bool isRoutine,
 
+    /// Routine period: 'weekly', 'monthly', or null (one-time)
+    String? routinePeriod,
+
     /// Timestamp when budget was created
     DateTime? createdAt,
 

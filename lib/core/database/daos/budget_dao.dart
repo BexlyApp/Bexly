@@ -31,13 +31,14 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
 
     return BudgetModel(
       id: budgetData.id,
-      cloudId: budgetData.cloudId,  // CRITICAL FIX: Include cloudId for sync
+      cloudId: budgetData.cloudId,
       wallet: wallet.toModel(),
       category: category.toModel(),
       amount: budgetData.amount,
       startDate: budgetData.startDate,
       endDate: budgetData.endDate,
       isRoutine: budgetData.isRoutine,
+      routinePeriod: budgetData.routinePeriod,
       createdAt: budgetData.createdAt,
       updatedAt: budgetData.updatedAt,
     );
@@ -75,13 +76,14 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
       result.add(
         BudgetModel(
           id: budgetData.id,
-          cloudId: budgetData.cloudId,  // CRITICAL FIX: Include cloudId for sync
+          cloudId: budgetData.cloudId,
           wallet: wallet.toModel(),
           category: category.toModel(),
           amount: budgetData.amount,
           startDate: budgetData.startDate,
           endDate: budgetData.endDate,
           isRoutine: budgetData.isRoutine,
+          routinePeriod: budgetData.routinePeriod,
           createdAt: budgetData.createdAt,
           updatedAt: budgetData.updatedAt,
         ),
@@ -140,6 +142,7 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
         startDate: budgetModel.startDate,
         endDate: budgetModel.endDate,
         isRoutine: budgetModel.isRoutine,
+        routinePeriod: Value(budgetModel.routinePeriod),
       ),
     );
 
@@ -199,6 +202,7 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
         startDate: budgetModel.startDate,
         endDate: budgetModel.endDate,
         isRoutine: budgetModel.isRoutine,
+        routinePeriod: Value(budgetModel.routinePeriod),
         createdAt: Value(budgetModel.createdAt ?? DateTime.now()),
         updatedAt: Value(budgetModel.updatedAt ?? DateTime.now()),
       ),
@@ -224,6 +228,7 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
             startDate: Value(budgetModel.startDate),
             endDate: Value(budgetModel.endDate),
             isRoutine: Value(budgetModel.isRoutine),
+            routinePeriod: Value(budgetModel.routinePeriod),
             updatedAt: Value(budgetModel.updatedAt ?? DateTime.now()),
           ),
         );
@@ -262,6 +267,7 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
             startDate: Value(budgetModel.startDate),
             endDate: Value(budgetModel.endDate),
             isRoutine: Value(budgetModel.isRoutine),
+            routinePeriod: Value(budgetModel.routinePeriod),
             updatedAt: Value(DateTime.now()),
           ),
         );
@@ -358,6 +364,49 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
     }
 
     return count;
+  }
+
+  /// Check if a routine budget already exists for a given category+wallet in a specific month.
+  /// Used by BudgetRenewalService to prevent duplicate auto-creation.
+  Future<Budget?> getRoutineBudgetForMonth(
+    int walletId,
+    int categoryId,
+    int year,
+    int month,
+  ) {
+    final monthStart = DateTime(year, month, 1);
+    final monthEnd = DateTime(year, month + 1, 0); // last day of month
+    return (select(budgets)
+          ..where((b) =>
+              b.walletId.equals(walletId) &
+              b.categoryId.equals(categoryId) &
+              b.isRoutine.equals(true) &
+              b.startDate.isBiggerOrEqualValue(monthStart) &
+              b.endDate.isSmallerOrEqualValue(monthEnd)))
+        .getSingleOrNull();
+  }
+
+  /// Check if a routine budget already exists for a given category+wallet in a specific week.
+  /// Used by BudgetRenewalService to prevent duplicate auto-creation.
+  Future<Budget?> getRoutineBudgetForWeek(
+    int walletId,
+    int categoryId,
+    DateTime weekStart,
+    DateTime weekEnd,
+  ) {
+    return (select(budgets)
+          ..where((b) =>
+              b.walletId.equals(walletId) &
+              b.categoryId.equals(categoryId) &
+              b.isRoutine.equals(true) &
+              b.startDate.isBiggerOrEqualValue(weekStart) &
+              b.endDate.isSmallerOrEqualValue(weekEnd)))
+        .getSingleOrNull();
+  }
+
+  /// Get all routine budgets (for renewal service)
+  Future<List<Budget>> getRoutineBudgets() {
+    return (select(budgets)..where((b) => b.isRoutine.equals(true))).get();
   }
 
   // Helper method to get spent amount for a budget
