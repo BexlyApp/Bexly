@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/services/recurring_charge_service.dart';
+import 'package:bexly/core/services/budget_renewal_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/services/data_population_service/category_population_service.dart';
@@ -43,6 +44,7 @@ class _LifecycleManagerState extends ConsumerState<LifecycleManager>
       await _runAutoMigration();
       await _pullCloudData();
       _checkRecurringPayments();
+      _checkRoutineBudgets();
     });
   }
 
@@ -245,6 +247,18 @@ class _LifecycleManagerState extends ConsumerState<LifecycleManager>
       Log.e('Stack trace: $stackTrace', label: 'LifecycleManager');
       print('❌ [LifecycleManager] Error checking recurring payments: $e');
       print('❌ [LifecycleManager] Stack trace: $stackTrace');
+    }
+  }
+
+  Future<void> _checkRoutineBudgets() async {
+    try {
+      Log.d('Checking routine budgets for renewal...', label: 'LifecycleManager');
+      final budgetDao = ref.read(budgetDaoProvider);
+      final renewalService = BudgetRenewalService(budgetDao);
+      await renewalService.createDueRoutineBudgets();
+    } catch (e, stackTrace) {
+      Log.e('Error checking routine budgets: $e', label: 'LifecycleManager');
+      Log.e('Stack trace: $stackTrace', label: 'LifecycleManager');
     }
   }
 

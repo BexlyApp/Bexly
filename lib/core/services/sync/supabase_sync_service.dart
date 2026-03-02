@@ -1140,6 +1140,7 @@ class SupabaseSyncService {
             startDate: DateTime.parse(data['start_date']),
             endDate: DateTime.parse(data['end_date']),
             isRoutine: data['is_routine'] ?? false,
+            routinePeriod: data['period'] as String?,
             createdAt: data['created_at'] != null ? DateTime.parse(data['created_at']) : null,
             updatedAt: data['updated_at'] != null ? DateTime.parse(data['updated_at']) : null,
           );
@@ -1509,7 +1510,7 @@ class SupabaseSyncService {
         'wallet_id': budget.wallet.cloudId,
         'category_id': budget.category.cloudId,
         'amount': budget.amount,
-        'period': 'monthly',  // Always monthly by app convention
+        'period': budget.routinePeriod ?? 'monthly',
         'start_date': budget.startDate.toIso8601String(),
         'end_date': budget.endDate.toIso8601String(),
         'is_routine': budget.isRoutine,

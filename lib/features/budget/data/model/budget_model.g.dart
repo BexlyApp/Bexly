@@ -15,6 +15,7 @@ _BudgetModel _$BudgetModelFromJson(Map<String, dynamic> json) => _BudgetModel(
   startDate: DateTime.parse(json['startDate'] as String),
   endDate: DateTime.parse(json['endDate'] as String),
   isRoutine: json['isRoutine'] as bool,
+  routinePeriod: json['routinePeriod'] as String?,
   createdAt: json['createdAt'] == null
       ? null
       : DateTime.parse(json['createdAt'] as String),
@@ -33,6 +34,7 @@ Map<String, dynamic> _$BudgetModelToJson(_BudgetModel instance) =>
       'startDate': instance.startDate.toIso8601String(),
       'endDate': instance.endDate.toIso8601String(),
       'isRoutine': instance.isRoutine,
+      'routinePeriod': instance.routinePeriod,
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
     };

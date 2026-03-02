@@ -75,7 +75,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 25; // Add source/builtInId/hasBeenModified columns to categories
+  int get schemaVersion => 26; // Add routinePeriod column to budgets
 
   @override
   MigrationStrategy get migration {
@@ -353,6 +353,22 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Added hasBeenModified column to categories', label: 'database');
           } catch (e) {
             Log.e('Failed to add hasBeenModified column to categories: $e', label: 'database');
+          }
+        }
+
+        // For version 26, add routinePeriod column to budgets
+        if (from < 26) {
+          try {
+            await m.addColumn(budgets, budgets.routinePeriod);
+            Log.i('Added routinePeriod column to budgets', label: 'database');
+
+            // Migrate existing routine budgets to 'monthly'
+            await customStatement(
+              "UPDATE budgets SET routine_period = 'monthly' WHERE is_routine = 1",
+            );
+            Log.i('Migrated existing routine budgets to monthly period', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add routinePeriod column: $e', label: 'database');
           }
         }
 

@@ -4837,6 +4837,17 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
       'CHECK ("is_routine" IN (0, 1))',
     ),
   );
+  static const VerificationMeta _routinePeriodMeta = const VerificationMeta(
+    'routinePeriod',
+  );
+  @override
+  late final GeneratedColumn<String> routinePeriod = GeneratedColumn<String>(
+    'routine_period',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -4871,6 +4882,7 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     startDate,
     endDate,
     isRoutine,
+    routinePeriod,
     createdAt,
     updatedAt,
   ];
@@ -4943,6 +4955,15 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     } else if (isInserting) {
       context.missing(_isRoutineMeta);
     }
+    if (data.containsKey('routine_period')) {
+      context.handle(
+        _routinePeriodMeta,
+        routinePeriod.isAcceptableOrUnknown(
+          data['routine_period']!,
+          _routinePeriodMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -4996,6 +5017,10 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_routine'],
       )!,
+      routinePeriod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}routine_period'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -5025,6 +5050,9 @@ class Budget extends DataClass implements Insertable<Budget> {
   final DateTime startDate;
   final DateTime endDate;
   final bool isRoutine;
+
+  /// Routine period: 'weekly', 'monthly', or null (one-time)
+  final String? routinePeriod;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Budget({
@@ -5036,6 +5064,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     required this.startDate,
     required this.endDate,
     required this.isRoutine,
+    this.routinePeriod,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -5052,6 +5081,9 @@ class Budget extends DataClass implements Insertable<Budget> {
     map['start_date'] = Variable<DateTime>(startDate);
     map['end_date'] = Variable<DateTime>(endDate);
     map['is_routine'] = Variable<bool>(isRoutine);
+    if (!nullToAbsent || routinePeriod != null) {
+      map['routine_period'] = Variable<String>(routinePeriod);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -5069,6 +5101,9 @@ class Budget extends DataClass implements Insertable<Budget> {
       startDate: Value(startDate),
       endDate: Value(endDate),
       isRoutine: Value(isRoutine),
+      routinePeriod: routinePeriod == null && nullToAbsent
+          ? const Value.absent()
+          : Value(routinePeriod),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -5088,6 +5123,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       endDate: serializer.fromJson<DateTime>(json['endDate']),
       isRoutine: serializer.fromJson<bool>(json['isRoutine']),
+      routinePeriod: serializer.fromJson<String?>(json['routinePeriod']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -5104,6 +5140,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       'startDate': serializer.toJson<DateTime>(startDate),
       'endDate': serializer.toJson<DateTime>(endDate),
       'isRoutine': serializer.toJson<bool>(isRoutine),
+      'routinePeriod': serializer.toJson<String?>(routinePeriod),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -5118,6 +5155,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     DateTime? startDate,
     DateTime? endDate,
     bool? isRoutine,
+    Value<String?> routinePeriod = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Budget(
@@ -5129,6 +5167,9 @@ class Budget extends DataClass implements Insertable<Budget> {
     startDate: startDate ?? this.startDate,
     endDate: endDate ?? this.endDate,
     isRoutine: isRoutine ?? this.isRoutine,
+    routinePeriod: routinePeriod.present
+        ? routinePeriod.value
+        : this.routinePeriod,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -5144,6 +5185,9 @@ class Budget extends DataClass implements Insertable<Budget> {
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
       isRoutine: data.isRoutine.present ? data.isRoutine.value : this.isRoutine,
+      routinePeriod: data.routinePeriod.present
+          ? data.routinePeriod.value
+          : this.routinePeriod,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -5160,6 +5204,7 @@ class Budget extends DataClass implements Insertable<Budget> {
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('isRoutine: $isRoutine, ')
+          ..write('routinePeriod: $routinePeriod, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -5176,6 +5221,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     startDate,
     endDate,
     isRoutine,
+    routinePeriod,
     createdAt,
     updatedAt,
   );
@@ -5191,6 +5237,7 @@ class Budget extends DataClass implements Insertable<Budget> {
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
           other.isRoutine == this.isRoutine &&
+          other.routinePeriod == this.routinePeriod &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -5204,6 +5251,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   final Value<DateTime> startDate;
   final Value<DateTime> endDate;
   final Value<bool> isRoutine;
+  final Value<String?> routinePeriod;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const BudgetsCompanion({
@@ -5215,6 +5263,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.isRoutine = const Value.absent(),
+    this.routinePeriod = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -5227,6 +5276,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     required DateTime startDate,
     required DateTime endDate,
     required bool isRoutine,
+    this.routinePeriod = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : walletId = Value(walletId),
@@ -5244,6 +5294,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
     Expression<bool>? isRoutine,
+    Expression<String>? routinePeriod,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -5256,6 +5307,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
       if (isRoutine != null) 'is_routine': isRoutine,
+      if (routinePeriod != null) 'routine_period': routinePeriod,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -5270,6 +5322,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Value<DateTime>? startDate,
     Value<DateTime>? endDate,
     Value<bool>? isRoutine,
+    Value<String?>? routinePeriod,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -5282,6 +5335,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       isRoutine: isRoutine ?? this.isRoutine,
+      routinePeriod: routinePeriod ?? this.routinePeriod,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -5314,6 +5368,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     if (isRoutine.present) {
       map['is_routine'] = Variable<bool>(isRoutine.value);
     }
+    if (routinePeriod.present) {
+      map['routine_period'] = Variable<String>(routinePeriod.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -5334,6 +5391,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('isRoutine: $isRoutine, ')
+          ..write('routinePeriod: $routinePeriod, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -16761,6 +16819,7 @@ typedef $$BudgetsTableCreateCompanionBuilder =
       required DateTime startDate,
       required DateTime endDate,
       required bool isRoutine,
+      Value<String?> routinePeriod,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -16774,6 +16833,7 @@ typedef $$BudgetsTableUpdateCompanionBuilder =
       Value<DateTime> startDate,
       Value<DateTime> endDate,
       Value<bool> isRoutine,
+      Value<String?> routinePeriod,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -16855,6 +16915,11 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<bool> get isRoutine => $composableBuilder(
     column: $table.isRoutine,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get routinePeriod => $composableBuilder(
+    column: $table.routinePeriod,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16954,6 +17019,11 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get routinePeriod => $composableBuilder(
+    column: $table.routinePeriod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -17037,6 +17107,11 @@ class $$BudgetsTableAnnotationComposer
 
   GeneratedColumn<bool> get isRoutine =>
       $composableBuilder(column: $table.isRoutine, builder: (column) => column);
+
+  GeneratedColumn<String> get routinePeriod => $composableBuilder(
+    column: $table.routinePeriod,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -17127,6 +17202,7 @@ class $$BudgetsTableTableManager
                 Value<DateTime> startDate = const Value.absent(),
                 Value<DateTime> endDate = const Value.absent(),
                 Value<bool> isRoutine = const Value.absent(),
+                Value<String?> routinePeriod = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => BudgetsCompanion(
@@ -17138,6 +17214,7 @@ class $$BudgetsTableTableManager
                 startDate: startDate,
                 endDate: endDate,
                 isRoutine: isRoutine,
+                routinePeriod: routinePeriod,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -17151,6 +17228,7 @@ class $$BudgetsTableTableManager
                 required DateTime startDate,
                 required DateTime endDate,
                 required bool isRoutine,
+                Value<String?> routinePeriod = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => BudgetsCompanion.insert(
@@ -17162,6 +17240,7 @@ class $$BudgetsTableTableManager
                 startDate: startDate,
                 endDate: endDate,
                 isRoutine: isRoutine,
+                routinePeriod: routinePeriod,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

@@ -5,7 +5,6 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
-import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
@@ -132,24 +131,34 @@ class BudgetFilterDialog extends HookConsumerWidget {
             },
           ),
 
-          PrimaryButton(
-            label: 'Apply',
-            onPressed: () {
-              ref.read(selectedBudgetPeriodProvider.notifier).state =
-                  DateTime(selectedYear.value, selectedMonth.value, 1);
-              context.pop();
-            },
-          ),
-          TextButton(
-            child: Text(
-              'Reset to This Month',
-              style: AppTextStyles.body2.copyWith(color: AppColors.red),
-            ),
-            onPressed: () {
-              ref.read(selectedBudgetPeriodProvider.notifier).state =
-                  DateTime(now.year, now.month, 1);
-              context.pop();
-            },
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  ref.read(selectedBudgetPeriodProvider.notifier).state =
+                      DateTime(now.year, now.month, 1);
+                  context.pop();
+                },
+                child: Text(
+                  'Reset',
+                  style: AppTextStyles.body3.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PrimaryButton(
+                  label: 'Apply',
+                  onPressed: () {
+                    ref.read(selectedBudgetPeriodProvider.notifier).state =
+                        DateTime(selectedYear.value, selectedMonth.value, 1);
+                    context.pop();
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
