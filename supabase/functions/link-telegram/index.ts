@@ -1,7 +1,6 @@
 // Link Telegram account to Bexly user
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createSupabaseClient } from "../_shared/supabase-client.ts";
-import { verify } from "https://deno.land/x/djwt@v3.0.2/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*", // Allow Bexly app
@@ -65,39 +64,38 @@ serve(async (req) => {
     const body = await req.json();
     let telegram_id = body.telegram_id;
 
-    // If telegram_token is provided (from deep link), verify and extract telegram_id
-    if (body.telegram_token) {
-      console.log("[link-telegram] Verifying telegram_token from deep link");
-      try {
-        const jwtSecret = Deno.env.get("TELEGRAM_JWT_SECRET");
-        if (!jwtSecret) {
-          throw new Error("TELEGRAM_JWT_SECRET not configured");
-        }
+    // If link_code is provided, look up telegram_id from bot_link_codes table
+    if (body.link_code) {
+      console.log("[link-telegram] Verifying link_code:", body.link_code);
+      const { data: linkCode, error: codeError } = await supabase
+        .from("bot_link_codes")
+        .select("*")
+        .eq("code", body.link_code.toUpperCase())
+        .eq("platform", "telegram")
+        .gt("expires_at", new Date().toISOString())
+        .single();
 
-        const key = await crypto.subtle.importKey(
-          "raw",
-          new TextEncoder().encode(jwtSecret),
-          { name: "HMAC", hash: "SHA-256" },
-          false,
-          ["verify"],
-        );
-
-        const payload = await verify(body.telegram_token, key);
-        telegram_id = payload.telegram_id as string;
-
-        console.log("[link-telegram] Telegram token verified, extracted telegram_id:", telegram_id);
-      } catch (e) {
-        console.error("[link-telegram] Token verification failed:", e);
+      if (codeError || !linkCode) {
+        console.error("[link-telegram] Invalid or expired link code:", codeError);
         return new Response(
-          JSON.stringify({ error: "Invalid telegram_token" }),
+          JSON.stringify({ error: "Invalid or expired link code" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
+
+      telegram_id = linkCode.platform_user_id;
+      console.log("[link-telegram] Link code verified, telegram_id:", telegram_id);
+
+      // Delete the used code
+      await supabase
+        .from("bot_link_codes")
+        .delete()
+        .eq("code", body.link_code.toUpperCase());
     }
 
     if (!telegram_id) {
       return new Response(
-        JSON.stringify({ error: "telegram_id or telegram_token is required" }),
+        JSON.stringify({ error: "telegram_id or link_code is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
