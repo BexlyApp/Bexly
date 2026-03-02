@@ -110,3 +110,4 @@ tmpclaude-*-cwd
 .env*.local
 mcp-server/dist/
 mcp-server/.env
+supabase/.temp

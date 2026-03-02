@@ -67,6 +67,8 @@ class BackgroundAIService {
   }) async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
+      'User-Agent': 'Bexly/1.0 (Dart; Flutter)',
+      'Accept': 'application/json',
     };
     if (apiKey.isNotEmpty && apiKey != 'no-key-required') {
       headers['Authorization'] = 'Bearer $apiKey';
@@ -83,6 +85,8 @@ class BackgroundAIService {
             ],
             'temperature': 0.1,
             'max_tokens': maxTokens,
+            // Disable Qwen3/3.5 thinking mode for faster responses
+            'chat_template_kwargs': {'enable_thinking': false},
           }),
         )
         .timeout(
