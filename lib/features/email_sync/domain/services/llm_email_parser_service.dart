@@ -151,13 +151,19 @@ JSON:''';
 
     Log.d('Using endpoint: $endpoint, model: $modelName', label: _label);
 
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'User-Agent': 'Bexly/1.0 (Dart; Flutter)',
+      'Accept': 'application/json',
+    };
+    if (apiKey.isNotEmpty && apiKey != 'no-key-required') {
+      headers['Authorization'] = 'Bearer $apiKey';
+    }
+
     final response = await http
         .post(
           Uri.parse('$endpoint/chat/completions'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $apiKey',
-          },
+          headers: headers,
           body: jsonEncode({
             'model': modelName,
             'messages': [
@@ -168,6 +174,8 @@ JSON:''';
             ],
             'temperature': 0.1,
             'max_tokens': 500,
+            // Disable Qwen3/3.5 thinking mode for faster responses
+            'chat_template_kwargs': {'enable_thinking': false},
           }),
         )
         .timeout(

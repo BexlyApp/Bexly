@@ -607,9 +607,10 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
         }
         return await operation();
       } catch (e) {
-        // Don't retry on API key or quota errors
+        // Don't retry on API key, quota, or timeout errors
         if (e.toString().contains('API key') ||
             e.toString().contains('quota') ||
+            e.toString().contains('DOS_AI_TIMEOUT') ||
             attempt >= maxRetries) {
           rethrow;
         }
@@ -655,10 +656,7 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
       headers['Authorization'] = 'Bearer $apiKey';
     }
 
-    // Use 30s timeout (system prompt can be large with 100+ categories)
-    final timeoutSeconds = LLMDefaultConfig.customTimeoutSeconds < 30
-        ? 30
-        : LLMDefaultConfig.customTimeoutSeconds;
+    final timeoutSeconds = LLMDefaultConfig.customTimeoutSeconds;
 
     final response = await http
         .post(
@@ -669,8 +667,8 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
             'messages': messages,
             'temperature': 0.3,
             'max_tokens': 2000,
-            // Disable Qwen3 thinking mode to reduce latency (must be in extra_body for vLLM)
-            'extra_body': {'chat_template_kwargs': {'enable_thinking': false}},
+            // Disable Qwen3/3.5 thinking mode (top-level for raw HTTP, not inside extra_body)
+            'chat_template_kwargs': {'enable_thinking': false},
           }),
         )
         .timeout(
