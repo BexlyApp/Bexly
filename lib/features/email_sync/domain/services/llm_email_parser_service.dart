@@ -103,8 +103,8 @@ JSON:''';
 
   /// Parse email via Supabase Edge Function proxy (Gemini or OpenAI)
   Future<String> _parseViaProxy(String prompt, {required String providerName}) async {
-    final token = LLMDefaultConfig.proxyAccessToken;
-    if (token == null) {
+    final headers = LLMDefaultConfig.proxyHeaders;
+    if (headers == null) {
       throw Exception('Not authenticated — cannot use AI proxy.');
     }
 
@@ -118,10 +118,7 @@ JSON:''';
     final response = await http
         .post(
           Uri.parse(LLMDefaultConfig.proxyUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
+          headers: headers,
           body: jsonEncode({
             'provider': providerName,
             'action': 'chat',

@@ -149,8 +149,8 @@ class OpenAIService with AIServicePromptMixin implements AIService {
     try {
       Log.d('Sending message to OpenAI via proxy: $message', label: 'OpenAI Service');
 
-      final token = LLMDefaultConfig.proxyAccessToken;
-      if (token == null) {
+      final headers = LLMDefaultConfig.proxyHeaders;
+      if (headers == null) {
         throw Exception('Not authenticated — cannot use AI proxy. Please sign in first.');
       }
 
@@ -170,10 +170,7 @@ class OpenAIService with AIServicePromptMixin implements AIService {
       final response = await http
           .post(
             Uri.parse(LLMDefaultConfig.proxyUrl),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
+            headers: headers,
             body: jsonEncode({
               'provider': 'openai',
               'action': 'chat',
@@ -348,8 +345,8 @@ class GeminiService with AIServicePromptMixin implements AIService {
   Future<String> _sendMessageInternal(String message) async {
     Log.d('Sending message to Gemini via proxy: $message', label: 'Gemini Service');
 
-    final token = LLMDefaultConfig.proxyAccessToken;
-    if (token == null) {
+    final headers = LLMDefaultConfig.proxyHeaders;
+    if (headers == null) {
       throw Exception('Not authenticated — cannot use AI proxy. Please sign in first.');
     }
 
@@ -365,10 +362,7 @@ class GeminiService with AIServicePromptMixin implements AIService {
     final response = await http
         .post(
           Uri.parse(LLMDefaultConfig.proxyUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
+          headers: headers,
           body: jsonEncode({
             'provider': 'gemini',
             'action': 'chat',

@@ -131,8 +131,8 @@ class ExchangeRateService {
 
   /// Fetch from Gemini AI via proxy (fallback)
   Future<double> _fetchFromGemini(String fromCurrency, String toCurrency) async {
-    final token = LLMDefaultConfig.proxyAccessToken;
-    if (token == null) {
+    final headers = LLMDefaultConfig.proxyHeaders;
+    if (headers == null) {
       throw Exception('Not authenticated — cannot use Gemini proxy for exchange rates.');
     }
 
@@ -150,10 +150,7 @@ Give me ONLY the number:''';
     final response = await http
         .post(
           Uri.parse(LLMDefaultConfig.proxyUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
+          headers: headers,
           body: jsonEncode({
             'provider': 'gemini',
             'action': 'chat',
