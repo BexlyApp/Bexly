@@ -1,5 +1,8 @@
 # Supabase Configuration
 
+[functions.ai-proxy]
+verify_jwt = false  # Manual JWT verification via supabase.auth.getUser() inside function
+
 [functions.telegram-webhook]
 verify_jwt = false  # Disable JWT verification for Telegram webhook (public endpoint)
 
