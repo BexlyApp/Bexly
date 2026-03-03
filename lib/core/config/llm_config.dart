@@ -166,7 +166,7 @@ class LLMDefaultConfig {
   }
 
   /// Standard headers for proxy requests.
-  /// Includes Content-Type, Authorization (JWT), and apikey (Supabase anon key).
+  /// Includes Content-Type, Authorization (user JWT), and apikey (Supabase publishable key).
   static Map<String, String>? get proxyHeaders {
     final token = proxyAccessToken;
     if (token == null) return null;

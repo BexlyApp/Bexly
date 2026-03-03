@@ -562,13 +562,18 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
   Future<String> _sendMessageInternal(String message) async {
     Log.d('Sending message to Custom LLM ($baseUrl): $message', label: 'Custom LLM');
 
+    // Trim conversation history to last 6 turns (3 user + 3 assistant) to stay within 8192 token limit
+    final trimmedHistory = _conversationHistory.length > 6
+        ? _conversationHistory.sublist(_conversationHistory.length - 6)
+        : _conversationHistory;
+
     // Build messages array with history
     final messages = [
       {
         'role': 'system',
         'content': systemPrompt,
       },
-      ..._conversationHistory,
+      ...trimmedHistory,
       {
         'role': 'user',
         'content': message,
