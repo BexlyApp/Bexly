@@ -21,8 +21,8 @@ class ClaudeOcrProvider implements OcrProvider {
     required Uint8List imageBytes,
     String? additionalPrompt,
   }) async {
-    final token = LLMDefaultConfig.proxyAccessToken;
-    if (token == null) {
+    final headers = LLMDefaultConfig.proxyHeaders;
+    if (headers == null) {
       throw Exception('Not authenticated — please sign in to use receipt scanning.');
     }
 
@@ -31,10 +31,7 @@ class ClaudeOcrProvider implements OcrProvider {
     try {
       final response = await http.post(
         Uri.parse(LLMDefaultConfig.proxyUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: headers,
         body: jsonEncode({
           'provider': 'claude',
           'action': 'ocr',

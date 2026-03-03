@@ -165,6 +165,18 @@ class LLMDefaultConfig {
     }
   }
 
+  /// Standard headers for proxy requests.
+  /// Includes Content-Type, Authorization (JWT), and apikey (Supabase anon key).
+  static Map<String, String>? get proxyHeaders {
+    final token = proxyAccessToken;
+    if (token == null) return null;
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+      'apikey': SupabaseConfig.publishableKey,
+    };
+  }
+
   /// Check if custom endpoint is configured (from env variable)
   static bool get hasCustomEndpoint {
     try {
