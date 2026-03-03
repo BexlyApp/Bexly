@@ -75,7 +75,9 @@ serve(async (req) => {
       if (!image) {
         return jsonResponse({ error: "Missing image" }, 400);
       }
-      result = await handleOcr(provider, model, image, prompt || "");
+      // Extract prompt from messages array if provided, otherwise use prompt field
+      const ocrPrompt = prompt || (messages && messages.length > 0 ? messages[0].content : "");
+      result = await handleOcr(provider, model, image, ocrPrompt, temperature, max_tokens);
     } else {
       return jsonResponse({ error: `Unknown action: ${action}` }, 400);
     }
@@ -254,15 +256,62 @@ async function handleOcr(
   model: string | undefined,
   image: string,
   prompt: string,
+  temperature?: number,
+  maxTokens?: number,
 ): Promise<string | null> {
   switch (provider) {
+    case "openai":
+      return ocrOpenAI(model || "gpt-4o", image, prompt, temperature ?? 0.2);
     case "gemini":
       return ocrGemini(model || DEFAULTS.gemini.model, image, prompt);
     case "claude":
-      return ocrClaude(model || DEFAULTS.claude.model, image, prompt);
+      return ocrClaude(model || DEFAULTS.claude.model, image, prompt, maxTokens ?? 1024);
     default:
       throw new Error(`OCR not supported for provider: ${provider}`);
   }
+}
+
+async function ocrOpenAI(
+  model: string,
+  image: string,
+  prompt: string,
+  temperature: number,
+): Promise<string | null> {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) throw new Error("OPENAI_API_KEY not configured on server");
+
+  const response = await fetch(DEFAULTS.openai.chatUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            {
+              type: "image_url",
+              image_url: { url: `data:image/jpeg;base64,${image}` },
+            },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OpenAI OCR ${response.status}: ${err}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() || null;
 }
 
 async function ocrGemini(
@@ -306,6 +355,7 @@ async function ocrClaude(
   model: string,
   image: string,
   prompt: string,
+  maxTokens: number,
 ): Promise<string | null> {
   const apiKey = Deno.env.get("CLAUDE_API_KEY");
   if (!apiKey) throw new Error("CLAUDE_API_KEY not configured on server");
@@ -319,7 +369,7 @@ async function ocrClaude(
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: maxTokens,
       temperature: 0.2,
       messages: [
         {

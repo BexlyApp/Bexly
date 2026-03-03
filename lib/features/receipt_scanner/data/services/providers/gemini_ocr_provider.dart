@@ -8,27 +8,22 @@ import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.d
 import 'package:bexly/features/receipt_scanner/data/services/providers/ocr_provider.dart';
 
 class GeminiOcrProvider implements OcrProvider {
-  final String apiKey;
-  static const String _baseUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models';
-
-  String get _model => LLMDefaultConfig.geminiModel;
-
-  GeminiOcrProvider({required this.apiKey});
+  GeminiOcrProvider();
 
   @override
   String get providerName => 'Gemini';
 
   @override
-  bool get isConfigured => apiKey.isNotEmpty;
+  bool get isConfigured => LLMDefaultConfig.proxyAccessToken != null;
 
   @override
   Future<ReceiptScanResult> analyzeReceipt({
     required Uint8List imageBytes,
     String? additionalPrompt,
   }) async {
-    if (!isConfigured) {
-      throw Exception('Gemini API key not configured');
+    final token = LLMDefaultConfig.proxyAccessToken;
+    if (token == null) {
+      throw Exception('Not authenticated — please sign in to use receipt scanning.');
     }
 
     final String base64Image = base64Encode(imageBytes);
@@ -42,26 +37,20 @@ class GeminiOcrProvider implements OcrProvider {
       try {
         final response = await http
             .post(
-              Uri.parse('$_baseUrl/$_model:generateContent?key=$apiKey'),
-              headers: {'Content-Type': 'application/json'},
+              Uri.parse(LLMDefaultConfig.proxyUrl),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
               body: jsonEncode({
-                'contents': [
-                  {
-                    'parts': [
-                      {'text': prompt},
-                      {
-                        'inlineData': {
-                          'mimeType': 'image/jpeg',
-                          'data': base64Image,
-                        },
-                      },
-                    ],
-                  },
+                'provider': 'gemini',
+                'action': 'ocr',
+                'model': LLMDefaultConfig.geminiModel,
+                'image': base64Image,
+                'messages': [
+                  {'role': 'user', 'content': prompt},
                 ],
-                'generationConfig': {
-                  'response_mime_type': 'application/json',
-                  'temperature': 0.2,
-                },
+                'temperature': 0.2,
               }),
             )
             .timeout(const Duration(seconds: 45));
@@ -69,16 +58,11 @@ class GeminiOcrProvider implements OcrProvider {
         if (response.statusCode == 200) {
           final jsonResponse = jsonDecode(response.body);
 
-          if (jsonResponse['candidates'] == null ||
-              jsonResponse['candidates'].isEmpty ||
-              jsonResponse['candidates'][0]['content'] == null ||
-              jsonResponse['candidates'][0]['content']['parts'] == null ||
-              jsonResponse['candidates'][0]['content']['parts'].isEmpty) {
-            throw Exception('Invalid API response structure');
+          if (jsonResponse['error'] != null) {
+            throw Exception(jsonResponse['error']);
           }
 
-          String content =
-              jsonResponse['candidates'][0]['content']['parts'][0]['text'];
+          String content = jsonResponse['content'] as String;
           content = _sanitizeResponse(content);
 
           final resultJson = jsonDecode(content);
@@ -87,7 +71,6 @@ class GeminiOcrProvider implements OcrProvider {
           Log.i('Receipt scanned: ${resultJson['merchant']}',
               label: 'GeminiOCR');
 
-          // Create result with imageBytes included
           return ReceiptScanResult(
             amount: (resultJson['amount'] is num)
                 ? (resultJson['amount'] as num).toDouble()
@@ -100,15 +83,14 @@ class GeminiOcrProvider implements OcrProvider {
             items: (resultJson['items'] as List<dynamic>).cast<String>(),
             taxAmount: resultJson['tax_amount'] as String?,
             tipAmount: resultJson['tip_amount'] as String?,
-            imageBytes: imageBytes, // Pass the receipt image
+            imageBytes: imageBytes,
           );
         } else {
           String apiErrorMessage = 'API Error: ${response.statusCode}';
           try {
             final errorJson = jsonDecode(response.body);
-            if (errorJson['error'] != null &&
-                errorJson['error']['message'] != null) {
-              apiErrorMessage = 'API Error: ${errorJson['error']['message']}';
+            if (errorJson['error'] != null) {
+              apiErrorMessage = 'API Error: ${errorJson['error']}';
             }
           } catch (_) {}
           throw Exception(apiErrorMessage);

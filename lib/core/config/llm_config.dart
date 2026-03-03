@@ -3,6 +3,8 @@
 // Supports: OpenAI, Gemini, and self-hosted vLLM/Ollama (OpenAI-compatible)
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:bexly/core/config/supabase_config.dart';
 
 /// Supported AI providers
 enum AIProvider {
@@ -147,6 +149,19 @@ class LLMDefaultConfig {
       return 10;
     } catch (e) {
       return 10;
+    }
+  }
+
+  /// Supabase Edge Function proxy URL for AI providers.
+  static String get proxyUrl =>
+      '${SupabaseConfig.url}/functions/v1/ai-proxy';
+
+  /// Current Supabase access token for proxy auth.
+  static String? get proxyAccessToken {
+    try {
+      return Supabase.instance.client.auth.currentSession?.accessToken;
+    } catch (e) {
+      return null;
     }
   }
 

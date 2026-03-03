@@ -3,68 +3,60 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
 import 'package:bexly/features/receipt_scanner/data/services/providers/ocr_provider.dart';
 
 class ClaudeOcrProvider implements OcrProvider {
-  final String apiKey;
-  static const String _baseUrl = 'https://api.anthropic.com/v1';
-  static const String _model = 'claude-sonnet-4-20250514';
-  static const String _apiVersion = '2023-06-01';
-
-  ClaudeOcrProvider({required this.apiKey});
+  ClaudeOcrProvider();
 
   @override
   String get providerName => 'Claude Sonnet 4';
 
   @override
-  bool get isConfigured => apiKey.isNotEmpty;
+  bool get isConfigured => LLMDefaultConfig.proxyAccessToken != null;
 
   @override
   Future<ReceiptScanResult> analyzeReceipt({
     required Uint8List imageBytes,
     String? additionalPrompt,
   }) async {
-    if (!isConfigured) throw Exception('Claude API key not configured');
+    final token = LLMDefaultConfig.proxyAccessToken;
+    if (token == null) {
+      throw Exception('Not authenticated — please sign in to use receipt scanning.');
+    }
 
     final String base64Image = base64Encode(imageBytes);
 
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/messages'),
+        Uri.parse(LLMDefaultConfig.proxyUrl),
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': _apiVersion,
+          'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
-          'model': _model,
-          'max_tokens': 1024,
-          'temperature': 0.2,
+          'provider': 'claude',
+          'action': 'ocr',
+          'image': base64Image,
           'messages': [
-            {
-              'role': 'user',
-              'content': [
-                {
-                  'type': 'image',
-                  'source': {
-                    'type': 'base64',
-                    'media_type': 'image/jpeg',
-                    'data': base64Image,
-                  },
-                },
-                {'type': 'text', 'text': _buildPrompt(additionalPrompt)},
-              ],
-            },
+            {'role': 'user', 'content': _buildPrompt(additionalPrompt)},
           ],
+          'temperature': 0.2,
+          'max_tokens': 1024,
         }),
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
-        String content = jsonResponse['content'][0]['text'];
 
-        // Claude might wrap in JSON markdown
+        if (jsonResponse['error'] != null) {
+          throw Exception(jsonResponse['error']);
+        }
+
+        String content = jsonResponse['content'] as String;
+
+        // Proxy might still return markdown-wrapped JSON
         if (content.contains('```json')) {
           content = content.split('```json')[1].split('```')[0].trim();
         }
@@ -72,7 +64,6 @@ class ClaudeOcrProvider implements OcrProvider {
         final resultJson = jsonDecode(content);
         Log.i('Receipt scanned: ${resultJson['merchant']}', label: 'Claude_OCR');
 
-        // Create result with imageBytes included
         return ReceiptScanResult(
           amount: (resultJson['amount'] is num)
               ? (resultJson['amount'] as num).toDouble()
@@ -85,10 +76,11 @@ class ClaudeOcrProvider implements OcrProvider {
           items: (resultJson['items'] as List<dynamic>).cast<String>(),
           taxAmount: resultJson['tax_amount'] as String?,
           tipAmount: resultJson['tip_amount'] as String?,
-          imageBytes: imageBytes, // Pass the receipt image
+          imageBytes: imageBytes,
         );
       } else {
-        throw Exception('API Error: ${response.statusCode}');
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'API Error: ${response.statusCode}');
       }
     } catch (e) {
       Log.e('Claude OCR error: $e', label: 'Claude_OCR');

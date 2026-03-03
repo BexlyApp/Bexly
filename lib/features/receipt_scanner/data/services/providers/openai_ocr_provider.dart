@@ -3,64 +3,61 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
 import 'package:bexly/features/receipt_scanner/data/services/providers/ocr_provider.dart';
 
 class OpenAiOcrProvider implements OcrProvider {
-  final String apiKey;
-  static const String _baseUrl = 'https://api.openai.com/v1';
-  static const String _model = 'gpt-4o'; // Latest vision model
-
-  OpenAiOcrProvider({required this.apiKey});
+  OpenAiOcrProvider();
 
   @override
   String get providerName => 'OpenAI GPT-4o';
 
   @override
-  bool get isConfigured => apiKey.isNotEmpty;
+  bool get isConfigured => LLMDefaultConfig.proxyAccessToken != null;
 
   @override
   Future<ReceiptScanResult> analyzeReceipt({
     required Uint8List imageBytes,
     String? additionalPrompt,
   }) async {
-    if (!isConfigured) throw Exception('OpenAI API key not configured');
+    final token = LLMDefaultConfig.proxyAccessToken;
+    if (token == null) {
+      throw Exception('Not authenticated — please sign in to use receipt scanning.');
+    }
 
     final String base64Image = base64Encode(imageBytes);
 
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/chat/completions'),
+        Uri.parse(LLMDefaultConfig.proxyUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
+          'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
-          'model': _model,
+          'provider': 'openai',
+          'action': 'ocr',
+          'model': 'gpt-4o',
+          'image': base64Image,
           'messages': [
-            {
-              'role': 'user',
-              'content': [
-                {'type': 'text', 'text': _buildPrompt(additionalPrompt)},
-                {
-                  'type': 'image_url',
-                  'image_url': {'url': 'data:image/jpeg;base64,$base64Image'},
-                },
-              ],
-            },
+            {'role': 'user', 'content': _buildPrompt(additionalPrompt)},
           ],
-          'response_format': {'type': 'json_object'},
           'temperature': 0.2,
         }),
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
-        String content = jsonResponse['choices'][0]['message']['content'];
+
+        if (jsonResponse['error'] != null) {
+          throw Exception(jsonResponse['error']);
+        }
+
+        String content = jsonResponse['content'] as String;
         final resultJson = jsonDecode(content);
         Log.i('Receipt scanned: ${resultJson['merchant']}', label: 'OpenAI_OCR');
 
-        // Create result with imageBytes included
         return ReceiptScanResult(
           amount: (resultJson['amount'] is num)
               ? (resultJson['amount'] as num).toDouble()
@@ -73,10 +70,11 @@ class OpenAiOcrProvider implements OcrProvider {
           items: (resultJson['items'] as List<dynamic>).cast<String>(),
           taxAmount: resultJson['tax_amount'] as String?,
           tipAmount: resultJson['tip_amount'] as String?,
-          imageBytes: imageBytes, // Pass the receipt image
+          imageBytes: imageBytes,
         );
       } else {
-        throw Exception('API Error: ${response.statusCode}');
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'API Error: ${response.statusCode}');
       }
     } catch (e) {
       Log.e('OpenAI OCR error: $e', label: 'OpenAI_OCR');
