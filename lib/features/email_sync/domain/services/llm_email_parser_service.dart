@@ -3,40 +3,22 @@ import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/email_sync/domain/services/gmail_api_service.dart';
 import 'package:bexly/features/email_sync/domain/services/email_parser_service.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
 
 /// LLM-based email parser for better accuracy
-/// Supports: Gemini, OpenAI, and Custom LLM (DOS AI)
+/// Supports: Gemini (via proxy), OpenAI (via proxy), and Custom LLM (DOS AI, direct)
 class LLMEmailParserService {
   static const _label = 'LLMEmailParser';
 
   final String provider; // 'gemini', 'openai', or 'custom'
-  final String apiKey;
   final String? baseUrl; // For custom LLM
   final String? model; // For custom LLM
 
   LLMEmailParserService({
     String? provider,
-    String? apiKey,
     this.baseUrl,
     this.model,
-  })  : provider = provider ?? LLMDefaultConfig.provider,
-        // Fix: use resolved provider value, not the null parameter
-        apiKey = apiKey ?? _getDefaultApiKey(provider ?? LLMDefaultConfig.provider);
-
-  static String _getDefaultApiKey(String? provider) {
-    switch (provider?.toLowerCase()) {
-      case 'gemini':
-        return LLMDefaultConfig.geminiApiKey;
-      case 'openai':
-        return LLMDefaultConfig.apiKey;
-      case 'custom':
-        return LLMDefaultConfig.customApiKey;
-      default:
-        return LLMDefaultConfig.geminiApiKey;
-    }
-  }
+  }) : provider = provider ?? LLMDefaultConfig.provider;
 
   /// Parse email using LLM
   Future<ParsedEmail?> parseEmail(GmailMessage email) async {
@@ -49,15 +31,17 @@ class LLMEmailParserService {
       String response;
       switch (provider.toLowerCase()) {
         case 'gemini':
-          response = await _parseWithGemini(prompt);
+          response = await _parseViaProxy(prompt, providerName: 'gemini');
           break;
         case 'openai':
+          response = await _parseViaProxy(prompt, providerName: 'openai');
+          break;
         case 'custom':
-          response = await _parseWithOpenAICompatible(prompt);
+          response = await _parseWithCustomDirect(prompt);
           break;
         default:
-          Log.w('Unknown provider: $provider, using Gemini', label: _label);
-          response = await _parseWithGemini(prompt);
+          Log.w('Unknown provider: $provider, using Gemini via proxy', label: _label);
+          response = await _parseViaProxy(prompt, providerName: 'gemini');
       }
 
       // Parse JSON response
@@ -117,39 +101,64 @@ RULES:
 JSON:''';
   }
 
-  /// Parse email with Gemini
-  Future<String> _parseWithGemini(String prompt) async {
-    final modelName = model ?? LLMDefaultConfig.geminiModel;
-    Log.d('Using Gemini model: $modelName', label: _label);
+  /// Parse email via Supabase Edge Function proxy (Gemini or OpenAI)
+  Future<String> _parseViaProxy(String prompt, {required String providerName}) async {
+    final token = LLMDefaultConfig.proxyAccessToken;
+    if (token == null) {
+      throw Exception('Not authenticated — cannot use AI proxy.');
+    }
 
-    final geminiModel = GenerativeModel(
-      model: modelName,
-      apiKey: apiKey,
-      generationConfig: GenerationConfig(
-        temperature: 0.1, // Low temperature for consistent extraction
-        maxOutputTokens: 500,
-      ),
-    );
+    final modelName = model ??
+      (providerName == 'openai'
+        ? LLMDefaultConfig.model
+        : LLMDefaultConfig.geminiModel);
 
-    final response = await geminiModel.generateContent([Content.text(prompt)]);
-    final text = response.text ?? '';
+    Log.d('Using $providerName via proxy, model: $modelName', label: _label);
 
-    Log.d('Gemini response: $text', label: _label);
-    return text;
+    final response = await http
+        .post(
+          Uri.parse(LLMDefaultConfig.proxyUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'provider': providerName,
+            'action': 'chat',
+            'model': modelName,
+            'messages': [
+              {'role': 'user', 'content': prompt},
+            ],
+            'temperature': 0.1,
+            'max_tokens': 500,
+          }),
+        )
+        .timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw Exception('LLM API request timed out');
+          },
+        );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['error'] != null) throw Exception(data['error']);
+      final content = data['content'] as String;
+      Log.d('Proxy response: $content', label: _label);
+      return content.trim();
+    } else {
+      Log.e('Proxy error: ${response.statusCode} - ${response.body}', label: _label);
+      throw Exception('LLM proxy error: ${response.statusCode}');
+    }
   }
 
-  /// Parse email with OpenAI-compatible API (OpenAI or Custom LLM)
-  Future<String> _parseWithOpenAICompatible(String prompt) async {
-    final endpoint = baseUrl ??
-      (provider == 'openai'
-        ? 'https://api.openai.com/v1'
-        : LLMDefaultConfig.customEndpoint);
-    final modelName = model ??
-      (provider == 'openai'
-        ? LLMDefaultConfig.model
-        : LLMDefaultConfig.customModel);
+  /// Parse email with Custom LLM (direct OpenAI-compatible API, e.g., DOS AI)
+  Future<String> _parseWithCustomDirect(String prompt) async {
+    final endpoint = baseUrl ?? LLMDefaultConfig.customEndpoint;
+    final modelName = model ?? LLMDefaultConfig.customModel;
+    final apiKey = LLMDefaultConfig.customApiKey;
 
-    Log.d('Using endpoint: $endpoint, model: $modelName', label: _label);
+    Log.d('Using Custom LLM direct: $endpoint, model: $modelName', label: _label);
 
     final headers = <String, String>{
       'Content-Type': 'application/json',
@@ -167,10 +176,7 @@ JSON:''';
           body: jsonEncode({
             'model': modelName,
             'messages': [
-              {
-                'role': 'user',
-                'content': prompt,
-              }
+              {'role': 'user', 'content': prompt},
             ],
             'temperature': 0.1,
             'max_tokens': 500,

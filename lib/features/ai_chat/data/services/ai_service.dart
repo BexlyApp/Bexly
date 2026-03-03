@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/features/ai_chat/data/config/ai_prompts.dart';
@@ -148,22 +147,12 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   @override
   Future<String> sendMessage(String message) async {
     try {
-      Log.d('Sending message to OpenAI: $message', label: 'OpenAI Service');
+      Log.d('Sending message to OpenAI via proxy: $message', label: 'OpenAI Service');
 
-      // Better API key validation and logging
-      if (apiKey == 'USER_MUST_PROVIDE_API_KEY' || apiKey.isEmpty) {
-        throw Exception('No API key configured. Please add OPENAI_API_KEY to your .env file.');
+      final token = LLMDefaultConfig.proxyAccessToken;
+      if (token == null) {
+        throw Exception('Not authenticated — cannot use AI proxy. Please sign in first.');
       }
-
-      // Validate API key format (should start with sk-)
-      if (!apiKey.startsWith('sk-')) {
-        Log.e('Invalid API key format. OpenAI keys should start with "sk-"', label: 'OpenAI Service');
-      }
-
-      final maskedKey = apiKey.length > 10
-          ? '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}'
-          : 'Invalid key';
-      Log.d('Using API key: $maskedKey', label: 'OpenAI Service');
 
       // Build messages array with history
       final messages = [
@@ -171,7 +160,7 @@ class OpenAIService with AIServicePromptMixin implements AIService {
           'role': 'system',
           'content': systemPrompt,
         },
-        ..._conversationHistory, // Include previous messages
+        ..._conversationHistory,
         {
           'role': 'user',
           'content': message,
@@ -180,84 +169,46 @@ class OpenAIService with AIServicePromptMixin implements AIService {
 
       final response = await http
           .post(
-            Uri.parse('$baseUrl/chat/completions'),
+            Uri.parse(LLMDefaultConfig.proxyUrl),
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer $apiKey',
+              'Authorization': 'Bearer $token',
             },
             body: jsonEncode({
-          'model': model,
-          'messages': messages,
-          // Lower temperature for more focused responses
-          'temperature': 0.3,
-          // Encourage JSON structure even if not strict JSON mode
-          'response_format': { 'type': 'text' },
-          'max_tokens': 2000, // Increased for reasoning + JSON
+              'provider': 'openai',
+              'action': 'chat',
+              'model': model,
+              'messages': messages,
+              'temperature': 0.3,
+              'max_tokens': 2000,
             }),
           )
           .timeout(
             const Duration(seconds: 30),
             onTimeout: () {
-              Log.e('OpenAI API request timed out after 30 seconds', label: 'OpenAI Service');
               throw Exception('Request timed out. Please check your internet connection and try again.');
             },
           );
 
-      Log.d('OpenAI Response status: ${response.statusCode}', label: 'OpenAI Service');
-      Log.d('OpenAI Response body (first 500 chars): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}', label: 'OpenAI Service');
+      Log.d('Proxy Response status: ${response.statusCode}', label: 'OpenAI Service');
 
       if (response.statusCode == 200) {
-        try {
-          final data = jsonDecode(response.body);
-          final content = data['choices'][0]['message']['content'];
-          Log.d('OpenAI Response content: $content', label: 'OpenAI Service');
+        final data = jsonDecode(response.body);
+        if (data['error'] != null) throw Exception(data['error']);
+        final content = data['content'] as String;
 
-          // Save conversation to history
-          _conversationHistory.add({
-            'role': 'user',
-            'content': message,
-          });
-          _conversationHistory.add({
-            'role': 'assistant',
-            'content': content,
-          });
+        _conversationHistory.add({'role': 'user', 'content': message});
+        _conversationHistory.add({'role': 'assistant', 'content': content});
 
-          Log.d('Conversation history updated (${_conversationHistory.length} messages)', label: 'AI Service');
-
-          return content.trim();
-        } catch (e) {
-          Log.e('Failed to parse OpenAI response as JSON: $e', label: 'OpenAI Service');
-          Log.e('Response body: ${response.body}', label: 'OpenAI Service');
-          throw Exception('Invalid response format from OpenAI API. Response was not valid JSON.');
-        }
+        return content.trim();
       } else {
-        Log.e('OpenAI API error: ${response.statusCode} - ${response.body}', label: 'OpenAI Service');
-
-        // Parse error details for better user feedback
-        String errorMessage = 'API Error';
-        try {
-          final errorData = jsonDecode(response.body);
-          if (errorData['error'] != null) {
-            errorMessage = errorData['error']['message'] ?? 'Unknown error';
-          }
-        } catch (_) {
-          errorMessage = 'API Error: ${response.statusCode}';
-        }
-
-        // Check for specific error codes
-        if (response.statusCode == 401) {
-          throw Exception('Invalid API key. Please check your OpenAI API key.');
-        } else if (response.statusCode == 429) {
-          throw Exception('Rate limit exceeded. Please try again later.');
-        } else if (response.statusCode == 500 || response.statusCode == 503) {
-          throw Exception('OpenAI service is temporarily unavailable. Please try again later.');
-        } else {
-          throw Exception(errorMessage);
-        }
+        final data = jsonDecode(response.body);
+        final error = data['error'] ?? 'API Error: ${response.statusCode}';
+        throw Exception(error);
       }
     } catch (e) {
-      Log.e('Error calling OpenAI API: $e', label: 'OpenAI Service');
-      throw e;
+      Log.e('Error calling OpenAI via proxy: $e', label: 'OpenAI Service');
+      rethrow;
     }
   }
 
@@ -304,8 +255,8 @@ class GeminiService with AIServicePromptMixin implements AIService {
   @override
   String get modelName => model;
 
-  // Conversation history for context (using Gemini's Content format)
-  final List<Content> _conversationHistory = [];
+  // Conversation history (OpenAI-compatible format, proxy handles translation)
+  final List<Map<String, String>> _conversationHistory = [];
 
   GeminiService({
     required this.apiKey,
@@ -395,74 +346,61 @@ class GeminiService with AIServicePromptMixin implements AIService {
   }
 
   Future<String> _sendMessageInternal(String message) async {
-    Log.d('🔵 === GEMINI API CALL START ===', label: 'Gemini Service');
-    Log.d('🔵 User input: "$message"', label: 'Gemini Service');
-    Log.d('🔵 Input length: ${message.length} characters', label: 'Gemini Service');
-    Log.d('🔵 Input encoding (first 50 chars): ${message.length > 50 ? message.substring(0, 50).codeUnits : message.codeUnits}', label: 'Gemini Service');
+    Log.d('Sending message to Gemini via proxy: $message', label: 'Gemini Service');
 
-    // Log if Chinese characters detected
-    final hasChinese = message.contains(RegExp(r'[\u4e00-\u9fa5]'));
-    final hasJapanese = message.contains(RegExp(r'[\u3040-\u309f\u30a0-\u30ff]'));
-    if (hasChinese) {
-      Log.d('🔍 Chinese characters detected in input', label: 'Gemini Service');
-    }
-    if (hasJapanese) {
-      Log.d('🔍 Japanese characters detected in input', label: 'Gemini Service');
+    final token = LLMDefaultConfig.proxyAccessToken;
+    if (token == null) {
+      throw Exception('Not authenticated — cannot use AI proxy. Please sign in first.');
     }
 
-    // Validate API key
-    if (apiKey.isEmpty || apiKey == 'USER_MUST_PROVIDE_API_KEY') {
-      throw Exception('No Gemini API key configured. Please add GEMINI_API_KEY to your .env file.');
-    }
-
-    // Log system prompt for debugging
-    Log.d('System Prompt:\n$systemPrompt', label: 'Gemini Service');
-    print('====== SYSTEM PROMPT DEBUG ======');
-    print(systemPrompt);
-    print('=================================');
-
-    // Create model with system instruction (cached, not counted in tokens!)
-    final modelWithSystemPrompt = GenerativeModel(
-      model: model,
-      apiKey: apiKey,
-      systemInstruction: Content.text(systemPrompt),
-      generationConfig: GenerationConfig(
-        temperature: 0.3, // Lower temp for more focused responses
-        maxOutputTokens: 2000, // Increase limit for reasoning + JSON
-      ),
-    );
-
-    // Create chat with conversation history
-    final chat = modelWithSystemPrompt.startChat(history: _conversationHistory);
+    // Build messages array with history (OpenAI-compatible format)
+    final messages = [
+      {'role': 'system', 'content': systemPrompt},
+      ..._conversationHistory,
+      {'role': 'user', 'content': message},
+    ];
 
     Log.d('Starting chat with ${_conversationHistory.length} previous messages', label: 'Gemini Service');
 
-    // Send user message
-    final response = await chat.sendMessage(
-      Content.text(message),
-    ).timeout(
-      const Duration(seconds: 30),
-      onTimeout: () {
-        Log.e('Gemini API request timed out after 30 seconds', label: 'Gemini Service');
-        throw Exception('Request timed out. Please check your internet connection and try again.');
-      },
-    );
+    final response = await http
+        .post(
+          Uri.parse(LLMDefaultConfig.proxyUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'provider': 'gemini',
+            'action': 'chat',
+            'model': model,
+            'messages': messages,
+            'temperature': 0.3,
+            'max_tokens': 2000,
+          }),
+        )
+        .timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw Exception('Request timed out. Please check your internet connection and try again.');
+          },
+        );
 
-    final content = response.text ?? '';
-    Log.d('Gemini Response content: $content', label: 'Gemini Service');
+    Log.d('Proxy Response status: ${response.statusCode}', label: 'Gemini Service');
 
-    // FORCE print for debugging - works in release mode
-    print('========== GEMINI RAW RESPONSE ==========');
-    print(content);
-    print('=========================================');
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['error'] != null) throw Exception(data['error']);
+      final content = data['content'] as String;
 
-    // Save conversation to history
-    _conversationHistory.add(Content.text(message)); // User message
-    _conversationHistory.add(Content.model([TextPart(content)])); // AI response
+      _conversationHistory.add({'role': 'user', 'content': message});
+      _conversationHistory.add({'role': 'assistant', 'content': content});
 
-    Log.d('Conversation history updated (${_conversationHistory.length} messages)', label: 'AI Service');
-
-    return content.trim();
+      return content.trim();
+    } else {
+      final data = jsonDecode(response.body);
+      final error = data['error'] ?? 'API Error: ${response.statusCode}';
+      throw Exception(error);
+    }
   }
 
   @override

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/core/utils/logger.dart';
 
@@ -8,6 +7,9 @@ import 'package:bexly/core/utils/logger.dart';
 ///
 /// Uses the same provider as the main AI chat (Custom/DOS.AI, Gemini, OpenAI)
 /// based on LLMDefaultConfig settings. No conversation history or system prompts.
+///
+/// OpenAI and Gemini go through the Supabase Edge Function proxy (server-side keys).
+/// Custom/DOS.AI calls the endpoint directly (already server-side).
 class BackgroundAIService {
   static const String _label = 'BackgroundAI';
 
@@ -19,7 +21,7 @@ class BackgroundAIService {
     try {
       switch (provider) {
         case AIProvider.custom:
-          return await _completeViaOpenAICompatible(
+          return await _completeViaDirect(
             endpoint: LLMDefaultConfig.customEndpoint,
             apiKey: LLMDefaultConfig.customApiKey,
             model: LLMDefaultConfig.customModel,
@@ -28,25 +30,33 @@ class BackgroundAIService {
             timeoutSeconds: LLMDefaultConfig.customTimeoutSeconds,
           );
         case AIProvider.gemini:
-          return await _completeViaGemini(prompt, maxTokens: maxTokens ?? 500);
+          return await _completeViaProxy(
+            provider: 'gemini',
+            model: LLMDefaultConfig.geminiModel,
+            prompt: prompt,
+            maxTokens: maxTokens ?? 500,
+          );
         case AIProvider.openai:
-          return await _completeViaOpenAICompatible(
-            endpoint: 'https://api.openai.com/v1',
-            apiKey: LLMDefaultConfig.apiKey,
+          return await _completeViaProxy(
+            provider: 'openai',
             model: LLMDefaultConfig.model,
             prompt: prompt,
             maxTokens: maxTokens ?? 500,
-            timeoutSeconds: 30,
           );
       }
     } catch (e) {
       Log.w('Primary provider ($provider) failed: $e', label: _label);
 
-      // Fallback: if primary was custom/openai and Gemini key exists, try Gemini
-      if (provider != AIProvider.gemini && LLMDefaultConfig.geminiApiKey.isNotEmpty) {
+      // Fallback: if primary was custom/openai, try Gemini via proxy
+      if (provider != AIProvider.gemini) {
         try {
-          Log.d('Falling back to Gemini for background task', label: _label);
-          return await _completeViaGemini(prompt, maxTokens: maxTokens ?? 500);
+          Log.d('Falling back to Gemini via proxy for background task', label: _label);
+          return await _completeViaProxy(
+            provider: 'gemini',
+            model: LLMDefaultConfig.geminiModel,
+            prompt: prompt,
+            maxTokens: maxTokens ?? 500,
+          );
         } catch (e2) {
           Log.w('Gemini fallback also failed: $e2', label: _label);
         }
@@ -56,8 +66,55 @@ class BackgroundAIService {
     }
   }
 
-  /// OpenAI-compatible completion (works for Custom/DOS.AI, OpenAI, vLLM, Ollama)
-  Future<String?> _completeViaOpenAICompatible({
+  /// Completion via Supabase Edge Function proxy (for OpenAI, Gemini)
+  Future<String?> _completeViaProxy({
+    required String provider,
+    required String model,
+    required String prompt,
+    required int maxTokens,
+  }) async {
+    final token = LLMDefaultConfig.proxyAccessToken;
+    if (token == null) {
+      throw Exception('Not authenticated — cannot use AI proxy for background tasks.');
+    }
+
+    final response = await http
+        .post(
+          Uri.parse(LLMDefaultConfig.proxyUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'provider': provider,
+            'action': 'chat',
+            'model': model,
+            'messages': [
+              {'role': 'user', 'content': prompt},
+            ],
+            'temperature': 0.1,
+            'max_tokens': maxTokens,
+          }),
+        )
+        .timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw Exception('Background AI request timed out after 30s');
+          },
+        );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['error'] != null) throw Exception(data['error']);
+      return (data['content'] as String?)?.trim();
+    }
+
+    Log.w('Background AI HTTP ${response.statusCode}: ${response.body}', label: _label);
+    throw Exception('Background AI error: ${response.statusCode}');
+  }
+
+  /// Direct OpenAI-compatible completion (for Custom/DOS.AI, vLLM, Ollama)
+  Future<String?> _completeViaDirect({
     required String endpoint,
     required String apiKey,
     required String model,
@@ -106,32 +163,6 @@ class BackgroundAIService {
     throw Exception('Background AI error: ${response.statusCode}');
   }
 
-  /// Gemini completion via google_generative_ai package
-  Future<String?> _completeViaGemini(String prompt, {required int maxTokens}) async {
-    final apiKey = LLMDefaultConfig.geminiApiKey;
-    if (apiKey.isEmpty) {
-      throw Exception('Gemini API key not configured');
-    }
-
-    final model = GenerativeModel(
-      model: LLMDefaultConfig.geminiModel,
-      apiKey: apiKey,
-      generationConfig: GenerationConfig(
-        temperature: 0.1,
-        maxOutputTokens: maxTokens,
-      ),
-    );
-
-    final response = await model.generateContent([Content.text(prompt)]).timeout(
-      const Duration(seconds: 30),
-      onTimeout: () {
-        throw Exception('Gemini background request timed out');
-      },
-    );
-
-    return response.text?.trim();
-  }
-
   /// Check if any AI provider is available for background tasks
   static bool get isAvailable {
     final provider = LLMDefaultConfig.providerEnum;
@@ -140,9 +171,9 @@ class BackgroundAIService {
         // Custom always has default endpoint (Bexly Free AI)
         return true;
       case AIProvider.gemini:
-        return LLMDefaultConfig.geminiApiKey.isNotEmpty;
       case AIProvider.openai:
-        return LLMDefaultConfig.apiKey.isNotEmpty;
+        // Need auth token for proxy
+        return LLMDefaultConfig.proxyAccessToken != null;
     }
   }
 }

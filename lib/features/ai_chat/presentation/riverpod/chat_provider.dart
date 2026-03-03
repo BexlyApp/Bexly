@@ -238,22 +238,10 @@ final aiServiceProvider = Provider<AIService>((ref) {
   // Map AIModel setting to service
   switch (selectedModel) {
     case AIModel.gemini:
-      // Use Gemini service
-      final apiKey = LLMDefaultConfig.geminiApiKey.isEmpty
-          ? 'USER_MUST_PROVIDE_API_KEY'
-          : LLMDefaultConfig.geminiApiKey;
-
-      if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length >= 11) {
-        final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
-        Log.d('Using Gemini Service with API key: $maskedKey, model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-      } else if (apiKey == 'USER_MUST_PROVIDE_API_KEY') {
-        Log.e('Invalid or missing Gemini API key!', label: 'Chat Provider');
-      } else {
-        Log.d('Using Gemini Service with API key: [SHORT_KEY], model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-      }
+      Log.d('Using Gemini Service via proxy, model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
 
       return GeminiService(
-        apiKey: apiKey,
+        apiKey: '', // API key managed server-side via proxy
         model: LLMDefaultConfig.geminiModel,
         categories: categories,
         categoryHierarchy: categoryHierarchy,
@@ -264,22 +252,10 @@ final aiServiceProvider = Provider<AIService>((ref) {
       );
 
     case AIModel.openAI:
-      // OpenAI service
-      final apiKey = LLMDefaultConfig.apiKey.isEmpty
-          ? 'USER_MUST_PROVIDE_API_KEY'
-          : LLMDefaultConfig.apiKey;
-
-      if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length >= 11) {
-        final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
-        Log.d('Using OpenAI Service with API key: $maskedKey, model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-      } else if (apiKey == 'USER_MUST_PROVIDE_API_KEY') {
-        Log.e('Invalid or missing OpenAI API key!', label: 'Chat Provider');
-      } else {
-        Log.d('Using OpenAI Service with API key: [SHORT_KEY], model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-      }
+      Log.d('Using OpenAI Service via proxy, model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
 
       return OpenAIService(
-        apiKey: apiKey,
+        apiKey: '', // API key managed server-side via proxy
         model: LLMDefaultConfig.model,
         categories: categories,
         categoryHierarchy: categoryHierarchy,
@@ -397,7 +373,7 @@ class ChatNotifier extends Notifier<ChatState> {
     );
 
     _fallbackGeminiService = GeminiService(
-      apiKey: LLMDefaultConfig.geminiApiKey,
+      apiKey: '', // API key managed server-side via proxy
       model: LLMDefaultConfig.geminiModel,
       categories: categories,
     );

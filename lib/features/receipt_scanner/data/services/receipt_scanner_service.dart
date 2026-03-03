@@ -11,29 +11,26 @@ class ReceiptScannerService {
 
   ReceiptScannerService({required OcrProvider provider}) : _provider = provider;
 
-  factory ReceiptScannerService.gemini({required String apiKey}) {
-    return ReceiptScannerService(provider: GeminiOcrProvider(apiKey: apiKey));
+  factory ReceiptScannerService.gemini() {
+    return ReceiptScannerService(provider: GeminiOcrProvider());
   }
 
-  factory ReceiptScannerService.openai({required String apiKey}) {
-    return ReceiptScannerService(provider: OpenAiOcrProvider(apiKey: apiKey));
+  factory ReceiptScannerService.openai() {
+    return ReceiptScannerService(provider: OpenAiOcrProvider());
   }
 
-  factory ReceiptScannerService.claude({required String apiKey}) {
-    return ReceiptScannerService(provider: ClaudeOcrProvider(apiKey: apiKey));
+  factory ReceiptScannerService.claude() {
+    return ReceiptScannerService(provider: ClaudeOcrProvider());
   }
 
-  factory ReceiptScannerService.fromType({
-    required OcrProviderType type,
-    required String apiKey,
-  }) {
+  factory ReceiptScannerService.fromType({required OcrProviderType type}) {
     switch (type) {
       case OcrProviderType.gemini:
-        return ReceiptScannerService.gemini(apiKey: apiKey);
+        return ReceiptScannerService.gemini();
       case OcrProviderType.openai:
-        return ReceiptScannerService.openai(apiKey: apiKey);
+        return ReceiptScannerService.openai();
       case OcrProviderType.claude:
-        return ReceiptScannerService.claude(apiKey: apiKey);
+        return ReceiptScannerService.claude();
     }
   }
 

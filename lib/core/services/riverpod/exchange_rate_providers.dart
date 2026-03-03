@@ -1,4 +1,3 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/database/database_provider.dart';
@@ -126,8 +125,7 @@ final baseCurrencyProvider = Provider<String>((ref) {
 
 /// Provider for ExchangeRateService
 final exchangeRateServiceProvider = Provider<ExchangeRateService>((ref) {
-  final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
-  return ExchangeRateService(geminiApiKey: apiKey);
+  return ExchangeRateService();
 });
 
 /// Provider for cached exchange rates
