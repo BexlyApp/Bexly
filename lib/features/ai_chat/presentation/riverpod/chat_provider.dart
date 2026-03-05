@@ -714,6 +714,10 @@ Please create a transaction based on this receipt data.''';
       print('📱 [DEBUG] Found ${actions.length} ACTION_JSON actions');
       Log.d('🔍 Found ${actions.length} ACTION_JSON actions', label: 'Chat Provider');
 
+      // Strip any "ACTION_JSON: null" or bare "ACTION_JSON:" lines from display message
+      // This happens when the model outputs it literally instead of omitting it
+      displayMessage = displayMessage.replaceAll(RegExp(r'ACTION_JSON:\s*null', caseSensitive: false), '').trim();
+
       if (actions.isNotEmpty) {
         print('📱 [DEBUG] Processing ${actions.length} actions...');
 
