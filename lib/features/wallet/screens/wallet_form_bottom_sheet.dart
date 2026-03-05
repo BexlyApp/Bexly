@@ -389,57 +389,252 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                   context.l10n.delete,
                   style: AppTextStyles.body2.copyWith(color: AppColors.red),
                 ),
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    showDragHandle: true,
-                    builder: (dialogContext) => AlertBottomSheet(
+                onPressed: () async {
+                  final walletDao = ref.read(walletDaoProvider);
+                  final txCount = await walletDao.getTransactionCount(wallet!.id!);
+
+                  if (txCount == 0) {
+                    // No transactions — simple confirm
+                    if (!context.mounted) return;
+                    showModalBottomSheet(
                       context: context,
-                      title: context.l10n.deleteWallet,
-                      content: Text(
-                        context.l10n.confirmDelete,
-                        style: AppTextStyles.body2,
+                      showDragHandle: true,
+                      builder: (dialogContext) => AlertBottomSheet(
+                        context: context,
+                        title: context.l10n.deleteWallet,
+                        content: Text(
+                          context.l10n.confirmDelete,
+                          style: AppTextStyles.body2,
+                        ),
+                        confirmText: context.l10n.delete,
+                        onConfirm: () async {
+                          try {
+                            await walletDao.deleteWallet(wallet!.id!);
+                            if (context.mounted) {
+                              context.pop();
+                              context.pop();
+                              toastification.show(
+                                autoCloseDuration: Duration(seconds: 3),
+                                showProgressBar: true,
+                                description: Text('Wallet "${wallet!.name}" deleted successfully', style: AppTextStyles.body2),
+                              );
+                            }
+                          } catch (e) {
+                            Log.e('Failed to delete wallet: $e', label: 'wallet_form');
+                            if (context.mounted) {
+                              context.pop();
+                              toastification.show(
+                                autoCloseDuration: Duration(seconds: 3),
+                                showProgressBar: true,
+                                description: Text('Error deleting wallet: $e', style: AppTextStyles.body2),
+                              );
+                            }
+                          }
+                        },
                       ),
-                      confirmText: context.l10n.delete,
-                      onConfirm: () async {
-                        final walletDao = ref.read(walletDaoProvider);
-                        try {
-                          await walletDao.deleteWallet(wallet!.id!);
+                    );
+                  } else {
+                    // Has transactions — show options
+                    if (!context.mounted) return;
+                    final allWallets = ref.read(allWalletsStreamProvider).value ?? [];
+                    final otherWallets = allWallets.where((w) => w.id != wallet!.id).toList();
 
-                          if (context.mounted) {
-                            context.pop(); // close this dialog
-                            context.pop(); // close form dialog
-
-                            toastification.show(
-                              autoCloseDuration: Duration(seconds: 3),
-                              showProgressBar: true,
-                              description: Text(
-                                'Wallet "${wallet!.name}" deleted successfully',
-                                style: AppTextStyles.body2,
-                              ),
-                            );
+                    showModalBottomSheet(
+                      context: context,
+                      showDragHandle: true,
+                      isScrollControlled: true,
+                      builder: (sheetContext) => _DeleteWalletOptionsSheet(
+                        walletName: wallet!.name,
+                        transactionCount: txCount,
+                        otherWallets: otherWallets,
+                        onMoveAndDelete: (targetWalletId) async {
+                          try {
+                            await walletDao.reassignTransactions(wallet!.id!, targetWalletId);
+                            await walletDao.deleteWallet(wallet!.id!);
+                            if (context.mounted) {
+                              Navigator.of(sheetContext).pop();
+                              context.pop();
+                              toastification.show(
+                                autoCloseDuration: Duration(seconds: 3),
+                                showProgressBar: true,
+                                description: Text('Transactions moved and wallet "${wallet!.name}" deleted', style: AppTextStyles.body2),
+                              );
+                            }
+                          } catch (e) {
+                            Log.e('Failed to move & delete wallet: $e', label: 'wallet_form');
+                            if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                            if (context.mounted) {
+                              toastification.show(
+                                autoCloseDuration: Duration(seconds: 3),
+                                showProgressBar: true,
+                                description: Text('Error: $e', style: AppTextStyles.body2),
+                              );
+                            }
                           }
-                        } catch (e) {
-                          Log.e('Failed to delete wallet: $e', label: 'wallet_form');
-                          if (context.mounted) {
-                            context.pop(); // close dialog on error
-                            toastification.show(
-                              autoCloseDuration: Duration(seconds: 3),
-                              showProgressBar: true,
-                              description: Text(
-                                'Error deleting wallet: $e',
-                                style: AppTextStyles.body2,
-                              ),
-                            );
+                        },
+                        onForceDelete: () async {
+                          try {
+                            await walletDao.forceDeleteWallet(wallet!.id!);
+                            if (context.mounted) {
+                              Navigator.of(sheetContext).pop();
+                              context.pop();
+                              toastification.show(
+                                autoCloseDuration: Duration(seconds: 3),
+                                showProgressBar: true,
+                                description: Text('Wallet "${wallet!.name}" and all transactions deleted', style: AppTextStyles.body2),
+                              );
+                            }
+                          } catch (e) {
+                            Log.e('Failed to force delete wallet: $e', label: 'wallet_form');
+                            if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                            if (context.mounted) {
+                              toastification.show(
+                                autoCloseDuration: Duration(seconds: 3),
+                                showProgressBar: true,
+                                description: Text('Error: $e', style: AppTextStyles.body2),
+                              );
+                            }
                           }
-                        }
-                      },
-                    ),
-                  );
+                        },
+                      ),
+                    );
+                  }
                 },
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet for wallet deletion options when transactions exist
+class _DeleteWalletOptionsSheet extends StatefulWidget {
+  final String walletName;
+  final int transactionCount;
+  final List<WalletModel> otherWallets;
+  final Future<void> Function(int targetWalletId) onMoveAndDelete;
+  final Future<void> Function() onForceDelete;
+
+  const _DeleteWalletOptionsSheet({
+    required this.walletName,
+    required this.transactionCount,
+    required this.otherWallets,
+    required this.onMoveAndDelete,
+    required this.onForceDelete,
+  });
+
+  @override
+  State<_DeleteWalletOptionsSheet> createState() => _DeleteWalletOptionsSheetState();
+}
+
+class _DeleteWalletOptionsSheetState extends State<_DeleteWalletOptionsSheet> {
+  int? _selectedWalletId;
+  bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.otherWallets.isNotEmpty) {
+      _selectedWalletId = widget.otherWallets.first.id;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.spacing20,
+        right: AppSpacing.spacing20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.spacing20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Delete "${widget.walletName}"',
+            style: AppTextStyles.heading3.copyWith(color: AppColors.red),
+          ),
+          const SizedBox(height: AppSpacing.spacing8),
+          Text(
+            'This wallet has ${widget.transactionCount} transaction(s). What would you like to do?',
+            style: AppTextStyles.body2.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: AppSpacing.spacing20),
+
+          // Option 1: Move transactions
+          if (widget.otherWallets.isNotEmpty) ...[
+            Text('Move transactions to:', style: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: AppSpacing.spacing8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  isExpanded: true,
+                  value: _selectedWalletId,
+                  items: widget.otherWallets.map((w) => DropdownMenuItem(
+                    value: w.id,
+                    child: Text('${w.name} (${w.currency})', style: AppTextStyles.body2),
+                  )).toList(),
+                  onChanged: _isProcessing ? null : (v) => setState(() => _selectedWalletId = v),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.spacing12),
+            SizedBox(
+              width: double.infinity,
+              child: PrimaryButton(
+                label: 'Move & Delete Wallet',
+                state: _isProcessing || _selectedWalletId == null ? ButtonState.inactive : ButtonState.active,
+                onPressed: () async {
+                  if (_selectedWalletId == null) return;
+                  setState(() => _isProcessing = true);
+                  await widget.onMoveAndDelete(_selectedWalletId!);
+                },
+              ),
+            ),
+            const SizedBox(height: AppSpacing.spacing16),
+            Row(
+              children: [
+                Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text('or', style: AppTextStyles.body4.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                ),
+                Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.spacing16),
+          ],
+
+          // Option 2: Delete everything
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _isProcessing ? null : () async {
+                setState(() => _isProcessing = true);
+                await widget.onForceDelete();
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.red,
+                side: BorderSide(color: AppColors.red.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: Text(
+                'Delete Wallet & All ${widget.transactionCount} Transactions',
+                style: AppTextStyles.body3.copyWith(color: AppColors.red, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.spacing8),
+        ],
       ),
     );
   }

@@ -145,6 +145,49 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   }
 
   /// Deletes a wallet by its ID.
+  /// Get the number of transactions associated with a wallet.
+  Future<int> getTransactionCount(int walletId) async {
+    return await (db.selectOnly(db.transactions)
+      ..addColumns([db.transactions.id.count()])
+      ..where(db.transactions.walletId.equals(walletId)))
+      .getSingle()
+      .then((row) => row.read(db.transactions.id.count()) ?? 0);
+  }
+
+  /// Reassign all transactions from one wallet to another.
+  Future<int> reassignTransactions(int fromWalletId, int toWalletId) async {
+    Log.d('Reassigning transactions from wallet $fromWalletId to $toWalletId', label: 'wallet');
+    return await (db.update(db.transactions)
+      ..where((t) => t.walletId.equals(fromWalletId)))
+      .write(TransactionsCompanion(walletId: Value(toWalletId)));
+  }
+
+  /// Force delete a wallet and all its transactions.
+  Future<int> forceDeleteWallet(int id) async {
+    Log.d('Force deleting wallet $id and all transactions', label: 'wallet');
+
+    // 1. Delete all transactions for this wallet
+    await (db.delete(db.transactions)..where((t) => t.walletId.equals(id))).go();
+
+    // 2. Get wallet for cloud cleanup
+    final wallet = await getWalletById(id);
+
+    // 3. Delete wallet locally
+    final count = await (delete(wallets)..where((w) => w.id.equals(id))).go();
+
+    // 4. Delete from cloud
+    if (count > 0 && _ref != null && wallet != null && wallet.cloudId != null) {
+      try {
+        await _deleteWalletFromCloud(wallet.cloudId!);
+      } catch (e, stack) {
+        Log.e('Failed to delete wallet from cloud: $e', label: 'sync');
+        Log.e('Stack: $stack', label: 'sync');
+      }
+    }
+
+    return count;
+  }
+
   /// Throws an exception if there are transactions associated with this wallet.
   Future<int> deleteWallet(int id) async {
     Log.d('Deleting Wallet with ID: $id', label: 'wallet');
