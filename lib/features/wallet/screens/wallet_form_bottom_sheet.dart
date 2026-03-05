@@ -542,98 +542,60 @@ class _DeleteWalletOptionsSheetState extends State<_DeleteWalletOptionsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.spacing20,
-        right: AppSpacing.spacing20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.spacing20,
-      ),
+    return CustomBottomSheet(
+      title: 'Delete "${widget.walletName}"',
+      subtitle: 'This wallet has ${widget.transactionCount} transaction(s). What would you like to do?',
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Delete "${widget.walletName}"',
-            style: AppTextStyles.heading3.copyWith(color: AppColors.red),
-          ),
-          const SizedBox(height: AppSpacing.spacing8),
-          Text(
-            'This wallet has ${widget.transactionCount} transaction(s). What would you like to do?',
-            style: AppTextStyles.body2.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: AppSpacing.spacing20),
-
-          // Option 1: Move transactions
+          // Option 1: Move transactions to another wallet
           if (widget.otherWallets.isNotEmpty) ...[
-            Text('Move transactions to:', style: AppTextStyles.body3.copyWith(fontWeight: FontWeight.w600)),
+            Text('Move transactions to:', style: AppTextStyles.body3),
             const SizedBox(height: AppSpacing.spacing8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: theme.colorScheme.outlineVariant),
-                borderRadius: BorderRadius.circular(8),
+            DropdownButtonFormField<int>(
+              value: _selectedWalletId,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
-                  isExpanded: true,
-                  value: _selectedWalletId,
-                  items: widget.otherWallets.map((w) => DropdownMenuItem(
-                    value: w.id,
-                    child: Text('${w.name} (${w.currency})', style: AppTextStyles.body2),
-                  )).toList(),
-                  onChanged: _isProcessing ? null : (v) => setState(() => _selectedWalletId = v),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.spacing12),
-            SizedBox(
-              width: double.infinity,
-              child: PrimaryButton(
-                label: 'Move & Delete Wallet',
-                state: _isProcessing || _selectedWalletId == null ? ButtonState.inactive : ButtonState.active,
-                onPressed: () async {
-                  if (_selectedWalletId == null) return;
-                  setState(() => _isProcessing = true);
-                  await widget.onMoveAndDelete(_selectedWalletId!);
-                },
-              ),
-            ),
-            const SizedBox(height: AppSpacing.spacing16),
-            Row(
-              children: [
-                Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text('or', style: AppTextStyles.body4.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                ),
-                Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
-              ],
+              items: widget.otherWallets.map((w) => DropdownMenuItem(
+                value: w.id,
+                child: Text('${w.name} (${w.currency})', style: AppTextStyles.body2),
+              )).toList(),
+              onChanged: _isProcessing ? null : (v) => setState(() => _selectedWalletId = v),
             ),
             const SizedBox(height: AppSpacing.spacing16),
           ],
-
-          // Option 2: Delete everything
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: _isProcessing ? null : () async {
-                setState(() => _isProcessing = true);
-                await widget.onForceDelete();
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.red,
-                side: BorderSide(color: AppColors.red.withValues(alpha: 0.5)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+          Row(
+            spacing: AppSpacing.spacing12,
+            children: [
+              // Delete all button
+              Expanded(
+                child: PrimaryButton(
+                  label: 'Delete All',
+                  isOutlined: true,
+                  state: _isProcessing ? ButtonState.inactive : ButtonState.outlinedActive,
+                  onPressed: () async {
+                    setState(() => _isProcessing = true);
+                    await widget.onForceDelete();
+                  },
+                ),
               ),
-              child: Text(
-                'Delete Wallet & All ${widget.transactionCount} Transactions',
-                style: AppTextStyles.body3.copyWith(color: AppColors.red, fontWeight: FontWeight.w600),
-              ),
-            ),
+              // Move & delete button
+              if (widget.otherWallets.isNotEmpty)
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'Move & Delete',
+                    state: _isProcessing || _selectedWalletId == null ? ButtonState.inactive : ButtonState.active,
+                    onPressed: () async {
+                      if (_selectedWalletId == null) return;
+                      setState(() => _isProcessing = true);
+                      await widget.onMoveAndDelete(_selectedWalletId!);
+                    },
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.spacing8),
         ],
       ),
     );
