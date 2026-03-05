@@ -1800,7 +1800,21 @@ Please create a transaction based on this receipt data.''';
     Log.d('Creating budget from action: $action', label: 'BUDGET_DEBUG');
 
     try {
-      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      var wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      if (wallet == null) {
+        // Fallback: try default wallet, then first available
+        final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+        if (defaultWallet != null) {
+          wallet = defaultWallet;
+          Log.d('No active wallet for budget, using default: ${wallet.name}', label: 'BUDGET_DEBUG');
+        } else {
+          final allWallets = _unwrapAsyncValue(ref.read(allWalletsStreamProvider)) ?? [];
+          if (allWallets.isNotEmpty) {
+            wallet = allWallets.first;
+            Log.d('No active wallet for budget, using first available: ${wallet.name}', label: 'BUDGET_DEBUG');
+          }
+        }
+      }
       if (wallet == null) {
         Log.e('No active wallet for budget creation', label: 'BUDGET_DEBUG');
         _addErrorMessage('❌ Cannot create budget: No wallet available. Please create a wallet first.');

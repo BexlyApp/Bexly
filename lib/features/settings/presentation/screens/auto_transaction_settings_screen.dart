@@ -24,6 +24,9 @@ import 'package:bexly/features/email_sync/presentation/screens/email_sync_settin
 import 'package:bexly/features/bank_connections/presentation/screens/bank_connections_screen.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/utils/desktop_dialog_helper.dart';
+import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
+import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 /// Date range options for SMS scanning
 enum SmsDateRange {
@@ -486,14 +489,11 @@ class _AutoTransactionSettingsScreenState
       }
     }
 
-    // Show final results
+    // Navigate to History → Pending tab to review imported transactions
     if (mounted) {
-      await ImportResultsBottomSheet.show(
-        context: context,
-        walletsCreated: walletsCreated,
-        transactionsImported: totalImported,
-        duplicatesSkipped: totalDuplicates,
-      );
+      ref.read(requestedTransactionTabProvider.notifier).request(2);
+      ref.read(pageControllerProvider.notifier).setPage(2);
+      context.go(Routes.main);
     }
   }
 
