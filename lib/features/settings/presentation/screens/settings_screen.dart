@@ -87,9 +87,9 @@ class SettingsScreen extends ConsumerWidget {
           children: const [
             ProfileCard(),
             SettingsProfileGroup(),
+            SettingsFinanceGroup(),
             SettingsPreferencesGroup(),
             NativeAdWidget(),
-            SettingsFinanceGroup(),
             // SettingsDataGroup removed - merged into Developer Portal
             SettingsAppInfoGroup(),
             AppVersionInfo(),

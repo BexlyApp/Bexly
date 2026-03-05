@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
-import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
@@ -37,9 +36,9 @@ class AIModelSettingsScreen extends ConsumerWidget {
             return Container(
               padding: const EdgeInsets.all(AppSpacing.spacing12),
               decoration: BoxDecoration(
-                color: AppColors.purple50,
+                color: theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppRadius.radius8),
-                border: Border.all(color: AppColors.purpleAlpha10),
+                border: Border.all(color: theme.colorScheme.outlineVariant),
               ),
               child: Row(
                 children: [
@@ -89,12 +88,12 @@ class AIModelSettingsScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? theme.colorScheme.primaryContainer
-              : AppColors.purple50,
+              : theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(AppRadius.radius8),
           border: Border.all(
             color: isSelected
                 ? theme.colorScheme.primary
-                : AppColors.purpleAlpha10,
+                : theme.colorScheme.outlineVariant,
           ),
         ),
         child: Row(
@@ -165,7 +164,7 @@ class AIModelSettingsScreen extends ConsumerWidget {
                     style: AppTextStyles.body4.copyWith(
                       color: isSelected
                           ? theme.colorScheme.primary
-                          : AppColors.neutral500,
+                          : theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
