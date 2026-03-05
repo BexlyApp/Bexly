@@ -932,7 +932,16 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing create_budget action: $action', label: 'Chat Provider');
 
-                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                var wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                if (wallet == null) {
+                  final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+                  if (defaultWallet != null) {
+                    wallet = defaultWallet;
+                  } else {
+                    final allWallets = _unwrapAsyncValue(ref.read(allWalletsStreamProvider)) ?? [];
+                    if (allWallets.isNotEmpty) wallet = allWallets.first;
+                  }
+                }
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
@@ -964,7 +973,16 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing create_goal action: $action', label: 'Chat Provider');
 
-                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                var wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                if (wallet == null) {
+                  final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+                  if (defaultWallet != null) {
+                    wallet = defaultWallet;
+                  } else {
+                    final allWallets = _unwrapAsyncValue(ref.read(allWalletsStreamProvider)) ?? [];
+                    if (allWallets.isNotEmpty) wallet = allWallets.first;
+                  }
+                }
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
@@ -1012,7 +1030,16 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing update_transaction action: $action', label: 'Chat Provider');
 
-                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                var wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                if (wallet == null) {
+                  final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+                  if (defaultWallet != null) {
+                    wallet = defaultWallet;
+                  } else {
+                    final allWallets = _unwrapAsyncValue(ref.read(allWalletsStreamProvider)) ?? [];
+                    if (allWallets.isNotEmpty) wallet = allWallets.first;
+                  }
+                }
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
@@ -1026,7 +1053,16 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing delete_transaction action: $action', label: 'Chat Provider');
 
-                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                var wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                if (wallet == null) {
+                  final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+                  if (defaultWallet != null) {
+                    wallet = defaultWallet;
+                  } else {
+                    final allWallets = _unwrapAsyncValue(ref.read(allWalletsStreamProvider)) ?? [];
+                    if (allWallets.isNotEmpty) wallet = allWallets.first;
+                  }
+                }
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
