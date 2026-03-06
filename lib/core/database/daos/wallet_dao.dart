@@ -154,20 +154,47 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
       .then((row) => row.read(db.transactions.id.count()) ?? 0);
   }
 
-  /// Reassign all transactions from one wallet to another.
-  Future<int> reassignTransactions(int fromWalletId, int toWalletId) async {
-    Log.d('Reassigning transactions from wallet $fromWalletId to $toWalletId', label: 'wallet');
-    return await (db.update(db.transactions)
-      ..where((t) => t.walletId.equals(fromWalletId)))
-      .write(TransactionsCompanion(walletId: Value(toWalletId)));
+  /// Get total count of all related data (transactions, budgets, recurrings) for a wallet.
+  Future<int> getRelatedDataCount(int walletId) async {
+    final txCount = await getTransactionCount(walletId);
+    final budgetCount = await (db.selectOnly(db.budgets)
+      ..addColumns([db.budgets.id.count()])
+      ..where(db.budgets.walletId.equals(walletId)))
+      .getSingle()
+      .then((row) => row.read(db.budgets.id.count()) ?? 0);
+    final recurringCount = await (db.selectOnly(db.recurrings)
+      ..addColumns([db.recurrings.id.count()])
+      ..where(db.recurrings.walletId.equals(walletId)))
+      .getSingle()
+      .then((row) => row.read(db.recurrings.id.count()) ?? 0);
+    return txCount + budgetCount + recurringCount;
   }
 
-  /// Force delete a wallet and all its transactions.
-  Future<int> forceDeleteWallet(int id) async {
-    Log.d('Force deleting wallet $id and all transactions', label: 'wallet');
+  /// Reassign all wallet-related data from one wallet to another.
+  Future<int> reassignWalletData(int fromWalletId, int toWalletId) async {
+    Log.d('Reassigning all data from wallet $fromWalletId to $toWalletId', label: 'wallet');
+    final txCount = await (db.update(db.transactions)
+      ..where((t) => t.walletId.equals(fromWalletId)))
+      .write(TransactionsCompanion(walletId: Value(toWalletId)));
+    await (db.update(db.budgets)
+      ..where((b) => b.walletId.equals(fromWalletId)))
+      .write(BudgetsCompanion(walletId: Value(toWalletId)));
+    await (db.update(db.recurrings)
+      ..where((r) => r.walletId.equals(fromWalletId)))
+      .write(RecurringsCompanion(walletId: Value(toWalletId)));
+    await (db.delete(db.sharedWallets)..where((s) => s.walletId.equals(fromWalletId))).go();
+    return txCount;
+  }
 
-    // 1. Delete all transactions for this wallet
+  /// Force delete a wallet and all its related data.
+  Future<int> forceDeleteWallet(int id) async {
+    Log.d('Force deleting wallet $id and all related data', label: 'wallet');
+
+    // 1. Delete all related records that reference this wallet
     await (db.delete(db.transactions)..where((t) => t.walletId.equals(id))).go();
+    await (db.delete(db.budgets)..where((b) => b.walletId.equals(id))).go();
+    await (db.delete(db.recurrings)..where((r) => r.walletId.equals(id))).go();
+    await (db.delete(db.sharedWallets)..where((s) => s.walletId.equals(id))).go();
 
     // 2. Get wallet for cloud cleanup
     final wallet = await getWalletById(id);
@@ -204,13 +231,18 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
       throw Exception('Cannot delete wallet: $transactionCount transaction(s) still associated. Please delete or reassign transactions first.');
     }
 
-    // 2. Get wallet to retrieve cloudId
+    // 2. Clean up related records (budgets, recurrings, shared_wallets)
+    await (db.delete(db.budgets)..where((b) => b.walletId.equals(id))).go();
+    await (db.delete(db.recurrings)..where((r) => r.walletId.equals(id))).go();
+    await (db.delete(db.sharedWallets)..where((s) => s.walletId.equals(id))).go();
+
+    // 3. Get wallet to retrieve cloudId
     final wallet = await getWalletById(id);
 
-    // 3. Delete from local database
+    // 4. Delete from local database
     final count = await (delete(wallets)..where((w) => w.id.equals(id))).go();
 
-    // 4. Delete from cloud (if sync available and has cloudId)
+    // 5. Delete from cloud (if sync available and has cloudId)
     if (count > 0 && _ref != null && wallet != null && wallet.cloudId != null) {
       try {
         await _deleteWalletFromCloud(wallet.cloudId!);

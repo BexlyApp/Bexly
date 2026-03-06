@@ -391,9 +391,24 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                 ),
                 onPressed: () async {
                   final walletDao = ref.read(walletDaoProvider);
-                  final txCount = await walletDao.getTransactionCount(wallet!.id!);
 
-                  if (txCount == 0) {
+                  // Helper: reassign default wallet after deletion
+                  Future<void> reassignDefaultWallet() async {
+                    final currentDefault = ref.read(defaultWalletIdProvider);
+                    if (currentDefault == wallet!.id) {
+                      final remaining = ref.read(allWalletsStreamProvider).value ?? [];
+                      final other = remaining.where((w) => w.id != wallet!.id).toList();
+                      if (other.isNotEmpty) {
+                        await ref.read(defaultWalletIdProvider.notifier).setDefaultWalletId(other.first.id!);
+                      } else {
+                        await ref.read(defaultWalletIdProvider.notifier).clearDefaultWallet();
+                      }
+                    }
+                  }
+
+                  final relatedCount = await walletDao.getRelatedDataCount(wallet!.id!);
+
+                  if (relatedCount == 0) {
                     // No transactions — simple confirm
                     if (!context.mounted) return;
                     showModalBottomSheet(
@@ -410,6 +425,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                         onConfirm: () async {
                           try {
                             await walletDao.deleteWallet(wallet!.id!);
+                            await reassignDefaultWallet();
                             if (context.mounted) {
                               context.pop();
                               context.pop();
@@ -445,12 +461,13 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                       isScrollControlled: true,
                       builder: (sheetContext) => _DeleteWalletOptionsSheet(
                         walletName: wallet!.name,
-                        transactionCount: txCount,
+                        relatedDataCount: relatedCount,
                         otherWallets: otherWallets,
                         onMoveAndDelete: (targetWalletId) async {
                           try {
-                            await walletDao.reassignTransactions(wallet!.id!, targetWalletId);
+                            await walletDao.reassignWalletData(wallet!.id!, targetWalletId);
                             await walletDao.deleteWallet(wallet!.id!);
+                            await reassignDefaultWallet();
                             if (context.mounted) {
                               Navigator.of(sheetContext).pop();
                               context.pop();
@@ -475,6 +492,7 @@ class WalletFormBottomSheet extends HookConsumerWidget {
                         onForceDelete: () async {
                           try {
                             await walletDao.forceDeleteWallet(wallet!.id!);
+                            await reassignDefaultWallet();
                             if (context.mounted) {
                               Navigator.of(sheetContext).pop();
                               context.pop();
@@ -511,14 +529,14 @@ class WalletFormBottomSheet extends HookConsumerWidget {
 /// Bottom sheet for wallet deletion options when transactions exist
 class _DeleteWalletOptionsSheet extends StatefulWidget {
   final String walletName;
-  final int transactionCount;
+  final int relatedDataCount;
   final List<WalletModel> otherWallets;
   final Future<void> Function(int targetWalletId) onMoveAndDelete;
   final Future<void> Function() onForceDelete;
 
   const _DeleteWalletOptionsSheet({
     required this.walletName,
-    required this.transactionCount,
+    required this.relatedDataCount,
     required this.otherWallets,
     required this.onMoveAndDelete,
     required this.onForceDelete,
@@ -544,7 +562,7 @@ class _DeleteWalletOptionsSheetState extends State<_DeleteWalletOptionsSheet> {
   Widget build(BuildContext context) {
     return CustomBottomSheet(
       title: 'Delete "${widget.walletName}"',
-      subtitle: 'This wallet has ${widget.transactionCount} transaction(s). What would you like to do?',
+      subtitle: 'This wallet has ${widget.relatedDataCount} related item(s). What would you like to do?',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -572,7 +590,7 @@ class _DeleteWalletOptionsSheetState extends State<_DeleteWalletOptionsSheet> {
               // Delete all button
               Expanded(
                 child: PrimaryButton(
-                  label: 'Delete All',
+                  label: 'Delete',
                   isOutlined: true,
                   state: _isProcessing ? ButtonState.inactive : ButtonState.outlinedActive,
                   onPressed: () async {
@@ -585,7 +603,7 @@ class _DeleteWalletOptionsSheetState extends State<_DeleteWalletOptionsSheet> {
               if (widget.otherWallets.isNotEmpty)
                 Expanded(
                   child: PrimaryButton(
-                    label: 'Move & Delete',
+                    label: 'Move',
                     state: _isProcessing || _selectedWalletId == null ? ButtonState.inactive : ButtonState.active,
                     onPressed: () async {
                       if (_selectedWalletId == null) return;
