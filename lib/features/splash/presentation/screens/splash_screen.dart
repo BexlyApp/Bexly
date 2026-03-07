@@ -143,20 +143,29 @@ class SplashScreen extends HookConsumerWidget {
               Log.e('Failed to sync profile from Supabase: $e', label: 'SplashScreen');
             }
 
-            // Trigger background sync (don't await - let it run in background)
+            // Pull wallets from cloud first (critical for fresh installs)
+            // Then trigger full sync in background
             try {
               final syncService = ref.read(supabaseSyncServiceProvider);
               if (syncService.isAuthenticated) {
+                // Await wallet pull so we know if user has data before routing
+                try {
+                  await syncService.pullWalletsFromCloud();
+                  Log.d('Pulled wallets from cloud before routing', label: 'SplashScreen');
+                } catch (e) {
+                  Log.e('Failed to pull wallets from cloud: $e', label: 'SplashScreen');
+                }
+                // Full sync in background (don't await)
                 syncService.performFullSync(pushFirst: true).catchError((e) {
                   Log.e('Background sync failed on app start: $e', label: 'SplashScreen');
                 });
                 Log.d('Background sync triggered on app start', label: 'SplashScreen');
               }
             } catch (e) {
-              Log.e('Failed to trigger background sync: $e', label: 'SplashScreen');
+              Log.e('Failed to trigger sync: $e', label: 'SplashScreen');
             }
 
-            // Check if user has any wallets
+            // Check if user has any wallets (now includes cloud-pulled data)
             final db = ref.read(databaseProvider);
             final wallets = await db.walletDao.getAllWallets();
 
