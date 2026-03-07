@@ -18,6 +18,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - ✅ CORRECT: `dart run build_runner build`
   - ❌ WRONG: `/d/Dev/flutter/bin/dart run build_runner build`
 
+## CRITICAL: Production Safety — NEVER Run Without Explicit Approval
+The following commands are **PERMANENTLY BANNED** unless the user explicitly types the exact command and says "run it":
+
+### Supabase — NEVER run automatically:
+- ❌ `supabase config push` — pushes config to production, can remove exposed schemas
+- ❌ `supabase db push` — applies migrations to production database
+- ❌ `supabase db reset` — DESTROYS all production data
+- ❌ Any `supabase` CLI command that modifies production (non-local) state
+
+### SQL on Production — NEVER run DDL without approval:
+- ❌ `ALTER ROLE`, `ALTER TABLE`, `CREATE TABLE`, `DROP TABLE` on production
+- ❌ Any SQL that modifies schema, roles, or permissions
+- ✅ READ-ONLY SQL (`SELECT`) is allowed without asking
+
+### Rule: Ask Before Touching Supabase Config
+ALWAYS ask the user before:
+- Changing Supabase Dashboard settings
+- Running any Supabase CLI command
+- Executing SQL that modifies data or schema on production
+- Modifying RLS policies, functions, or triggers
+
+**Incident (2026-03-07):** Ran `supabase config push` without approval → accidentally removed `web3` and `stripe` from API config on production. This rule exists to prevent recurrence.
+
 ## Project Overview
 
 Bexly is a Flutter-based personal finance and budget tracking application with a focus on cross-platform sync and AI agent capabilities. The project uses a feature-based clean architecture with Riverpod for state management, Drift for local database storage, and Supabase for authentication.

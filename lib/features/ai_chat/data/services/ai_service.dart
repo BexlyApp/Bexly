@@ -489,10 +489,14 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
   String get budgetsContext => _budgetsContext;
 
   @override
-  String get modelName => model;
+  String get modelName => _resolvedModel ?? model;
 
   // Conversation history for context
   final List<Map<String, String>> _conversationHistory = [];
+
+  // Auto-resolved model name (populated on 404 by querying /v1/models)
+  String? _resolvedModel;
+  String get _activeModel => _resolvedModel ?? model;
 
   CustomLLMService({
     required this.baseUrl,
@@ -579,6 +583,33 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
     }
   }
 
+  /// Query /v1/models and return the first available model ID.
+  /// Used as fallback when the configured model returns 404.
+  Future<String?> _fetchFirstAvailableModel() async {
+    try {
+      final headers = <String, String>{
+        'User-Agent': 'Bexly/1.0 (Dart; Flutter)',
+        'Accept': 'application/json',
+      };
+      if (apiKey.isNotEmpty && apiKey != 'no-key-required') {
+        headers['Authorization'] = 'Bearer $apiKey';
+      }
+      final response = await http
+          .get(Uri.parse('$baseUrl/models'), headers: headers)
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final models = data['data'] as List?;
+        if (models != null && models.isNotEmpty) {
+          return models.first['id'] as String?;
+        }
+      }
+    } catch (e) {
+      Log.w('Failed to fetch available models: $e', label: 'Custom LLM');
+    }
+    return null;
+  }
+
   Future<String> _sendMessageInternal(String message) async {
     Log.d('Sending message to Custom LLM ($baseUrl): $message', label: 'Custom LLM');
 
@@ -621,7 +652,7 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
           Uri.parse('$baseUrl/chat/completions'),
           headers: headers,
           body: jsonEncode({
-            'model': model,
+            'model': _activeModel,
             'messages': messages,
             'temperature': 0.3,
             'max_tokens': 2000,
@@ -638,6 +669,24 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
         );
 
     Log.d('Custom LLM Response status: ${response.statusCode}', label: 'Custom LLM');
+
+    // Model not found — cascade: try alias 'dos-ai', then auto-detect from /v1/models
+    if (response.statusCode == 404) {
+      if (_activeModel != 'dos-ai') {
+        // Step 1: try the well-known alias
+        Log.w('404 for model "$_activeModel", falling back to alias "dos-ai"', label: 'Custom LLM');
+        _resolvedModel = 'dos-ai';
+      } else {
+        // Step 2: alias also failed, query /v1/models
+        Log.w('404 for alias "dos-ai", querying /v1/models...', label: 'Custom LLM');
+        final detected = await _fetchFirstAvailableModel();
+        if (detected != null) {
+          Log.i('Auto-detected model: $detected', label: 'Custom LLM');
+          _resolvedModel = detected;
+        }
+      }
+      throw Exception('Custom LLM Error: 404 (retrying with ${_resolvedModel ?? model})');
+    }
 
     // Auth failure — don't retry, fail fast
     if (response.statusCode == 401) {
