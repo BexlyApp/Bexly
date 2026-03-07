@@ -100,7 +100,7 @@ class LLMDefaultConfig {
   }
 
   // Default API key for Bexly Free AI
-  static const String _defaultBexlyFreeApiKey = 'bexly-free-tier';
+  static const String _defaultBexlyFreeApiKey = 'dos_sk_qT5r8OZVwgLA5gtBFPQto1RgsTHxXIRP';
 
   static String get customApiKey {
     try {
