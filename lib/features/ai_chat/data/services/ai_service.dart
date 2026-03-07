@@ -424,14 +424,21 @@ class GeminiService with AIServicePromptMixin implements AIService {
       Log.e('❌ Error toString: ${e.toString()}', label: 'Gemini Service');
 
       // Parse error for user-friendly message
-      String userFriendlyMessage = 'Sorry, an error occurred with Gemini AI.';
+      final errorStr = e.toString();
+      String userFriendlyMessage;
 
-      if (e.toString().contains('API key')) {
+      if (errorStr.contains('API key')) {
         userFriendlyMessage = 'Invalid Gemini API key. Please check your configuration.';
-      } else if (e.toString().contains('quota') || e.toString().contains('rate limit')) {
+      } else if (errorStr.contains('quota') || errorStr.contains('rate limit')) {
         userFriendlyMessage = 'Gemini API quota exceeded. Please try again later.';
-      } else if (e.toString().contains('timeout')) {
+      } else if (errorStr.contains('timeout') || errorStr.contains('timed out')) {
         userFriendlyMessage = 'Request timed out. Please check your internet connection.';
+      } else if (errorStr.contains('Not authenticated')) {
+        userFriendlyMessage = 'Please sign in to use AI features.';
+      } else {
+        // Show actual error for debugging
+        final cleanError = errorStr.replaceFirst('Exception: ', '');
+        userFriendlyMessage = 'Gemini AI error: $cleanError';
       }
 
       throw Exception(userFriendlyMessage);
