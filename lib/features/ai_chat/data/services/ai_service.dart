@@ -558,8 +558,9 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
         }
         return await operation();
       } catch (e) {
-        // Don't retry on API key, quota, or timeout errors
+        // Don't retry on auth, API key, quota, or timeout errors
         if (e.toString().contains('API key') ||
+            e.toString().contains('401') ||
             e.toString().contains('quota') ||
             e.toString().contains('DOS_AI_TIMEOUT') ||
             attempt >= maxRetries) {
@@ -637,6 +638,12 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
         );
 
     Log.d('Custom LLM Response status: ${response.statusCode}', label: 'Custom LLM');
+
+    // Auth failure — don't retry, fail fast
+    if (response.statusCode == 401) {
+      Log.e('401 Unauthorized - API key rejected. Response: ${response.body}', label: 'Custom LLM');
+      throw Exception('DOS AI API key rejected (401). Check your API key configuration.');
+    }
 
     // Cloudflare WAF block detection
     if (response.statusCode == 403) {
