@@ -58,6 +58,17 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
         .getSingleOrNull();
   }
 
+  /// Get wallet by name (used as fallback during cloud sync)
+  Future<Wallet?> getWalletByName(String name) {
+    return (select(wallets)..where((w) => w.name.equals(name)))
+        .getSingleOrNull();
+  }
+
+  /// Delete local wallet by cloud ID (used when cloud marks wallet as inactive)
+  Future<void> deleteByCloudId(String cloudId) async {
+    await (delete(wallets)..where((w) => w.cloudId.equals(cloudId))).go();
+  }
+
   Future<List<Wallet>> getWalletsByIds(List<int> ids) {
     if (ids.isEmpty) return Future.value([]);
     return (select(wallets)..where((w) => w.id.isIn(ids))).get();
@@ -299,10 +310,20 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
       await update(wallets).replace(companion);
       Log.d('Updated existing wallet ${existingWallet.id} from cloud', label: 'wallet');
     } else {
-      // Create new wallet (local only, no cloud sync)
-      final companion = walletModel.toCompanion(isInsert: true);
-      final id = await into(wallets).insert(companion);
-      Log.d('Created new wallet $id from cloud', label: 'wallet');
+      // Fallback: check by name to handle cloud duplicate wallet scenario
+      final existingByName = await getWalletByName(walletModel.name);
+      if (existingByName != null) {
+        // Link existing local wallet to this cloud record (re-associate cloud_id)
+        final updatedModel = walletModel.copyWith(id: existingByName.id);
+        final companion = updatedModel.toCompanion();
+        await update(wallets).replace(companion);
+        Log.d('Linked existing wallet ${existingByName.id} to cloud id ${walletModel.cloudId}', label: 'wallet');
+      } else {
+        // Create new wallet (local only, no cloud sync)
+        final companion = walletModel.toCompanion(isInsert: true);
+        final id = await into(wallets).insert(companion);
+        Log.d('Created new wallet $id from cloud', label: 'wallet');
+      }
     }
   }
 

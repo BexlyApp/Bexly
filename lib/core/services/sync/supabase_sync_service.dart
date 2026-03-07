@@ -176,23 +176,33 @@ class SupabaseSyncService {
     }
 
     try {
+      // Pull ALL wallets (including inactive) to handle soft-deletes
       final response = await _supabase
           .schema('bexly')
           .from('wallets')
           .select()
           .eq('user_id', _userId!)
-          .eq('is_active', true);
-
-      final wallets = (response as List)
-          .map((data) => _mapSupabaseToWalletModel(data))
-          .toList();
+          .order('created_at', ascending: true); // oldest first = canonical wallet wins
 
       final db = _ref.read(databaseProvider);
-      for (final wallet in wallets) {
-        await db.walletDao.createOrUpdateWallet(wallet);
+      int pulled = 0;
+      for (final data in response as List) {
+        final isActive = data['is_active'] ?? true;
+        final cloudId = data['cloud_id'] as String?;
+        if (!isActive) {
+          // Soft-deleted in cloud → remove local copy
+          if (cloudId != null) {
+            await db.walletDao.deleteByCloudId(cloudId);
+            Log.d('Deleted local wallet $cloudId (inactive in cloud)', label: _label);
+          }
+        } else {
+          final wallet = _mapSupabaseToWalletModel(data);
+          await db.walletDao.createOrUpdateWallet(wallet);
+          pulled++;
+        }
       }
 
-      Log.i('Pulled ${wallets.length} wallets from Supabase', label: _label);
+      Log.i('Pulled $pulled wallets from Supabase', label: _label);
     } catch (e, stackTrace) {
       Log.e('Error pulling wallets: $e', label: _label);
       Log.e('Stack trace: $stackTrace', label: _label);
