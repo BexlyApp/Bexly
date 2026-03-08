@@ -39,6 +39,11 @@ void callbackDispatcher() {
           print('[WorkManager] Email sync completed: $success');
           return success;
 
+        case recurringChargeTask:
+          await processRecurringCharges();
+          print('[WorkManager] Recurring charge task completed');
+          return true;
+
         default:
           print('[WorkManager] Unknown task: $task');
           return false;

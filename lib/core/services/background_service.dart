@@ -1,5 +1,5 @@
 import 'package:bexly/core/database/database_provider.dart';
-import 'package:bexly/core/services/recurring_charge_service.dart';
+
 import 'package:bexly/core/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:workmanager/workmanager.dart';
@@ -8,34 +8,9 @@ import 'package:workmanager/workmanager.dart';
 const String recurringChargeTask = 'recurringChargeTask';
 const String recurringChargeTaskUnique = 'recurringChargeTaskUnique';
 
-/// Callback dispatcher for WorkManager - MUST be top-level function
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    Log.d('Background task started: $task', label: 'BackgroundService');
-
-    try {
-      switch (task) {
-        case recurringChargeTask:
-          await _processRecurringCharges();
-          break;
-        default:
-          Log.w('Unknown background task: $task', label: 'BackgroundService');
-      }
-
-      Log.d('Background task completed: $task', label: 'BackgroundService');
-      return true;
-    } catch (e, stack) {
-      Log.e('Background task failed: $e', label: 'BackgroundService');
-      Log.e('Stack: $stack', label: 'BackgroundService');
-      return false;
-    }
-  });
-}
-
 /// Process recurring charges in background
 /// Note: This runs outside of normal app context, so we need to create providers manually
-Future<void> _processRecurringCharges() async {
+Future<void> processRecurringCharges() async {
   Log.d('Processing recurring charges in background...', label: 'BackgroundService');
 
   // Create a minimal container for background execution
@@ -48,12 +23,7 @@ Future<void> _processRecurringCharges() async {
     // Wait for database to be ready
     await Future.delayed(const Duration(milliseconds: 500));
 
-    // Create charge service with container ref
-    final chargeService = RecurringChargeService(container.read as dynamic);
-
-    // Process due transactions
-    // Note: We can't use the service directly since it needs Ref
-    // Instead, we'll do a simplified version here
+    // For now just log - actual charging happens when app opens (needs full Ref context)
     final activeRecurrings = await db.recurringDao.watchActiveRecurrings().first;
 
     Log.d('Found ${activeRecurrings.length} active recurring payments in background',
@@ -80,11 +50,6 @@ class BackgroundService {
     }
 
     try {
-      await Workmanager().initialize(
-        callbackDispatcher,
-        isInDebugMode: false, // Set to true for debugging
-      );
-
       _initialized = true;
       Log.i('BackgroundService initialized successfully', label: 'BackgroundService');
     } catch (e, stack) {
