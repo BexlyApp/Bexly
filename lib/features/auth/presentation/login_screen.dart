@@ -218,6 +218,121 @@ class LoginScreen extends HookConsumerWidget {
       }
     }
 
+    Future<void> handleForgotPassword() async {
+      final email = emailController.text.trim();
+      if (email.isEmpty || !email.contains('@')) {
+        toastification.show(
+          context: context,
+          title: const Text('Enter Email First'),
+          description: const Text('Please enter your email address above'),
+          type: ToastificationType.warning,
+          autoCloseDuration: const Duration(seconds: 3),
+        );
+        return;
+      }
+      isLoading.value = true;
+      try {
+        await supabase.auth.resetPasswordForEmail(
+          email,
+          redirectTo: 'bexly://reset-password',
+        );
+        if (context.mounted) {
+          toastification.show(
+            context: context,
+            title: const Text('Email Sent'),
+            description: const Text('Check your inbox for password reset instructions'),
+            type: ToastificationType.success,
+            autoCloseDuration: const Duration(seconds: 5),
+          );
+        }
+      } on AuthException catch (e) {
+        if (context.mounted) {
+          toastification.show(
+            context: context,
+            title: const Text('Reset Failed'),
+            description: Text(e.message),
+            type: ToastificationType.error,
+            autoCloseDuration: const Duration(seconds: 4),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          toastification.show(
+            context: context,
+            title: const Text('Reset Failed'),
+            description: Text(e.toString()),
+            type: ToastificationType.error,
+            autoCloseDuration: const Duration(seconds: 4),
+          );
+        }
+      } finally {
+        isLoading.value = false;
+      }
+    }
+
+    Future<void> handleSignUp() async {
+      if (!formKey.currentState!.validate()) return;
+      isLoading.value = true;
+      try {
+        final response = await supabase.auth.signUp(
+          email: emailController.text.trim(),
+          password: passwordController.text,
+        );
+
+        if (response.user == null) {
+          throw Exception('Sign up failed — no user returned');
+        }
+
+        final user = response.user!;
+
+        if (response.session == null) {
+          // Email confirmation required
+          if (context.mounted) {
+            toastification.show(
+              context: context,
+              title: const Text('Check Your Email'),
+              description: const Text('A confirmation link has been sent to your email address'),
+              type: ToastificationType.success,
+              autoCloseDuration: const Duration(seconds: 6),
+            );
+          }
+          return;
+        }
+
+        // Auto-confirmed (e.g. test/dev mode) — go to main flow
+        if (context.mounted) {
+          await _postLoginFlow(
+            context: context,
+            ref: ref,
+            user: user,
+            supabase: supabase,
+          );
+        }
+      } on AuthException catch (e) {
+        if (context.mounted) {
+          toastification.show(
+            context: context,
+            title: const Text('Sign Up Failed'),
+            description: Text(e.message),
+            type: ToastificationType.error,
+            autoCloseDuration: const Duration(seconds: 4),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          toastification.show(
+            context: context,
+            title: const Text('Sign Up Failed'),
+            description: Text(e.toString()),
+            type: ToastificationType.error,
+            autoCloseDuration: const Duration(seconds: 4),
+          );
+        }
+      } finally {
+        isLoading.value = false;
+      }
+    }
+
     Future<void> handleGoogleSignIn() async {
       isLoading.value = true;
       try {
