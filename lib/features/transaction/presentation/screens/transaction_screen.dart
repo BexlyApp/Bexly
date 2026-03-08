@@ -4,15 +4,19 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:toastification/toastification.dart';
+import 'package:bexly/core/components/bottom_sheets/alert_bottom_sheet.dart';
+import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
 import 'package:bexly/core/components/buttons/custom_icon_button.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/extensions/screen_utils_extensions.dart';
-import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/transaction/presentation/components/transaction_grouped_card.dart';
@@ -222,7 +226,7 @@ class TransactionScreen extends ConsumerWidget {
 
         return PendingTransactionGroupedList(
           pendingTransactions: pending,
-          onApprove: (item) => ApproveTransactionSheet.show(context, item),
+          onApprove: (item) => _tryDirectApprove(context, ref, item),
           onReject: (item) => _rejectTransaction(context, ref, item),
           onTap: (item) => ApproveTransactionSheet.show(context, item),
         );
@@ -230,6 +234,52 @@ class TransactionScreen extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(child: Text('Error: $error')),
     );
+  }
+
+  /// Try to approve a pending transaction directly without opening TransactionForm.
+  /// Falls back to ApproveTransactionSheet if wallet or category cannot be resolved.
+  Future<void> _tryDirectApprove(
+    BuildContext context,
+    WidgetRef ref,
+    PendingTransactionModel item,
+  ) async {
+    try {
+      // Resolve wallet ID: prefer mapped wallet, fall back to default
+      final walletId = item.targetWalletId ?? ref.read(defaultWalletIdProvider) ?? 1;
+
+      // Resolve category ID: prefer explicitly set, then try to match by hint text
+      int? categoryId = item.selectedCategoryId;
+      if (categoryId == null && item.categoryHint != null) {
+        final db = ref.read(databaseProvider);
+        final allCategories = await db.categoryDao.getAllCategories();
+        final hint = item.categoryHint!.toLowerCase();
+        final matched = allCategories.where((c) {
+          final title = c.title.toLowerCase();
+          return title.contains(hint) || hint.contains(title);
+        }).firstOrNull;
+        categoryId = matched?.id;
+      }
+
+      if (categoryId != null) {
+        final success = await ref
+            .read(pendingTransactionNotifierProvider.notifier)
+            .approveAndImport(item, walletId: walletId, categoryId: categoryId);
+        if (context.mounted && success) {
+          toastification.show(
+            context: context,
+            type: ToastificationType.success,
+            title: Text(context.l10n.transactionImported),
+            autoCloseDuration: const Duration(seconds: 2),
+          );
+        }
+      } else {
+        // Cannot resolve category — open full form for user to fill in
+        if (context.mounted) ApproveTransactionSheet.show(context, item);
+      }
+    } catch (e) {
+      Log.e('Direct approve failed: $e', label: 'TransactionScreen');
+      if (context.mounted) ApproveTransactionSheet.show(context, item);
+    }
   }
 
   void _showBulkActionsSheet(
@@ -241,58 +291,26 @@ class TransactionScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.spacing24,
-          0,
-          AppSpacing.spacing24,
-          AppSpacing.spacing32,
-        ),
+      builder: (sheetContext) => CustomBottomSheet(
+        title: context.l10n.bulkActions,
+        subtitle: context.l10n.countPendingTransactions(count),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              context.l10n.bulkActions,
-              style: AppTextStyles.heading3,
-            ),
-            const Gap(AppSpacing.spacing8),
-            Text(
-              context.l10n.countPendingTransactions(count),
-              style: AppTextStyles.body2,
-            ),
-            const Gap(AppSpacing.spacing24),
-            // Accept All button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(sheetContext);
-                  _confirmAcceptAll(context, ref, count, pendingTransactionsAsync);
-                },
-                icon: const Icon(Icons.check_circle_outline, size: 20),
-                label: Text(context.l10n.acceptAll),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(sheetContext).colorScheme.primary,
-                  foregroundColor: Colors.white,
-                ),
-              ),
+            PrimaryButton(
+              label: context.l10n.acceptAll,
+              onPressed: () {
+                sheetContext.pop();
+                _confirmAcceptAll(context, ref, count, pendingTransactionsAsync);
+              },
             ),
             const Gap(AppSpacing.spacing12),
-            // Reject All button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.pop(sheetContext);
-                  _confirmRejectAll(context, ref, count);
-                },
-                icon: Icon(Icons.cancel_outlined, size: 20, color: AppColors.red400),
-                label: Text(context.l10n.rejectAll, style: TextStyle(color: AppColors.red400)),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: AppColors.red400.withValues(alpha: 0.5)),
-                ),
-              ),
+            PrimaryButton(
+              label: context.l10n.rejectAll,
+              isOutlined: true,
+              onPressed: () {
+                sheetContext.pop();
+                _confirmRejectAll(context, ref, count);
+              },
             ),
           ],
         ),
@@ -300,133 +318,69 @@ class TransactionScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmAcceptAll(
+  void _confirmAcceptAll(
     BuildContext context,
     WidgetRef ref,
     int count,
     AsyncValue<List<PendingTransactionModel>> pendingTransactionsAsync,
-  ) async {
-    final confirmed = await showModalBottomSheet<bool>(
+  ) {
+    showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.spacing24, 0, AppSpacing.spacing24, AppSpacing.spacing32,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(context.l10n.acceptAllConfirm, style: AppTextStyles.heading3),
-            const Gap(AppSpacing.spacing8),
-            Text(
-              context.l10n.acceptAllDescription,
-              style: AppTextStyles.body2,
-            ),
-            const Gap(AppSpacing.spacing24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text(context.l10n.cancel),
-                  ),
-                ),
-                const Gap(AppSpacing.spacing12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: Text(context.l10n.acceptAll),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+      builder: (dialogContext) => AlertBottomSheet(
+        context: dialogContext,
+        title: context.l10n.acceptAllConfirm,
+        content: Text(context.l10n.acceptAllDescription, style: AppTextStyles.body2),
+        confirmText: context.l10n.acceptAll,
+        onConfirm: () async {
+          dialogContext.pop();
+          final pendingItems = pendingTransactionsAsync.asData?.value ?? [];
+          final defaultWalletId = ref.read(defaultWalletIdProvider) ?? 1;
+          final approved = await ref
+              .read(pendingTransactionNotifierProvider.notifier)
+              .approveAll(pendingItems, defaultWalletId: defaultWalletId);
+          if (context.mounted) {
+            toastification.show(
+              context: context,
+              type: ToastificationType.success,
+              title: Text(context.l10n.transactionsImportedCount(approved)),
+              autoCloseDuration: const Duration(seconds: 2),
+            );
+          }
+        },
       ),
     );
-
-    if (confirmed == true && context.mounted) {
-      final pendingItems = pendingTransactionsAsync.asData?.value ?? [];
-      final defaultWalletId = ref.read(defaultWalletIdProvider) ?? 1;
-      final approved = await ref
-          .read(pendingTransactionNotifierProvider.notifier)
-          .approveAll(pendingItems, defaultWalletId: defaultWalletId);
-
-      if (context.mounted) {
-        toastification.show(
-          context: context,
-          type: ToastificationType.success,
-          title: Text(context.l10n.transactionsImportedCount(approved)),
-          autoCloseDuration: const Duration(seconds: 2),
-        );
-      }
-    }
   }
 
-  Future<void> _confirmRejectAll(
+  void _confirmRejectAll(
     BuildContext context,
     WidgetRef ref,
     int count,
-  ) async {
-    final confirmed = await showModalBottomSheet<bool>(
+  ) {
+    showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.spacing24, 0, AppSpacing.spacing24, AppSpacing.spacing32,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(context.l10n.rejectAllConfirm, style: AppTextStyles.heading3),
-            const Gap(AppSpacing.spacing8),
-            Text(
-              context.l10n.rejectAllDescription,
-              style: AppTextStyles.body2,
-            ),
-            const Gap(AppSpacing.spacing24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text(context.l10n.cancel),
-                  ),
-                ),
-                const Gap(AppSpacing.spacing12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.red400,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: Text(context.l10n.rejectAll),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+      builder: (dialogContext) => AlertBottomSheet(
+        context: dialogContext,
+        title: context.l10n.rejectAllConfirm,
+        content: Text(context.l10n.rejectAllDescription, style: AppTextStyles.body2),
+        confirmText: context.l10n.rejectAll,
+        onConfirm: () async {
+          dialogContext.pop();
+          final rejected = await ref
+              .read(pendingTransactionNotifierProvider.notifier)
+              .rejectAll();
+          if (context.mounted) {
+            toastification.show(
+              context: context,
+              type: ToastificationType.info,
+              title: Text(context.l10n.transactionsRejectedCount(rejected)),
+              autoCloseDuration: const Duration(seconds: 2),
+            );
+          }
+        },
       ),
     );
-
-    if (confirmed == true && context.mounted) {
-      final rejected = await ref
-          .read(pendingTransactionNotifierProvider.notifier)
-          .rejectAll();
-
-      if (context.mounted) {
-        toastification.show(
-          context: context,
-          type: ToastificationType.info,
-          title: Text(context.l10n.transactionsRejectedCount(rejected)),
-          autoCloseDuration: const Duration(seconds: 2),
-        );
-      }
-    }
   }
 
   Future<void> _rejectTransaction(

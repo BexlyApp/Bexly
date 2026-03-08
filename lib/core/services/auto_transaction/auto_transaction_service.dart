@@ -221,7 +221,54 @@ class AutoTransactionService {
 
     Log.d('Added to pending tab: ${parsed.title} (${parsed.amount})',
         label: 'AutoTransaction');
+
+    // Fire-and-forget: use AI to clean up title and suggest category
+    unawaited(_enhancePendingWithAI(parsed, sourceId));
+
     return true;
+  }
+
+  /// Use AI to improve the title and suggest a category for a pending transaction.
+  /// Runs in the background after insert — updates the record when done.
+  Future<void> _enhancePendingWithAI(ParsedTransaction parsed, String sourceId) async {
+    try {
+      final ai = BackgroundAIService();
+      final typeStr = parsed.type == TransactionType.income ? 'income' : 'expense';
+      final prompt =
+          'Transaction: type=$typeStr, amount=${parsed.amount}, '
+          'merchant="${parsed.merchant}", raw_title="${parsed.title}", '
+          'bank="${parsed.bankName ?? parsed.source}". '
+          'Reply with JSON only (no markdown): '
+          '{"title":"short clean title max 40 chars","category":"one of: '
+          'Food & Drink, Shopping, Transport, Entertainment, Health, '
+          'Education, Bills & Utilities, Salary & Income, Transfer, Other"}';
+
+      final response = await ai.complete(prompt, maxTokens: 100);
+      if (response == null) return;
+
+      // Strip markdown code fences if present
+      var json = response.trim();
+      if (json.startsWith('```')) {
+        json = json.replaceAll(RegExp(r'```[a-z]*\n?'), '').trim();
+      }
+
+      final data = jsonDecode(json) as Map<String, dynamic>;
+      final title = (data['title'] as String?)?.trim();
+      final category = (data['category'] as String?)?.trim();
+
+      final db = _ref.read(databaseProvider);
+      await db.pendingTransactionDao.updateTitleAndCategoryHint(
+        source: parsed.source,
+        sourceId: sourceId,
+        title: title?.isNotEmpty == true ? title : null,
+        categoryHint: category?.isNotEmpty == true ? category : null,
+      );
+
+      Log.d('AI enhanced pending tx: title="$title" category="$category"',
+          label: 'AutoTransaction');
+    } catch (e) {
+      Log.w('AI enhancement failed for pending tx: $e', label: 'AutoTransaction');
+    }
   }
 
   /// Run AI duplicate check against existing transactions in the database.
@@ -262,10 +309,10 @@ class AutoTransactionService {
     }
   }
 
-  /// Get the target wallet for a specific parsed transaction
-  /// First checks bank-wallet mapping, then falls back to default wallet
+  /// Get the target wallet for a specific parsed transaction.
+  /// Priority: (1) senderId mapping → (2) fuzzy match wallet name by bankName/senderId → (3) default wallet
   Future<WalletModel?> _getTargetWalletForTransaction(ParsedTransaction parsed) async {
-    // First try to find wallet via bank mapping
+    // 1. Explicit senderId → wallet mapping
     if (parsed.senderId != null) {
       final mappedWalletId = await _mappingService.getWalletIdForSender(parsed.senderId!);
       if (mappedWalletId != null) {
@@ -278,8 +325,42 @@ class AutoTransactionService {
       }
     }
 
-    // Fall back to default wallet selection
+    // 2. Fuzzy match wallet name by bankName or senderId
+    final matched = await _matchWalletByBankName(parsed.bankName, parsed.senderId);
+    if (matched != null) return matched;
+
+    // 3. Default wallet
     return _getDefaultWallet();
+  }
+
+  /// Try to find a wallet whose name matches the bank name or sender ID (case-insensitive substring match).
+  Future<WalletModel?> _matchWalletByBankName(String? bankName, String? senderId) async {
+    if (bankName == null && senderId == null) return null;
+    try {
+      final db = _ref.read(databaseProvider);
+      final allWallets = await db.walletDao.getAllWallets();
+
+      for (final wallet in allWallets) {
+        final walletName = wallet.name.toLowerCase();
+        if (bankName != null) {
+          final bank = bankName.toLowerCase();
+          if (walletName.contains(bank) || bank.contains(walletName)) {
+            Log.d('Matched wallet "${wallet.name}" by bankName "$bankName"', label: 'AutoTransaction');
+            return wallet.toModel();
+          }
+        }
+        if (senderId != null) {
+          final sid = senderId.toLowerCase();
+          if (walletName.contains(sid) || sid.contains(walletName)) {
+            Log.d('Matched wallet "${wallet.name}" by senderId "$senderId"', label: 'AutoTransaction');
+            return wallet.toModel();
+          }
+        }
+      }
+    } catch (e) {
+      Log.w('Wallet fuzzy match error: $e', label: 'AutoTransaction');
+    }
+    return null;
   }
 
   /// Get the default wallet (either user-selected default or active wallet)
@@ -469,24 +550,17 @@ class AutoTransactionService {
     ));
   }
 
-  /// Import transactions for a specific bank into pending tab for review
+  /// Import transactions for a specific bank into pending tab for review.
+  /// [walletId] is optional — wallet assignment is resolved at import time via bank mapping or default wallet.
   Future<ImportResult> importTransactionsForBank({
     required String bankCode,
-    required int walletId,
+    int? walletId,
     int limit = 100,
     Duration? maxAge,
     void Function(int current, int total)? onProgress,
   }) async {
     await initialize();
     if (_smsService == null) {
-      return ImportResult(imported: 0, duplicates: 0, errors: 0);
-    }
-
-    // Verify wallet exists
-    final db = _ref.read(databaseProvider);
-    final walletData = await db.walletDao.getWalletById(walletId);
-    if (walletData == null) {
-      Log.e('Wallet $walletId not found', label: 'AutoTransaction');
       return ImportResult(imported: 0, duplicates: 0, errors: 0);
     }
 

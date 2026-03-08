@@ -177,6 +177,23 @@ class PendingTransactionDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Update title and category hint from AI enhancement (background task)
+  Future<void> updateTitleAndCategoryHint({
+    required String source,
+    required String sourceId,
+    String? title,
+    String? categoryHint,
+  }) async {
+    if (title == null && categoryHint == null) return;
+    await (update(pendingTransactions)
+          ..where((t) => t.source.equals(source) & t.sourceId.equals(sourceId)))
+        .write(PendingTransactionsCompanion(
+          title: title != null ? Value(title) : const Value.absent(),
+          categoryHint: categoryHint != null ? Value(categoryHint) : const Value.absent(),
+          updatedAt: Value(DateTime.now()),
+        ));
+  }
+
   /// Update user notes
   Future<void> updateNotes(int id, String? notes) async {
     await (update(pendingTransactions)..where((t) => t.id.equals(id))).write(
