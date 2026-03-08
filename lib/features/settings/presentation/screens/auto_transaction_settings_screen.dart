@@ -388,20 +388,17 @@ class _AutoTransactionSettingsScreenState
         return;
       }
 
-      // Get existing wallets
-      final wallets = ref.read(allWalletsStreamProvider).value ?? [];
+      // Import all banks directly to pending tab — no popup needed.
+      // Wallet assignment is resolved per-transaction via bank mapping or default wallet.
+      for (final sender in results) {
+        await autoService.importTransactionsForBank(bankCode: sender.bankCode);
+      }
 
-      // Show results bottom sheet
+      // Navigate to pending tab to review imported transactions
       if (mounted) {
-        final selection = await SmsScanResultsBottomSheet.show(
-          context: context,
-          scanResults: results,
-          existingWallets: wallets,
-        );
-
-        if (selection != null && selection.selectedSenders.isNotEmpty) {
-          await _processSelectedSenders(selection, autoService);
-        }
+        ref.read(requestedTransactionTabProvider.notifier).request(2);
+        ref.read(pageControllerProvider.notifier).setPage(2);
+        context.go(Routes.main);
       }
     } catch (e) {
       Log.e('Error scanning SMS: $e', label: 'AutoTransaction');
@@ -412,88 +409,6 @@ class _AutoTransactionSettingsScreenState
         );
       }
       setState(() => _isScanning = false);
-    }
-  }
-
-  Future<void> _processSelectedSenders(
-    ScanSelectionResult selection,
-    AutoTransactionService autoService,
-  ) async {
-    int walletsCreated = 0;
-    int totalImported = 0;
-    int totalDuplicates = 0;
-
-    for (final sender in selection.selectedSenders) {
-      int walletId;
-
-      // Check if user wants to merge into existing wallet
-      final mergeWalletId = selection.mergeWalletMap[sender.bankCode];
-
-      if (mergeWalletId != null) {
-        // Use existing wallet
-        walletId = mergeWalletId;
-        // Add mapping for existing wallet
-        await autoService.addMappingForExistingWallet(
-          senderId: sender.senderId,
-          bankName: sender.bankName,
-          bankCode: sender.bankCode,
-          walletId: walletId,
-        );
-      } else {
-        // Create new wallet
-        final wallet = await autoService.createWalletForBank(
-          bankName: sender.bankName,
-          bankCode: sender.bankCode,
-          senderId: sender.senderId,
-          currency: sender.detectedCurrency ?? 'VND',
-        );
-
-        if (wallet == null || wallet.id == null) {
-          Log.e('Failed to create wallet for ${sender.bankName}', label: 'AutoTransaction');
-          continue;
-        }
-
-        walletId = wallet.id!;
-        walletsCreated++;
-      }
-
-      // Show importing bottom sheet
-      if (mounted) {
-        showModalBottomSheet(
-          context: context,
-          isDismissible: false,
-          enableDrag: false,
-          builder: (ctx) => TransactionImportBottomSheet(
-            current: 0,
-            total: sender.messageCount,
-            bankName: sender.bankName,
-          ),
-        );
-      }
-
-      // Import transactions
-      final result = await autoService.importTransactionsForBank(
-        bankCode: sender.bankCode,
-        walletId: walletId,
-        onProgress: (current, total) {
-          // Progress is shown in dialog
-        },
-      );
-
-      totalImported += result.imported;
-      totalDuplicates += result.duplicates;
-
-      // Close importing bottom sheet
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-    }
-
-    // Navigate to History → Pending tab to review imported transactions
-    if (mounted) {
-      ref.read(requestedTransactionTabProvider.notifier).request(2);
-      ref.read(pageControllerProvider.notifier).setPage(2);
-      context.go(Routes.main);
     }
   }
 
