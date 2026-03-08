@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:bexly/core/app.dart';
@@ -133,6 +134,10 @@ Future<void> main() async {
     _safeInit(
       'GoogleSignIn',
       () => GoogleSignIn.instance.initialize(
+        // iOS requires explicit clientId so serverClientId is applied correctly
+        clientId: Platform.isIOS
+            ? '368090586626-jp6s7eerkn9v7279dvgrluaf6jep8kku.apps.googleusercontent.com'
+            : null,
         serverClientId:
             '368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com',
       ),
