@@ -70,5 +70,22 @@
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<!-- Google Sign In: required by google_sign_in v7+ on iOS -->
+		<key>GIDClientID</key>
+		<string>368090586626-jp6s7eerkn9v7279dvgrluaf6jep8kku.apps.googleusercontent.com</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<!-- Reversed client ID for Google Sign In OAuth callback -->
+					<string>com.googleusercontent.apps.368090586626-jp6s7eerkn9v7279dvgrluaf6jep8kku</string>
+					<!-- Deep link scheme for Supabase OAuth callbacks -->
+					<string>bexly</string>
+				</array>
+			</dict>
+		</array>
 	</dict>
 </plist>
