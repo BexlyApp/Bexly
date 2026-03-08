@@ -84,18 +84,18 @@
 					<string>com.googleusercontent.apps.368090586626-jp6s7eerkn9v7279dvgrluaf6jep8kku</string>
 					<!-- Deep link scheme for Supabase OAuth callbacks -->
 					<string>bexly</string>
-					<!-- Facebook SDK URL scheme -->
-					<string>fb1583820202985076</string>
+					<!-- Facebook SDK URL scheme (DOS app - shared across all DOS products) -->
+					<string>fb1348391745185182</string>
 				</array>
 			</dict>
 		</array>
-		<!-- Facebook SDK Configuration -->
+		<!-- Facebook SDK Configuration (DOS app) -->
 		<key>FacebookAppID</key>
-		<string>1583820202985076</string>
+		<string>1348391745185182</string>
 		<key>FacebookClientToken</key>
-		<string>25c0f66e64750e8a7945c4e0bcae522e</string>
+		<string>6ef80c862ae5f0de192793ce98dae7b3</string>
 		<key>FacebookDisplayName</key>
-		<string>Bexly</string>
+		<string>DOS</string>
 		<!-- Facebook SDK required query schemes -->
 		<key>LSApplicationQueriesSchemes</key>
 		<array>
