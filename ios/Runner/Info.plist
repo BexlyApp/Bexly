@@ -84,8 +84,36 @@
 					<string>com.googleusercontent.apps.368090586626-jp6s7eerkn9v7279dvgrluaf6jep8kku</string>
 					<!-- Deep link scheme for Supabase OAuth callbacks -->
 					<string>bexly</string>
+					<!-- Facebook SDK URL scheme -->
+					<string>fb1583820202985076</string>
 				</array>
 			</dict>
+		</array>
+		<!-- Facebook SDK Configuration -->
+		<key>FacebookAppID</key>
+		<string>1583820202985076</string>
+		<key>FacebookClientToken</key>
+		<string>25c0f66e64750e8a7945c4e0bcae522e</string>
+		<key>FacebookDisplayName</key>
+		<string>Bexly</string>
+		<!-- Facebook SDK required query schemes -->
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>fbapi</string>
+			<string>fbapi20130214</string>
+			<string>fbapi20130410</string>
+			<string>fbapi20130702</string>
+			<string>fbapi20131010</string>
+			<string>fbapi20131219</string>
+			<string>fbapi20140410</string>
+			<string>fbapi20140116</string>
+			<string>fbapi20150313</string>
+			<string>fbapi20150629</string>
+			<string>fbapi20160328</string>
+			<string>fbauth</string>
+			<string>fb-messenger-share-api</string>
+			<string>fbauth2</string>
+			<string>fbshareextension</string>
 		</array>
 	</dict>
 </plist>
