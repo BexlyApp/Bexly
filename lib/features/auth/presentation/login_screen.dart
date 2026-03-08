@@ -462,9 +462,11 @@ class LoginScreen extends HookConsumerWidget {
           );
         }
       } catch (e) {
-        debugPrint('Apple Sign In Error: $e');
+        Log.e('Apple Sign In Error: $e', label: 'auth');
         if (context.mounted) {
-          String errorMessage = 'Apple sign in failed';
+          String errorMessage = e.toString().length > 120
+              ? e.toString().substring(0, 120)
+              : e.toString();
           if (e.toString().contains('canceled') || e.toString().contains('cancelled')) {
             errorMessage = 'Sign in was cancelled';
           } else if (e.toString().contains('network')) {
