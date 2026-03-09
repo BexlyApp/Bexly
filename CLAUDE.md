@@ -200,7 +200,7 @@ feature_name/
 6. Rewrite git history: `git filter-repo --path <file> --invert-paths`
 
 **Incident Log:**
-- 2025-11-09: Exposed Google API key `AIzaSyBwUcP2tCRIQiDMZduOod7lPQJy9jDcJLM` in commit `4e15da4` via file `android/app/google-services.json.dos-me.backup`. Key must be revoked.
+- 2025-11-09: Exposed Google API key in commit `4e15da4` via file `android/app/google-services.json.dos-me.backup`. Key was revoked and rotated.
 
 ### When Adding New Features
 1. Create a new directory under `lib/features/`

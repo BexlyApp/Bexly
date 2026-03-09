@@ -99,8 +99,8 @@ class LLMDefaultConfig {
     }
   }
 
-  // Default API key for Bexly Free AI
-  static const String _defaultBexlyFreeApiKey = 'dos_sk_qT5r8OZVwgLA5gtBFPQto1RgsTHxXIRP';
+  // Default API key for Bexly Free AI (loaded from .env, no hardcoded fallback)
+  static const String _defaultBexlyFreeApiKey = '';
 
   static String get customApiKey {
     try {
