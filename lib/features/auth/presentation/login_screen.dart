@@ -1,4 +1,7 @@
-import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
+import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -333,6 +336,17 @@ class LoginScreen extends HookConsumerWidget {
       }
     }
 
+    String generateRawNonce([int length = 32]) {
+      const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+      final random = Random.secure();
+      return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+    }
+
+    String sha256ofString(String input) {
+      final bytes = utf8.encode(input);
+      return sha256.convert(bytes).toString();
+    }
+
     Future<void> handleGoogleSignIn() async {
       isLoading.value = true;
       try {
@@ -351,6 +365,19 @@ class LoginScreen extends HookConsumerWidget {
 
           // google_sign_in v7: authenticate() shows account picker or
           // re-uses previous account. No need to signOut() first.
+          // Generate nonce for Supabase token verification
+          final rawNonce = generateRawNonce();
+          final hashedNonce = sha256ofString(rawNonce);
+
+          // Re-initialize with nonce (required for iOS to embed nonce in ID token)
+          await googleSignIn.initialize(
+            clientId: defaultTargetPlatform == TargetPlatform.iOS
+                ? '368090586626-jp6s7eerkn9v7279dvgrluaf6jep8kku.apps.googleusercontent.com'
+                : null,
+            serverClientId: '368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com',
+            nonce: hashedNonce,
+          );
+
           Log.i('👤 Showing Google account picker...', label: 'auth');
           final googleUser = await googleSignIn.authenticate();
 
@@ -387,6 +414,7 @@ class LoginScreen extends HookConsumerWidget {
             provider: OAuthProvider.google,
             idToken: idToken,
             accessToken: accessToken,
+            nonce: rawNonce,
           );
 
           if (response.session == null || response.user == null) {
@@ -453,6 +481,7 @@ class LoginScreen extends HookConsumerWidget {
         // Facebook Sign In using native SDK
         final LoginResult result = await FacebookAuth.instance.login(
           permissions: ['email', 'public_profile'],
+          loginBehavior: LoginBehavior.nativeWithFallback,
         );
 
         if (result.status == LoginStatus.success) {

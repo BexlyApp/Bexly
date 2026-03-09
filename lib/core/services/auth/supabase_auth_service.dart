@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -146,6 +149,16 @@ class SupabaseAuthService extends Notifier<SupabaseAuthState> {
         await googleSignIn.signOut();
       } catch (_) {}
 
+      // Generate nonce for Supabase token verification
+      final rawNonce = _generateRawNonce();
+      final hashedNonce = _sha256ofString(rawNonce);
+
+      // Re-initialize with nonce (required for iOS to embed nonce in ID token)
+      await googleSignIn.initialize(
+        serverClientId: '368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com',
+        nonce: hashedNonce,
+      );
+
       // Show native Google account picker popup
       final googleUser = await googleSignIn.authenticate();
 
@@ -168,6 +181,7 @@ class SupabaseAuthService extends Notifier<SupabaseAuthState> {
       final response = await _supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
+        nonce: rawNonce,
       );
 
       if (response.session == null) {
@@ -355,6 +369,17 @@ class SupabaseAuthService extends Notifier<SupabaseAuthState> {
     } catch (e) {
       Log.e('Session refresh failed: $e', label: _label);
     }
+  }
+
+  static String _generateRawNonce([int length = 32]) {
+    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+  }
+
+  static String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    return sha256.convert(bytes).toString();
   }
 
   /// Get user-friendly error message.
