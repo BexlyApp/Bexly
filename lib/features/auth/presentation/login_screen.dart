@@ -549,18 +549,26 @@ class LoginScreen extends HookConsumerWidget {
     Future<void> handleAppleSignIn() async {
       isLoading.value = true;
       try {
+        // Generate nonce for Supabase token verification
+        final rawNonce = generateRawNonce();
+        final hashedNonce = sha256ofString(rawNonce);
+
         // Request Apple ID credential
         final credential = await SignInWithApple.getAppleIDCredential(
           scopes: [
             AppleIDAuthorizationScopes.email,
             AppleIDAuthorizationScopes.fullName,
           ],
-          webAuthenticationOptions: WebAuthenticationOptions(
-            clientId: 'com.joy.bexly.service',
-            redirectUri: Uri.parse(
-              'https://dos.supabase.co/auth/v1/callback',
-            ),
-          ),
+          nonce: hashedNonce,
+          // webAuthenticationOptions only needed for Android/Web
+          webAuthenticationOptions: defaultTargetPlatform == TargetPlatform.iOS
+              ? null
+              : WebAuthenticationOptions(
+                  clientId: 'com.joy.bexly.service',
+                  redirectUri: Uri.parse(
+                    'https://dos.supabase.co/auth/v1/callback',
+                  ),
+                ),
         );
 
         debugPrint('Apple Sign In successful');
@@ -569,6 +577,7 @@ class LoginScreen extends HookConsumerWidget {
         final response = await supabase.auth.signInWithIdToken(
           provider: OAuthProvider.apple,
           idToken: credential.identityToken!,
+          nonce: rawNonce,
         );
 
         if (response.session == null || response.user == null) {
