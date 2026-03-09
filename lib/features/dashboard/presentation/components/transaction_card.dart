@@ -41,6 +41,9 @@ class TransactionCard extends ConsumerWidget {
         : currencies.fromIsoCode(baseCurrency);
     final String currencySymbol = currency?.symbol ?? baseCurrency;
     final int? decimalDigits = currency?.decimalDigits;
+    final String isoCode = currency?.isoCode ?? baseCurrency;
+    const symbolAfterCurrencies = ['VND', 'JPY', 'KRW'];
+    final isSymbolAfter = symbolAfterCurrencies.contains(isoCode.toUpperCase());
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.spacing16),
@@ -95,10 +98,11 @@ class TransactionCard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             spacing: AppSpacing.spacing2,
             children: [
-              Text(
-                currencySymbol,
-                style: AppTextStyles.body3.copyWith(color: amountColor),
-              ),
+              if (!isSymbolAfter)
+                Text(
+                  currencySymbol,
+                  style: AppTextStyles.body3.copyWith(color: amountColor),
+                ),
               Expanded(
                 child: AutoSizeText(
                   amount.toPriceFormat(decimalDigits: decimalDigits),
@@ -110,6 +114,11 @@ class TransactionCard extends ConsumerWidget {
                   minFontSize: AppTextStyles.numericTitle.fontSize! - 8,
                 ),
               ),
+              if (isSymbolAfter)
+                Text(
+                  currencySymbol,
+                  style: AppTextStyles.body3.copyWith(color: amountColor),
+                ),
             ],
           ),
         ],
