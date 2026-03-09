@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -157,28 +157,53 @@ class _BindAccountBottomSheetState extends ConsumerState<BindAccountBottomSheet>
     try {
       final supabase = SupabaseInitService.client;
 
-      // Use native Facebook Sign-In SDK
+      // Generate nonce for iOS Limited Login
+      final rawNonce = _generateRawNonce();
+      final hashedNonce = _sha256ofString(rawNonce);
+
+      // Facebook Sign In: iOS 17+ uses Limited Login when ATT not granted
       Log.i('Initiating Facebook login...', label: 'auth');
       final LoginResult result = await FacebookAuth.instance.login(
         loginBehavior: LoginBehavior.nativeWithFallback,
+        nonce: hashedNonce,
       );
 
       if (result.status != LoginStatus.success) {
         throw Exception('Facebook login cancelled or failed: ${result.status}');
       }
 
-      final accessToken = result.accessToken?.tokenString;
-      if (accessToken == null) {
+      final token = result.accessToken;
+      if (token == null) {
         throw Exception('Failed to get Facebook access token');
       }
 
-      Log.i('Got Facebook access token, exchanging with Supabase...', label: 'auth');
+      Log.i('Got Facebook token (type: ${token.type}), exchanging with Supabase...', label: 'auth');
 
-      // Exchange Facebook access token with Supabase
-      final response = await supabase.auth.signInWithIdToken(
-        provider: OAuthProvider.facebook,
-        idToken: accessToken,
-      );
+      // Handle both Classic and Limited Login tokens
+      AuthResponse response;
+      if (token is LimitedToken) {
+        // iOS Limited Login: tokenString IS the OIDC token
+        Log.i('Facebook Limited Login: using tokenString as OIDC token', label: 'auth');
+        response = await supabase.auth.signInWithIdToken(
+          provider: OAuthProvider.facebook,
+          idToken: token.tokenString,
+          nonce: rawNonce,
+        );
+      } else if (token is ClassicToken) {
+        // Classic Login: use authenticationToken (OIDC) if available, else tokenString
+        final oidcToken = token.authenticationToken ?? token.tokenString;
+        Log.i('Facebook Classic Login: hasOIDC=${token.authenticationToken != null}', label: 'auth');
+        response = await supabase.auth.signInWithIdToken(
+          provider: OAuthProvider.facebook,
+          idToken: oidcToken,
+        );
+      } else {
+        // Fallback
+        response = await supabase.auth.signInWithIdToken(
+          provider: OAuthProvider.facebook,
+          idToken: token.tokenString,
+        );
+      }
 
       if (response.session == null || response.user == null) {
         throw Exception('Supabase authentication failed');
@@ -238,6 +263,10 @@ class _BindAccountBottomSheetState extends ConsumerState<BindAccountBottomSheet>
     try {
       final supabase = SupabaseInitService.client;
 
+      // Generate nonce for Supabase token verification
+      final rawNonce = _generateRawNonce();
+      final hashedNonce = _sha256ofString(rawNonce);
+
       // Use native Apple Sign-In SDK
       Log.i('Initiating Apple Sign In...', label: 'auth');
       final credential = await SignInWithApple.getAppleIDCredential(
@@ -245,6 +274,16 @@ class _BindAccountBottomSheetState extends ConsumerState<BindAccountBottomSheet>
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
+        nonce: hashedNonce,
+        // webAuthenticationOptions only needed for Android/Web
+        webAuthenticationOptions: defaultTargetPlatform == TargetPlatform.iOS
+            ? null
+            : WebAuthenticationOptions(
+                clientId: 'com.joy.bexly.service',
+                redirectUri: Uri.parse(
+                  'https://dos.supabase.co/auth/v1/callback',
+                ),
+              ),
       );
 
       final idToken = credential.identityToken;
@@ -258,6 +297,7 @@ class _BindAccountBottomSheetState extends ConsumerState<BindAccountBottomSheet>
       final response = await supabase.auth.signInWithIdToken(
         provider: OAuthProvider.apple,
         idToken: idToken,
+        nonce: rawNonce,
       );
 
       if (response.session == null || response.user == null) {
