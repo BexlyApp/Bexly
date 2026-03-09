@@ -478,23 +478,50 @@ class LoginScreen extends HookConsumerWidget {
     Future<void> handleFacebookSignIn() async {
       isLoading.value = true;
       try {
+        // Generate nonce for iOS Limited Login (OIDC token verification)
+        final rawNonce = generateRawNonce();
+        final hashedNonce = sha256ofString(rawNonce);
+
         // Facebook Sign In using native SDK
+        // iOS 17+: Uses Limited Login when ATT not granted → returns LimitedToken
+        // Android: Uses classic login → returns ClassicToken
         final LoginResult result = await FacebookAuth.instance.login(
           permissions: ['email', 'public_profile'],
           loginBehavior: LoginBehavior.nativeWithFallback,
+          nonce: hashedNonce,
         );
 
         if (result.status == LoginStatus.success) {
           final AccessToken? accessToken = result.accessToken;
 
           if (accessToken != null) {
-            debugPrint('Facebook Sign In successful');
+            Log.i('Facebook Sign In successful, token type: ${accessToken.type}', label: 'auth');
 
-            // Exchange Facebook token with Supabase
-            final response = await supabase.auth.signInWithIdToken(
-              provider: OAuthProvider.facebook,
-              idToken: accessToken.tokenString,
-            );
+            AuthResponse response;
+
+            if (accessToken is LimitedToken) {
+              // iOS Limited Login: tokenString IS the OIDC token
+              Log.i('Facebook Limited Login: using tokenString as OIDC token', label: 'auth');
+              response = await supabase.auth.signInWithIdToken(
+                provider: OAuthProvider.facebook,
+                idToken: accessToken.tokenString,
+                nonce: rawNonce,
+              );
+            } else if (accessToken is ClassicToken) {
+              // Classic Login: use authenticationToken (OIDC) if available, else tokenString
+              final oidcToken = accessToken.authenticationToken ?? accessToken.tokenString;
+              Log.i('Facebook Classic Login: hasOIDC=${accessToken.authenticationToken != null}', label: 'auth');
+              response = await supabase.auth.signInWithIdToken(
+                provider: OAuthProvider.facebook,
+                idToken: oidcToken,
+              );
+            } else {
+              // Fallback: use tokenString directly
+              response = await supabase.auth.signInWithIdToken(
+                provider: OAuthProvider.facebook,
+                idToken: accessToken.tokenString,
+              );
+            }
 
             if (response.session == null || response.user == null) {
               throw Exception('Supabase authentication failed');
