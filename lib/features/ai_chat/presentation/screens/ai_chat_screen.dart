@@ -28,10 +28,6 @@ class AIChatScreen extends HookConsumerWidget {
     final chatNotifier = ref.read(chatProvider.notifier);
     final textController = useTextEditingController(text: chatState.draftMessage);
 
-    // DEBUG: Log messages count on every build
-    print('[UI_DEBUG] AIChatScreen build() - messages count: ${chatState.messages.length}');
-    print('[UI_DEBUG] isLoading: ${chatState.isLoading}, isTyping: ${chatState.isTyping}');
-
     // Sync draft message to state when user types
     useEffect(() {
       void listener() {
@@ -113,39 +109,42 @@ class AIChatScreen extends HookConsumerWidget {
 
           // Messages list (reversed so newest message is at bottom)
           Expanded(
-            child: ListView.builder(
-              reverse: true,
-              padding: const EdgeInsets.all(AppSpacing.spacing16),
-              itemCount: chatState.messages.length,
-              itemBuilder: (context, index) {
-                // Reverse index to show newest at bottom
-                final reversedIndex = chatState.messages.length - 1 - index;
-                final message = chatState.messages[reversedIndex];
+            child: chatState.messages.isEmpty
+                // Show loading while _initializeChat() loads messages from DB
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    reverse: true,
+                    padding: const EdgeInsets.all(AppSpacing.spacing16),
+                    itemCount: chatState.messages.length,
+                    itemBuilder: (context, index) {
+                      // Reverse index to show newest at bottom
+                      final reversedIndex = chatState.messages.length - 1 - index;
+                      final message = chatState.messages[reversedIndex];
 
-                // Add fade-in animation for smooth message appearance
-                return AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  switchInCurve: Curves.easeInOut,
-                  transitionBuilder: (Widget child, Animation<double> animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 0.1),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: _MessageBubble(
-                    key: ValueKey(message.id), // Key is important for AnimatedSwitcher
-                    message: message,
-                    isLast: index == 0, // First item in reversed list is last message
+                      // Add fade-in animation for smooth message appearance
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        switchInCurve: Curves.easeInOut,
+                        transitionBuilder: (Widget child, Animation<double> animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 0.1),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _MessageBubble(
+                          key: ValueKey(message.id), // Key is important for AnimatedSwitcher
+                          message: message,
+                          isLast: index == 0, // First item in reversed list is last message
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
 
           // Input field
