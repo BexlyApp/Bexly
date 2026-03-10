@@ -114,7 +114,7 @@ jobs:
           BEXLY_FREE_AI_URL=https://api.dos.ai/v1
           BEXLY_FREE_AI_KEY=${BEXLY_FREE_AI_KEY}
           BEXLY_FREE_AI_MODEL=dos-ai
-          DOS_AI_TIMEOUT=30
+          DOS_AI_TIMEOUT=5
           EOF
 
       - name: Get version info
