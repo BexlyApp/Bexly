@@ -142,7 +142,7 @@ class LLMDefaultConfig {
     }
   }
 
-  // DOS.AI / Custom LLM timeout (seconds)
+  // DOS.AI / Custom LLM timeout for text chat (seconds)
   static int get customTimeoutSeconds {
     try {
       final val = dotenv.env['DOS_AI_TIMEOUT'];
@@ -150,6 +150,18 @@ class LLMDefaultConfig {
       return 10;
     } catch (e) {
       return 10;
+    }
+  }
+
+  // DOS.AI timeout for vision/OCR requests (seconds) — longer because
+  // image upload + VL model inference takes more time than text chat.
+  static int get customVisionTimeoutSeconds {
+    try {
+      final val = dotenv.env['DOS_AI_VISION_TIMEOUT'];
+      if (val != null && val.isNotEmpty) return int.parse(val);
+      return 30;
+    } catch (e) {
+      return 30;
     }
   }
 
