@@ -195,7 +195,7 @@ class _SuggestionsSection extends ConsumerWidget {
                 const Gap(8),
                 Expanded(
                   child: Text(
-                    'AI detected ${suggestions.length} recurring pattern${suggestions.length > 1 ? 's' : ''}',
+                    context.l10n.aiDetectedRecurring(suggestions.length),
                     style: AppTextStyles.body3.copyWith(
                       color: AppColors.primary600,
                       fontWeight: FontWeight.w600,

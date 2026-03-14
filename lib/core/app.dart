@@ -6,7 +6,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_constants.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/localization/generated/app_localizations.dart';
 import 'package:bexly/core/router/app_router.dart';
 import 'package:bexly/core/services/lifecycle_manager.dart';
 import 'package:bexly/core/services/fcm_token_sync_widget.dart';
@@ -174,28 +174,8 @@ class MyApp extends ConsumerWidget {
           darkTheme: darkTheme,
           themeMode: themeMode, // Set the theme mode from the provider
           locale: Locale(currentLanguage.code),
-          supportedLocales: const [
-            Locale('en', ''), // English
-            Locale('vi', ''), // Vietnamese
-            Locale('zh', ''), // Chinese
-            Locale('fr', ''), // French
-            Locale('th', ''), // Thai
-            Locale('id', ''), // Indonesian
-            Locale('es', ''), // Spanish
-            Locale('pt', ''), // Portuguese
-            Locale('ja', ''), // Japanese
-            Locale('ko', ''), // Korean
-            Locale('de', ''), // German
-            Locale('hi', ''), // Hindi
-            Locale('ru', ''), // Russian
-            Locale('ar', ''), // Arabic (RTL)
-          ],
-          localizationsDelegates: const [
-            AppLocalizationsDelegate(),
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
           builder: (context, child) => ResponsiveBreakpoints.builder(
             child: MediaQuery(
               data: MediaQuery.of(context).copyWith(

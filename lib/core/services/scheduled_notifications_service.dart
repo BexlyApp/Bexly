@@ -1,4 +1,4 @@
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/localization/background_l10n.dart';
 import 'package:bexly/core/services/notification_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/database/app_database.dart';
@@ -57,8 +57,9 @@ class ScheduledNotificationsService {
 
       // Get localized strings
       final langCode = await _getLanguageCode();
-      final title = AppLocalizations.getByLocale(langCode, 'notifDailyReminderTitle');
-      final body = AppLocalizations.getByLocale(langCode, 'notifDailyReminderBody');
+      final l10n = await BackgroundL10n.load(langCode);
+      final title = l10n.notifDailyReminderTitle;
+      final body = l10n.notifDailyReminderBody;
 
       // Schedule daily at 9 PM (21:00)
       await NotificationService.scheduleDailyNotification(
@@ -89,8 +90,9 @@ class ScheduledNotificationsService {
 
       // Get localized strings
       final langCode = await _getLanguageCode();
-      final title = AppLocalizations.getByLocale(langCode, 'notifWeeklyReportTitle');
-      final body = AppLocalizations.getByLocale(langCode, 'notifWeeklyReportBody');
+      final l10n = await BackgroundL10n.load(langCode);
+      final title = l10n.notifWeeklyReportTitle;
+      final body = l10n.notifWeeklyReportBody;
 
       // Schedule weekly on Monday at 9 AM
       await NotificationService.scheduleWeeklyNotification(
@@ -122,8 +124,9 @@ class ScheduledNotificationsService {
 
       // Get localized strings
       final langCode = await _getLanguageCode();
-      final title = AppLocalizations.getByLocale(langCode, 'notifMonthlyReportTitle');
-      final body = AppLocalizations.getByLocale(langCode, 'notifMonthlyReportBody');
+      final l10n = await BackgroundL10n.load(langCode);
+      final title = l10n.notifMonthlyReportTitle;
+      final body = l10n.notifMonthlyReportBody;
 
       // Schedule for 1st day of next month at 9 AM
       final now = tz.TZDateTime.now(tz.local);

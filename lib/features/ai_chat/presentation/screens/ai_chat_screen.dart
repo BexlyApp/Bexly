@@ -11,7 +11,7 @@ import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/ai_chat/data/services/speech_service.dart';

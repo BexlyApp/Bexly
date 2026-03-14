@@ -1,3 +1,6 @@
+import 'package:flutter/widgets.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
+
 /// Enum representing different recurring payment frequencies
 enum RecurringFrequency {
   /// Billed every day
@@ -49,7 +52,8 @@ extension RecurringFrequencyExtension on RecurringFrequency {
     throw ArgumentError('Invalid integer value for RecurringFrequency: $value');
   }
 
-  /// Get display name for the frequency
+  /// Get display name for the frequency.
+  /// Prefer [localizedName] when a BuildContext is available.
   String get displayName {
     switch (this) {
       case RecurringFrequency.daily:
@@ -64,24 +68,6 @@ extension RecurringFrequencyExtension on RecurringFrequency {
         return 'Yearly';
       case RecurringFrequency.custom:
         return 'Custom';
-    }
-  }
-
-  /// Get short display name for the frequency
-  String get shortName {
-    switch (this) {
-      case RecurringFrequency.daily:
-        return 'day';
-      case RecurringFrequency.weekly:
-        return 'week';
-      case RecurringFrequency.monthly:
-        return 'month';
-      case RecurringFrequency.quarterly:
-        return 'quarter';
-      case RecurringFrequency.yearly:
-        return 'year';
-      case RecurringFrequency.custom:
-        return 'custom';
     }
   }
 }
@@ -128,5 +114,25 @@ extension RecurringStatusExtension on RecurringStatus {
   /// Check if recurring payment can be paused
   bool get canBePaused {
     return this == RecurringStatus.active;
+  }
+}
+
+/// Context-aware display name for frequency (uses l10n).
+extension RecurringFrequencyDisplay on RecurringFrequency {
+  String localizedName(BuildContext context) {
+    switch (this) {
+      case RecurringFrequency.daily:
+        return context.l10n.frequencyDaily;
+      case RecurringFrequency.weekly:
+        return context.l10n.frequencyWeekly;
+      case RecurringFrequency.monthly:
+        return context.l10n.frequencyMonthly;
+      case RecurringFrequency.quarterly:
+        return context.l10n.frequencyQuarterly;
+      case RecurringFrequency.yearly:
+        return context.l10n.frequencyYearly;
+      case RecurringFrequency.custom:
+        return context.l10n.frequencyCustom;
+    }
   }
 }
