@@ -422,7 +422,7 @@ class _MessageBubble extends ConsumerWidget {
                                 TextSpan(
                                   children: _parseMarkdownBold(
                                     message.content,
-                                    AppTextStyles.body2.copyWith(
+                                    AppTextStyles.body3.copyWith(
                                       color: isUser
                                           ? AppColors.light
                                           : AppColors.neutral900,

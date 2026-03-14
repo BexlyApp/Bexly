@@ -299,7 +299,8 @@ If uncertain whether user wants to record a transaction → ASK for clarificatio
 
 ACTION MAPPING:
 - Expense/spending → create_expense (one-time)
-- Income/salary → create_income (one-time)
+- Income/salary (one-time, no frequency keyword) → create_income
+- Income/salary WITH frequency (hàng tháng/every month/monthly/weekly/etc.) → create_recurring
 - Budget planning → create_budget
 - Savings goal → create_goal
 - Balance check → get_balance

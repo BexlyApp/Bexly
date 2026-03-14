@@ -78,6 +78,7 @@ class GoalChecklistFormDialog extends HookConsumerWidget {
               label: 'Price amount',
               hint: '1,000.00',
               icon: HugeIcons.strokeRoundedMoney03 as dynamic,
+              defaultCurreny: defaultCurrency,
               appendCurrencySymbolToHint: true,
               isRequired: true,
             ),
