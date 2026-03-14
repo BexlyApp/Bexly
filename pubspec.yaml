@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   auto_size_text: ^3.0.0
   auto_size_text_field: ^2.2.4
@@ -89,7 +91,7 @@ dependencies:
   google_sign_in: ^7.2.0
   sign_in_with_apple: ^7.0.1
   font_awesome_flutter: ^10.8.0
-  flutter_facebook_auth: ^7.1.2
+  flutter_facebook_auth: ^7.1.5
   http: ^1.5.0
   flutter_dotenv: ^6.0.0
   supabase_flutter: ^2.8.0
@@ -125,6 +127,7 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

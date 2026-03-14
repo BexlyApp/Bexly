@@ -11,6 +11,7 @@ import 'package:bexly/core/extensions/text_style_extensions.dart';
 import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/category_picker/presentation/components/category_icon.dart';
 import 'package:bexly/features/recurring/data/model/recurring_model.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
 
 class RecurringCard extends StatelessWidget {
@@ -157,7 +158,7 @@ class RecurringCard extends StatelessWidget {
                             const Gap(AppSpacing.spacing4),
                             Flexible(
                               child: AutoSizeText(
-                                recurring.frequency.displayName,
+                                recurring.frequency.localizedName(context),
                                 style: AppTextStyles.body4,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -191,10 +192,10 @@ class RecurringCard extends StatelessWidget {
                         ),
                         child: Text(
                           isOverdue
-                              ? 'Overdue'
+                              ? context.l10n.overdue
                               : isDueToday
-                                  ? 'Due Today'
-                                  : 'Due in $daysUntilDue days',
+                                  ? context.l10n.dueToday
+                                  : context.l10n.dueInDays(daysUntilDue),
                           style: AppTextStyles.body5.copyWith(
                             color: isOverdue
                                 ? AppColors.red

@@ -10,7 +10,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
 import 'package:bexly/core/extensions/screen_utils_extensions.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
 import 'package:bexly/features/budget/presentation/screens/budget_filter_dialog.dart';
