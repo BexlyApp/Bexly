@@ -560,16 +560,31 @@ class ChatNotifier extends Notifier<ChatState> {
 
     // Add user message and set loading state
     print('[CHAT_DEBUG] Adding user message. Current count: ${state.messages.length}');
+
+    // If image is provided, show analyzing indicator immediately (before any async ops)
+    // so user sees feedback right away without waiting for DB save.
+    final List<ChatMessage> initialMessages = [
+      ...state.messages,
+      userMessage,
+      if (imageBytes != null)
+        ChatMessage(
+          id: 'typing_indicator',
+          content: 'Đang phân tích hình ảnh...',
+          isFromUser: false,
+          timestamp: DateTime.now(),
+          isTyping: true,
+        ),
+    ];
     state = state.copyWith(
-      messages: [...state.messages, userMessage],
+      messages: initialMessages,
       isLoading: true,
-      isTyping: false,
+      isTyping: imageBytes != null,
       error: null,
     );
     print('[CHAT_DEBUG] User message added. New count: ${state.messages.length}');
 
-    // Save user message to database
-    await _saveMessageToDatabase(userMessage);
+    // Save user message to database in background (non-blocking for UX)
+    unawaited(_saveMessageToDatabase(userMessage));
 
     try {
       // If image is provided, analyze it as a receipt first
@@ -611,6 +626,15 @@ Please create a transaction based on this receipt data.''';
           enhancedContent = '${content.trim()}\n\n[Failed to analyze receipt image. Please try again or enter transaction details manually.]';
           _currentReceiptImage = null; // Clear on error
         }
+
+        // Remove "analyzing image" indicator
+        final messagesWithoutAnalyzing = state.messages
+            .where((msg) => !msg.isTyping)
+            .toList();
+        state = state.copyWith(
+          messages: messagesWithoutAnalyzing,
+          isTyping: false,
+        );
       }
 
       // Update AI with recent transactions and budgets context before sending message
