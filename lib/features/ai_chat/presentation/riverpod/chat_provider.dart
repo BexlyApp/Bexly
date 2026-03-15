@@ -756,8 +756,60 @@ Please create a transaction based on this receipt data.''';
           // Process each action
           for (final action in actions) {
           // Parse the action
-          final String actionType = (action['action'] ?? '').toString();
+          String actionType = (action['action'] ?? '').toString();
           Log.d('🔍 Action type: $actionType', label: 'Chat Provider');
+
+          // SAFETY NET: LLM (especially smaller models like Qwen3.5) often misses
+          // recurring indicators and creates one-time transactions instead.
+          // Auto-upgrade to create_recurring when user message contains frequency keywords.
+          if (actionType == 'create_expense' || actionType == 'create_income') {
+            final lowerMsg = content.toLowerCase();
+            final hasRecurringKeyword = RegExp(
+              r'\b(mỗi tháng|hàng tháng|hằng tháng|mỗi tuần|hàng tuần|hằng tuần|mỗi ngày|hàng ngày|hằng ngày|mỗi năm|hàng năm|hằng năm|monthly|weekly|daily|yearly|every\s+(month|week|day|year)|định kỳ|recurring|subscription)\b',
+              caseSensitive: false,
+            ).hasMatch(lowerMsg);
+
+            if (hasRecurringKeyword) {
+              Log.w('⚠️ SAFETY NET: LLM returned $actionType but user message contains recurring keywords. Upgrading to create_recurring.', label: 'Chat Provider');
+
+              // Detect frequency from user message
+              String frequency = 'monthly'; // default
+              if (RegExp(r'mỗi ngày|hàng ngày|hằng ngày|daily|every\s+day', caseSensitive: false).hasMatch(lowerMsg)) {
+                frequency = 'daily';
+              } else if (RegExp(r'mỗi tuần|hàng tuần|hằng tuần|weekly|every\s+week', caseSensitive: false).hasMatch(lowerMsg)) {
+                frequency = 'weekly';
+              } else if (RegExp(r'mỗi năm|hàng năm|hằng năm|yearly|every\s+year', caseSensitive: false).hasMatch(lowerMsg)) {
+                frequency = 'yearly';
+              }
+
+              // Detect if income based on original action type or category
+              final isIncome = actionType == 'create_income';
+
+              // Convert action to create_recurring
+              actionType = 'create_recurring';
+              action['action'] = 'create_recurring';
+              action['frequency'] = action['frequency'] ?? frequency;
+              action['name'] = action['description'] ?? action['name'] ?? 'Recurring Payment';
+              action['autoCreate'] = action['autoCreate'] ?? true;
+              if (isIncome) action['isIncome'] = true;
+
+              // Try to parse due day from message (e.g., "vào ngày 5", "on the 25th")
+              final dayMatch = RegExp(r'(?:ngày|on\s+(?:the\s+)?|day\s+)(\d{1,2})').firstMatch(lowerMsg);
+              if (dayMatch != null && action['nextDueDate'] == null) {
+                final day = int.parse(dayMatch.group(1)!);
+                if (day >= 1 && day <= 31) {
+                  final now = DateTime.now();
+                  var nextDate = DateTime(now.year, now.month, day);
+                  if (nextDate.isBefore(now)) {
+                    nextDate = DateTime(now.year, now.month + 1, day);
+                  }
+                  action['nextDueDate'] = nextDate.toIso8601String().split('T')[0];
+                }
+              }
+
+              Log.d('Upgraded action: frequency=$frequency, isIncome=$isIncome, name=${action['name']}', label: 'Chat Provider');
+            }
+          }
 
           switch (actionType) {
             case 'create_expense':
@@ -847,7 +899,7 @@ Please create a transaction based on this receipt data.''';
                 Log.d('Creating transaction: action=${action['action']}, amount=$amount $aiCurrency, desc=$description, cat=$category', label: 'Chat Provider');
 
                 // Get the actual amount saved (after currency conversion if needed)
-                final actualAmount = await _createTransactionFromAction(action, wallet: wallet);
+                final actualAmount = await _createTransactionFromAction(action, wallet: wallet, userMessage: content);
 
                 // If transaction creation failed, don't show success message from AI
                 // Error message was already added by _createTransactionFromAction via _addErrorMessage
@@ -1188,7 +1240,7 @@ Please create a transaction based on this receipt data.''';
                 Log.d('🔵 Calling _createRecurringFromAction...', label: 'Chat Provider');
                 double? convertedAmount;
                 try {
-                  convertedAmount = await _createRecurringFromAction(action);
+                  convertedAmount = await _createRecurringFromAction(action, userMessage: content);
                   Log.d('✅ _createRecurringFromAction completed', label: 'Chat Provider');
                 } catch (e) {
                   Log.e('❌ _createRecurringFromAction failed: $e', label: 'Chat Provider');
@@ -1494,7 +1546,7 @@ Please create a transaction based on this receipt data.''';
   }
 
   /// Returns the actual amount saved (after currency conversion if needed)
-  Future<double?> _createTransactionFromAction(Map<String, dynamic> action, {WalletModel? wallet}) async {
+  Future<double?> _createTransactionFromAction(Map<String, dynamic> action, {WalletModel? wallet, String userMessage = ''}) async {
     try {
       // Print to console for debugging
       print('========================================');
@@ -1629,9 +1681,11 @@ Please create a transaction based on this receipt data.''';
 
       // Log for debugging
       Log.d('Transaction type from category "${category.title}": ${category.transactionType} → $transactionType', label: 'TRANSACTION_DEBUG');
-      double amount = (action['amount'] as num).toDouble();
+      final rawLlmAmount = (action['amount'] as num).toDouble();
       final String? actionCurrency = action['currency'] as String?;
       final String walletCurrency = wallet.currency;
+      // Sanity check: LLM often returns wrong VND amounts (e.g., 100tr → 100B instead of 100M)
+      double amount = _sanitizeVndAmount(rawLlmAmount, userMessage, actionCurrency ?? walletCurrency);
       final rawTitle = action['description'] as String;
       // Capitalize first letter of title
       final title = rawTitle.isEmpty
@@ -2398,6 +2452,51 @@ Please create a transaction based on this receipt data.''';
     }
   }
 
+  /// Sanity check for VND amounts from LLM.
+  /// LLMs often multiply "tr" (triệu/million) by 1B instead of 1M,
+  /// resulting in amounts 1000x too large.
+  /// Re-parse from user message to get the correct amount.
+  double _sanitizeVndAmount(double llmAmount, String userMessage, String currency) {
+    if (currency != 'VND') return llmAmount;
+
+    // Try to parse amount from user message directly
+    final lower = userMessage.toLowerCase();
+    final amountPattern = RegExp(r'(\d+[\.,]?\d*)\s*(ty|tỷ|tr|trieu|triệu|k|nghin|nghìn|ngan|ngàn)?');
+    final match = amountPattern.firstMatch(lower);
+    if (match == null) return llmAmount;
+
+    final numStr = match.group(1)?.replaceAll('.', '').replaceAll(',', '.') ?? '0';
+    final unit = match.group(2) ?? '';
+    final base = double.tryParse(numStr) ?? 0.0;
+
+    int multiplier = 1;
+    switch (unit) {
+      case 'k':
+      case 'nghin':
+      case 'nghìn':
+      case 'ngan':
+      case 'ngàn':
+        multiplier = 1000;
+        break;
+      case 'tr':
+      case 'trieu':
+      case 'triệu':
+        multiplier = 1000000;
+        break;
+      case 'ty':
+      case 'tỷ':
+        multiplier = 1000000000;
+        break;
+    }
+
+    final parsed = base * multiplier;
+    if (parsed > 0 && (llmAmount / parsed).abs() > 100) {
+      Log.w('⚠️ VND SANITY CHECK: LLM returned $llmAmount but parsed "$userMessage" as $parsed. Using parsed value.', label: 'AMOUNT_SANITY');
+      return parsed;
+    }
+    return llmAmount;
+  }
+
   String _formatAmount(num value, {String? currency}) {
     if (currency != null && currency.isNotEmpty) {
       // Special formatting for currencies
@@ -2680,13 +2779,15 @@ Please create a transaction based on this receipt data.''';
   }
 
   /// Returns the converted amount in wallet currency
-  Future<double> _createRecurringFromAction(Map<String, dynamic> action) async {
+  Future<double> _createRecurringFromAction(Map<String, dynamic> action, {String userMessage = ''}) async {
     try {
       Log.d('🔵 _createRecurringFromAction() START', label: 'CREATE_RECURRING');
 
       final name = (action['name'] as String?) ?? 'New Recurring';
-      final amount = (action['amount'] as num?)?.toDouble() ?? 0.0;
       final aiCurrency = (action['currency'] as String?) ?? 'VND';
+      // Sanity check: LLM often returns wrong VND amounts (e.g., 100tr → 100B instead of 100M)
+      final rawAmount = (action['amount'] as num?)?.toDouble() ?? 0.0;
+      final amount = _sanitizeVndAmount(rawAmount, userMessage, aiCurrency);
       final categoryName = (action['category'] as String?) ?? 'Others';
       final frequencyString = (action['frequency'] as String?) ?? 'monthly';
       final nextDueDateString = action['nextDueDate'] as String?;
