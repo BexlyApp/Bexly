@@ -1,0 +1,23 @@
+# Bexly
+
+> Bexly is a personal finance and budgeting app for tracking spending, managing wallets, and planning savings goals.
+
+## Canonical URL
+
+- https://bexly.app/
+
+## Product Pages
+
+- [Home](https://bexly.app/): Main app and product entry point.
+- [Google Play](https://play.google.com/store/apps/details?id=com.joy.bexly): Android app listing.
+
+## Company and Support
+
+- [GitHub Repository](https://github.com/BexlyApp/Bexly): Source code and issues.
+- [Security Policy](https://github.com/BexlyApp/Bexly/blob/master/SECURITY.md): Security reporting guidance.
+
+## Crawl Policy
+
+- Public product and documentation pages may be indexed and summarized.
+- Do not access private user data, authenticated content, or non-public endpoints.
+- Prefer canonical public URLs and the sitemap for discovery.
