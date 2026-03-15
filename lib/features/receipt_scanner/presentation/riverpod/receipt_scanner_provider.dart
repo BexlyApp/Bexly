@@ -4,7 +4,7 @@ import 'package:bexly/features/receipt_scanner/data/services/providers/ocr_provi
 
 class SelectedOcrProviderNotifier extends Notifier<OcrProviderType> {
   @override
-  OcrProviderType build() => OcrProviderType.gemini;
+  OcrProviderType build() => OcrProviderType.dosAi;
 
   void setProvider(OcrProviderType provider) => state = provider;
 }
@@ -16,6 +16,8 @@ final selectedOcrProviderProvider = NotifierProvider<SelectedOcrProviderNotifier
 final ocrProviderNameProvider = Provider<String>((ref) {
   final providerType = ref.watch(selectedOcrProviderProvider);
   switch (providerType) {
+    case OcrProviderType.dosAi:
+      return 'DOS AI → Gemini';
     case OcrProviderType.gemini:
       return 'Gemini 2.5 Flash';
     case OcrProviderType.openai:
@@ -27,5 +29,9 @@ final ocrProviderNameProvider = Provider<String>((ref) {
 
 final receiptScannerServiceProvider = Provider<ReceiptScannerService>((ref) {
   final providerType = ref.watch(selectedOcrProviderProvider);
+  // DOS AI uses fallback to Gemini
+  if (providerType == OcrProviderType.dosAi) {
+    return ReceiptScannerService.dosAiWithGeminiFallback();
+  }
   return ReceiptScannerService.fromType(type: providerType);
 });

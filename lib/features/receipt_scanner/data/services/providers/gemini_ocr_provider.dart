@@ -115,7 +115,9 @@ class GeminiOcrProvider implements OcrProvider {
 
   String _buildPrompt(String? additionalPrompt) {
     final basePrompt = '''
-Analyze this receipt and extract information in JSON format:
+Analyze this image and extract transaction information in JSON format.
+The image may be a receipt, invoice, bank statement screenshot, or banking app screenshot.
+If multiple transactions are visible, extract the MOST RECENT or MOST PROMINENT one.
 
 {
   "amount": <total as number WITHOUT currency symbol>,
@@ -123,7 +125,7 @@ Analyze this receipt and extract information in JSON format:
   "merchant": "<meaningful transaction description>",
   "category": "<Food & Dining | Transportation | Shopping | Entertainment | Healthcare | Utilities | Other>",
   "date": "<YYYY-MM-DD>",
-  "payment_method": "<Cash | Credit Card | Debit Card | QR Code | E-Wallet | Other>",
+  "payment_method": "<Cash | Credit Card | Debit Card | QR Code | E-Wallet | Bank Transfer | Other>",
   "items": ["<item 1>", "<item 2>"],
   "tax_amount": "<tax if available>",
   "tip_amount": "<tip if available>"
@@ -132,20 +134,21 @@ Analyze this receipt and extract information in JSON format:
 IMPORTANT:
 - amount must be a number WITHOUT currency symbols or formatting (e.g., 1275000 not \$1,275,000)
 - currency must be ISO code (VND for Vietnamese Dong, USD for US Dollar, etc.)
-- Detect currency from receipt context (language, location, formatting)
+- Detect currency from context (language, location, formatting)
 - If Vietnamese text or location → use VND
 - merchant field must be a MEANINGFUL DESCRIPTION of the transaction, NOT just the store name
-  Examples for Vietnamese receipts:
+  Examples for Vietnamese:
   * Food & Dining: "Ăn tối tại [Store Name]", "Ăn trưa tại [Store Name]", "Cà phê tại [Store Name]"
   * Shopping: "Mua sắm tại [Store Name]", "Mua [item] tại [Store Name]"
   * Transportation: "Đi taxi [Route]", "Grab từ [A] đến [B]"
   * Entertainment: "Xem phim tại [Cinema]", "Karaoke tại [Store Name]"
-  Examples for English receipts:
+  Examples for English:
   * Food & Dining: "Dinner at [Store Name]", "Lunch at [Store Name]", "Coffee at [Store Name]"
   * Shopping: "Shopping at [Store Name]", "Bought [item] at [Store Name]"
   * Transportation: "Taxi ride [Route]", "Uber from [A] to [B]"
   * Use proper Title Case (e.g., "Ăn tối tại Ẩm Thực Phú Long" NOT "ĂN TỐI TẠI ÂM THỰC PHÚ LONG")
   * Infer meal time from receipt time if available (sáng/trưa/tối for Vietnamese, breakfast/lunch/dinner for English)
+- For banking app screenshots: extract the most recent/topmost transaction
 - date must be YYYY-MM-DD format
 - category must be one of the 7 types listed
 - Return ONLY JSON, no markdown

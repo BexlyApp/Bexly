@@ -105,6 +105,8 @@ class ReceiptScannerScreen extends HookConsumerWidget {
               errorMessage.value = null;
             },
             itemBuilder: (context) => [
+              _buildMenuItem(OcrProviderType.dosAi, 'DOS AI → Gemini',
+                  selectedProvider),
               _buildMenuItem(OcrProviderType.gemini, 'Gemini 2.5 Flash',
                   selectedProvider),
               _buildMenuItem(

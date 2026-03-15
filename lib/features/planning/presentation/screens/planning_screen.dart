@@ -28,7 +28,7 @@ class PlanningScreen extends HookConsumerWidget {
     final initialTabFromProvider = ref.watch(planningTabProvider);
     final tabController = useTabController(initialLength: 2, initialIndex: initialTabFromProvider);
     final currentTab = useState(initialTabFromProvider);
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = context.l10n;
 
     // Sync tab controller with provider changes (from sidebar)
     useEffect(() {

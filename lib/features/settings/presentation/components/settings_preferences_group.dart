@@ -12,7 +12,7 @@ class SettingsPreferencesGroup extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        final l10n = AppLocalizations.of(context)!;
+        final l10n = context.l10n;
         final options = [
           ('auto', 'Auto (${ref.read(languageProvider).name})', NumberFormatConfig.previewText),
           ('en_US', '1,000.50', 'English / US'),
@@ -74,7 +74,7 @@ class SettingsPreferencesGroup extends ConsumerWidget {
     final currentLanguage = ref.watch(languageProvider);
     final currentNumberFormat = ref.watch(numberFormatProvider);
 
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = context.l10n;
 
     // Number format display label
     final numberFormatLabel = currentNumberFormat == 'auto'

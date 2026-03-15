@@ -13,6 +13,7 @@ abstract class OcrProvider {
 }
 
 enum OcrProviderType {
+  dosAi,
   gemini,
   openai,
   claude,

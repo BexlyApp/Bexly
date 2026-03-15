@@ -17,7 +17,7 @@ class NotificationListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = context.l10n;
     final notificationsAsync = ref.watch(allNotificationsProvider);
 
     return CustomScaffold(
@@ -100,7 +100,7 @@ class NotificationListScreen extends ConsumerWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = context.l10n;
 
     return Center(
       child: Padding(

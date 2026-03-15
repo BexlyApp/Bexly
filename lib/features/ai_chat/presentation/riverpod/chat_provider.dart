@@ -2984,8 +2984,14 @@ Please create a transaction based on this receipt data.''';
         Log.d('shouldChargeNow = true, will create initial transaction', label: 'CREATE_RECURRING');
         Log.d('Transaction details: amount=$recurringAmount, currency=${wallet.currency}, date=${nextDueDate.toIso8601String()}', label: 'CREATE_RECURRING');
 
-        // Build descriptive title based on frequency
+        // Determine transaction type from category or action hint
+        final isIncome = (action['isIncome'] == true) ||
+            category.transactionType == 'income';
+        final txnType = isIncome ? TransactionType.income : TransactionType.expense;
+
+        // Build descriptive title based on frequency and type
         String transactionTitle = name;
+        final prefix = isIncome ? 'Monthly Income' : 'Subscription';
         switch (frequency) {
           case RecurringFrequency.daily:
             transactionTitle = 'Daily: $name';
@@ -2994,7 +3000,7 @@ Please create a transaction based on this receipt data.''';
             transactionTitle = 'Weekly: $name';
             break;
           case RecurringFrequency.monthly:
-            transactionTitle = 'Subscription: $name';
+            transactionTitle = '$prefix: $name';
             break;
           case RecurringFrequency.yearly:
             transactionTitle = 'Yearly: $name';
@@ -3014,7 +3020,7 @@ Please create a transaction based on this receipt data.''';
         // IMPORTANT: Use nextDueDate as transaction date (not current date)
         // This ensures transaction appears on correct date even if created later
         final transaction = TransactionModel(
-          transactionType: TransactionType.expense,
+          transactionType: txnType,
           amount: recurringAmount,
           date: nextDueDate, // Use due date, not DateTime.now()!
           title: transactionTitle,

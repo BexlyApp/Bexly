@@ -16,7 +16,7 @@ class LanguageSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentLanguage = ref.watch(languageProvider);
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Sort languages alphabetically by name
@@ -48,7 +48,7 @@ class LanguageSettingsScreen extends ConsumerWidget {
                 // Show confirmation snackbar
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(l10n.languageChanged(language.name)),
+                    content: Text('${l10n.languageChanged}: ${language.name}'),
                     duration: const Duration(seconds: 2),
                   ),
                 );

@@ -11,7 +11,6 @@ import 'package:bexly/core/components/buttons/custom_icon_button.dart';
 import 'package:bexly/core/components/progress_indicators/custom_progress_indicator.dart';
 import 'package:bexly/core/components/progress_indicators/custom_progress_indicator_legend.dart';
 import 'package:bexly/core/constants/app_colors.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/constants/app_font_weights.dart';
 import 'package:bexly/core/constants/app_radius.dart';
