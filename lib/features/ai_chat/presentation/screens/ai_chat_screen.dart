@@ -60,7 +60,7 @@ class AIChatScreen extends HookConsumerWidget {
       context: context,
       showBackButton: false,
       showBalance: false,
-      title: AppLocalizations.of(context)?.aiAssistantTitle ?? 'Bexly AI Assistant',
+      title: context.l10nOrNull?.aiAssistantTitle ?? 'Bexly AI Assistant',
       body: Column(
         children: [
           // Error banner
@@ -79,7 +79,7 @@ class AIChatScreen extends HookConsumerWidget {
                   const SizedBox(width: AppSpacing.spacing8),
                   Expanded(
                     child: Text(
-                      AppLocalizations.of(context)?.errorOccurred ?? 'An error occurred. Please try again.',
+                      context.l10nOrNull?.errorOccurred ?? 'An error occurred. Please try again.',
                       style: AppTextStyles.body4.copyWith(
                         color: AppColors.red600,
                       ),
@@ -567,7 +567,7 @@ class _MessageBubble extends ConsumerWidget {
   String _formatTime(BuildContext context, DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    final l10n = AppLocalizations.of(context);
+    final l10n = context.l10nOrNull;
 
     if (difference.inMinutes < 1) {
       return l10n?.justNow ?? 'Just now';
@@ -846,7 +846,7 @@ class _ChatInput extends HookConsumerWidget {
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                       decoration: InputDecoration(
-                        hintText: AppLocalizations.of(context)?.typeYourMessage ?? 'Type your message...',
+                        hintText: context.l10nOrNull?.typeYourMessage ?? 'Type your message...',
                         hintStyle: AppTextStyles.body3.copyWith(
                           color: AppColors.neutral400,
                         ),

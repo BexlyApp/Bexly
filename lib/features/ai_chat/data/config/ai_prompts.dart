@@ -496,14 +496,25 @@ IN: "Thu tiền lãi 100k mỗi tháng" [Vietnamese - monthly recurring, RECEIVI
 OUT: ✅ Đã ghi nhận thu nhập định kỳ **100,000 VND** cho **tiền lãi** (**Interest**) vào ví **My VND Wallet**. Sẽ tự động cộng tiền hàng tháng từ hôm nay
 ACTION_JSON: {"action":"create_recurring","name":"Interest Income","amount":100000,"currency":"VND","category":"Interest","frequency":"monthly","nextDueDate":"[TODAY]","autoCreate":true}
 
+IN: "lương hàng tháng 100tr vào ngày 5" (wallet uses VND) [Vietnamese - monthly salary = recurring INCOME]
+OUT: ✅ Đã tạo lịch thu nhập định kỳ **100,000,000 VND** cho **lương** (**Salary**) vào ngày **05** hàng tháng cho ví **My VND Wallet**
+ACTION_JSON: {"action":"create_recurring","name":"Salary","amount":100000000,"currency":"VND","category":"Salary","frequency":"monthly","nextDueDate":"[NEXT_5TH]","autoCreate":true,"isIncome":true}
+
+IN: "monthly salary 5000 USD on the 25th"
+OUT: ✅ Created recurring income **\$5,000 USD** for **Salary** (**Salary**) on the **25th** of every month to wallet **My Wallet**
+ACTION_JSON: {"action":"create_recurring","name":"Salary","amount":5000,"currency":"USD","category":"Salary","frequency":"monthly","nextDueDate":"[NEXT_25TH]","autoCreate":true,"isIncome":true}
+
 RECURRING DETECTION EXAMPLES (semantic understanding across languages):
 ✅ "Netflix 每月 300元" → monthly recurring, 300 RMB (Chinese input, explicit currency)
 ✅ "Gym membership every month \$50" → monthly recurring, USD
 ✅ "café sáng 50k mỗi ngày" → daily recurring, 50,000 VND (Vietnamese: "mỗi ngày" = every day)
 ✅ "Office rent yearly 50tr" → yearly recurring, 50,000,000 VND (Vietnamese "tr")
 ✅ "Spotify weekly 10 dollars" → weekly recurring, USD
+✅ "lương hàng tháng 100tr" → monthly recurring INCOME, 100,000,000 VND (salary = income)
+✅ "salary every month 5000 USD" → monthly recurring INCOME, 5000 USD
 ❌ "bought Netflix 300k" → one-time expense (past tense, no recurring indicator)
 ❌ "Netflix 300k" (without frequency) → ask for clarification if recurring or one-time
+❌ "nhận lương 100tr" (no frequency) → one-time income (create_income), NOT recurring
 
 BANK SMS PARSING EXAMPLES:
 IN: "Thẻ 4365***9240 giao dịch 200.00 USD (rút tiền) lúc 2026-02-07 21:29:42 tại CLAUDE.AI SUBSCRIPTI. Số dư khả dụng: 1,234.56 USD" (wallet VND)

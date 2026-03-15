@@ -540,12 +540,17 @@ TransactionFormState useTransactionFormState({
     () {
       if (receiptData != null && !isEditing) {
         Future.microtask(() async {
+          Log.d('📸 Receipt data: amount=${receiptData.amount}, currency=${receiptData.currency}, merchant=${receiptData.merchant}, category=${receiptData.category}',
+              label: 'TransactionForm');
+
           // Populate title from merchant
           titleController.text = receiptData.merchant;
 
           // Populate amount with currency symbol for UI display
           final currency = receiptData.currency ?? 'VND';
-          amountController.text = formatCurrency(receiptData.amount.toPriceFormat(), currency.currencySymbol, currency);
+          final formattedAmount = formatCurrency(receiptData.amount.toPriceFormat(), currency.currencySymbol, currency);
+          Log.d('📸 Formatted amount: "$formattedAmount"', label: 'TransactionForm');
+          amountController.text = formattedAmount;
 
           // Populate notes from items
           if (receiptData.items.isNotEmpty) {
@@ -615,9 +620,23 @@ TransactionFormState useTransactionFormState({
             if (matchedCategory != null) break;
           }
 
-          // Only set category if there's a match, don't auto-fill if no match
           if (matchedCategory != null) {
             selectedCategory.value = matchedCategory;
+          } else {
+            // Fallback: try to find "Other" category in DB
+            for (final dbCat in allCategories) {
+              if (dbCat.title.toLowerCase() == 'other' ||
+                  dbCat.title.toLowerCase() == 'khác') {
+                selectedCategory.value = dbCat.toModel();
+                break;
+              }
+            }
+            // Last resort: use the first available category
+            if (selectedCategory.value == null && allCategories.isNotEmpty) {
+              selectedCategory.value = allCategories.first.toModel();
+            }
+            Log.w('No category match for "${receiptData.category}", using fallback: ${selectedCategory.value?.title}',
+                label: 'TransactionForm');
           }
 
           // Set receipt image if available

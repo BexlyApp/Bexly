@@ -20,7 +20,6 @@ import 'package:bexly/core/constants/app_constants.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
-import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/services/package_info/package_info_provider.dart';

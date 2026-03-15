@@ -64,7 +64,7 @@ class _WideLayout extends ConsumerWidget {
                         Expanded(
                           flex: 2,
                           child: TransactionCard(
-                            title: AppLocalizations.of(context)!.income,
+                            title: context.l10n.income,
                             amount: currentIncome,
                             amountLastMonth: lastIncome,
                             percentDifference: incomePercentDifference,
@@ -82,7 +82,7 @@ class _WideLayout extends ConsumerWidget {
                         Expanded(
                           flex: 2,
                           child: TransactionCard(
-                            title: AppLocalizations.of(context)!.expense,
+                            title: context.l10n.expense,
                             amount: currentExpense,
                             amountLastMonth: lastExpense,
                             percentDifference: expensePercentDifference,
@@ -135,14 +135,14 @@ class _WideLayout extends ConsumerWidget {
         Expanded(
           flex: 2,
           child: Center(
-            child: Text(AppLocalizations.of(context)!.errorLoadingIncomeData),
+            child: Text(context.l10n.errorLoadingIncomeData),
           ),
         ),
         const Gap(AppSpacing.spacing12),
         Expanded(
           flex: 2,
           child: Center(
-            child: Text(AppLocalizations.of(context)!.errorLoadingExpenseData),
+            child: Text(context.l10n.errorLoadingExpenseData),
           ),
         ),
       ],

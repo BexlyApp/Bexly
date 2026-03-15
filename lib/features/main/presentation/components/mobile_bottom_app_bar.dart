@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
 
 class MobileBottomAppBar extends ConsumerWidget {
@@ -15,7 +15,7 @@ class MobileBottomAppBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(pageControllerProvider);
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = context.l10n;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     final Color backgroundColor = isDarkMode

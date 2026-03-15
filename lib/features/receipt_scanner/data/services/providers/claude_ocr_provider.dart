@@ -87,15 +87,19 @@ class ClaudeOcrProvider implements OcrProvider {
 
   String _buildPrompt(String? additionalPrompt) {
     return '''
-Analyze this receipt and extract JSON:
-{"amount": <number>, "currency": "ISO code like VND/USD", "merchant": "meaningful transaction description", "category": "Food & Dining|Transportation|Shopping|Entertainment|Healthcare|Utilities|Other", "date": "YYYY-MM-DD", "payment_method": "Cash|Credit Card|Debit Card|QR Code|E-Wallet|Other", "items": ["item1"], "tax_amount": "string", "tip_amount": "string"}
+Analyze this image and extract transaction information in JSON format.
+The image may be a receipt, invoice, bank statement, or banking app screenshot.
+If multiple transactions are visible, extract the MOST RECENT or MOST PROMINENT one.
+
+{"amount": <number>, "currency": "ISO code like VND/USD", "merchant": "meaningful transaction description", "category": "Food & Dining|Transportation|Shopping|Entertainment|Healthcare|Utilities|Other", "date": "YYYY-MM-DD", "payment_method": "Cash|Credit Card|Debit Card|QR Code|E-Wallet|Bank Transfer|Other", "items": ["item1"], "tax_amount": "string", "tip_amount": "string"}
 
 IMPORTANT:
 - merchant must be a meaningful description, NOT just store name
 - Vietnamese examples: "Ăn tối tại [Store]", "Ăn trưa tại [Store]", "Cà phê tại [Store]", "Mua sắm tại [Store]"
 - English examples: "Dinner at [Store]", "Lunch at [Store]", "Coffee at [Store]", "Shopping at [Store]"
 - Use Title Case (e.g., "Ăn tối tại Ẩm Thực Phú Long" NOT "ĂN TỐI TẠI ÂM THỰC PHÚ LONG")
-- Infer meal time from receipt time if available
+- For banking app screenshots: extract the most recent/topmost transaction
+- amount must be a number WITHOUT currency symbols (e.g., 261590 not 261.590đ)
 Return ONLY the JSON object.''';
   }
 }

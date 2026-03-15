@@ -2,7 +2,7 @@ import 'package:bexly/core/localization/generated/app_localizations.dart';
 
 /// Extension for looking up localized category names by their database ID.
 extension CategoryNameL10n on AppLocalizations {
-  static const Map<int, String Function(AppLocalizations)> _getters = {
+  static final Map<int, String Function(AppLocalizations)> _getters = {
     // Main categories
     1: (l) => l.categoryFoodDrinks,
     2: (l) => l.categoryTransportation,

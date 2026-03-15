@@ -29,7 +29,7 @@ class CashFlowCards extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: TransactionCard(
-                            title: AppLocalizations.of(context)!.income,
+                            title: context.l10n.income,
                             amount: currentIncome,
                             amountLastMonth: lastIncome,
                             percentDifference: incomePercentDifference,
@@ -45,7 +45,7 @@ class CashFlowCards extends ConsumerWidget {
                         const Gap(AppSpacing.spacing12),
                         Expanded(
                           child: TransactionCard(
-                            title: AppLocalizations.of(context)!.expense,
+                            title: context.l10n.expense,
                             amount: currentExpense,
                             amountLastMonth: lastExpense,
                             percentDifference: expensePercentDifference,
@@ -110,7 +110,7 @@ class CashFlowCards extends ConsumerWidget {
         Expanded(
           child: Center(
             child: Text(
-              AppLocalizations.of(context)!.errorLoadingIncomeData,
+              context.l10n.errorLoadingIncomeData,
             ),
           ),
         ),
@@ -118,7 +118,7 @@ class CashFlowCards extends ConsumerWidget {
         Expanded(
           child: Center(
             child: Text(
-              AppLocalizations.of(context)!.errorLoadingExpenseData,
+              context.l10n.errorLoadingExpenseData,
             ),
           ),
         ),

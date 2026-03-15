@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/budget/presentation/components/budget_card_holder.dart';
 import 'package:bexly/features/budget/presentation/components/budget_summary_card.dart';
 import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
@@ -12,7 +12,7 @@ class BudgetScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = context.l10n;
     final allBudgetsAsyncValue = ref.watch(budgetListProvider);
     final selectedPeriod = ref.watch(selectedBudgetPeriodProvider);
 

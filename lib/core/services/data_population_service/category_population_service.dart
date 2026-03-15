@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:bexly/core/database/app_database.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/localization/generated/app_localizations.dart';
+import 'package:bexly/core/localization/category_name_l10n.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/category/data/repositories/category_repo.dart';
 
@@ -20,7 +21,7 @@ class CategoryPopulationService {
 
     for (final langCode in supportedLanguages) {
       final locale = Locale(langCode);
-      final l10n = AppLocalizations(locale);
+      final l10n = lookupAppLocalizations(locale);
       final localizedName = l10n.getCategoryName(categoryId);
 
       // Only include if we have a valid translation (not "Unknown Category")
