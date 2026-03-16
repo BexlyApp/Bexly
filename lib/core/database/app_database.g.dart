@@ -5489,6 +5489,17 @@ class $ChatMessagesTable extends ChatMessages
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _imagePathMeta = const VerificationMeta(
+    'imagePath',
+  );
+  @override
+  late final GeneratedColumn<String> imagePath = GeneratedColumn<String>(
+    'image_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -5510,6 +5521,7 @@ class $ChatMessagesTable extends ChatMessages
     timestamp,
     error,
     isTyping,
+    imagePath,
     createdAt,
   ];
   @override
@@ -5574,6 +5586,12 @@ class $ChatMessagesTable extends ChatMessages
         isTyping.isAcceptableOrUnknown(data['is_typing']!, _isTypingMeta),
       );
     }
+    if (data.containsKey('image_path')) {
+      context.handle(
+        _imagePathMeta,
+        imagePath.isAcceptableOrUnknown(data['image_path']!, _imagePathMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -5617,6 +5635,10 @@ class $ChatMessagesTable extends ChatMessages
         DriftSqlType.bool,
         data['${effectivePrefix}is_typing'],
       )!,
+      imagePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}image_path'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -5651,6 +5673,9 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
   /// Whether the message is a typing indicator
   final bool isTyping;
 
+  /// Local file path for attached image (receipt photo, PDF render, etc.)
+  final String? imagePath;
+
   /// Created at timestamp for database record
   final DateTime createdAt;
   const ChatMessage({
@@ -5661,6 +5686,7 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
     required this.timestamp,
     this.error,
     required this.isTyping,
+    this.imagePath,
     required this.createdAt,
   });
   @override
@@ -5675,6 +5701,9 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
       map['error'] = Variable<String>(error);
     }
     map['is_typing'] = Variable<bool>(isTyping);
+    if (!nullToAbsent || imagePath != null) {
+      map['image_path'] = Variable<String>(imagePath);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -5690,6 +5719,9 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
           ? const Value.absent()
           : Value(error),
       isTyping: Value(isTyping),
+      imagePath: imagePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imagePath),
       createdAt: Value(createdAt),
     );
   }
@@ -5707,6 +5739,7 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
       error: serializer.fromJson<String?>(json['error']),
       isTyping: serializer.fromJson<bool>(json['isTyping']),
+      imagePath: serializer.fromJson<String?>(json['imagePath']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -5721,6 +5754,7 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
       'timestamp': serializer.toJson<DateTime>(timestamp),
       'error': serializer.toJson<String?>(error),
       'isTyping': serializer.toJson<bool>(isTyping),
+      'imagePath': serializer.toJson<String?>(imagePath),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -5733,6 +5767,7 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
     DateTime? timestamp,
     Value<String?> error = const Value.absent(),
     bool? isTyping,
+    Value<String?> imagePath = const Value.absent(),
     DateTime? createdAt,
   }) => ChatMessage(
     id: id ?? this.id,
@@ -5742,6 +5777,7 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
     timestamp: timestamp ?? this.timestamp,
     error: error.present ? error.value : this.error,
     isTyping: isTyping ?? this.isTyping,
+    imagePath: imagePath.present ? imagePath.value : this.imagePath,
     createdAt: createdAt ?? this.createdAt,
   );
   ChatMessage copyWithCompanion(ChatMessagesCompanion data) {
@@ -5755,6 +5791,7 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
       timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
       error: data.error.present ? data.error.value : this.error,
       isTyping: data.isTyping.present ? data.isTyping.value : this.isTyping,
+      imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -5769,6 +5806,7 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
           ..write('timestamp: $timestamp, ')
           ..write('error: $error, ')
           ..write('isTyping: $isTyping, ')
+          ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -5783,6 +5821,7 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
     timestamp,
     error,
     isTyping,
+    imagePath,
     createdAt,
   );
   @override
@@ -5796,6 +5835,7 @@ class ChatMessage extends DataClass implements Insertable<ChatMessage> {
           other.timestamp == this.timestamp &&
           other.error == this.error &&
           other.isTyping == this.isTyping &&
+          other.imagePath == this.imagePath &&
           other.createdAt == this.createdAt);
 }
 
@@ -5807,6 +5847,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessage> {
   final Value<DateTime> timestamp;
   final Value<String?> error;
   final Value<bool> isTyping;
+  final Value<String?> imagePath;
   final Value<DateTime> createdAt;
   const ChatMessagesCompanion({
     this.id = const Value.absent(),
@@ -5816,6 +5857,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessage> {
     this.timestamp = const Value.absent(),
     this.error = const Value.absent(),
     this.isTyping = const Value.absent(),
+    this.imagePath = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   ChatMessagesCompanion.insert({
@@ -5826,6 +5868,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessage> {
     required DateTime timestamp,
     this.error = const Value.absent(),
     this.isTyping = const Value.absent(),
+    this.imagePath = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : messageId = Value(messageId),
        content = Value(content),
@@ -5839,6 +5882,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessage> {
     Expression<DateTime>? timestamp,
     Expression<String>? error,
     Expression<bool>? isTyping,
+    Expression<String>? imagePath,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -5849,6 +5893,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessage> {
       if (timestamp != null) 'timestamp': timestamp,
       if (error != null) 'error': error,
       if (isTyping != null) 'is_typing': isTyping,
+      if (imagePath != null) 'image_path': imagePath,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -5861,6 +5906,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessage> {
     Value<DateTime>? timestamp,
     Value<String?>? error,
     Value<bool>? isTyping,
+    Value<String?>? imagePath,
     Value<DateTime>? createdAt,
   }) {
     return ChatMessagesCompanion(
@@ -5871,6 +5917,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessage> {
       timestamp: timestamp ?? this.timestamp,
       error: error ?? this.error,
       isTyping: isTyping ?? this.isTyping,
+      imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -5899,6 +5946,9 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessage> {
     if (isTyping.present) {
       map['is_typing'] = Variable<bool>(isTyping.value);
     }
+    if (imagePath.present) {
+      map['image_path'] = Variable<String>(imagePath.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -5915,6 +5965,7 @@ class ChatMessagesCompanion extends UpdateCompanion<ChatMessage> {
           ..write('timestamp: $timestamp, ')
           ..write('error: $error, ')
           ..write('isTyping: $isTyping, ')
+          ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -17333,6 +17384,7 @@ typedef $$ChatMessagesTableCreateCompanionBuilder =
       required DateTime timestamp,
       Value<String?> error,
       Value<bool> isTyping,
+      Value<String?> imagePath,
       Value<DateTime> createdAt,
     });
 typedef $$ChatMessagesTableUpdateCompanionBuilder =
@@ -17344,6 +17396,7 @@ typedef $$ChatMessagesTableUpdateCompanionBuilder =
       Value<DateTime> timestamp,
       Value<String?> error,
       Value<bool> isTyping,
+      Value<String?> imagePath,
       Value<DateTime> createdAt,
     });
 
@@ -17388,6 +17441,11 @@ class $$ChatMessagesTableFilterComposer
 
   ColumnFilters<bool> get isTyping => $composableBuilder(
     column: $table.isTyping,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imagePath => $composableBuilder(
+    column: $table.imagePath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17441,6 +17499,11 @@ class $$ChatMessagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get imagePath => $composableBuilder(
+    column: $table.imagePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -17478,6 +17541,9 @@ class $$ChatMessagesTableAnnotationComposer
 
   GeneratedColumn<bool> get isTyping =>
       $composableBuilder(column: $table.isTyping, builder: (column) => column);
+
+  GeneratedColumn<String> get imagePath =>
+      $composableBuilder(column: $table.imagePath, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -17521,6 +17587,7 @@ class $$ChatMessagesTableTableManager
                 Value<DateTime> timestamp = const Value.absent(),
                 Value<String?> error = const Value.absent(),
                 Value<bool> isTyping = const Value.absent(),
+                Value<String?> imagePath = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => ChatMessagesCompanion(
                 id: id,
@@ -17530,6 +17597,7 @@ class $$ChatMessagesTableTableManager
                 timestamp: timestamp,
                 error: error,
                 isTyping: isTyping,
+                imagePath: imagePath,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -17541,6 +17609,7 @@ class $$ChatMessagesTableTableManager
                 required DateTime timestamp,
                 Value<String?> error = const Value.absent(),
                 Value<bool> isTyping = const Value.absent(),
+                Value<String?> imagePath = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => ChatMessagesCompanion.insert(
                 id: id,
@@ -17550,6 +17619,7 @@ class $$ChatMessagesTableTableManager
                 timestamp: timestamp,
                 error: error,
                 isTyping: isTyping,
+                imagePath: imagePath,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

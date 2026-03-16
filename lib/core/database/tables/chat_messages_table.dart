@@ -22,6 +22,9 @@ class ChatMessages extends Table {
   /// Whether the message is a typing indicator
   BoolColumn get isTyping => boolean().withDefault(const Constant(false))();
 
+  /// Local file path for attached image (receipt photo, PDF render, etc.)
+  TextColumn get imagePath => text().nullable()();
+
   /// Created at timestamp for database record
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

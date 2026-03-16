@@ -75,7 +75,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 26; // Add routinePeriod column to budgets
+  int get schemaVersion => 27; // Add imagePath column to chat_messages
 
   @override
   MigrationStrategy get migration {
@@ -369,6 +369,16 @@ class AppDatabase extends _$AppDatabase {
             Log.i('Migrated existing routine budgets to monthly period', label: 'database');
           } catch (e) {
             Log.e('Failed to add routinePeriod column: $e', label: 'database');
+          }
+        }
+
+        // For version 27, add imagePath column to chat_messages
+        if (from < 27) {
+          try {
+            await m.addColumn(chatMessages, chatMessages.imagePath);
+            Log.i('Added imagePath column to chat_messages', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add imagePath column: $e', label: 'database');
           }
         }
 

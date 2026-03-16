@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +29,7 @@ import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/utils/category_translation_map.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/features/receipt_scanner/presentation/riverpod/receipt_scanner_provider.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
 import 'package:bexly/features/pending_transactions/data/models/pending_transaction_model.dart';
 import 'package:bexly/core/database/daos/pending_transaction_dao.dart';
@@ -450,6 +452,19 @@ class ChatNotifier extends Notifier<ChatState> {
       // Convert database messages to ChatMessage model and DEDUP by messageId
       final Map<String, ChatMessage> uniqueMessages = {};
       for (final dbMsg in savedMessages) {
+        // Load image from file if path is stored
+        Uint8List? imageBytes;
+        if (dbMsg.imagePath != null) {
+          try {
+            final file = File(dbMsg.imagePath!);
+            if (file.existsSync()) {
+              imageBytes = await file.readAsBytes();
+            }
+          } catch (e) {
+            Log.w('Failed to load chat image: $e', label: 'Chat Provider');
+          }
+        }
+
         final message = ChatMessage(
           id: dbMsg.messageId,
           content: dbMsg.content,
@@ -457,6 +472,7 @@ class ChatNotifier extends Notifier<ChatState> {
           timestamp: dbMsg.timestamp,
           error: dbMsg.error,
           isTyping: dbMsg.isTyping,
+          imageBytes: imageBytes,
         );
         // Keep only the first occurrence (or latest if you prefer)
         if (!uniqueMessages.containsKey(dbMsg.messageId)) {
@@ -489,6 +505,24 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 
   Future<void> _saveMessageToDatabase(ChatMessage message, {bool shouldSync = true}) async {
+    // Save image to file if present
+    String? imagePath;
+    if (message.imageBytes != null) {
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final chatImagesDir = Directory('${dir.path}/chat_images');
+        if (!chatImagesDir.existsSync()) {
+          chatImagesDir.createSync(recursive: true);
+        }
+        final file = File('${chatImagesDir.path}/${message.id}.jpg');
+        await file.writeAsBytes(message.imageBytes!);
+        imagePath = file.path;
+        Log.d('Saved chat image: $imagePath', label: 'Chat Provider');
+      } catch (e) {
+        Log.e('Failed to save chat image: $e', label: 'Chat Provider');
+      }
+    }
+
     final dao = ref.read(chatMessageDaoProvider);
     await dao.addMessage(db.ChatMessagesCompanion(
       messageId: drift.Value(message.id),
@@ -497,6 +531,7 @@ class ChatNotifier extends Notifier<ChatState> {
       timestamp: drift.Value(message.timestamp),
       error: drift.Value(message.error),
       isTyping: drift.Value(message.isTyping),
+      imagePath: drift.Value(imagePath),
     ));
 
     // Sync to cloud (if authenticated)
