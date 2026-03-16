@@ -503,18 +503,36 @@ class _MessageBubble extends ConsumerWidget {
                             // Show action buttons if pending action exists
                             if (hasPendingAction) ...[
                               const SizedBox(height: AppSpacing.spacing12),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.max,
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: message.pendingAction!.buttons.map((button) {
-                                  final isConfirm = button.actionType == 'confirm';
+                                  // Determine button style based on action type
+                                  final isPrimary = button.actionType == 'confirm' ||
+                                      button.actionType == 'screenshot_bulk_create';
+                                  final isDestructive = button.actionType == 'confirm' &&
+                                      (message.pendingAction!.actionType.contains('delete'));
+
+                                  final bgColor = isDestructive
+                                      ? AppColors.redAlpha10
+                                      : isPrimary
+                                          ? AppColors.primary600.withAlpha(15)
+                                          : AppColors.neutral100;
+                                  final borderColor = isDestructive
+                                      ? AppColors.red
+                                      : isPrimary
+                                          ? AppColors.primary600
+                                          : AppColors.neutral300;
+                                  final textColor = isDestructive
+                                      ? AppColors.red
+                                      : isPrimary
+                                          ? AppColors.primary600
+                                          : AppColors.neutral700;
+
                                   return Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.spacing4),
+                                    padding: const EdgeInsets.only(bottom: AppSpacing.spacing8),
                                     child: Material(
-                                      color: isConfirm
-                                          ? AppColors.redAlpha10
-                                          : AppColors.neutral100,
-                                      borderRadius: BorderRadius.circular(20),
+                                      color: bgColor,
+                                      borderRadius: BorderRadius.circular(12),
                                       child: InkWell(
                                         onTap: () {
                                           HapticFeedback.lightImpact();
@@ -523,34 +541,25 @@ class _MessageBubble extends ConsumerWidget {
                                             button.actionType,
                                           );
                                         },
-                                        borderRadius: BorderRadius.circular(20),
-                                        splashColor: isConfirm
-                                            ? AppColors.red.withValues(alpha: 0.2)
-                                            : AppColors.neutral300.withValues(alpha: 0.3),
-                                        highlightColor: isConfirm
-                                            ? AppColors.red.withValues(alpha: 0.1)
-                                            : AppColors.neutral200.withValues(alpha: 0.5),
+                                        borderRadius: BorderRadius.circular(12),
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: AppSpacing.spacing16,
-                                            vertical: AppSpacing.spacing8,
+                                            vertical: AppSpacing.spacing12,
                                           ),
                                           decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(20),
+                                            borderRadius: BorderRadius.circular(12),
                                             border: Border.all(
-                                              color: isConfirm
-                                                  ? AppColors.red
-                                                  : AppColors.neutral300,
+                                              color: borderColor,
                                               width: 1,
                                             ),
                                           ),
                                           child: Text(
                                             button.label,
+                                            textAlign: TextAlign.center,
                                             style: AppTextStyles.body4.copyWith(
                                               fontWeight: FontWeight.w600,
-                                              color: isConfirm
-                                                  ? AppColors.red
-                                                  : AppColors.neutral700,
+                                              color: textColor,
                                             ),
                                           ),
                                         ),
