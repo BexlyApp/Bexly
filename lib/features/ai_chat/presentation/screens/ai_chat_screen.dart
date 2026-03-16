@@ -389,67 +389,52 @@ class _MessageBubble extends ConsumerWidget {
     final isUser = message.isFromUser;
     final isTyping = message.isTyping;
     final hasPendingAction = message.hasPendingAction;
-    final userPhotoUrl = ref.watch(authStateProvider).profilePicture;
-
-    // DEBUG: Log pending action status for each message
-    if (!isUser && message.pendingAction != null) {
-      print('[UI_BUBBLE] Message ${message.id.substring(0, 8)}: pendingAction=${message.pendingAction != null}, isActionHandled=${message.isActionHandled}, hasPendingAction=$hasPendingAction');
-    }
 
     return Container(
       margin: EdgeInsets.only(
         bottom: isLast ? AppSpacing.spacing8 : AppSpacing.spacing16,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
-          if (!isUser) ...[
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary400, AppColors.primary600],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.smart_toy_outlined,
-                color: AppColors.light,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.spacing8),
-          ],
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: isUser
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
-              children: [
-                Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.75,
-                  ),
-                  padding: const EdgeInsets.symmetric(
+          // User messages: box with background, max 85% width
+          // AI messages: no background, full width
+          Container(
+            constraints: isUser
+                ? BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.85,
+                  )
+                : null,
+            padding: isUser
+                ? const EdgeInsets.symmetric(
                     horizontal: AppSpacing.spacing16,
                     vertical: AppSpacing.spacing8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isUser
-                        ? AppColors.primary600
-                        : (isTyping ? AppColors.neutral100 : AppColors.neutral50),
+                  )
+                : isTyping
+                    ? const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.spacing8,
+                        vertical: AppSpacing.spacing8,
+                      )
+                    : const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.spacing4,
+                        vertical: AppSpacing.spacing4,
+                      ),
+            decoration: isUser
+                ? BoxDecoration(
+                    color: AppColors.primary600,
                     borderRadius: BorderRadius.circular(16).copyWith(
-                      topLeft: isUser ? const Radius.circular(16) : const Radius.circular(4),
-                      topRight: isUser ? const Radius.circular(4) : const Radius.circular(16),
+                      topRight: const Radius.circular(4),
                     ),
-                    border: isTyping
-                        ? Border.all(color: AppColors.neutral200)
-                        : null,
-                  ),
+                  )
+                : isTyping
+                    ? BoxDecoration(
+                        color: AppColors.neutral100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.neutral200),
+                      )
+                    : null,
                   child: isTyping
                       ? Row(
                           mainAxisSize: MainAxisSize.min,
@@ -573,67 +558,36 @@ class _MessageBubble extends ConsumerWidget {
                         ),
                 ),
 
-                const SizedBox(height: AppSpacing.spacing4),
+          const SizedBox(height: AppSpacing.spacing4),
 
-                // Timestamp and model name row
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _formatTime(context, message.timestamp),
-                      style: AppTextStyles.body5.copyWith(
-                        color: AppColors.neutral400,
-                      ),
-                    ),
-                    // Show model name for AI messages
-                    if (!isUser && message.modelName != null) ...[
-                      Text(
-                        ' · ',
-                        style: AppTextStyles.body5.copyWith(
-                          color: AppColors.neutral400,
-                        ),
-                      ),
-                      Text(
-                        _formatModelName(message.modelName!),
-                        style: AppTextStyles.body5.copyWith(
-                          color: AppColors.primary400,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ],
+          // Timestamp and model name row
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _formatTime(context, message.timestamp),
+                style: AppTextStyles.body5.copyWith(
+                  color: AppColors.neutral400,
+                ),
+              ),
+              // Show model name for AI messages
+              if (!isUser && message.modelName != null) ...[
+                Text(
+                  ' · ',
+                  style: AppTextStyles.body5.copyWith(
+                    color: AppColors.neutral400,
+                  ),
+                ),
+                Text(
+                  _formatModelName(message.modelName!),
+                  style: AppTextStyles.body5.copyWith(
+                    color: AppColors.primary400,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
-            ),
+            ],
           ),
-
-          if (isUser) ...[
-            const SizedBox(width: AppSpacing.spacing8),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                // Only show background color when no avatar (to support transparent PNGs)
-                color: userPhotoUrl == null ? AppColors.secondary600 : null,
-                borderRadius: BorderRadius.circular(16),
-                // Show user avatar if available
-                image: userPhotoUrl != null
-                    ? DecorationImage(
-                        image: NetworkImage(userPhotoUrl),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              // Only show icon if no avatar
-              child: userPhotoUrl == null
-                  ? const Icon(
-                      Icons.person_outline,
-                      color: AppColors.light,
-                      size: 16,
-                    )
-                  : null,
-            ),
-          ],
         ],
       ),
     );
