@@ -28,6 +28,9 @@ import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
 import 'package:bexly/core/utils/category_translation_map.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/features/receipt_scanner/presentation/riverpod/receipt_scanner_provider.dart';
+import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
+import 'package:bexly/features/pending_transactions/data/models/pending_transaction_model.dart';
+import 'package:bexly/core/database/daos/pending_transaction_dao.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:bexly/features/settings/presentation/riverpod/ai_model_provider.dart';
@@ -297,6 +300,9 @@ class ChatNotifier extends Notifier<ChatState> {
 
   // Store current receipt image for attaching to transactions
   Uint8List? _currentReceiptImage;
+
+  // Store pending screenshot transactions for quick action handling
+  List<ReceiptScanResult>? _pendingScreenshotTransactions;
 
   // Get AI service when needed to avoid provider rebuilds
   AIService get _aiService => ref.read(aiServiceProvider);
@@ -587,23 +593,96 @@ class ChatNotifier extends Notifier<ChatState> {
     unawaited(_saveMessageToDatabase(userMessage));
 
     try {
-      // If image is provided, analyze it as a receipt first
+      // If image is provided, analyze it (receipt or banking screenshot)
       String enhancedContent = content;
       if (imageBytes != null) {
-        print('📸 [RECEIPT] Receipt image detected, analyzing...');
-        Log.d('Receipt image detected, analyzing...', label: 'Chat Provider');
+        print('📸 [RECEIPT] Image detected, analyzing...');
+        Log.d('Image detected, analyzing...', label: 'Chat Provider');
 
         try {
           final receiptService = ref.read(receiptScannerServiceProvider);
-          final receiptResult = await receiptService.analyzeReceipt(imageBytes: imageBytes);
+          final results = await receiptService.analyzeScreenshot(imageBytes: imageBytes);
 
+          if (results.length > 1) {
+            // Multi-transaction: banking screenshot
+            Log.d('Banking screenshot: ${results.length} transactions extracted', label: 'Chat Provider');
+
+            // Deduplicate against existing transactions
+            final deduped = await _deduplicateScreenshotResults(results);
+            final skipped = results.length - deduped.length;
+
+            // Remove analyzing indicator
+            final messagesWithoutAnalyzing = state.messages
+                .where((msg) => !msg.isTyping)
+                .toList();
+
+            if (deduped.isEmpty) {
+              // All duplicates
+              final aiMsg = ChatMessage(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                content: '🔍 Đã quét **${results.length} giao dịch** nhưng tất cả đã có trong ví. Không có giao dịch mới.',
+                isFromUser: false,
+                timestamp: DateTime.now(),
+              );
+              state = state.copyWith(
+                messages: [...messagesWithoutAnalyzing, aiMsg],
+                isLoading: false,
+                isTyping: false,
+              );
+              unawaited(_saveMessageToDatabase(aiMsg));
+              return;
+            }
+
+            // Store for quick action handling
+            _pendingScreenshotTransactions = deduped;
+
+            final walletName = ref.read(activeWalletProvider).value?.name ?? 'My VND Wallet';
+            final summaryLines = deduped.take(5).map((r) =>
+              '• ${r.merchant} — ${_formatAmount(r.amount, currency: r.currency ?? 'VND')}'
+            ).join('\n');
+            final moreText = deduped.length > 5 ? '\n• ... và ${deduped.length - 5} giao dịch khác' : '';
+
+            final aiMsg = ChatMessage(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              content: '🔍 Đã quét **${results.length} giao dịch**${skipped > 0 ? ' (bỏ $skipped trùng)' : ''}. '
+                  '**${deduped.length} giao dịch mới**:\n\n$summaryLines$moreText',
+              isFromUser: false,
+              timestamp: DateTime.now(),
+              pendingAction: PendingAction(
+                actionType: 'screenshot_transactions',
+                actionData: {
+                  'count': deduped.length,
+                  'walletName': walletName,
+                },
+                buttons: [
+                  ChatActionButton(
+                    label: '✅ Thêm tất cả ${deduped.length} vào $walletName',
+                    actionType: 'screenshot_bulk_create',
+                  ),
+                  ChatActionButton(
+                    label: '📋 Duyệt ở danh sách chờ',
+                    actionType: 'screenshot_to_pending',
+                  ),
+                ],
+              ),
+            );
+
+            state = state.copyWith(
+              messages: [...messagesWithoutAnalyzing, aiMsg],
+              isLoading: false,
+              isTyping: false,
+            );
+            unawaited(_saveMessageToDatabase(aiMsg));
+            return;
+          }
+
+          // Single receipt — existing flow
+          final receiptResult = results.first;
           print('📸 [RECEIPT] Receipt analyzed: ${receiptResult.merchant}, ${receiptResult.amount} ${receiptResult.currency}');
           Log.d('Receipt analyzed: ${receiptResult.merchant}, ${receiptResult.amount} ${receiptResult.currency}', label: 'Chat Provider');
 
-          // Store receipt image for attaching to transaction
           _currentReceiptImage = imageBytes;
 
-          // Build enhanced prompt with receipt data
           enhancedContent = '''${content.trim()}
 
 RECEIPT_DATA:
@@ -619,12 +698,11 @@ ${receiptResult.tipAmount != null ? '- Tip: ${receiptResult.tipAmount}' : ''}
 Please create a transaction based on this receipt data.''';
 
           print('📸 [RECEIPT] Enhanced content prepared');
-          Log.d('Enhanced content prepared for AI', label: 'Chat Provider');
         } catch (e) {
-          print('❌ [RECEIPT] Failed to analyze receipt: $e');
-          Log.e('Failed to analyze receipt: $e', label: 'Chat Provider');
-          enhancedContent = '${content.trim()}\n\n[Failed to analyze receipt image. Please try again or enter transaction details manually.]';
-          _currentReceiptImage = null; // Clear on error
+          print('❌ [RECEIPT] Failed to analyze image: $e');
+          Log.e('Failed to analyze image: $e', label: 'Chat Provider');
+          enhancedContent = '${content.trim()}\n\n[Failed to analyze image. Please try again or enter transaction details manually.]';
+          _currentReceiptImage = null;
         }
 
         // Remove "analyzing image" indicator
@@ -2456,6 +2534,62 @@ Please create a transaction based on this receipt data.''';
   /// LLMs often multiply "tr" (triệu/million) by 1B instead of 1M,
   /// resulting in amounts 1000x too large.
   /// Re-parse from user message to get the correct amount.
+  /// Deduplicate screenshot OCR results against existing transactions in DB.
+  /// Match by: amount exact + date ±1 day + description fuzzy match.
+  Future<List<ReceiptScanResult>> _deduplicateScreenshotResults(
+    List<ReceiptScanResult> results,
+  ) async {
+    try {
+      final db = ref.read(databaseProvider);
+      // Get recent transactions (last 7 days) for matching
+      final now = DateTime.now();
+      final weekAgo = now.subtract(const Duration(days: 7));
+      final allTxEntities = await db.transactionDao.getAllTransactions();
+      final recentTransactions = allTxEntities.where((t) =>
+          t.date.isAfter(weekAgo)).toList();
+
+      return results.where((result) {
+        for (final tx in recentTransactions) {
+          // 1. Amount must match exactly
+          if (result.amount != tx.amount) continue;
+
+          // 2. Date within ±1 day
+          DateTime resultDate;
+          try {
+            resultDate = DateTime.parse(result.date);
+          } catch (_) {
+            continue;
+          }
+          final dayDiff = resultDate.difference(tx.date).inDays.abs();
+          if (dayDiff > 1) continue;
+
+          // 3. Description similarity
+          final a = result.merchant.toLowerCase();
+          final b = tx.title.toLowerCase();
+          if (a.contains(b) || b.contains(a) || _fuzzyMatchStrings(a, b)) {
+            Log.d('Dedupe: skipping "${result.merchant}" (matches "${tx.title}")',
+                label: 'SCREENSHOT_DEDUPE');
+            return false; // Duplicate found
+          }
+        }
+        return true; // Not a duplicate
+      }).toList();
+    } catch (e) {
+      Log.e('Dedupe error: $e', label: 'SCREENSHOT_DEDUPE');
+      return results; // On error, keep all
+    }
+  }
+
+  /// Simple fuzzy match: check if words overlap significantly
+  bool _fuzzyMatchStrings(String a, String b) {
+    final wordsA = a.split(RegExp(r'\s+')).where((w) => w.length > 2).toSet();
+    final wordsB = b.split(RegExp(r'\s+')).where((w) => w.length > 2).toSet();
+    if (wordsA.isEmpty || wordsB.isEmpty) return false;
+    final overlap = wordsA.intersection(wordsB).length;
+    final minLen = wordsA.length < wordsB.length ? wordsA.length : wordsB.length;
+    return minLen > 0 && overlap / minLen >= 0.5;
+  }
+
   double _sanitizeVndAmount(double llmAmount, String userMessage, String currency) {
     if (currency != 'VND') return llmAmount;
 
@@ -3496,7 +3630,11 @@ Please create a transaction based on this receipt data.''';
 
       String resultMessage = '';
 
-      if (actionType == 'confirm') {
+      if (actionType == 'screenshot_bulk_create') {
+        resultMessage = await _handleScreenshotBulkCreate();
+      } else if (actionType == 'screenshot_to_pending') {
+        resultMessage = await _handleScreenshotToPending();
+      } else if (actionType == 'confirm') {
         // Execute the action
         switch (message.pendingAction!.actionType) {
           case 'delete_budget':
@@ -3509,6 +3647,8 @@ Please create a transaction based on this receipt data.''';
             resultMessage = await _updateBudgetFromAction(message.pendingAction!.actionData);
             break;
         }
+      } else if (actionType == 'cancel') {
+        resultMessage = '❌ Đã huỷ thao tác.';
       } else {
         resultMessage = '❌ Đã huỷ thao tác.';
       }
@@ -3531,6 +3671,112 @@ Please create a transaction based on this receipt data.''';
     } catch (e) {
       Log.e('Failed to handle pending action: $e', label: 'Chat Provider');
     }
+  }
+
+  /// Bulk create all pending screenshot transactions
+  Future<String> _handleScreenshotBulkCreate() async {
+    final transactions = _pendingScreenshotTransactions;
+    if (transactions == null || transactions.isEmpty) {
+      return '❌ Không có giao dịch nào để thêm.';
+    }
+
+    try {
+      var wallet = ref.read(activeWalletProvider).value;
+      if (wallet == null) {
+        final defaultWalletAsync = ref.read(defaultWalletProvider);
+        wallet = defaultWalletAsync.value;
+      }
+      if (wallet == null) {
+        final walletsAsync = ref.read(allWalletsStreamProvider);
+        final allWallets = _unwrapAsyncValue(walletsAsync) ?? [];
+        wallet = allWallets.isNotEmpty ? allWallets.first : null;
+      }
+      if (wallet == null) return '❌ Không tìm thấy ví.';
+
+      int created = 0;
+      for (final result in transactions) {
+        try {
+          final action = _receiptToActionMap(result);
+          await _createTransactionFromAction(action, wallet: wallet);
+          created++;
+        } catch (e) {
+          Log.e('Failed to create transaction: ${result.merchant}: $e',
+              label: 'SCREENSHOT_BULK');
+        }
+      }
+
+      _pendingScreenshotTransactions = null;
+      ref.invalidate(transactionListProvider);
+
+      return '✅ Đã thêm **$created giao dịch** vào ví **${wallet.name}**.';
+    } catch (e) {
+      Log.e('Bulk create failed: $e', label: 'SCREENSHOT_BULK');
+      return '❌ Lỗi khi tạo giao dịch: $e';
+    }
+  }
+
+  /// Add all pending screenshot transactions to pending queue
+  Future<String> _handleScreenshotToPending() async {
+    final transactions = _pendingScreenshotTransactions;
+    if (transactions == null || transactions.isEmpty) {
+      return '❌ Không có giao dịch nào để thêm.';
+    }
+
+    try {
+      final database = ref.read(databaseProvider);
+      int added = 0;
+
+      for (final result in transactions) {
+        try {
+          DateTime txDate;
+          try {
+            txDate = DateTime.parse(result.date);
+          } catch (_) {
+            txDate = DateTime.now();
+          }
+
+          await database.pendingTransactionDao.insertPending(
+            db.PendingTransactionsCompanion.insert(
+              source: PendingSource.bank,
+              sourceId: 'screenshot_${DateTime.now().millisecondsSinceEpoch}_$added',
+              amount: result.amount,
+              currency: drift.Value(result.currency ?? 'VND'),
+              transactionType: 'expense',
+              title: result.merchant,
+              merchant: drift.Value(result.merchant),
+              transactionDate: txDate,
+              confidence: drift.Value(0.85),
+              categoryHint: drift.Value(result.category),
+              sourceDisplayName: 'Screenshot',
+              status: drift.Value(PendingStatus.pendingReview),
+            ),
+          );
+          added++;
+        } catch (e) {
+          Log.e('Failed to add pending: ${result.merchant}: $e',
+              label: 'SCREENSHOT_PENDING');
+        }
+      }
+
+      _pendingScreenshotTransactions = null;
+
+      return '📋 Đã đưa **$added giao dịch** vào danh sách chờ duyệt.';
+    } catch (e) {
+      Log.e('Add to pending failed: $e', label: 'SCREENSHOT_PENDING');
+      return '❌ Lỗi: $e';
+    }
+  }
+
+  /// Convert ReceiptScanResult to action map for _createTransactionFromAction
+  Map<String, dynamic> _receiptToActionMap(ReceiptScanResult result) {
+    return {
+      'action': 'create_expense',
+      'amount': result.amount,
+      'currency': result.currency ?? 'VND',
+      'description': result.merchant,
+      'category': result.category,
+      'date': result.date,
+    };
   }
 
   /// Update existing message in database

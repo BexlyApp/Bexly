@@ -58,4 +58,29 @@ class FallbackOcrProvider implements OcrProvider {
       additionalPrompt: additionalPrompt,
     );
   }
+
+  @override
+  Future<List<ReceiptScanResult>> analyzeScreenshot({
+    required Uint8List imageBytes,
+  }) async {
+    if (_primary.isConfigured) {
+      try {
+        Log.d('Trying ${_primary.providerName} for screenshot OCR...', label: 'FallbackOCR');
+        return await _primary.analyzeScreenshot(imageBytes: imageBytes);
+      } catch (e) {
+        Log.w(
+          '${_primary.providerName} screenshot failed: $e — falling back to ${_fallback.providerName}',
+          label: 'FallbackOCR',
+        );
+        onFallback?.call(_fallback.providerName);
+      }
+    }
+
+    if (!_fallback.isConfigured) {
+      throw Exception('Neither ${_primary.providerName} nor ${_fallback.providerName} is configured.');
+    }
+
+    Log.d('Using ${_fallback.providerName} for screenshot OCR...', label: 'FallbackOCR');
+    return await _fallback.analyzeScreenshot(imageBytes: imageBytes);
+  }
 }
