@@ -399,8 +399,37 @@ class _MessageBubble extends ConsumerWidget {
             ? CrossAxisAlignment.end
             : CrossAxisAlignment.start,
         children: [
-          // User messages: box with background, max 85% width
+          // Typing indicator: small pill aligned left
+          // User messages: box with background, aligned right, max 85% width
           // AI messages: no background, full width
+          if (isTyping)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.spacing12,
+                vertical: AppSpacing.spacing8,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.neutral100,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.neutral200),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ...List.generate(3, (index) =>
+                    Container(
+                      margin: EdgeInsets.only(
+                        right: index < 2 ? 4 : 0,
+                      ),
+                      child: _TypingDot(
+                        delay: Duration(milliseconds: index * 200),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
           Container(
             constraints: isUser
                 ? BoxConstraints(
@@ -412,15 +441,10 @@ class _MessageBubble extends ConsumerWidget {
                     horizontal: AppSpacing.spacing16,
                     vertical: AppSpacing.spacing8,
                   )
-                : isTyping
-                    ? const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.spacing8,
-                        vertical: AppSpacing.spacing8,
-                      )
-                    : const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.spacing4,
-                        vertical: AppSpacing.spacing4,
-                      ),
+                : const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.spacing4,
+                    vertical: AppSpacing.spacing4,
+                  ),
             decoration: isUser
                 ? BoxDecoration(
                     color: AppColors.primary600,
@@ -428,30 +452,8 @@ class _MessageBubble extends ConsumerWidget {
                       topRight: const Radius.circular(4),
                     ),
                   )
-                : isTyping
-                    ? BoxDecoration(
-                        color: AppColors.neutral100,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.neutral200),
-                      )
-                    : null,
-                  child: isTyping
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ...List.generate(3, (index) =>
-                              Container(
-                                margin: EdgeInsets.only(
-                                  right: index < 2 ? 4 : 0,
-                                ),
-                                child: _TypingDot(
-                                  delay: Duration(milliseconds: index * 200),
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Column(
+                : null,
+                  child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Show image thumbnail if present
@@ -490,65 +492,72 @@ class _MessageBubble extends ConsumerWidget {
                               const SizedBox(height: AppSpacing.spacing12),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: message.pendingAction!.buttons.map((button) {
-                                  // Determine button style based on action type
-                                  final isPrimary = button.actionType == 'confirm' ||
-                                      button.actionType == 'screenshot_bulk_create';
+                                children: message.pendingAction!.buttons.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final button = entry.value;
+                                  final isFirst = index == 0; // Primary action
+
                                   final isDestructive = button.actionType == 'confirm' &&
                                       (message.pendingAction!.actionType.contains('delete'));
 
-                                  final bgColor = isDestructive
-                                      ? AppColors.redAlpha10
-                                      : isPrimary
-                                          ? AppColors.primary600.withAlpha(15)
-                                          : AppColors.neutral100;
-                                  final borderColor = isDestructive
-                                      ? AppColors.red
-                                      : isPrimary
-                                          ? AppColors.primary600
-                                          : AppColors.neutral300;
-                                  final textColor = isDestructive
-                                      ? AppColors.red
-                                      : isPrimary
-                                          ? AppColors.primary600
-                                          : AppColors.neutral700;
-
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: AppSpacing.spacing8),
-                                    child: Material(
-                                      color: bgColor,
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: InkWell(
-                                        onTap: () {
-                                          HapticFeedback.lightImpact();
-                                          ref.read(chatProvider.notifier).handlePendingAction(
-                                            message.id,
-                                            button.actionType,
-                                          );
-                                        },
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: AppSpacing.spacing16,
-                                            vertical: AppSpacing.spacing12,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(
-                                              color: borderColor,
-                                              width: 1,
+                                    child: SizedBox(
+                                      height: 44,
+                                      child: isFirst
+                                          // Primary: filled button
+                                          ? ElevatedButton(
+                                              onPressed: () {
+                                                HapticFeedback.lightImpact();
+                                                ref.read(chatProvider.notifier).handlePendingAction(
+                                                  message.id,
+                                                  button.actionType,
+                                                );
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: isDestructive
+                                                    ? AppColors.red
+                                                    : AppColors.primary600,
+                                                foregroundColor: AppColors.light,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                elevation: 0,
+                                              ),
+                                              child: Text(
+                                                button.label,
+                                                style: AppTextStyles.body4.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.light,
+                                                ),
+                                              ),
+                                            )
+                                          // Secondary: outlined button
+                                          : OutlinedButton(
+                                              onPressed: () {
+                                                HapticFeedback.lightImpact();
+                                                ref.read(chatProvider.notifier).handlePendingAction(
+                                                  message.id,
+                                                  button.actionType,
+                                                );
+                                              },
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: AppColors.neutral700,
+                                                side: const BorderSide(
+                                                  color: AppColors.neutral300,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                button.label,
+                                                style: AppTextStyles.body4.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.neutral700,
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                          child: Text(
-                                            button.label,
-                                            textAlign: TextAlign.center,
-                                            style: AppTextStyles.body4.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                              color: textColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
                                     ),
                                   );
                                 }).toList(),
