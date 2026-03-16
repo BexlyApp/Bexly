@@ -87,146 +87,142 @@ class RecurringCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.radius12),
       child: Container(
-        height: 72,
         padding: const EdgeInsets.only(right: AppSpacing.spacing12),
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(AppRadius.radius12),
           border: Border.all(color: borderColor),
         ),
-        child: Row(
-          children: [
-            // Category Icon - flush with left/top/bottom border
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: iconBgColor,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(AppRadius.radius12 - 1),
-                  bottomLeft: Radius.circular(AppRadius.radius12 - 1),
-                ),
-              ),
-              child: Center(
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: CategoryIcon(
-                    iconType: recurring.category.iconType,
-                    icon: recurring.category.icon,
-                    iconBackground: recurring.category.iconBackground,
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              // Category Icon - flush with left/top/bottom border
+              Container(
+                width: 70,
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(AppRadius.radius12 - 1),
+                    bottomLeft: Radius.circular(AppRadius.radius12 - 1),
                   ),
                 ),
-              ),
-            ),
-            const Gap(AppSpacing.spacing8),
-
-            // Title, Category
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AutoSizeText(
-                          recurring.name,
-                          style: AppTextStyles.body3.bold,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Gap(AppSpacing.spacing2),
-                        Row(
-                          children: [
-                            Flexible(
-                              child: AutoSizeText(
-                                recurring.category.title,
-                                style: AppTextStyles.body4,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const Gap(AppSpacing.spacing8),
-                            Icon(
-                              Icons.repeat,
-                              size: 14,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                            const Gap(AppSpacing.spacing4),
-                            Flexible(
-                              child: AutoSizeText(
-                                recurring.frequency.localizedName(context),
-                                style: AppTextStyles.body4,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                child: Center(
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: CategoryIcon(
+                      iconType: recurring.category.iconType,
+                      icon: recurring.category.icon,
+                      iconBackground: recurring.category.iconBackground,
                     ),
                   ),
+                ),
+              ),
+              const Gap(AppSpacing.spacing8),
 
-                  // Amount and Due Status
-                  Column(
+              // Content: 3 rows
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.spacing8),
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Due status badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isOverdue
-                              ? AppColors.red.withAlpha(25)
-                              : isDueToday
-                                  ? AppColors.red400.withAlpha(25)
-                                  : AppColors.green200.withAlpha(25),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          isOverdue
-                              ? context.l10n.overdue
-                              : isDueToday
-                                  ? context.l10n.dueToday
-                                  : context.l10n.dueInDays(daysUntilDue),
-                          style: AppTextStyles.body5.copyWith(
-                            color: isOverdue
-                                ? AppColors.red
-                                : isDueToday
-                                    ? AppColors.red400
-                                    : AppColors.green200,
-                            fontWeight: FontWeight.w600,
-                            height: 1.2,
+                      // Row 1: Name + Due badge
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AutoSizeText(
+                              recurring.name,
+                              style: AppTextStyles.body3.bold,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
+                          const Gap(AppSpacing.spacing8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isOverdue
+                                  ? AppColors.red.withAlpha(25)
+                                  : isDueToday
+                                      ? AppColors.red400.withAlpha(25)
+                                      : AppColors.green200.withAlpha(25),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              isOverdue
+                                  ? context.l10n.overdue
+                                  : isDueToday
+                                      ? context.l10n.dueToday
+                                      : context.l10n.dueInDays(daysUntilDue),
+                              style: AppTextStyles.body5.copyWith(
+                                color: isOverdue
+                                    ? AppColors.red
+                                    : isDueToday
+                                        ? AppColors.red400
+                                        : AppColors.green200,
+                                fontWeight: FontWeight.w600,
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const Gap(AppSpacing.spacing4),
+                      const Gap(AppSpacing.spacing2),
 
-                      // Amount with +/- sign based on transaction type
-                      AutoSizeText(
-                        '${recurring.category.transactionType == 'income' ? '+' : '-'}${formatCurrency(recurring.amount.toPriceFormat(), _getCurrencySymbol(recurring.currency), recurring.currency)}',
-                        style: AppTextStyles.numericRegular.copyWith(
-                          color: recurring.category.transactionType == 'income'
-                              ? AppColors.green200
-                              : AppColors.red700,
-                          height: 1.12,
-                          fontSize: 14,
-                        ),
-                        maxLines: 1,
+                      // Row 2: Category + Amount
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AutoSizeText(
+                              recurring.category.title,
+                              style: AppTextStyles.body4,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          AutoSizeText(
+                            '${recurring.category.transactionType == 'income' ? '+' : '-'}${formatCurrency(recurring.amount.toPriceFormat(), _getCurrencySymbol(recurring.currency), recurring.currency)}',
+                            style: AppTextStyles.numericRegular.copyWith(
+                              color: recurring.category.transactionType == 'income'
+                                  ? AppColors.green200
+                                  : AppColors.red700,
+                              height: 1.12,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                          ),
+                        ],
+                      ),
+                      const Gap(AppSpacing.spacing2),
+
+                      // Row 3: Frequency
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.repeat,
+                            size: 13,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                          const Gap(AppSpacing.spacing4),
+                          Text(
+                            recurring.frequency.localizedName(context),
+                            style: AppTextStyles.body5.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
