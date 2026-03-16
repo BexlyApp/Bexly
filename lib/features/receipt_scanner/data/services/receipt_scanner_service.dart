@@ -77,6 +77,26 @@ class ReceiptScannerService {
     return result;
   }
 
+  /// Analyze a screenshot that may contain multiple transactions.
+  /// Returns a list of results (single item for receipts, multiple for banking screenshots).
+  Future<List<ReceiptScanResult>> analyzeScreenshot({
+    required Uint8List imageBytes,
+  }) async {
+    if (!_provider.isConfigured) {
+      throw Exception('${_provider.providerName} not configured');
+    }
+
+    Log.i('Analyzing screenshot with ${_provider.providerName}',
+        label: 'ReceiptScanner');
+
+    final results = await _provider.analyzeScreenshot(imageBytes: imageBytes);
+
+    Log.i('Screenshot: ${results.length} transactions extracted',
+        label: 'ReceiptScanner');
+
+    return results;
+  }
+
   String get providerName => _provider.providerName;
   bool get isConfigured => _provider.isConfigured;
 }

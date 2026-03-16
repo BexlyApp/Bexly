@@ -57,6 +57,22 @@ class ReceiptScanResult {
     };
   }
 
+  /// Create a copy with image bytes attached
+  ReceiptScanResult copyWithImage(Uint8List? bytes) {
+    return ReceiptScanResult(
+      amount: amount,
+      currency: currency,
+      category: category,
+      date: date,
+      merchant: merchant,
+      paymentMethod: paymentMethod,
+      items: items,
+      taxAmount: taxAmount,
+      tipAmount: tipAmount,
+      imageBytes: bytes ?? imageBytes,
+    );
+  }
+
   @override
   String toString() {
     return 'ReceiptScanResult(amount: $amount, currency: $currency, category: $category, '

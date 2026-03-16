@@ -113,6 +113,137 @@ class GeminiOcrProvider implements OcrProvider {
         Exception('Failed after $maxRetries attempts');
   }
 
+  @override
+  Future<List<ReceiptScanResult>> analyzeScreenshot({
+    required Uint8List imageBytes,
+  }) async {
+    final headers = LLMDefaultConfig.proxyHeaders;
+    if (headers == null) {
+      throw Exception('Not authenticated — please sign in to use receipt scanning.');
+    }
+
+    final String base64Image = base64Encode(imageBytes);
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    final yesterday = DateTime.now().subtract(const Duration(days: 1)).toIso8601String().split('T')[0];
+
+    final prompt = '''
+Analyze this image and extract ALL transaction information.
+
+CASE 1 — Banking app screenshot (list of transactions):
+Return a JSON ARRAY of ALL visible transactions:
+[
+  {"amount": 261590, "currency": "VND", "merchant": "Apple.com/Bill", "category": "Entertainment", "date": "$today", "payment_method": "Bank Transfer", "items": []},
+  {"amount": 9000, "currency": "VND", "merchant": "Grab Taxi", "category": "Transportation", "date": "$today", "payment_method": "Bank Transfer", "items": []}
+]
+
+CASE 2 — Receipt or invoice (single transaction):
+Return a single JSON OBJECT:
+{"amount": 5727200, "currency": "VND", "merchant": "Restaurant Dinner", "category": "Food & Dining", "date": "$today", "payment_method": "Cash", "items": ["Item 1"]}
+
+RULES:
+- amount: number only, NO currency symbols, NO dots/commas (e.g., 261590 not 261.590)
+- currency: ISO code from context (VND, USD, etc.)
+- merchant: clean readable name (Title Case, complete truncated words)
+- category: one of [Food & Dining, Transportation, Shopping, Entertainment, Healthcare, Utilities, Software, Streaming, Education, Housing, Other]
+- date: YYYY-MM-DD. Use "$today" for "HÔM NAY"/"TODAY", "$yesterday" for "HÔM QUA"/"YESTERDAY"
+- payment_method: one of [Cash, Credit Card, Debit Card, QR Code, E-Wallet, Bank Transfer, Other]
+- Extract ALL transactions, not just the first
+- Return ONLY valid JSON, no markdown, no explanation
+''';
+
+    int retryCount = 0;
+    const maxRetries = 2;
+    Exception? lastError;
+
+    while (retryCount < maxRetries) {
+      try {
+        final response = await http
+            .post(
+              Uri.parse(LLMDefaultConfig.proxyUrl),
+              headers: headers,
+              body: jsonEncode({
+                'provider': 'gemini',
+                'action': 'ocr',
+                'model': LLMDefaultConfig.geminiModel,
+                'image': base64Image,
+                'messages': [
+                  {'role': 'user', 'content': prompt},
+                ],
+                'temperature': 0.2,
+              }),
+            )
+            .timeout(const Duration(seconds: 45));
+
+        if (response.statusCode == 200) {
+          final jsonResponse = jsonDecode(response.body);
+          if (jsonResponse['error'] != null) {
+            throw Exception(jsonResponse['error']);
+          }
+
+          String content = jsonResponse['content'] as String;
+          content = _sanitizeScreenshotResponse(content);
+          final parsed = jsonDecode(content);
+
+          if (parsed is List) {
+            Log.i('Screenshot: extracted ${parsed.length} transactions',
+                label: 'GeminiOCR');
+            return parsed
+                .map((e) => ReceiptScanResult.fromJson(e as Map<String, dynamic>)
+                    .copyWithImage(imageBytes))
+                .toList();
+          } else if (parsed is Map<String, dynamic>) {
+            Log.i('Screenshot: single transaction', label: 'GeminiOCR');
+            return [ReceiptScanResult.fromJson(parsed).copyWithImage(imageBytes)];
+          }
+
+          throw Exception('Unexpected response format');
+        } else {
+          throw Exception('API Error: ${response.statusCode}');
+        }
+      } on FormatException catch (e) {
+        lastError = Exception('Failed to parse: ${e.message}');
+      } on TimeoutException catch (e) {
+        lastError = Exception('Timed out: ${e.message}');
+      } catch (e) {
+        lastError = Exception('Failed: $e');
+      }
+
+      retryCount++;
+      if (retryCount < maxRetries) {
+        await Future.delayed(const Duration(seconds: 1));
+      }
+    }
+
+    throw lastError ?? Exception('Failed after $maxRetries attempts');
+  }
+
+  String _sanitizeScreenshotResponse(String content) {
+    // Remove markdown code blocks
+    if (content.contains('```json')) {
+      content = content.split('```json')[1].split('```')[0].trim();
+    } else if (content.startsWith('```') && content.endsWith('```')) {
+      content = content.substring(3, content.length - 3).trim();
+    }
+
+    // Detect array or object
+    final arrayStart = content.indexOf('[');
+    final objStart = content.indexOf('{');
+
+    if (arrayStart != -1 && (objStart == -1 || arrayStart < objStart)) {
+      final arrayEnd = content.lastIndexOf(']');
+      if (arrayEnd > arrayStart) {
+        content = content.substring(arrayStart, arrayEnd + 1);
+      }
+    } else if (objStart != -1) {
+      final objEnd = content.lastIndexOf('}');
+      if (objEnd > objStart) {
+        content = content.substring(objStart, objEnd + 1);
+      }
+    }
+
+    return content;
+  }
+
   String _buildPrompt(String? additionalPrompt) {
     final basePrompt = '''
 Analyze this image and extract transaction information in JSON format.

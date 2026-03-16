@@ -96,4 +96,12 @@ IMPORTANT:
 - amount must be a number WITHOUT currency symbols (e.g., 261590 not 261.590đ)
 Return ONLY JSON.''';
   }
+
+  @override
+  Future<List<ReceiptScanResult>> analyzeScreenshot({
+    required Uint8List imageBytes,
+  }) async {
+    final result = await analyzeReceipt(imageBytes: imageBytes);
+    return [result];
+  }
 }
