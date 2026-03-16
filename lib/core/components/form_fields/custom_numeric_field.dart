@@ -104,29 +104,32 @@ class CustomNumericField extends ConsumerWidget {
 
       // Format the integer part with locale-aware thousand separator
       final formatter = NumberFormat("#,##0", locale);
-      String formattedInteger = integerPart.isNotEmpty
-          ? formatter.format(int.parse(integerPart))
-          : '';
+      String formattedInteger = '';
+      if (integerPart.isNotEmpty) {
+        final parsed = int.tryParse(integerPart);
+        if (parsed != null) {
+          formattedInteger = formatter.format(parsed);
+        }
+      }
 
       // Add negative sign back if needed
       String negativePrefix = isNegative && allowNegative ? '-' : '';
 
       // Combine integer and decimal parts
-      // Only add decimal point if user explicitly typed it or there are decimal digits
+      // Always show currency symbol when there's any input
       String formattedValue;
-      if (decimalPart.isNotEmpty) {
+      if (formattedInteger.isEmpty && decimalPart.isEmpty) {
+        // Completely empty — show nothing (or just negative prefix)
+        formattedValue = negativePrefix.isNotEmpty ? '$defaultCurrency $negativePrefix' : '';
+      } else if (decimalPart.isNotEmpty) {
         // User has decimal digits
         formattedValue = "$defaultCurrency $negativePrefix$formattedInteger$decimalSep$decimalPart";
       } else if (parts.length == 2 && sanitizedValue.endsWith('.')) {
         // User typed a decimal separator but no decimal digits yet
         formattedValue = "$defaultCurrency $negativePrefix$formattedInteger$decimalSep";
       } else {
-        // No decimal point
+        // Integer only
         formattedValue = "$defaultCurrency $negativePrefix$formattedInteger";
-      }
-
-      if (formattedInteger.isEmpty) {
-        formattedValue = negativePrefix.isNotEmpty ? '$defaultCurrency $negativePrefix' : '';
       }
 
       // Avoid infinite loop
@@ -155,10 +158,6 @@ class CustomNumericField extends ConsumerWidget {
           )
         : icon;
 
-    // Allow locale-appropriate decimal separator in input
-    final decimalPattern = decimalSep == ',' ? r'[\d,\-]' : r'[\d.\-]';
-    final nonNegativePattern = decimalSep == ',' ? r'[\d,]' : r'[\d.]';
-
     return CustomTextField(
       controller: controller,
       label: label,
@@ -168,13 +167,8 @@ class CustomNumericField extends ConsumerWidget {
       suffixIcon: suffixIcon,
       keyboardType: TextInputType.numberWithOptions(decimal: true, signed: allowNegative),
       inputFormatters: [
-        FilteringTextInputFormatter.allow(
-          allowNegative ? RegExp(decimalPattern) : RegExp(nonNegativePattern),
-        ),
-        if (allowNegative) LeadingMinusInputFormatter(), // Only allow - at start
-        SingleSeparatorInputFormatter(decimalSep),
-        DecimalInputFormatter(decimalSep),
-        LengthLimitingTextInputFormatter(12),
+        // Only limit length — handleTextChanged does all formatting/validation
+        LengthLimitingTextInputFormatter(20),
       ],
       onChanged: handleTextChanged,
       isRequired: isRequired,
@@ -211,13 +205,18 @@ class DecimalInputFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     final text = newValue.text;
+
+    // Strip any non-numeric prefix (currency symbol + spaces) for validation
+    final stripped = text.replaceAll(RegExp(r'[^\d.,\-]'), '');
+    if (stripped.isEmpty) return newValue;
+
     final escapedSep = RegExp.escape(decimalSeparator);
 
-    // Allow only numbers, a single decimal separator, and two digits after it
+    // Allow only numbers, thousand separators, a single decimal separator, and two digits after it
     // Also allow optional leading minus sign
-    final regex = RegExp('^-?\\d*$escapedSep?\\d{0,2}\$');
+    final regex = RegExp('^-?[\\d${RegExp.escape(',')}]*$escapedSep?\\d{0,2}\$');
 
-    if (!regex.hasMatch(text)) {
+    if (!regex.hasMatch(stripped)) {
       return oldValue; // Reject invalid input
     }
 
