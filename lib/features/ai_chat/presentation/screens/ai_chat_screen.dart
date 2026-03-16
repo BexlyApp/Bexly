@@ -281,11 +281,11 @@ void _showImageSourceBottomSheet(
               ),
             ),
             title: Text(
-              'PDF Bank Statement',
+              'PDF Document',
               style: AppTextStyles.body2,
             ),
             subtitle: Text(
-              'Upload PDF statement for scanning',
+              'Upload PDF receipt, invoice, or statement',
               style: AppTextStyles.body4.copyWith(
                 color: AppColors.neutral400,
               ),
