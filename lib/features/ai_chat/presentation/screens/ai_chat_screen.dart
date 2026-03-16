@@ -1,10 +1,13 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:pdfx/pdfx.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/extensions/screen_utils_extensions.dart';
@@ -264,10 +267,73 @@ void _showImageSourceBottomSheet(
               }
             },
           ),
+          const Divider(),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.red.withAlpha(25),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.picture_as_pdf,
+                color: AppColors.red,
+              ),
+            ),
+            title: Text(
+              'PDF Bank Statement',
+              style: AppTextStyles.body2,
+            ),
+            subtitle: Text(
+              'Upload PDF statement for scanning',
+              style: AppTextStyles.body4.copyWith(
+                color: AppColors.neutral400,
+              ),
+            ),
+            onTap: () async {
+              Navigator.pop(context);
+              try {
+                final result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: ['pdf'],
+                  withData: true,
+                );
+                if (result != null && result.files.single.bytes != null) {
+                  final pdfBytes = result.files.single.bytes!;
+                  final imageBytes = await _renderPdfFirstPage(pdfBytes);
+                  if (imageBytes != null) {
+                    selectedImage.value = imageBytes;
+                  }
+                }
+              } catch (e) {
+                Log.e('Failed to pick PDF: $e', label: 'PDFPicker');
+              }
+            },
+          ),
         ],
       ),
     ),
   );
+}
+
+/// Render the first page of a PDF to a JPEG image
+Future<Uint8List?> _renderPdfFirstPage(Uint8List pdfBytes) async {
+  try {
+    final document = await PdfDocument.openData(pdfBytes);
+    final page = await document.getPage(1);
+    final pageImage = await page.render(
+      width: page.width * 2, // 2x for readability
+      height: page.height * 2,
+      format: PdfPageImageFormat.jpeg,
+      quality: 90,
+    );
+    await page.close();
+    await document.close();
+    return pageImage?.bytes;
+  } catch (e) {
+    Log.e('Failed to render PDF: $e', label: 'PDFRender');
+    return null;
+  }
 }
 
 class _MessageBubble extends ConsumerWidget {

@@ -105,6 +105,7 @@ dependencies:
   flutter_stripe: ^12.1.1
   cloud_functions: ^6.0.5
   flutter_native_splash: ^2.4.7
+  pdfx: ^2.9.2
 
 dev_dependencies:
   flutter_test:
