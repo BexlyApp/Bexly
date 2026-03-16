@@ -93,12 +93,13 @@ class RecurringCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.radius12),
           border: Border.all(color: borderColor),
         ),
-        child: IntrinsicHeight(
-          child: Row(
+        child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Category Icon - flush with left/top/bottom border
               Container(
                 width: 70,
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.spacing8),
                 decoration: BoxDecoration(
                   color: iconBgColor,
                   borderRadius: BorderRadius.only(
@@ -217,7 +218,6 @@ class RecurringCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
       ),
     );
   }
