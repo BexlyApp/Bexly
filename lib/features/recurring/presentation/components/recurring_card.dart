@@ -128,49 +128,12 @@ class RecurringCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Row 1: Name + Due badge
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AutoSizeText(
-                              recurring.name,
-                              style: AppTextStyles.body3.bold,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const Gap(AppSpacing.spacing8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isOverdue
-                                  ? AppColors.red.withAlpha(25)
-                                  : isDueToday
-                                      ? AppColors.red400.withAlpha(25)
-                                      : AppColors.green200.withAlpha(25),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              isOverdue
-                                  ? context.l10n.overdue
-                                  : isDueToday
-                                      ? context.l10n.dueToday
-                                      : context.l10n.dueInDays(daysUntilDue),
-                              style: AppTextStyles.body5.copyWith(
-                                color: isOverdue
-                                    ? AppColors.red
-                                    : isDueToday
-                                        ? AppColors.red400
-                                        : AppColors.green200,
-                                fontWeight: FontWeight.w600,
-                                height: 1.2,
-                              ),
-                            ),
-                          ),
-                        ],
+                      // Row 1: Name only (can be long)
+                      AutoSizeText(
+                        recurring.name,
+                        style: AppTextStyles.body3.bold,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const Gap(AppSpacing.spacing2),
 
@@ -200,7 +163,7 @@ class RecurringCard extends StatelessWidget {
                       ),
                       const Gap(AppSpacing.spacing2),
 
-                      // Row 3: Frequency
+                      // Row 3: Frequency + Due badge
                       Row(
                         children: [
                           Icon(
@@ -213,6 +176,37 @@ class RecurringCard extends StatelessWidget {
                             recurring.frequency.localizedName(context),
                             style: AppTextStyles.body5.copyWith(
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isOverdue
+                                  ? AppColors.red.withAlpha(25)
+                                  : isDueToday
+                                      ? AppColors.red400.withAlpha(25)
+                                      : AppColors.green200.withAlpha(25),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              isOverdue
+                                  ? context.l10n.overdue
+                                  : isDueToday
+                                      ? context.l10n.dueToday
+                                      : context.l10n.dueInDays(daysUntilDue),
+                              style: AppTextStyles.body5.copyWith(
+                                color: isOverdue
+                                    ? AppColors.red
+                                    : isDueToday
+                                        ? AppColors.red400
+                                        : AppColors.green200,
+                                fontWeight: FontWeight.w600,
+                                height: 1.2,
+                              ),
                             ),
                           ),
                         ],
