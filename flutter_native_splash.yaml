@@ -1,13 +1,12 @@
 flutter_native_splash:
-  # Use brand color for splash — looks good in both light and dark system themes.
-  # Native splash can't follow app theme (runs before Flutter engine).
-  color: "#00B4AB"
-  image: assets/icon/Bexly-logo-no-bg.png
+  # Dark background with full Bexly icon (square with purple background)
+  color: "#1A1A2E"
+  image: assets/icon/Bexly-Logo-no-text-1024.png
 
   android_12:
-    color: "#00B4AB"
-    image: assets/icon/Bexly-logo-no-bg.png
-    icon_background_color: "#00B4AB"
+    color: "#1A1A2E"
+    image: assets/icon/Bexly-Logo-no-text-1024.png
+    icon_background_color: "#1A1A2E"
 
   android: true
   ios: true
