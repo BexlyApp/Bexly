@@ -5,7 +5,8 @@
 
 - **App Name**: Bexly
 - **Package ID**: `com.joy.bexly`
-- **Firebase Project**: `dos-me` (shared DOS-Me ecosystem)
+- **GCP/Firebase Project**: `dos-me` (Firebase services + Google/Facebook OAuth — shared DOS ecosystem)
+- **GCP Project (Play Store only)**: `bexly-app` (Play Store service account for AAB upload)
 - **Supabase Project**: `dos` (Supabase URL: https://dos.supabase.co)
 - **Flutter Path**: `D:\Dev\flutter`
 - **Project Path**: `D:\Projects\Bexly`
@@ -94,12 +95,23 @@ DOSafe/
 
 ---
 
-## 🔥 Firebase Setup (dos-me project)
+## 🔥 Firebase & Google Cloud Setup
 
-### Project Details
-- **Project Name**: DOS-Me (shared ecosystem project)
-- **Project ID**: `dos-me`
-- **Project Number**: 368090586626
+### Two-Project Architecture
+
+Bexly uses **two separate Google Cloud projects** for different purposes:
+
+| Project | GCP Project ID | Purpose |
+|---------|---------------|---------|
+| **DOS-Me** | `dos-me` | Firebase services (Analytics, Crashlytics, FCM, Storage) + shared OAuth clients (Google, Facebook) |
+| **Bexly App** | `bexly-app` | Play Store service account for AAB upload only |
+
+**Why two projects?**
+- `dos-me` centralizes Firebase + OAuth for all DOS products (Bexly, DOS-Me ID, etc.)
+- `bexly-app` exists only for Play Store deployment (service account `service@bexly-app.iam.gserviceaccount.com`)
+- Both `google-services.json` and `firebase_options.dart` point to `dos-me`
+
+### Firebase Project: `dos-me`
 
 **Services Used:**
 - Firebase Cloud Messaging (FCM) - Push notifications
@@ -115,7 +127,7 @@ DOSafe/
 ```
 
 **Important:** `google-services.json` is environment-specific. Each developer must:
-1. Go to Firebase Console (dos-me project)
+1. Go to Firebase Console (`dos-me` project)
 2. Add their debug keystore SHA-1 fingerprint
 3. Download their own `google-services.json`
 
@@ -290,7 +302,7 @@ D:\Dev\flutter\bin\flutter pub get
 3. **Firebase connection issues**
 ```bash
 # Re-configure Firebase
-flutterfire configure --project=bexly-app
+flutterfire configure --project=dos-me
 ```
 
 4. **Package ID mismatch after fork**
@@ -501,11 +513,15 @@ await supabase.auth.signInWithIdToken(
 
 ## 📊 Post-deployment Monitoring
 
-### Firebase Console
+### Firebase Console (`dos-me`)
 - Check Crashlytics for crash reports
 - Monitor Analytics for user engagement
 - Review Performance metrics
-- URL: https://console.firebase.google.com/project/bexly-app
+- URL: https://console.firebase.google.com/project/dos-me
+
+### Google Cloud Console
+- OAuth & credentials (`dos-me`): https://console.cloud.google.com/apis/credentials?project=dos-me
+- Play Store service account (`bexly-app`): https://console.cloud.google.com/iam-admin/serviceaccounts?project=bexly-app
 
 ### Store Consoles
 - Monitor user reviews

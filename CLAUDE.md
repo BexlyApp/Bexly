@@ -50,7 +50,7 @@ Bexly is a Flutter-based personal finance and budget tracking application with a
 - **Local Database**: Drift/SQLite - source of truth for offline
 - **Cloud Sync**: Supabase PostgreSQL (schema `bexly`) - bidirectional sync when authenticated
 - **OAuth Token Storage**: dos.me ID API (`https://api.dos.me`) - centralized OAuth token management
-- **NO Firebase** - Project đã migrate hoàn toàn sang Supabase
+- **Firebase** (GCP project `dos-me`): Analytics, Crashlytics, FCM, Storage only — NOT used for auth or data
 
 ## Essential Commands
 
