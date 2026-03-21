@@ -44,40 +44,39 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCqH07vaao8hZAJkfWbzwgpIjljRFdtl4k',
-    appId: '1:657555385291:web:64819a933ebe0032ffa44e',
-    messagingSenderId: '657555385291',
-    projectId: 'bexly-app',
-    authDomain: 'bexly-app.firebaseapp.com',
-    storageBucket: 'bexly-app.firebasestorage.app',
-    measurementId: 'G-032V7VRPCC',
+    apiKey: 'AIzaSyCi7rjgUI92QhIiiMK1mLeNA24iuzakxgM',
+    appId: '1:368090586626:web:c6258a12974dc08b77511b',
+    messagingSenderId: '368090586626',
+    projectId: 'dos-me',
+    authDomain: 'dos-me.firebaseapp.com',
+    storageBucket: 'dos-me.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyABSXxFqyhh3VoCcO-B4RSmZgmxGVkClks',
-    appId: '1:657555385291:android:48ed0cbef97ad278ffa44e',
-    messagingSenderId: '657555385291',
-    projectId: 'bexly-app',
-    storageBucket: 'bexly-app.firebasestorage.app',
+    apiKey: 'AIzaSyBwUcP2tCRIQiDMZduOod7lPQJy9jDcJLM',
+    appId: '1:368090586626:android:5702bedad5db10a077511b',
+    messagingSenderId: '368090586626',
+    projectId: 'dos-me',
+    storageBucket: 'dos-me.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBL6mKYSksJie-K6AEd6X6Ppg17wsA6DOE',
-    appId: '1:657555385291:ios:9f210494c3e89acbffa44e',
-    messagingSenderId: '657555385291',
-    projectId: 'bexly-app',
-    storageBucket: 'bexly-app.firebasestorage.app',
+    apiKey: 'AIzaSyAG7veiH7vmyG0tuuFmHq8oR9JTex35luY',
+    appId: '1:368090586626:ios:612a3e89230058e977511b',
+    messagingSenderId: '368090586626',
+    projectId: 'dos-me',
+    storageBucket: 'dos-me.firebasestorage.app',
     iosBundleId: 'com.joy.bexly',
   );
 
+  // Windows reuses web config (same Firebase web app)
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCqH07vaao8hZAJkfWbzwgpIjljRFdtl4k',
-    appId: '1:657555385291:web:4eac81d8d303141cffa44e',
-    messagingSenderId: '657555385291',
-    projectId: 'bexly-app',
-    authDomain: 'bexly-app.firebaseapp.com',
-    storageBucket: 'bexly-app.firebasestorage.app',
-    measurementId: 'G-SRXYTC6245',
+    apiKey: 'AIzaSyCi7rjgUI92QhIiiMK1mLeNA24iuzakxgM',
+    appId: '1:368090586626:web:c6258a12974dc08b77511b',
+    messagingSenderId: '368090586626',
+    projectId: 'dos-me',
+    authDomain: 'dos-me.firebaseapp.com',
+    storageBucket: 'dos-me.firebasestorage.app',
   );
 
 }

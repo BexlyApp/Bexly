@@ -57,15 +57,9 @@ class CategoryTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              height: 50,
-              width: 50,
-              padding: const EdgeInsets.all(AppSpacing.spacing8),
-              decoration: BoxDecoration(
-                color: context.purpleBackground,
-                borderRadius: BorderRadius.circular(AppRadius.radius8),
-                border: Border.all(color: context.purpleBorderLighter),
-              ),
+            SizedBox(
+              height: 40,
+              width: 40,
               child: CategoryIcon(
                 iconType: category.iconType,
                 icon: category.icon,

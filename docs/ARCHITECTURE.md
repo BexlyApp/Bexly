@@ -1036,7 +1036,7 @@ Login Method → Supabase Auth → JWT Token → DOS-Me API
 
 #### Google Sign-In Configuration (CRITICAL)
 
-**Google Cloud Console** (project: `dos-me`):
+**Google Cloud Console** (project: `dos-me` — Firebase + OAuth for all DOS products):
 
 | OAuth Client | Type | SHA-1 | Purpose |
 |---|---|---|---|
@@ -1137,16 +1137,19 @@ authProvider.setUser(currentUser.copyWith(
 - **User Control**: Local edits not overwritten by cloud
 - **Consistency**: Same data across all screens (Settings, Personal Details)
 
-#### Firebase (Legacy - FCM Only)
+#### Firebase (GCP project: `dos-me`)
 
 **Still Used For**:
 - Firebase Cloud Messaging (push notifications)
 - Firebase Analytics (app analytics)
 - Firebase Crashlytics (crash reporting)
+- Firebase Storage (avatar uploads — bucket: `dos-me.firebasestorage.app`)
 
 **NOT Used For**:
 - ❌ Authentication (migrated to Supabase)
 - ❌ Firestore (migrated to Supabase PostgreSQL)
+
+> **Note:** All Firebase services and OAuth clients are in `dos-me` (project number 368090586626). GCP project `bexly-app` is only used for Play Store service account (`service@bexly-app.iam.gserviceaccount.com`).
 
 ### Sync Architecture
 
