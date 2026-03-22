@@ -4,11 +4,13 @@ import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 
 class BudgetSpentCard extends StatelessWidget {
   final double spentAmount;
   final String currencySymbol;
-  const BudgetSpentCard({super.key, required this.spentAmount, this.currencySymbol = 'đ'});
+  final String isoCode;
+  const BudgetSpentCard({super.key, required this.spentAmount, this.currencySymbol = 'đ', this.isoCode = 'VND'});
 
   @override
   Widget build(BuildContext context) {
@@ -29,19 +31,9 @@ class BudgetSpentCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            spacing: AppSpacing.spacing2,
-            children: [
-              Text(
-                currencySymbol,
-                style: AppTextStyles.body3.copyWith(color: context.expenseText),
-              ),
-              Text(
-                spentAmount.toPriceFormat(),
-                style: AppTextStyles.numericMedium.copyWith(color: context.expenseText),
-              ),
-            ],
+          Text(
+            formatCurrency(spentAmount.toPriceFormat(), currencySymbol, isoCode),
+            style: AppTextStyles.numericMedium.copyWith(color: context.expenseText),
           ),
         ],
       ),

@@ -95,15 +95,22 @@ class GoalFormDialog extends HookConsumerWidget {
 
                 final newGoal = GoalModel(
                   id: goal?.id,
+                  cloudId: goal?.cloudId,
                   title: titleController.text.trim(),
                   description: noteController.text.trim(),
                   targetAmount: targetAmountController.text
                       .takeNumericAsDouble(),
-                  createdAt: DateTime.now(),
+                  currentAmount: goal?.currentAmount ?? 0.0,
+                  createdAt: goal?.createdAt ?? DateTime.now(),
                   startDate: dateRange.first,
                   endDate: dateRange.length > 1 && dateRange[1] != null
                       ? dateRange[1]!
                       : dateRange.first!,
+                  iconName: goal?.iconName,
+                  associatedAccountId: goal?.associatedAccountId,
+                  pinned: goal?.pinned ?? false,
+                  isDeleted: goal?.isDeleted ?? false,
+                  deletedAt: goal?.deletedAt,
                 );
 
                 Log.d(newGoal.toJson(), label: 'new goal');
