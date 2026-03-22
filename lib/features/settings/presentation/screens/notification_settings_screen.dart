@@ -79,9 +79,13 @@ class _NotificationSettingsScreenState
       // Check if notification permission is granted
       final hasPermission = await NotificationService.areNotificationsEnabled();
 
-      // Only show toggles as ON if permission is granted
+      // Only use default=true if user has explicitly saved settings before
+      // This prevents all toggles turning on when permission is first granted
+      final hasEverSaved = prefs.containsKey('notif_recurring_payments') ||
+          prefs.containsKey('notif_daily_reminder');
+
       ref.read(notificationRecurringPaymentsProvider.notifier).setValue(
-          hasPermission && (prefs.getBool('notif_recurring_payments') ?? true));
+          hasPermission && (prefs.getBool('notif_recurring_payments') ?? (hasEverSaved ? true : false)));
       ref.read(notificationDailyReminderProvider.notifier).setValue(
           hasPermission && (prefs.getBool('notif_daily_reminder') ?? false));
       ref.read(notificationWeeklyReportProvider.notifier).setValue(
@@ -89,7 +93,7 @@ class _NotificationSettingsScreenState
       ref.read(notificationMonthlyReportProvider.notifier).setValue(
           hasPermission && (prefs.getBool('notif_monthly_report') ?? false));
       ref.read(notificationGoalMilestonesProvider.notifier).setValue(
-          hasPermission && (prefs.getBool('notif_goal_milestones') ?? true));
+          hasPermission && (prefs.getBool('notif_goal_milestones') ?? (hasEverSaved ? true : false)));
 
       setState(() => _isLoading = false);
     } catch (e) {
