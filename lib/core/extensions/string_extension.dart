@@ -13,12 +13,30 @@ extension StringExtension on String {
 
       bool hasPeriod = numericStr.contains('.');
       bool hasComma = numericStr.contains(',');
+      final numPeriods = '.'.allMatches(numericStr).length;
 
-      if (hasPeriod) {
-        // If a period exists, assume it's the decimal separator.
-        // All commas must be thousand separators.
-        // e.g., "35,343.92" -> "35343.92"
-        // e.g., "250.6" -> "250.6" (no change from replaceAll)
+      if (hasPeriod && numPeriods > 1) {
+        // Multiple periods = periods are thousand separators (e.g., "10.000.000")
+        numericStr = numericStr.replaceAll('.', '');
+        // If there's also a comma, it's the decimal separator
+        if (hasComma) {
+          numericStr = numericStr.replaceFirst(',', '.');
+        }
+      } else if (hasPeriod && hasComma) {
+        // One period + commas: determine which is decimal
+        final lastPeriod = numericStr.lastIndexOf('.');
+        final lastComma = numericStr.lastIndexOf(',');
+        if (lastPeriod > lastComma) {
+          // Period after comma = period is decimal (e.g., "1,234.56")
+          numericStr = numericStr.replaceAll(',', '');
+        } else {
+          // Comma after period = comma is decimal (e.g., "1.234,56")
+          numericStr = numericStr.replaceAll('.', '');
+          numericStr = numericStr.replaceFirst(',', '.');
+        }
+      } else if (hasPeriod) {
+        // Single period, no comma: period is decimal separator
+        // e.g., "250.6" -> "250.6"
         numericStr = numericStr.replaceAll(',', '');
       } else if (hasComma) {
         // No period, but has comma(s).
