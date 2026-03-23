@@ -12,6 +12,7 @@ import 'package:bexly/features/budget/presentation/components/budget_spent_card.
 import 'package:bexly/features/budget/presentation/components/budget_total_card.dart';
 import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
 import 'package:bexly/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 class BudgetSummaryCard extends ConsumerWidget {
