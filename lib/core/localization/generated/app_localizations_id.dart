@@ -1188,6 +1188,9 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String get autoTransactionViewPending => 'View Pending Transactions';
+
+  @override
   String get autoTransactionNoResults => 'No bank SMS found';
 
   @override

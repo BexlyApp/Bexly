@@ -388,17 +388,29 @@ class _AutoTransactionSettingsScreenState
         return;
       }
 
-      // Import all banks directly to pending tab — no popup needed.
-      // Wallet assignment is resolved per-transaction via bank mapping or default wallet.
+      // Import all banks directly to pending tab
+      int totalImported = 0;
+      int totalDuplicates = 0;
+
       for (final sender in results) {
-        await autoService.importTransactionsForBank(bankCode: sender.bankCode);
+        final result = await autoService.importTransactionsForBank(bankCode: sender.bankCode);
+        totalImported += result.imported;
+        totalDuplicates += result.duplicates;
       }
 
-      // Navigate to pending tab to review imported transactions
+      // Show import summary with option to view pending
       if (mounted) {
-        ref.read(requestedTransactionTabProvider.notifier).request(2);
-        ref.read(pageControllerProvider.notifier).setPage(2);
-        context.go(Routes.main);
+        await ImportResultsBottomSheet.show(
+          context: context,
+          walletsCreated: 0,
+          transactionsImported: totalImported,
+          duplicatesSkipped: totalDuplicates,
+          onViewPending: () {
+            ref.read(requestedTransactionTabProvider.notifier).request(2);
+            ref.read(pageControllerProvider.notifier).setPage(2);
+            context.go(Routes.main);
+          },
+        );
       }
     } catch (e) {
       Log.e('Error scanning SMS: $e', label: 'AutoTransaction');
