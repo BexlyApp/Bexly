@@ -425,6 +425,7 @@
     }
   },
   "autoTransactionViewPending": "Xem giao dịch chờ duyệt",
+  "autoTransactionAllowSmsAccess": "Cho phép đọc SMS",
   "autoTransactionNoResults": "Không tìm thấy SMS ngân hàng",
   "autoTransactionNoResultsDescription": "Không tìm thấy SMS từ ngân hàng đã biết. Hãy đảm bảo bạn có SMS từ ngân hàng trong hộp thư.",
   "allCaughtUp": "Đã xử lý hết!",

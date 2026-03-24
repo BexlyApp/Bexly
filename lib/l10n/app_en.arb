@@ -425,6 +425,7 @@
     }
   },
   "autoTransactionViewPending": "View Pending Transactions",
+  "autoTransactionAllowSmsAccess": "Allow SMS Access",
   "autoTransactionNoResults": "No bank SMS found",
   "autoTransactionNoResultsDescription": "We couldn't find any SMS from known banks. Make sure you have SMS from your bank in your inbox.",
   "allCaughtUp": "All caught up!",
