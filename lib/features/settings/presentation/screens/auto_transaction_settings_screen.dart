@@ -13,6 +13,7 @@ import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
@@ -121,8 +122,6 @@ class _AutoTransactionSettingsScreenState
     with WidgetsBindingObserver {
   bool _isLoading = true;
   bool _isScanning = false;
-  int _scanProgress = 0;
-  int _scanTotal = 0;
   bool _awaitingNotificationPermission = false;
 
   @override
@@ -348,22 +347,22 @@ class _AutoTransactionSettingsScreenState
       }
     }
 
-    setState(() {
-      _isScanning = true;
-      _scanProgress = 0;
-      _scanTotal = 0;
-    });
+    setState(() => _isScanning = true);
 
-    // Show scanning bottom sheet
+    // Use ValueNotifiers so the bottom sheet can rebuild independently
+    final progressNotifier = ValueNotifier<int>(0);
+    final totalNotifier = ValueNotifier<int>(0);
+
+    // Show scanning bottom sheet with live progress
     if (mounted) {
       showModalBottomSheet(
         context: context,
         isDismissible: false,
         enableDrag: false,
-        builder: (ctx) => SmsScanningBottomSheet(
-          current: _scanProgress,
-          total: _scanTotal,
-          status: context.l10n.autoTransactionScanning,
+        builder: (ctx) => _LiveScanningBottomSheet(
+          progress: progressNotifier,
+          total: totalNotifier,
+          statusText: context.l10n.autoTransactionScanning,
         ),
       );
     }
@@ -375,25 +374,20 @@ class _AutoTransactionSettingsScreenState
       final results = await autoService.scanSmsForBankSenders(
         startDate: dateRange.startDate,
         onProgress: (current, total) {
-          setState(() {
-            _scanProgress = current;
-            _scanTotal = total;
-          });
+          progressNotifier.value = current;
+          totalNotifier.value = total;
         },
       );
 
-      // Close scanning dialog
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
+      // Close scanning bottom sheet
+      if (mounted) Navigator.of(context).pop();
+      progressNotifier.dispose();
+      totalNotifier.dispose();
 
       setState(() => _isScanning = false);
 
       if (results.isEmpty) {
-        // Show no results bottom sheet
-        if (mounted) {
-          await NoResultsBottomSheet.show(context);
-        }
+        if (mounted) await NoResultsBottomSheet.show(context);
         return;
       }
 
@@ -423,8 +417,10 @@ class _AutoTransactionSettingsScreenState
       }
     } catch (e) {
       Log.e('Error scanning SMS: $e', label: 'AutoTransaction');
+      progressNotifier.dispose();
+      totalNotifier.dispose();
       if (mounted) {
-        Navigator.of(context).pop(); // Close scanning dialog
+        Navigator.of(context).pop(); // Close scanning bottom sheet
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error scanning SMS: $e')),
         );
@@ -998,6 +994,79 @@ class _SmsDateRangeBottomSheetState extends State<_SmsDateRangeBottomSheet> {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet that listens to ValueNotifiers for live progress updates
+class _LiveScanningBottomSheet extends StatelessWidget {
+  final ValueNotifier<int> progress;
+  final ValueNotifier<int> total;
+  final String statusText;
+
+  const _LiveScanningBottomSheet({
+    required this.progress,
+    required this.total,
+    required this.statusText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.spacing24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.radius20),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: ValueListenableBuilder<int>(
+          valueListenable: total,
+          builder: (context, totalVal, _) {
+            return ValueListenableBuilder<int>(
+              valueListenable: progress,
+              builder: (context, currentVal, _) {
+                final progressFraction = totalVal > 0 ? currentVal / totalVal : 0.0;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle bar
+                    Container(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.spacing20),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.neutral300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    CircularProgressIndicator(
+                      value: progressFraction > 0 ? progressFraction : null,
+                    ),
+                    const SizedBox(height: AppSpacing.spacing16),
+                    Text(
+                      statusText,
+                      style: AppTextStyles.body3,
+                      textAlign: TextAlign.center,
+                    ),
+                    if (totalVal > 0) ...[
+                      const SizedBox(height: AppSpacing.spacing8),
+                      Text(
+                        '$currentVal / $totalVal',
+                        style: AppTextStyles.body4.copyWith(
+                          color: AppColors.neutral500,
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            );
+          },
         ),
       ),
     );
