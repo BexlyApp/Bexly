@@ -2414,6 +2414,12 @@ abstract class AppLocalizations {
   /// **'{count} duplicates skipped'**
   String autoTransactionDuplicatesSkipped(int count);
 
+  /// No description provided for @autoTransactionViewPending.
+  ///
+  /// In en, this message translates to:
+  /// **'View Pending Transactions'**
+  String get autoTransactionViewPending;
+
   /// No description provided for @autoTransactionNoResults.
   ///
   /// In en, this message translates to:

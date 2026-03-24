@@ -496,12 +496,14 @@ class ImportResultsBottomSheet extends StatelessWidget {
   final int walletsCreated;
   final int transactionsImported;
   final int duplicatesSkipped;
+  final VoidCallback? onViewPending;
 
   const ImportResultsBottomSheet({
     super.key,
     required this.walletsCreated,
     required this.transactionsImported,
     required this.duplicatesSkipped,
+    this.onViewPending,
   });
 
   static Future<void> show({
@@ -509,6 +511,7 @@ class ImportResultsBottomSheet extends StatelessWidget {
     required int walletsCreated,
     required int transactionsImported,
     required int duplicatesSkipped,
+    VoidCallback? onViewPending,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -516,6 +519,7 @@ class ImportResultsBottomSheet extends StatelessWidget {
         walletsCreated: walletsCreated,
         transactionsImported: transactionsImported,
         duplicatesSkipped: duplicatesSkipped,
+        onViewPending: onViewPending,
       ),
     );
   }
@@ -586,13 +590,30 @@ class ImportResultsBottomSheet extends StatelessWidget {
               ),
             ],
             const SizedBox(height: AppSpacing.spacing24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(context.l10n.ok),
+            if (onViewPending != null && transactionsImported > 0)
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    onViewPending!();
+                  },
+                  icon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedTransaction,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    size: 20,
+                  ),
+                  label: Text(context.l10n.autoTransactionViewPending),
+                ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(context.l10n.ok),
+                ),
               ),
-            ),
           ],
         ),
       ),

@@ -1191,6 +1191,9 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String get autoTransactionViewPending => 'Xem giao dịch chờ duyệt';
+
+  @override
   String get autoTransactionNoResults => 'Không tìm thấy SMS ngân hàng';
 
   @override
