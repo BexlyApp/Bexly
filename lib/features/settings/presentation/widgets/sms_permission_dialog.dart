@@ -135,7 +135,7 @@ class SmsPermissionBottomSheet extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text(context.l10n.ok),
+                      child: Text(context.l10n.autoTransactionAllowSmsAccess),
                     ),
                   ),
                 ],

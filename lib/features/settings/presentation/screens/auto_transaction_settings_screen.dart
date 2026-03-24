@@ -330,13 +330,22 @@ class _AutoTransactionSettingsScreenState
       return; // User cancelled
     }
 
-    // Request SMS permission
-    final status = await Permission.sms.request();
-    if (!status.isGranted) {
-      if (mounted) {
-        _showPermissionDeniedBottomSheet(context.l10n.autoTransactionSmsTitle);
+    // Check if SMS permission is already granted
+    final currentStatus = await Permission.sms.status;
+    if (!currentStatus.isGranted) {
+      // Show rationale bottom sheet before requesting permission
+      if (!mounted) return;
+      final shouldProceed = await SmsPermissionBottomSheet.show(context);
+      if (!shouldProceed) return;
+
+      // Request SMS permission after user consents
+      final status = await Permission.sms.request();
+      if (!status.isGranted) {
+        if (mounted) {
+          _showPermissionDeniedBottomSheet(context.l10n.autoTransactionSmsTitle);
+        }
+        return;
       }
-      return;
     }
 
     setState(() {

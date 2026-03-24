@@ -1187,6 +1187,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get autoTransactionViewPending => 'View Pending Transactions';
 
   @override
+  String get autoTransactionAllowSmsAccess => 'Allow SMS Access';
+
+  @override
   String get autoTransactionNoResults => 'No bank SMS found';
 
   @override

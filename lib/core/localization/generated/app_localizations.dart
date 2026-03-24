@@ -2420,6 +2420,12 @@ abstract class AppLocalizations {
   /// **'View Pending Transactions'**
   String get autoTransactionViewPending;
 
+  /// No description provided for @autoTransactionAllowSmsAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow SMS Access'**
+  String get autoTransactionAllowSmsAccess;
+
   /// No description provided for @autoTransactionNoResults.
   ///
   /// In en, this message translates to:
