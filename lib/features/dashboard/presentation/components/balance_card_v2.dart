@@ -106,7 +106,7 @@ class BalanceCard extends ConsumerWidget {
                       children: [
                         const Flexible(child: WalletSwitcherDropdown()),
                         const Gap(AppSpacing.spacing8),
-                        _buildPercentageIndicator(context, balancePercentChange),
+                        Flexible(child: _buildPercentageIndicator(context, balancePercentChange)),
                       ],
                     ),
                   ),
@@ -133,18 +133,21 @@ class BalanceCard extends ConsumerWidget {
                           currency.symbol,
                           style: AppTextStyles.body3,
                         );
-                        final amountWidget = Text(
-                          selectedWallet.balance.toPriceFormat(
-                            decimalDigits: currency.decimalDigits,
-                          ),
-                          style: AppTextStyles.numericHeading.copyWith(
-                            height: 1,
+                        final amountWidget = Flexible(
+                          child: AutoSizeText(
+                            selectedWallet.balance.toPriceFormat(
+                              decimalDigits: currency.decimalDigits,
+                            ),
+                            style: AppTextStyles.numericHeading.copyWith(
+                              height: 1,
+                            ),
+                            maxLines: 1,
+                            minFontSize: AppTextStyles.numericHeading.fontSize! - 10,
                           ),
                         );
 
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
                           spacing: AppSpacing.spacing2,
                           children: isSymbolAfterAmount(currency.isoCode)
                               ? [amountWidget, symbolWidget]
@@ -159,18 +162,21 @@ class BalanceCard extends ConsumerWidget {
                           symbol,
                           style: AppTextStyles.body3,
                         );
-                        final amountWidget = Text(
-                          totalBalance.toPriceFormat(
-                            decimalDigits: currency?.decimalDigits,
-                          ),
-                          style: AppTextStyles.numericHeading.copyWith(
-                            height: 1,
+                        final amountWidget = Flexible(
+                          child: AutoSizeText(
+                            totalBalance.toPriceFormat(
+                              decimalDigits: currency?.decimalDigits,
+                            ),
+                            style: AppTextStyles.numericHeading.copyWith(
+                              height: 1,
+                            ),
+                            maxLines: 1,
+                            minFontSize: AppTextStyles.numericHeading.fontSize! - 10,
                           ),
                         );
 
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
                           spacing: AppSpacing.spacing2,
                           children: isSymbolAfterAmount(baseCurrency)
                               ? [amountWidget, symbolWidget]
@@ -272,14 +278,25 @@ class BalanceCard extends ConsumerWidget {
             color: iconColor,
           ),
           const Gap(AppSpacing.spacing2),
-          Text(
-            '${percentChange.abs().toStringAsFixed(1)}%',
-            style: AppTextStyles.body5.copyWith(
-              color: foregroundColor,
+          Flexible(
+            child: Text(
+              _formatPercent(percentChange),
+              style: AppTextStyles.body5.copyWith(
+                color: foregroundColor,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Format percent value, capping display at 999.9% to prevent overflow
+  String _formatPercent(double value) {
+    final abs = value.abs();
+    if (abs >= 1000) return '999.9%+';
+    return '${abs.toStringAsFixed(1)}%';
   }
 }

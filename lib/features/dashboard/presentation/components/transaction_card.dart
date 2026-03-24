@@ -62,33 +62,39 @@ class TransactionCard extends ConsumerWidget {
                 title,
                 style: AppTextStyles.body3.copyWith(color: titleColor),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.spacing8,
-                  vertical: AppSpacing.spacing4,
-                ),
-                decoration: BoxDecoration(
-                  color: statsBackgroundColor,
-                  borderRadius: BorderRadius.circular(AppRadius.radiusFull),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    HugeIcon(
-                      icon: percentDifference.isNegative
-                          ? HugeIcons.strokeRoundedArrowDown01
-                          : HugeIcons.strokeRoundedArrowUp01,
-                      size: 14,
-                      color: statsIconColor,
-                    ),
-                    const Gap(AppSpacing.spacing2),
-                    Text(
-                      '${percentDifference.toStringAsFixed(1)}%',
-                      style: AppTextStyles.body5.copyWith(
-                        color: statsForegroundColor,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.spacing8,
+                    vertical: AppSpacing.spacing4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statsBackgroundColor,
+                    borderRadius: BorderRadius.circular(AppRadius.radiusFull),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      HugeIcon(
+                        icon: percentDifference.isNegative
+                            ? HugeIcons.strokeRoundedArrowDown01
+                            : HugeIcons.strokeRoundedArrowUp01,
+                        size: 14,
+                        color: statsIconColor,
                       ),
-                    ),
-                  ],
+                      const Gap(AppSpacing.spacing2),
+                      Flexible(
+                        child: Text(
+                          _formatPercent(percentDifference),
+                          style: AppTextStyles.body5.copyWith(
+                            color: statsForegroundColor,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -124,5 +130,12 @@ class TransactionCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Format percent value, capping display at 999.9% to prevent overflow
+  String _formatPercent(double value) {
+    final abs = value.abs();
+    if (abs >= 1000) return '999.9%+';
+    return '${abs.toStringAsFixed(1)}%';
   }
 }
