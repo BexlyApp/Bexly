@@ -427,9 +427,17 @@ class _AutoTransactionSettingsScreenState
       int totalImported = 0;
       int totalDuplicates = 0;
 
+      // Use same date range for import as scan
+      final importMaxAge = dateRange.startDate != null
+          ? DateTime.now().difference(dateRange.startDate!)
+          : null;
+
       for (final sender in results) {
         Log.d('Importing bank: ${sender.bankName} (${sender.messageCount} msgs)', label: 'AutoTransaction');
-        final result = await autoService.importTransactionsForBank(bankCode: sender.bankCode);
+        final result = await autoService.importTransactionsForBank(
+          bankCode: sender.bankCode,
+          maxAge: importMaxAge,
+        );
         totalImported += result.imported;
         totalDuplicates += result.duplicates;
       }
