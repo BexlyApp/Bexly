@@ -321,16 +321,20 @@ class _AutoTransactionSettingsScreenState
   }
 
   Future<void> _scanSmsForBanks() async {
-    // Show date range selection bottom sheet first
+    Log.d('_scanSmsForBanks called', label: 'AutoTransaction');
+
+    // Show date range selection bottom sheet
     final dateRange = await context.openBottomSheet<SmsDateRange>(
       child: const _SmsDateRangeBottomSheet(),
     );
     if (dateRange == null) {
-      return; // User cancelled
+      Log.d('User cancelled date range selection', label: 'AutoTransaction');
+      return;
     }
 
     // Check if SMS permission is already granted
     final currentStatus = await Permission.sms.status;
+    Log.d('SMS permission status: $currentStatus', label: 'AutoTransaction');
     if (!currentStatus.isGranted) {
       // Show rationale bottom sheet before requesting permission
       if (!mounted) return;
@@ -339,6 +343,7 @@ class _AutoTransactionSettingsScreenState
 
       // Request SMS permission after user consents
       final status = await Permission.sms.request();
+      Log.d('SMS permission after request: $status', label: 'AutoTransaction');
       if (!status.isGranted) {
         if (mounted) {
           _showPermissionDeniedBottomSheet(context.l10n.autoTransactionSmsTitle);
@@ -352,6 +357,7 @@ class _AutoTransactionSettingsScreenState
     // Use ValueNotifiers so the bottom sheet can rebuild independently
     final progressNotifier = ValueNotifier<int>(0);
     final totalNotifier = ValueNotifier<int>(0);
+    final scanStartTime = DateTime.now();
 
     // Show scanning bottom sheet with live progress
     if (mounted) {
@@ -371,7 +377,22 @@ class _AutoTransactionSettingsScreenState
       Log.d('Starting SMS scan, dateRange: ${dateRange.name}, startDate: ${dateRange.startDate}', label: 'AutoTransaction');
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.initialize();
-      Log.d('AutoService initialized', label: 'AutoTransaction');
+      Log.d('AutoService initialized, smsService=${autoService.smsService != null}', label: 'AutoTransaction');
+
+      if (autoService.smsService == null) {
+        Log.e('SmsService is null — AI provider may be unavailable', label: 'AutoTransaction');
+        // Ensure scanning bottom sheet is visible for at least 1s
+        final elapsed = DateTime.now().difference(scanStartTime);
+        if (elapsed < const Duration(seconds: 1)) {
+          await Future.delayed(const Duration(seconds: 1) - elapsed);
+        }
+        if (mounted) Navigator.of(context).pop();
+        progressNotifier.dispose();
+        totalNotifier.dispose();
+        setState(() => _isScanning = false);
+        if (mounted) await NoResultsBottomSheet.show(context);
+        return;
+      }
 
       final results = await autoService.scanSmsForBankSenders(
         startDate: dateRange.startDate,
@@ -382,6 +403,12 @@ class _AutoTransactionSettingsScreenState
       );
 
       Log.d('Scan complete: ${results.length} banks found', label: 'AutoTransaction');
+
+      // Ensure scanning bottom sheet is visible for at least 1.5s
+      final elapsed = DateTime.now().difference(scanStartTime);
+      if (elapsed < const Duration(milliseconds: 1500)) {
+        await Future.delayed(const Duration(milliseconds: 1500) - elapsed);
+      }
 
       // Close scanning bottom sheet
       if (mounted) Navigator.of(context).pop();
@@ -430,7 +457,10 @@ class _AutoTransactionSettingsScreenState
       if (mounted) {
         Navigator.of(context).pop(); // Close scanning bottom sheet
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error scanning SMS: $e')),
+          SnackBar(
+            content: Text('Error scanning SMS: $e'),
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
       setState(() => _isScanning = false);
@@ -541,7 +571,10 @@ class _AutoTransactionSettingsScreenState
               },
             ),
             const SizedBox(height: AppSpacing.spacing12),
-            _buildScanSmsButton(),
+            _buildScanSmsButton(onTap: () {
+              Navigator.pop(ctx); // Close settings bottom sheet first
+              _scanSmsForBanks();
+            }),
           ],
         ),
       ),
@@ -629,7 +662,7 @@ class _AutoTransactionSettingsScreenState
     );
   }
 
-  Widget _buildScanSmsButton() {
+  Widget _buildScanSmsButton({VoidCallback? onTap}) {
     return Card(
       child: ListTile(
         leading: HugeIcon(
@@ -658,7 +691,7 @@ class _AutoTransactionSettingsScreenState
                 icon: HugeIcons.strokeRoundedArrowRight01,
                 color: AppColors.neutral400,
               ),
-        onTap: _isScanning ? null : _scanSmsForBanks,
+        onTap: _isScanning ? null : (onTap ?? _scanSmsForBanks),
       ),
     );
   }
