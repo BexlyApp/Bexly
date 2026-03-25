@@ -481,11 +481,12 @@ class AutoTransactionService {
     if (_smsService == null) return [];
 
     // Calculate maxAge from startDate if provided
-    Duration effectiveMaxAge;
+    // null startDate means "all time" — pass null maxAge to scan everything
+    Duration? effectiveMaxAge;
     if (startDate != null) {
       effectiveMaxAge = DateTime.now().difference(startDate);
     } else {
-      effectiveMaxAge = maxAge ?? const Duration(days: 90);
+      effectiveMaxAge = maxAge; // null = no time limit
     }
 
     return await _smsService!.scanForBankSenders(
@@ -564,11 +565,11 @@ class AutoTransactionService {
       return ImportResult(imported: 0, duplicates: 0, errors: 0);
     }
 
-    // Parse transactions from SMS
+    // Parse transactions from SMS (null maxAge = no time limit)
     final transactions = await _smsService!.parseTransactionsForSender(
       bankCode: bankCode,
       limit: limit,
-      maxAge: maxAge ?? const Duration(days: 90),
+      maxAge: maxAge,
       onProgress: onProgress,
     );
 
