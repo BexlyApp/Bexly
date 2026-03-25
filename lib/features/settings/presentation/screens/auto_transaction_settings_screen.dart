@@ -368,8 +368,10 @@ class _AutoTransactionSettingsScreenState
     }
 
     try {
+      Log.d('Starting SMS scan, dateRange: ${dateRange.name}, startDate: ${dateRange.startDate}', label: 'AutoTransaction');
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.initialize();
+      Log.d('AutoService initialized', label: 'AutoTransaction');
 
       final results = await autoService.scanSmsForBankSenders(
         startDate: dateRange.startDate,
@@ -379,6 +381,8 @@ class _AutoTransactionSettingsScreenState
         },
       );
 
+      Log.d('Scan complete: ${results.length} banks found', label: 'AutoTransaction');
+
       // Close scanning bottom sheet
       if (mounted) Navigator.of(context).pop();
       progressNotifier.dispose();
@@ -387,6 +391,7 @@ class _AutoTransactionSettingsScreenState
       setState(() => _isScanning = false);
 
       if (results.isEmpty) {
+        Log.d('No results, showing NoResultsBottomSheet', label: 'AutoTransaction');
         if (mounted) await NoResultsBottomSheet.show(context);
         return;
       }
@@ -396,10 +401,13 @@ class _AutoTransactionSettingsScreenState
       int totalDuplicates = 0;
 
       for (final sender in results) {
+        Log.d('Importing bank: ${sender.bankName} (${sender.messageCount} msgs)', label: 'AutoTransaction');
         final result = await autoService.importTransactionsForBank(bankCode: sender.bankCode);
         totalImported += result.imported;
         totalDuplicates += result.duplicates;
       }
+
+      Log.d('Import complete: $totalImported imported, $totalDuplicates duplicates', label: 'AutoTransaction');
 
       // Show import summary with option to view pending
       if (mounted) {
@@ -415,8 +423,8 @@ class _AutoTransactionSettingsScreenState
           },
         );
       }
-    } catch (e) {
-      Log.e('Error scanning SMS: $e', label: 'AutoTransaction');
+    } catch (e, stack) {
+      Log.e('Error scanning SMS: $e\n$stack', label: 'AutoTransaction');
       progressNotifier.dispose();
       totalNotifier.dispose();
       if (mounted) {
