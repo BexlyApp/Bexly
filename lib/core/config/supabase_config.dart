@@ -11,14 +11,12 @@ class SupabaseConfig {
       dotenv.env['SUPABASE_URL'] ?? 'https://dos.supabase.co';
 
   /// Supabase publishable key for client-side authentication.
-  /// This is the public key from Supabase Dashboard > Settings > API.
-  /// Safe to expose in client apps - NOT a secret key.
-  /// Hardcoded fallback ensures Supabase works even if .env is incomplete (e.g. CI builds).
-  static const _defaultPublishableKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1bHB0d2R1Y2hzamNzYm5kbXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1OTI4NzQsImV4cCI6MjA4MjE2ODg3NH0.rRf1P8DhC_iK9KM2TSOU0XnjwoXmlBgZymGuhUdPazs';
-
-  static String get publishableKey =>
-      dotenv.env['SUPABASE_PUBLISHABLE_KEY'] ?? _defaultPublishableKey;
+  /// Loaded from .env (SUPABASE_PUBLISHABLE_KEY). CI injects via GitHub Secrets.
+  static String get publishableKey {
+    final key = dotenv.env['SUPABASE_PUBLISHABLE_KEY'] ?? '';
+    assert(key.isNotEmpty, 'SUPABASE_PUBLISHABLE_KEY missing from .env');
+    return key;
+  }
 
   /// DOS-Me API base URL
   static String get dosMeApiUrl =>

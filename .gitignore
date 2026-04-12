@@ -111,3 +111,21 @@ tmpclaude-*-cwd
 mcp-server/dist/
 mcp-server/.env
 supabase/.temp
+.github/instructions/pockaw-instruction.instructions.md
+
+# Secrets - NEVER commit these
+/secrets/
+*.jks
+dos-id.*.private-key.pem
+github-app-private-key.pem
+
+# Debug/log output
+firepit-log.txt
+flutter_output.log
+flutter_google_signin_debug.log
+flutter_supabase_debug.log
+final_test.log
+custom_lint.log
+
+# API Keys - DO NOT COMMIT
+lib/core/config/llm_config.dart

@@ -2,240 +2,163 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Quy tắc giao tiếp
-- **LUÔN trả lời bằng tiếng Việt** khi làm việc với repository này
-- **LUÔN viết code comments bằng tiếng Anh**
-- Chỉ dùng tiếng Việt khi chat/giải thích với user
-- Documentation và code comments phải bằng tiếng Anh
+## Communication Rules
+- **ALWAYS respond in Vietnamese** when working with this repository
+- **ALWAYS write code comments in English**
+- Documentation and code comments must be in English
 
 ## CRITICAL: Command Usage Rules
-- **ALWAYS use `flutter` command directly** (NOT `/d/Dev/flutter/bin/flutter` or `D:/Dev/flutter/bin/flutter.bat`)
-- **ALWAYS use `dart` command directly** (NOT full paths)
-- Flutter and Dart are already in PATH - use them directly
-- Examples:
-  - ✅ CORRECT: `flutter build apk --release`
-  - ❌ WRONG: `D:/Dev/flutter/bin/flutter.bat build apk --release`
-  - ✅ CORRECT: `dart run build_runner build`
-  - ❌ WRONG: `/d/Dev/flutter/bin/dart run build_runner build`
+- **ALWAYS use `flutter` and `dart` commands directly** — they are in PATH
+- ❌ NEVER use full paths like `D:/Dev/flutter/bin/flutter.bat` or `/d/Dev/flutter/bin/dart`
 
 ## CRITICAL: Production Safety — NEVER Run Without Explicit Approval
-The following commands are **PERMANENTLY BANNED** unless the user explicitly types the exact command and says "run it":
+The following are **PERMANENTLY BANNED** unless the user explicitly says "run it":
 
-### Supabase — NEVER run automatically:
-- ❌ `supabase config push` — pushes config to production, can remove exposed schemas
-- ❌ `supabase db push` — applies migrations to production database
-- ❌ `supabase db reset` — DESTROYS all production data
-- ❌ Any `supabase` CLI command that modifies production (non-local) state
-
-### SQL on Production — NEVER run DDL without approval:
+- ❌ `supabase config push` / `supabase db push` / `supabase db reset`
+- ❌ Any `supabase` CLI command that modifies production state
 - ❌ `ALTER ROLE`, `ALTER TABLE`, `CREATE TABLE`, `DROP TABLE` on production
-- ❌ Any SQL that modifies schema, roles, or permissions
 - ✅ READ-ONLY SQL (`SELECT`) is allowed without asking
 
-### Rule: Ask Before Touching Supabase Config
-ALWAYS ask the user before:
-- Changing Supabase Dashboard settings
-- Running any Supabase CLI command
-- Executing SQL that modifies data or schema on production
-- Modifying RLS policies, functions, or triggers
-
-**Incident (2026-03-07):** Ran `supabase config push` without approval → accidentally removed `web3` and `stripe` from API config on production. This rule exists to prevent recurrence.
-
-## Project Overview
-
-Bexly is a Flutter-based personal finance and budget tracking application with a focus on cross-platform sync and AI agent capabilities. The project uses a feature-based clean architecture with Riverpod for state management, Drift for local database storage, and Supabase for authentication.
-
-## IMPORTANT: Backend Architecture
-- **Authentication**: Supabase (dos.me ID) - `https://dos.supabase.co`
-- **Local Database**: Drift/SQLite - source of truth for offline
-- **Cloud Sync**: Supabase PostgreSQL (schema `bexly`) - bidirectional sync when authenticated
-- **OAuth Token Storage**: dos.me ID API (`https://api.dos.me`) - centralized OAuth token management
-- **Firebase** (GCP project `dos-me`): Analytics, Crashlytics, FCM, Storage only — NOT used for auth or data
+**Incident (2026-03-07):** `supabase config push` ran without approval → removed `web3` and `stripe` from production API config.
 
 ## Essential Commands
 
-### Development
 ```bash
-# Install/update dependencies
+# Dependencies
 flutter pub get
 
-# Run the app
-flutter run                    # Debug mode (default)
-flutter run --profile          # Profile mode for performance analysis
-flutter run --release          # Release mode
+# Run app (always target Android emulator)
+flutter run -d emulator-5554
 
-# Code generation (required after modifying Drift database schemas)
-dart run build_runner build    # One-time generation
-dart run build_runner watch    # Watch mode for continuous generation
-```
+# Code generation (after modifying Drift schemas or Freezed models)
+dart run build_runner build
+dart run build_runner watch          # Watch mode
 
-### Code Quality
-```bash
-# Analyze code for issues
+# Localization (after modifying .arb files)
+flutter gen-l10n
+
+# Code quality
 flutter analyze
-
-# Run tests (minimal coverage currently)
 flutter test
+
+# Build Android
+flutter build apk                   # APK for direct install
+flutter build appbundle              # AAB for Play Store
+
+# iOS — MUST use GitHub Actions (cannot build on Windows)
+# Push to main → GitHub Actions auto-builds
 ```
 
-### Building
-```bash
-# Android (build locally on Windows)
-flutter build apk              # APK for direct installation
-flutter build appbundle        # For Play Store submission
+**Android `appbundle` warning:** "failed to strip debug symbols" is just a warning — the bundle builds successfully. Don't rebuild.
 
-# iOS - MUST use GitHub Actions (cannot build on Windows!)
-# Merge dev to main and push → GitHub Actions auto-builds iOS
-git checkout main && git merge dev && git push bexly main
+## Project Overview
 
-# Other platforms (planned)
-flutter build web              # Web version
-flutter build windows          # Windows desktop
-```
+Bexly is a Flutter personal finance app with offline-first architecture, cloud sync, AI chat, and multi-platform support (Android, iOS, web, desktop).
 
-**IMPORTANT: Android Bundle Build Warning**
-- Lệnh `flutter build appbundle` có thể hiện lỗi "failed to strip debug symbols from native libraries"
-- **ĐÂY CHỈ LÀ WARNING, KHÔNG PHẢI LỖI** - Bundle vẫn được tạo thành công
-- File output: `build/app/outputs/bundle/release/app-release.aab`
-- KHÔNG cần build lại nhiều lần khi thấy warning này
-- Kiểm tra file đã tồn tại bằng: `dir build\app\outputs\bundle\release`
+## Backend Architecture
 
-**IMPORTANT: iOS Build Process**
-- **KHÔNG THỂ build iOS trên Windows** - yêu cầu macOS
-- Project dùng **GitHub Actions** để build iOS tự động
-- Push code lên GitHub → Actions tự động build
-- Check build status: https://github.com/BexlyApp/Bexly/actions
-
-### App Icons
-```bash
-# Regenerate app icons after changes to flutter_launcher_icons.yaml
-flutter pub run flutter_launcher_icons:main
-```
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Auth** | Supabase (dos.me ID) | `https://dos.supabase.co` — JWT auth, social login (Google/Apple/Facebook) |
+| **Local DB** | Drift/SQLite | Source of truth for offline — schema v27, 16 tables |
+| **Cloud Sync** | Supabase PostgreSQL | Schema `bexly` — bidirectional sync when authenticated |
+| **OAuth Tokens** | dos.me ID API | `https://api.dos.me` — centralized OAuth token management |
+| **Firebase** | GCP project `dos-me` | Analytics, Crashlytics, FCM, Storage **only** — NOT for auth or data |
+| **AI** | DOS AI + Gemini fallback | DOS AI direct (`api.dos.ai`), Gemini/OpenAI via Supabase Edge Function proxy (`ai-proxy`) |
+| **Edge Functions** | Supabase/Deno | `ai-proxy`, `telegram-webhook`, `link-telegram`, `create-short-link` |
 
 ## Architecture Overview
 
-### State Management Pattern
-The app uses Riverpod with Hooks for state management. Each feature typically has:
-- A provider file defining the state providers
-- Domain models with Freezed for immutability
-- Repository pattern for data access
-- UI components using HookConsumerWidget
+### App Initialization (main.dart)
+Phase-based startup: critical services first (Flutter, env, Firebase, Supabase), then auth, then remaining (WorkManager, notifications, ads). Background tasks via WorkManager isolate (`callbackDispatcher`).
 
-### Database Architecture
-Uses Drift (formerly Moor) for SQLite database management:
-- Tables defined in `lib/core/database/tables/`
-- DAOs (Data Access Objects) in `lib/core/database/daos/`
-- Database instance managed through Riverpod providers
-- Schema migrations tracked in `drift_schemas/`
+### State Management
+Riverpod + Hooks. Each feature uses:
+- `riverpod/` — providers (state notifiers, async notifiers)
+- `domain/` — models (Freezed for immutability)
+- `data/repositories/` — data access layer
+- `presentation/` — screens and widgets (HookConsumerWidget)
 
-### Navigation Structure
-Uses Go Router for declarative routing:
-- Routes defined in `lib/core/router/`
-- Deep linking support
-- Named routes for type-safe navigation
+### Database (lib/core/database/)
+Drift/SQLite with 16 tables, 12 DAOs, schema version 27.
+
+**ID architecture (critical for sync):**
+- Local DB uses **auto-increment integer IDs** for foreign keys
+- Cloud (Supabase) uses **UUID v7 `cloud_id`** columns
+- When entities re-sync, they get NEW integer IDs → dependent tables need FK repair
+- Soft delete pattern: `is_deleted` boolean instead of hard DELETE
+
+**Tables:** Users, Categories, Transactions, Wallets, Budgets, Goals, ChecklistItems, Recurrings, ChatMessages, Notifications, FamilyGroups, FamilyMembers, FamilyInvitations, SharedWallets, ParsedEmailTransactions, PendingTransactions
+
+**After schema changes:**
+1. Update table definition in `lib/core/database/tables/`
+2. Add migration logic in `app_database.dart` `onUpgrade` (increment `schemaVersion`)
+3. Run `dart run build_runner build`
+
+### Sync Engine (lib/core/services/sync/)
+- `supabase_sync_service.dart` — main sync (push BEFORE pull, order matters)
+- `supabase_conflict_resolution_service.dart` — handles concurrent edits
+- `realtime_sync_provider.dart` — live updates via Supabase realtime
+- Push runs first to upload local changes, then pull fetches remote changes
+- Pull logic: (1) get all including deleted, (2) delete local for soft-deleted, (3) upsert active
+- Must check cloud `is_deleted` before uploading to prevent ghost resurrection
+
+### AI Integration (lib/features/ai_chat/, lib/core/services/ai/)
+- **DOS AI**: Direct to `api.dos.ai/v1` — needs `User-Agent` header (Cloudflare WAF blocks default)
+- **Gemini/OpenAI/Claude**: Via Supabase Edge Function proxy (`ai-proxy`) with user JWT
+- **Receipt OCR**: DOS AI vision → Gemini fallback via `FallbackOcrProvider`
+- **Chat actions**: AI can create transactions, budgets, goals — uses active wallet with fallback chain
+
+### Navigation
+Go Router with 40+ named routes defined in `lib/core/router/routes.dart`. Feature routers composed in `app_router.dart`.
+
+### Localization
+14 languages via ARB files in `lib/l10n/`. Config in `l10n.yaml`. Generated output: `lib/core/localization/generated/`. Custom translations for categories (`category_name_l10n.dart`) and relative time (`time_ago_l10n.dart`).
 
 ### Feature Module Pattern
-Each feature in `lib/features/` is self-contained with:
 ```
-feature_name/
-├── domain/          # Business logic and models
-├── presentation/    # UI screens and widgets
-├── riverpod/        # State management providers
-└── utils/           # Feature-specific utilities
+lib/features/<name>/
+├── data/              # Models and repositories
+├── domain/            # Business logic, services
+├── presentation/      # Screens and components
+├── riverpod/          # State providers
+└── utils/             # Feature-specific utilities
 ```
+
+34 feature modules including: ai_chat, auth, budget, category, dashboard, email_sync, family, gamification, goal, notification, onboarding, receipt_scanner, recurring, reports, settings, subscription, transaction, wallet.
+
+## UI Rules (User Enforced)
+- **NEVER use AlertDialog/floating popups** — ALWAYS use bottom sheet (`showModalBottomSheet`)
+- Use `context.openBottomSheet()` from `popup_extension.dart` or `showModalBottomSheet`
+- Confirmation sheets: `showDragHandle: true`, title + description + Cancel/Confirm buttons row
+- Reusable components in `lib/core/components/`
 
 ## Key Technical Decisions
 
-### Multi-Wallet Architecture
-- Each wallet can have a different currency
-- Transactions are scoped to individual wallets
-- Wallet switching handled via dedicated UI component
+- **Multi-wallet**: Each wallet has independent currency, transactions scoped to wallets, categories shared
+- **Amounts**: Stored as double with currency-specific decimal places
+- **Theming**: flex_color_scheme with dark/light toggle, custom per-wallet color schemes
+- **Amount entry**: Custom keyboard implementation (`lib/core/services/keyboard_service/`)
+- **Background tasks**: WorkManager for email sync and recurring charges
+- **Monetization**: Stripe payments, Google Mobile Ads, in-app purchases
 
-### Local Storage & Offline Support
-- All data stored locally using Drift/SQLite
-- Works without internet connection
-- Optional cloud sync via Supabase when authenticated
-- Backup/restore functionality for data portability
+## CI/CD (GitHub Actions)
 
-### Theme System
-- Uses flex_color_scheme for advanced theming
-- Dark/light mode toggle
-- Custom color schemes per wallet
+All workflows trigger on push to `main`. Each injects `.env`, `google-services.json`, and keystore from GitHub Secrets.
 
-### Form Handling
-- Custom keyboard implementation for amount entry
-- Date pickers with calendar integration
-- Category picker with icon support
+| Workflow | Platform | Runner |
+|----------|----------|--------|
+| `android-build.yml` | APK + AAB | Ubuntu (Java 17) |
+| `ios-build.yml` | iOS | macOS |
+| `web-build.yml` | Web | Ubuntu |
+| `linux-build.yml` | Linux | Ubuntu |
+| `macos-build.yml` | macOS | macOS |
+| `version-bump.yml` | Auto build number increment | Ubuntu |
 
-## Development Guidelines
+**iOS cannot be built on Windows** — always use GitHub Actions.
 
-### Security Best Practices (CRITICAL)
+## Security Reminders
 
-**NEVER commit sensitive files to git:**
-- ❌ `google-services.json` - Contains OAuth client IDs and is environment-specific (each developer needs their own)
-- ❌ `keystore.properties` - Contains keystore passwords
-- ❌ `*.jks` files - Release signing keys
-- ❌ `.env` files - Contains API keys for Gemini, OpenAI, Claude, etc.
-- ❌ Any file with credentials, tokens, or secrets
-
-**Why `google-services.json` should NOT be committed:**
-- Contains OAuth 2.0 client IDs tied to specific SHA-1 fingerprints
-- Each developer has different keystores with different SHA-1s
-- Each environment (dev/staging/prod) may need different configs
-- Already in `.gitignore` - keep it there
-- Each developer must download their own from Google Cloud Console after adding their keystore's SHA-1 fingerprint
-
-**Before EVERY commit:**
-1. Run `git status` and carefully review ALL files
-2. Check for `.backup`, `.json`, `.env` files
-3. NEVER use `git add .` blindly - add files explicitly
-4. Use `.gitignore` to prevent accidental commits
-
-**If API key is exposed:**
-1. Remove file immediately: `git rm <file>`
-2. Commit removal
-3. **REVOKE API key in Google Cloud Console**
-4. **Generate new API key**
-5. Update config with new key
-6. Rewrite git history: `git filter-repo --path <file> --invert-paths`
-
-**Incident Log:**
-- 2025-11-09: Exposed Google API key in commit `4e15da4` via file `android/app/google-services.json.dos-me.backup`. Key was revoked and rotated.
-
-### When Adding New Features
-1. Create a new directory under `lib/features/`
-2. Follow the existing feature structure pattern
-3. Use Riverpod providers for state management
-4. Add database tables/DAOs if persistent storage needed
-5. Update router configuration for new screens
-
-### When Modifying Database
-1. Update table definitions in `lib/core/database/tables/`
-2. Run `dart run build_runner build` to regenerate code
-3. Handle migrations if schema changes affect existing data
-
-### When Working with Transactions
-- Transactions belong to wallets
-- Categories are shared across wallets
-- Date/time handling uses local timezone
-- Amount stored as double with currency-specific decimal places
-
-### Common UI Patterns
-- Use components from `lib/core/components/` for consistency
-- Follow Material Design guidelines with custom enhancements
-- Responsive design using responsive_framework
-- Custom bottom sheets for forms and pickers
-
-## Current Development Focus
-
-The app is in active development with focus on:
-- Android platform stability (currently in Play Store beta)
-- Core expense/income tracking features
-- Budget and goal management
-- Basic analytics and reporting
-
-Upcoming priorities include:
-- Enhanced analytics and charts
-- Web and desktop platform support
-- Improved test coverage
-- Multi-language support via localization
+- NEVER commit: `google-services.json`, `keystore.properties`, `*.jks`, `.env`
+- NEVER use `git add .` — add files explicitly
+- All sensitive files are in `.gitignore` — keep them there
