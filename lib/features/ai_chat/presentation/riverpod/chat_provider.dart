@@ -316,11 +316,11 @@ class ChatNotifier extends Notifier<ChatState> {
   // Cache fallback Gemini service to preserve conversation history
   GeminiService? _fallbackGeminiService;
 
-  /// Send message with fallback: Try DOS AI first, fallback to Gemini if fails
+  /// Send message with fallback: DOS AI (api.dos.ai handles local→Qwen Cloud) → Gemini
   Future<String> _sendMessageWithFallback(String message) async {
     final selectedModel = ref.read(aiModelProvider);
 
-    // If using DOS AI, try with fallback
+    // If using DOS AI, try with Gemini fallback
     if (selectedModel == AIModel.dosAI) {
       try {
         Log.d('🚀 Trying DOS AI first...', label: 'AI_FALLBACK');
@@ -328,11 +328,10 @@ class ChatNotifier extends Notifier<ChatState> {
         _fallbackModelName = null;
         return await _aiService.sendMessage(message);
       } catch (e) {
-        // DOS AI failed - fallback to Gemini
+        // DOS AI failed (server handles its own Qwen Cloud fallback) — fall back to Gemini
         Log.w('⚠️ DOS AI failed: $e, falling back to Gemini...', label: 'AI_FALLBACK');
         _usingFallback = true;
 
-        // Get or create cached fallback service (preserves conversation history)
         final geminiService = _getOrCreateFallbackGeminiService();
         _fallbackModelName = geminiService.modelName;
 

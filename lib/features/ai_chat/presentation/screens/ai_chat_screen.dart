@@ -454,7 +454,9 @@ class _MessageBubble extends ConsumerWidget {
                   )
                 : null,
                   child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: isUser
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
                           children: [
                             // Show image thumbnail if present
                             if (message.imageBytes != null) ...[
