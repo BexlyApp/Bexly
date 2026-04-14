@@ -127,5 +127,4 @@ flutter_supabase_debug.log
 final_test.log
 custom_lint.log
 
-# API Keys - DO NOT COMMIT
-lib/core/config/llm_config.dart
+# Note: llm_config.dart is safe to commit — it reads from .env at runtime, no hardcoded secrets
