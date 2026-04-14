@@ -10,6 +10,7 @@ abstract class AIService {
   Stream<String> sendMessageStream(String message);
   void updateRecentTransactions(String recentTransactionsContext);
   void updateBudgetsContext(String budgetsContext); // Update budgets list for AI
+  void updateSpendingInsights(String spendingInsightsContext); // Update spending analysis for coaching
   void updateContext({
     String? walletName,
     String? walletCurrency,
@@ -25,6 +26,7 @@ mixin AIServicePromptMixin {
   List<String> get categories;
   String get recentTransactionsContext;
   String get budgetsContext; // Current budgets for AI context
+  String get spendingInsightsContext; // Spending analysis for coaching
   String? get categoryHierarchy => null; // Optional hierarchy text
   String? get walletCurrency => null; // Optional wallet currency for conversion notification
   String? get walletName => null; // Optional wallet name for personalized responses
@@ -41,6 +43,7 @@ mixin AIServicePromptMixin {
         exchangeRateVndToUsd: exchangeRateVndToUsd,
         wallets: wallets,
         budgetsContext: budgetsContext,
+        spendingInsightsContext: spendingInsightsContext,
       );
 
   /// Compact system prompt for DOS AI (8192 token limit — remove once --max-model-len >= 16384)
@@ -53,6 +56,7 @@ mixin AIServicePromptMixin {
         exchangeRateVndToUsd: exchangeRateVndToUsd,
         wallets: wallets,
         budgetsContext: budgetsContext,
+        spendingInsightsContext: spendingInsightsContext,
       );
 
   // Legacy getters for backwards compatibility (all delegate to AIPrompts)
@@ -91,12 +95,16 @@ class OpenAIService with AIServicePromptMixin implements AIService {
 
   String _recentTransactionsContext = '';
   String _budgetsContext = '';
+  String _spendingInsightsContext = '';
 
   @override
   String get recentTransactionsContext => _recentTransactionsContext;
 
   @override
   String get budgetsContext => _budgetsContext;
+
+  @override
+  String get spendingInsightsContext => _spendingInsightsContext;
 
   @override
   String get modelName => model;
@@ -128,6 +136,12 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   void updateBudgetsContext(String budgetsContext) {
     _budgetsContext = budgetsContext;
     Log.d('Updated budgets context (${budgetsContext.length} chars)', label: 'AI Service');
+  }
+
+  @override
+  void updateSpendingInsights(String spendingInsightsContext) {
+    _spendingInsightsContext = spendingInsightsContext;
+    Log.d('Updated spending insights context (${spendingInsightsContext.length} chars)', label: 'AI Service');
   }
 
   @override
@@ -254,12 +268,16 @@ class GeminiService with AIServicePromptMixin implements AIService {
 
   String _recentTransactionsContext = '';
   String _budgetsContext = '';
+  String _spendingInsightsContext = '';
 
   @override
   String get recentTransactionsContext => _recentTransactionsContext;
 
   @override
   String get budgetsContext => _budgetsContext;
+
+  @override
+  String get spendingInsightsContext => _spendingInsightsContext;
 
   @override
   String get modelName => model;
@@ -290,6 +308,12 @@ class GeminiService with AIServicePromptMixin implements AIService {
   void updateBudgetsContext(String budgetsContext) {
     _budgetsContext = budgetsContext;
     Log.d('Updated budgets context (${budgetsContext.length} chars)', label: 'Gemini Service');
+  }
+
+  @override
+  void updateSpendingInsights(String spendingInsightsContext) {
+    _spendingInsightsContext = spendingInsightsContext;
+    Log.d('Updated spending insights context (${spendingInsightsContext.length} chars)', label: 'Gemini Service');
   }
 
   @override
@@ -481,12 +505,16 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
 
   String _recentTransactionsContext = '';
   String _budgetsContext = '';
+  String _spendingInsightsContext = '';
 
   @override
   String get recentTransactionsContext => _recentTransactionsContext;
 
   @override
   String get budgetsContext => _budgetsContext;
+
+  @override
+  String get spendingInsightsContext => _spendingInsightsContext;
 
   @override
   String get modelName => _resolvedModel ?? model;
@@ -522,6 +550,12 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
   void updateBudgetsContext(String budgetsContext) {
     _budgetsContext = budgetsContext;
     Log.d('Updated budgets context (${budgetsContext.length} chars)', label: 'Custom LLM');
+  }
+
+  @override
+  void updateSpendingInsights(String spendingInsightsContext) {
+    _spendingInsightsContext = spendingInsightsContext;
+    Log.d('Updated spending insights context (${spendingInsightsContext.length} chars)', label: 'Custom LLM');
   }
 
   @override

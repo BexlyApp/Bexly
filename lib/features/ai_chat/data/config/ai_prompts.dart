@@ -6,7 +6,29 @@ class AIPrompts {
   // =========================================================================
   // SECTION 1: ROLE & TASK (Concise)
   // =========================================================================
-  static const String systemInstruction = '''You are Bexly AI - a finance assistant.
+  static const String systemInstruction = '''You are Bexly AI - a personal financial coach powered by Shinhan Bank.
+
+ROLE: You are NOT just a transaction recorder — you are a proactive financial coach. Your job is to:
+1. Help users track transactions through natural conversation
+2. Analyze spending patterns and surface actionable insights
+3. Proactively coach users to improve their financial health
+4. Suggest relevant financial products when spending patterns indicate a need
+
+COACHING BEHAVIOR:
+- After recording a transaction, briefly comment on the spending pattern if relevant (e.g., "This brings your dining spend to 2.5M this month — 80% of your 3M budget")
+- When you notice high spending in a category, suggest ways to optimize
+- When users ask for summaries, include 1-2 actionable recommendations
+- Be encouraging when users are under budget or meeting savings goals
+- Be direct but supportive when spending is high — suggest alternatives, not guilt
+- Keep coaching comments SHORT (1 sentence) — don't lecture after every transaction
+
+PRODUCT RECOMMENDATIONS (suggest when relevant, not every message):
+- High dining/shopping spend → "Shinhan cashback credit card could save you up to 5% on dining"
+- Idle balance in current account → "A Shinhan savings account at 5.5% could earn you X per month"
+- Frequent international spend → "Shinhan FX card has lower conversion fees"
+- No insurance transactions → "Have you considered Shinhan health/life insurance for financial protection?"
+- High credit card interest → "Shinhan debt consolidation loan could reduce your interest rate"
+Only recommend products when there's a clear pattern — NOT on every interaction.
 
 CRITICAL LANGUAGE RULE - MUST FOLLOW EXACTLY:
 1. Detect user's input language FIRST (before anything else!)
@@ -670,6 +692,17 @@ Always reference the exact budget by ID in your ACTION_JSON.''';
   // MAIN PROMPT BUILDER (Optimized Order)
   // =========================================================================
 
+  /// Build spending insights section for AI context
+  static String buildSpendingInsightsSection(String spendingInsightsContext) {
+    if (spendingInsightsContext.isEmpty) return '';
+
+    return '''
+SPENDING INSIGHTS (use this data to coach the user proactively):
+$spendingInsightsContext
+
+When recording a new transaction, reference this data to give brief coaching advice.''';
+  }
+
   /// Build complete system prompt - OPTIMIZED
   static String buildSystemPrompt({
     required List<String> categories,
@@ -680,6 +713,7 @@ Always reference the exact budget by ID in your ACTION_JSON.''';
     double? exchangeRateVndToUsd,
     List<String>? wallets,
     String? budgetsContext,
+    String? spendingInsightsContext,
   }) {
     // Add wallet context if provided
     final walletContext = (walletCurrency != null || walletName != null)
@@ -696,7 +730,10 @@ Always reference the exact budget by ID in your ACTION_JSON.''';
     // Build budgets section
     final budgetsSectionText = buildBudgetsSection(budgetsContext ?? '');
 
-    // OPTIMAL ORDER: Role → Output Format → Input Rules → Context → Examples
+    // Build spending insights section
+    final spendingInsightsSectionText = buildSpendingInsightsSection(spendingInsightsContext ?? '');
+
+    // OPTIMAL ORDER: Role → Output Format → Input Rules → Context → Insights → Examples
     return '''$systemInstruction$walletContext$exchangeRateContext
 
 $actionSchemas
@@ -710,6 +747,8 @@ ${buildContextSection(categories, categoryHierarchy: categoryHierarchy, wallets:
 ${buildRecentTransactionsSection(recentTransactionsContext)}
 
 $budgetsSectionText
+
+$spendingInsightsSectionText
 
 $businessRules
 
@@ -731,6 +770,7 @@ $examples''';
     double? exchangeRateVndToUsd,
     List<String>? wallets,
     String? budgetsContext,
+    String? spendingInsightsContext,
   }) {
     final walletCtx = (walletCurrency != null || walletName != null)
         ? '\nCURRENT WALLET: ${walletName ?? 'Active Wallet'} (${walletCurrency ?? 'VND'})\n- Always use EXACT wallet name "${walletName ?? 'Active Wallet'}" in responses\n- When transaction currency ≠ wallet currency → show conversion'
@@ -758,7 +798,11 @@ $examples''';
     final yesterday = () { final d = now.subtract(const Duration(days:1)); return '${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}'; }();
     final tomorrow = () { final d = now.add(const Duration(days:1)); return '${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}'; }();
 
-    return '''You are Bexly AI - personal finance assistant.
+    return '''You are Bexly AI - a personal financial coach powered by Shinhan Bank.
+
+ROLE: Proactive financial coach — don't just record transactions, analyze spending and coach users.
+COACHING: After recording, briefly note spending pattern if relevant (1 sentence max). Suggest savings or product when pattern is clear.
+PRODUCTS: High dining→Shinhan cashback card, idle balance→savings 5.5%, intl spend→FX card, no insurance→Shinhan insurance. Only suggest when relevant.
 
 LANGUAGE: Reply in same language as user's input. Vietnamese chars→VI, Chinese→ZH, Korean→KR, Latin only→EN. NEVER mix languages.
 DATE FORMAT: JSON always YYYY-MM-DD. Responses: readable (e.g. "14-01-2026" for VI, "Jan 14 2026" for EN).$walletCtx$rateCtx
@@ -817,7 +861,7 @@ WALLET RULES:
 - Include "wallet" with EXACT name (no currency suffix) if user specifies; omit if not specified
 $recentTx
 $budgetTx
-BUSINESS RULES:
+${(spendingInsightsContext != null && spendingInsightsContext.isNotEmpty) ? 'SPENDING INSIGHTS (use to coach proactively):\n$spendingInsightsContext\n' : ''}BUSINESS RULES:
 - ONLY create transactions when user EXPLICITLY records financial activity
 - Greetings/questions/small talk → NO ACTION_JSON, respond naturally
 - Create ONLY if: amount+description OR clear transaction keyword+amount

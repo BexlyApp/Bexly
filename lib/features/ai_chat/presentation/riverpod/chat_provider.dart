@@ -350,6 +350,14 @@ class ChatNotifier extends Notifier<ChatState> {
           exchangeRate: cachedRate?.rate,
         );
 
+        // Propagate spending insights and budgets to fallback service
+        if (_aiService is AIServicePromptMixin) {
+          final mixin = _aiService as AIServicePromptMixin;
+          geminiService.updateSpendingInsights(mixin.spendingInsightsContext);
+          geminiService.updateBudgetsContext(mixin.budgetsContext);
+          geminiService.updateRecentTransactions(mixin.recentTransactionsContext);
+        }
+
         Log.d('✅ Using Gemini fallback: ${geminiService.modelName}', label: 'AI_FALLBACK');
         return await geminiService.sendMessage(message);
       }
@@ -749,9 +757,10 @@ Please create a transaction based on this receipt data.''';
         );
       }
 
-      // Update AI with recent transactions and budgets context before sending message
+      // Update AI with recent transactions, budgets, and spending insights before sending message
       await _updateRecentTransactionsContext();
       await _updateBudgetsContext();
+      await _updateSpendingInsightsContext();
 
       // Update AI with current wallet context (CRITICAL: wallet list must be current!)
       print('🔧 [CHAT_DEBUG] About to update AI context...');
@@ -3873,6 +3882,118 @@ Please create a transaction based on this receipt data.''';
       _aiService.updateBudgetsContext(contextString);
     } catch (e) {
       Log.e('Failed to update budgets context: $e', label: 'Chat Provider');
+    }
+  }
+
+  /// Build spending insights context for AI financial coaching
+  Future<void> _updateSpendingInsightsContext() async {
+    try {
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      if (wallet == null || wallet.id == null) {
+        _aiService.updateSpendingInsights('');
+        return;
+      }
+
+      final dbInstance = ref.read(databaseProvider);
+      final now = DateTime.now();
+      final currency = wallet.currency;
+
+      // Current month range
+      final currentMonthStart = DateTime(now.year, now.month, 1);
+      final currentMonthEnd = DateTime(now.year, now.month + 1, 1).subtract(const Duration(seconds: 1));
+
+      // Previous month range
+      final prevMonthStart = DateTime(now.year, now.month - 1, 1);
+      final prevMonthEnd = DateTime(now.year, now.month, 1).subtract(const Duration(seconds: 1));
+
+      // Fetch all transactions for this wallet
+      final allTransactions = await dbInstance.transactionDao
+          .watchFilteredTransactionsWithDetails(walletId: wallet.id!, filter: null)
+          .first
+          .timeout(const Duration(seconds: 5), onTimeout: () => []);
+
+      // Filter by month
+      final currentMonthTx = allTransactions.where((t) =>
+          !t.date.isBefore(currentMonthStart) && !t.date.isAfter(currentMonthEnd)).toList();
+      final prevMonthTx = allTransactions.where((t) =>
+          !t.date.isBefore(prevMonthStart) && !t.date.isAfter(prevMonthEnd)).toList();
+
+      // Current month totals
+      final currentIncome = currentMonthTx
+          .where((t) => t.transactionType == TransactionType.income)
+          .fold<double>(0, (s, t) => s + t.amount);
+      final currentExpense = currentMonthTx
+          .where((t) => t.transactionType == TransactionType.expense)
+          .fold<double>(0, (s, t) => s + t.amount);
+
+      // Previous month totals
+      final prevExpense = prevMonthTx
+          .where((t) => t.transactionType == TransactionType.expense)
+          .fold<double>(0, (s, t) => s + t.amount);
+
+      // Category breakdown (current month expenses, top 5)
+      final categorySpending = <String, double>{};
+      for (final tx in currentMonthTx.where((t) => t.transactionType == TransactionType.expense)) {
+        final catName = tx.category.title;
+        categorySpending[catName] = (categorySpending[catName] ?? 0) + tx.amount;
+      }
+      final sortedCategories = categorySpending.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      final topCategories = sortedCategories.take(5);
+
+      // Budget usage
+      final budgetDao = ref.read(budgetDaoProvider);
+      final allBudgets = await budgetDao.watchAllBudgets().first.timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => <BudgetModel>[],
+      );
+      final currentBudgets = allBudgets.where((b) =>
+          b.startDate.isBefore(currentMonthEnd) && b.endDate.isAfter(currentMonthStart)).toList();
+
+      // Build context string
+      String fmt(num v) => v.toInt().toString().replaceAllMapped(
+          RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+      final buffer = StringBuffer();
+
+      // Monthly overview
+      final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+      final daysElapsed = now.day;
+      buffer.writeln('This month ($daysElapsed/$daysInMonth days): Income ${fmt(currentIncome)} $currency, Expense ${fmt(currentExpense)} $currency, Net ${fmt(currentIncome - currentExpense)} $currency');
+
+      // Month-over-month comparison
+      if (prevExpense > 0) {
+        final changePercent = ((currentExpense - prevExpense) / prevExpense * 100).round();
+        final direction = changePercent > 0 ? 'UP' : (changePercent < 0 ? 'DOWN' : 'SAME');
+        buffer.writeln('vs last month: Spending $direction ${changePercent.abs()}% (was ${fmt(prevExpense)} $currency)');
+      }
+
+      // Top spending categories
+      if (topCategories.isNotEmpty) {
+        buffer.write('Top categories: ');
+        buffer.writeln(topCategories.map((e) => '${e.key} ${fmt(e.value)} $currency').join(', '));
+      }
+
+      // Budget status
+      for (final budget in currentBudgets) {
+        final catName = budget.category?.title ?? 'Unknown';
+        final spent = categorySpending[catName] ?? 0;
+        final pct = budget.amount > 0 ? (spent / budget.amount * 100).round() : 0;
+        if (pct >= 50) {
+          buffer.writeln('Budget "$catName": ${fmt(spent)}/${fmt(budget.amount)} $currency ($pct% used)');
+        }
+      }
+
+      final contextString = buffer.toString().trim();
+      if (contextString.isNotEmpty) {
+        Log.d('Updating AI with spending insights:\n$contextString', label: 'Chat Provider');
+        _aiService.updateSpendingInsights(contextString);
+      } else {
+        _aiService.updateSpendingInsights('');
+      }
+    } catch (e) {
+      Log.e('Failed to update spending insights: $e', label: 'Chat Provider');
+      _aiService.updateSpendingInsights('');
     }
   }
 
