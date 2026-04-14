@@ -1473,7 +1473,6 @@ Please create a transaction based on this receipt data.''';
             case 'open_savings_account':
               {
                 Log.d('Processing open_savings_account action: $action', label: 'Chat Provider');
-                // Require confirmation for banking actions
                 pendingAction = PendingAction(
                   actionType: 'open_savings_account',
                   actionData: action,
@@ -1487,12 +1486,37 @@ Please create a transaction based on this receipt data.''';
             case 'transfer_to_savings':
               {
                 Log.d('Processing transfer_to_savings action: $action', label: 'Chat Provider');
-                // Require confirmation for banking actions
                 pendingAction = PendingAction(
                   actionType: 'transfer_to_savings',
                   actionData: action,
                   buttons: [
                     ChatActionButton(label: '✅ Transfer', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
+            case 'apply_credit_card':
+              {
+                Log.d('Processing apply_credit_card action: $action', label: 'Chat Provider');
+                pendingAction = PendingAction(
+                  actionType: 'apply_credit_card',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Apply Now', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
+            case 'apply_loan':
+              {
+                Log.d('Processing apply_loan action: $action', label: 'Chat Provider');
+                pendingAction = PendingAction(
+                  actionType: 'apply_loan',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Apply', actionType: 'confirm', actionData: action),
                     ChatActionButton(label: 'Cancel', actionType: 'cancel'),
                   ],
                 );
@@ -3723,6 +3747,12 @@ Please create a transaction based on this receipt data.''';
           case 'transfer_to_savings':
             resultMessage = _mockTransferToSavings(message.pendingAction!.actionData);
             break;
+          case 'apply_credit_card':
+            resultMessage = _mockApplyCreditCard(message.pendingAction!.actionData);
+            break;
+          case 'apply_loan':
+            resultMessage = _mockApplyLoan(message.pendingAction!.actionData);
+            break;
         }
       } else if (actionType == 'cancel') {
         resultMessage = '❌ Đã huỷ thao tác.';
@@ -4026,6 +4056,25 @@ Please create a transaction based on this receipt data.''';
       }
       buffer.writeln('Wallet "${wallet.name}" balance: ${fmt(wallet.balance)} $currency');
 
+      // Active recurring payments (for subscription optimization coaching)
+      try {
+        final allRecurring = await dbInstance.recurringDao.watchAllRecurrings().first
+            .timeout(const Duration(seconds: 3), onTimeout: () => []);
+        final activeRecurring = allRecurring.where((r) => r.isActive).toList();
+        if (activeRecurring.isNotEmpty) {
+          final monthlyTotal = activeRecurring.fold<double>(0, (sum, r) {
+            switch (r.frequency) {
+              case RecurringFrequency.daily: return sum + r.amount * 30;
+              case RecurringFrequency.weekly: return sum + r.amount * 4;
+              case RecurringFrequency.monthly: return sum + r.amount;
+              case RecurringFrequency.yearly: return sum + r.amount / 12;
+              default: return sum + r.amount;
+            }
+          });
+          buffer.writeln('Active recurring (${activeRecurring.length}): ${activeRecurring.map((r) => '${r.name} ${fmt(r.amount)} $currency/${r.frequency.name}').join(', ')} → Total ~${fmt(monthlyTotal)} $currency/month');
+        }
+      } catch (_) {}
+
       final contextString = buffer.toString().trim();
       if (contextString.isNotEmpty) {
         Log.d('Updating AI with spending insights:\n$contextString', label: 'Chat Provider');
@@ -4053,6 +4102,46 @@ Please create a transaction based on this receipt data.''';
         '• Term: $termMonths months at ${rate}% annual\n'
         '• Estimated interest: ${fmt(interest)} $currency\n'
         '• Account: SOL-SAV-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
+  }
+
+  /// Mock: Apply for Shinhan credit card (hackathon demo)
+  String _mockApplyCreditCard(Map<String, dynamic> action) {
+    final cardType = action['cardType'] ?? 'cashback';
+    final cardNames = {
+      'cashback': 'Shinhan Cashback Credit Card',
+      'fx': 'Shinhan FX Multi-Currency Card',
+      'premium': 'Shinhan Premium Card',
+    };
+    final cardBenefits = {
+      'cashback': '5% cashback on dining, 3% on shopping',
+      'fx': '0% FX markup, free international ATM',
+      'premium': 'Airport lounge access, travel insurance',
+    };
+    return '✅ **Credit card application submitted!**\n'
+        '• Card: ${cardNames[cardType] ?? cardNames['cashback']}\n'
+        '• Benefits: ${cardBenefits[cardType] ?? cardBenefits['cashback']}\n'
+        '• Status: Under review (1-3 business days)\n'
+        '• Ref: CC-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
+  }
+
+  /// Mock: Apply for Shinhan loan (hackathon demo)
+  String _mockApplyLoan(Map<String, dynamic> action) {
+    final amount = (action['amount'] as num?)?.toDouble() ?? 0;
+    final currency = action['currency'] ?? 'VND';
+    final termMonths = (action['termMonths'] as num?)?.toInt() ?? 24;
+    final purpose = action['purpose'] ?? 'Personal';
+    String fmt(num v) => v.toInt().toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    final monthlyPayment = amount > 0 ? (amount * (1 + 0.079 * termMonths / 12) / termMonths) : 0;
+    return '✅ **Loan application submitted!**\n'
+        '• Amount: ${fmt(amount)} $currency\n'
+        '• Term: $termMonths months at 7.9% annual\n'
+        '• Purpose: $purpose\n'
+        '• Est. monthly payment: ~${fmt(monthlyPayment)} $currency\n'
+        '• Status: Under review (3-5 business days)\n'
+        '• Ref: LN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
         '_(Demo mode — in production, this connects to Shinhan Banking API)_';
   }
 

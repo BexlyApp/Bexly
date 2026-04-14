@@ -1,3 +1,5 @@
+import 'package:bexly/features/ai_chat/data/config/shinhan_products.dart';
+
 /// AI Prompts Configuration - OPTIMIZED
 ///
 /// Token-efficient prompts following prompt engineering best practices.
@@ -37,6 +39,13 @@ SAVINGS COACHING (proactive CASA growth):
 - Use transfer_to_savings action when user wants to move money to savings
 - Calculate interest: amount × (rate/100) × (months/12) — show the number to motivate
 - Be specific with numbers — "earn 275,000 VND" is more motivating than "earn interest"
+
+RECURRING PAYMENT OPTIMIZATION:
+- When SPENDING INSIGHTS lists active recurring payments, look for optimization opportunities:
+  - Multiple streaming services → suggest bundling or dropping one ("You pay 3 streaming services totaling 500k/month — consider dropping one")
+  - Similar category subscriptions → flag overlap ("You have 2 music subscriptions — do you need both?")
+  - High monthly recurring total vs income → suggest review ("Your recurring payments are 30% of income — let's review")
+- Only mention when total recurring is significant or overlap is clear — don't nag about small amounts
 
 CRITICAL LANGUAGE RULE - MUST FOLLOW EXACTLY:
 1. Detect user's input language FIRST (before anything else!)
@@ -99,11 +108,15 @@ SCHEMAS:
 17. list_recurring: {"action":"list_recurring","status":"active|all"?}
 18. open_savings_account: {"action":"open_savings_account","amount":<num>,"currency":"USD|VND","termMonths":<num>?,"interestRate":<num>?,"requiresConfirmation":true}
 19. transfer_to_savings: {"action":"transfer_to_savings","amount":<num>,"currency":"USD|VND","fromWallet":"<str>"?,"requiresConfirmation":true}
+20. apply_credit_card: {"action":"apply_credit_card","cardType":"cashback|fx|premium","requiresConfirmation":true}
+21. apply_loan: {"action":"apply_loan","amount":<num>,"currency":"USD|VND","termMonths":<num>?,"purpose":"<str>"?,"requiresConfirmation":true}
 
 BANKING ACTION NOTES (Shinhan SOL integration):
 - open_savings_account: opens a new Shinhan savings account. Default: 6 months, 5.5% annual rate
 - transfer_to_savings: sweeps idle cash from current account to savings
-- BOTH require user confirmation (requiresConfirmation:true + ❓ emoji)
+- apply_credit_card: submits Shinhan credit card application (cashback, FX, or premium)
+- apply_loan: initiates Shinhan personal loan application
+- ALL banking actions require user confirmation (requiresConfirmation:true + ❓ emoji)
 - When suggesting savings: calculate potential interest earnings to motivate user
 - Example: "5M VND for 6 months at 5.5% = ~137,500 VND interest"
 
@@ -767,6 +780,10 @@ $budgetsSectionText
 
 $spendingInsightsSectionText
 
+${ShinhanProducts.catalog}
+
+${ShinhanProducts.recommendationRules}
+
 $businessRules
 
 $examples''';
@@ -851,6 +868,10 @@ SCHEMAS:
 
 ⚠️ delete_budget/update_budget/banking actions MUST include "requiresConfirmation":true + use ❓ emoji in response.
 SAVINGS: When suggesting, calculate interest (amount × rate/100 × months/12). Default: 6 months, 5.5% annual.
+20. apply_credit_card: {"action":"apply_credit_card","cardType":"cashback|fx|premium","requiresConfirmation":true}
+21. apply_loan: {"action":"apply_loan","amount":<n>,"currency":"USD|VND","termMonths":<n>?,"purpose":"<s>"?,"requiresConfirmation":true}
+
+SHINHAN PRODUCTS: Cashback card (5% dining, 3% shopping), Savings 5.5-6%, FX card (0% markup), Loan from 7.9%, Insurance from 500k/month. Suggest max 1 product per turn.
 
 AMOUNT PARSING (follow in order, stop at first match):
 1. Explicit currency symbol ("\$"/dollar/đô→USD, 元/¥/RMB→CNY, 円→JPY, ₩→KRW, ฿→THB, VND/đồng→VND) → ALWAYS wins, NEVER ask
