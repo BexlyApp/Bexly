@@ -9,6 +9,7 @@ import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
 import 'package:bexly/core/database/migrations/migrate_existing_goals_to_cloud.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bexly/core/services/subscription/ai_usage_service.dart';
+import 'package:bexly/core/services/churn_prevention_service.dart';
 
 /// Widget that manages app lifecycle and triggers recurring charge checks
 /// when app resumes from background
@@ -45,6 +46,7 @@ class _LifecycleManagerState extends ConsumerState<LifecycleManager>
       await _pullCloudData();
       _checkRecurringPayments();
       _checkRoutineBudgets();
+      _recordAppOpenAndScheduleReengagement();
     });
   }
 
@@ -259,6 +261,17 @@ class _LifecycleManagerState extends ConsumerState<LifecycleManager>
     } catch (e, stackTrace) {
       Log.e('Error checking routine budgets: $e', label: 'LifecycleManager');
       Log.e('Stack trace: $stackTrace', label: 'LifecycleManager');
+    }
+  }
+
+  /// Record app open and reschedule re-engagement notifications
+  Future<void> _recordAppOpenAndScheduleReengagement() async {
+    try {
+      final prefs = ref.read(sharedPreferencesProvider);
+      await ChurnPreventionService.recordAppOpen(prefs);
+      await ChurnPreventionService.scheduleReengagement();
+    } catch (e) {
+      Log.e('Error in churn prevention: $e', label: 'LifecycleManager');
     }
   }
 

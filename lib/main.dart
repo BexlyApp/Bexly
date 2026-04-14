@@ -19,6 +19,7 @@ import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:bexly/core/services/ads/ad_service.dart';
 import 'package:bexly/core/services/supabase_init_service.dart';
 import 'package:bexly/features/email_sync/domain/services/email_sync_worker.dart';
+import 'package:bexly/core/services/daily_digest_service.dart';
 import 'package:bexly/features/settings/presentation/riverpod/number_format_provider.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -42,6 +43,11 @@ void callbackDispatcher() {
         case recurringChargeTask:
           await processRecurringCharges();
           print('[WorkManager] Recurring charge task completed');
+          return true;
+
+        case DailyDigestService.taskName:
+          await DailyDigestService.generateAndNotify();
+          print('[WorkManager] Daily digest task completed');
           return true;
 
         default:

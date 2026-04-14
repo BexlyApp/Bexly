@@ -37,6 +37,9 @@ import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:bexly/features/settings/presentation/riverpod/ai_model_provider.dart';
 import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
+import 'package:bexly/core/services/spending_anomaly_service.dart';
+import 'package:bexly/features/ai_chat/presentation/widgets/nps_survey_bottom_sheet.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Simple category info for AI
 class CategoryInfo {
@@ -1604,6 +1607,17 @@ Please create a transaction based on this receipt data.''';
       // Increment AI message usage count
       await ref.read(aiUsageServiceProvider).incrementMessageCount();
 
+      // NPS survey: increment counter and check if survey should show
+      try {
+        final prefs = ref.read(sharedPreferencesProvider);
+        NpsSurveyBottomSheet.incrementMessageCount(prefs);
+        if (NpsSurveyBottomSheet.shouldShow(prefs)) {
+          state = state.copyWith(showNpsSurvey: true);
+        }
+      } catch (e) {
+        Log.e('NPS survey check failed: $e', label: 'Chat Provider');
+      }
+
       Log.d('Message sent and response received successfully', label: 'Chat Provider');
     } catch (error) {
       _cancelTypingEffect();
@@ -1688,6 +1702,11 @@ Please create a transaction based on this receipt data.''';
     Log.d('🗑️ clearError called - clearing error state', label: 'Chat Provider');
     state = state.copyWith(error: null);
     Log.d('✅ Error state cleared - error is now: ${state.error}', label: 'Chat Provider');
+  }
+
+  /// Dismiss the NPS survey trigger flag
+  void dismissNpsSurvey() {
+    state = state.copyWith(showNpsSurvey: false);
   }
 
   /// Update draft message (preserves user's typing when navigating away)
@@ -2061,6 +2080,17 @@ Please create a transaction based on this receipt data.''';
 
       Log.d('_createTransactionFromAction COMPLETE', label: 'TRANSACTION_DEBUG');
       Log.d('========================================', label: 'TRANSACTION_DEBUG');
+
+      // Check for spending anomalies (async, non-blocking)
+      try {
+        final anomalyService = ref.read(spendingAnomalyServiceProvider);
+        final anomaly = await anomalyService.checkTransaction(transaction);
+        if (anomaly != null) {
+          Log.w('Spending anomaly detected: ${anomaly.message}', label: 'SpendingAnomaly');
+        }
+      } catch (e) {
+        Log.e('Anomaly check error: $e', label: 'SpendingAnomaly');
+      }
 
       // Return the actual amount that was saved (after currency conversion)
       return amount;
@@ -4056,6 +4086,25 @@ Please create a transaction based on this receipt data.''';
       }
       buffer.writeln('Wallet "${wallet.name}" balance: ${fmt(wallet.balance)} $currency');
 
+      // Financial Health Score
+      try {
+        final savingsRate = currentIncome > 0
+            ? ((currentIncome - currentExpense) / currentIncome).clamp(-1.0, 1.0)
+            : 0.0;
+        final healthScore = _computeQuickHealthScore(
+          savingsRate: savingsRate,
+          budgetAdherence: currentBudgets.isEmpty
+              ? 1.0
+              : currentBudgets.where((b) =>
+                  (categorySpending[b.category?.title ?? ''] ?? 0) <= b.amount
+                ).length / currentBudgets.length,
+          expenseTrend: prevExpense > 0
+              ? ((currentExpense - prevExpense) / prevExpense).clamp(-1.0, 1.0)
+              : 0.0,
+        );
+        buffer.writeln('Financial Health Score: $healthScore/100 (savings rate ${(savingsRate * 100).round()}%)');
+      } catch (_) {}
+
       // Active recurring payments (for subscription optimization coaching)
       try {
         final allRecurring = await dbInstance.recurringDao.watchAllRecurrings().first
@@ -4072,6 +4121,17 @@ Please create a transaction based on this receipt data.''';
             }
           });
           buffer.writeln('Active recurring (${activeRecurring.length}): ${activeRecurring.map((r) => '${r.name} ${fmt(r.amount)} $currency/${r.frequency.name}').join(', ')} → Total ~${fmt(monthlyTotal)} $currency/month');
+        }
+      } catch (_) {}
+
+      // Spending forecast (end-of-month projection)
+      try {
+        final dailyBurnRate = daysElapsed > 0 ? currentExpense / daysElapsed : 0.0;
+        final projectedExpense = currentExpense + dailyBurnRate * (daysInMonth - daysElapsed);
+        final dailyEarnRate = daysElapsed > 0 ? currentIncome / daysElapsed : 0.0;
+        final projectedIncome = currentIncome + dailyEarnRate * (daysInMonth - daysElapsed);
+        if (projectedExpense > 0 || projectedIncome > 0) {
+          buffer.writeln('End-of-month forecast: projected expense ${fmt(projectedExpense)} $currency, projected income ${fmt(projectedIncome)} $currency, daily burn rate ${fmt(dailyBurnRate)} $currency/day (${daysInMonth - daysElapsed} days remaining)');
         }
       } catch (_) {}
 
@@ -4143,6 +4203,26 @@ Please create a transaction based on this receipt data.''';
         '• Status: Under review (3-5 business days)\n'
         '• Ref: LN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
         '_(Demo mode — in production, this connects to Shinhan Banking API)_';
+  }
+
+  /// Quick health score computation for AI context (simplified version)
+  int _computeQuickHealthScore({
+    required double savingsRate,
+    required double budgetAdherence,
+    required double expenseTrend,
+  }) {
+    // Savings (30 pts)
+    final savingsScore = savingsRate >= 0.2 ? 30.0
+        : savingsRate >= 0 ? 10.0 + (savingsRate / 0.2) * 20.0
+        : 0.0;
+    // Budget (25 pts)
+    final budgetScore = budgetAdherence * 25.0;
+    // Trend (20 pts)
+    final trendScore = expenseTrend <= -0.1 ? 20.0
+        : expenseTrend <= 0 ? 10.0 + (expenseTrend.abs() / 0.1) * 10.0
+        : (10.0 - (expenseTrend / 0.2) * 10.0).clamp(0.0, 10.0);
+    // Base activity (25 pts assumed for simplicity in AI context)
+    return (savingsScore + budgetScore + trendScore + 15).round().clamp(0, 100);
   }
 
   /// Mock: Transfer to Shinhan savings (hackathon demo)

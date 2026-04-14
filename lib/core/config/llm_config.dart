@@ -132,6 +132,19 @@ class LLMDefaultConfig {
     }
   }
 
+  /// Timeout for custom LLM vision/OCR requests (longer than text)
+  static int get customVisionTimeoutSeconds {
+    try {
+      final timeout = dotenv.env['DOS_AI_VISION_TIMEOUT'];
+      if (timeout != null && timeout.isNotEmpty) {
+        return int.tryParse(timeout) ?? 30;
+      }
+      return 30;
+    } catch (e) {
+      return 30;
+    }
+  }
+
   /// Check if custom endpoint is configured
   static bool get hasCustomEndpoint {
     try {
