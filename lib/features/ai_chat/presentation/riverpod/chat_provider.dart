@@ -1470,6 +1470,34 @@ Please create a transaction based on this receipt data.''';
                 );
                 break;
               }
+            case 'open_savings_account':
+              {
+                Log.d('Processing open_savings_account action: $action', label: 'Chat Provider');
+                // Require confirmation for banking actions
+                pendingAction = PendingAction(
+                  actionType: 'open_savings_account',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Open Account', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
+            case 'transfer_to_savings':
+              {
+                Log.d('Processing transfer_to_savings action: $action', label: 'Chat Provider');
+                // Require confirmation for banking actions
+                pendingAction = PendingAction(
+                  actionType: 'transfer_to_savings',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Transfer', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
             default:
               {
                 Log.d('Unknown action: $actionType', label: 'Chat Provider');
@@ -3689,6 +3717,12 @@ Please create a transaction based on this receipt data.''';
           case 'update_budget':
             resultMessage = await _updateBudgetFromAction(message.pendingAction!.actionData);
             break;
+          case 'open_savings_account':
+            resultMessage = _mockOpenSavingsAccount(message.pendingAction!.actionData);
+            break;
+          case 'transfer_to_savings':
+            resultMessage = _mockTransferToSavings(message.pendingAction!.actionData);
+            break;
         }
       } else if (actionType == 'cancel') {
         resultMessage = '❌ Đã huỷ thao tác.';
@@ -3984,6 +4018,14 @@ Please create a transaction based on this receipt data.''';
         }
       }
 
+      // Savings potential and wallet balance (for CASA coaching)
+      final savingsPotential = currentIncome - currentExpense;
+      if (savingsPotential > 0) {
+        final interestEarnings6mo = (savingsPotential * 0.055 * 6 / 12);
+        buffer.writeln('Savings potential: ${fmt(savingsPotential)} $currency idle this month → ${fmt(interestEarnings6mo)} $currency interest if saved 6 months at 5.5%');
+      }
+      buffer.writeln('Wallet "${wallet.name}" balance: ${fmt(wallet.balance)} $currency');
+
       final contextString = buffer.toString().trim();
       if (contextString.isNotEmpty) {
         Log.d('Updating AI with spending insights:\n$contextString', label: 'Chat Provider');
@@ -3995,6 +4037,38 @@ Please create a transaction based on this receipt data.''';
       Log.e('Failed to update spending insights: $e', label: 'Chat Provider');
       _aiService.updateSpendingInsights('');
     }
+  }
+
+  /// Mock: Open Shinhan savings account (hackathon demo)
+  String _mockOpenSavingsAccount(Map<String, dynamic> action) {
+    final amount = (action['amount'] as num?)?.toDouble() ?? 0;
+    final currency = action['currency'] ?? 'VND';
+    final termMonths = (action['termMonths'] as num?)?.toInt() ?? 6;
+    final rate = (action['interestRate'] as num?)?.toDouble() ?? 5.5;
+    final interest = (amount * rate / 100 * termMonths / 12);
+    String fmt(num v) => v.toInt().toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return '✅ **Shinhan Savings Account opened!**\n'
+        '• Amount: ${fmt(amount)} $currency\n'
+        '• Term: $termMonths months at ${rate}% annual\n'
+        '• Estimated interest: ${fmt(interest)} $currency\n'
+        '• Account: SOL-SAV-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
+  }
+
+  /// Mock: Transfer to Shinhan savings (hackathon demo)
+  String _mockTransferToSavings(Map<String, dynamic> action) {
+    final amount = (action['amount'] as num?)?.toDouble() ?? 0;
+    final currency = action['currency'] ?? 'VND';
+    final fromWallet = action['fromWallet'] ?? 'Current Account';
+    String fmt(num v) => v.toInt().toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return '✅ **Transfer to savings completed!**\n'
+        '• From: $fromWallet\n'
+        '• To: Shinhan Savings Account\n'
+        '• Amount: ${fmt(amount)} $currency\n'
+        '• Ref: TRF-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
   }
 
 }
