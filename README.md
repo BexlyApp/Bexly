@@ -21,9 +21,9 @@
 
 ---
 
-**Bexly** is not just another expense tracker. It's your **AI financial coach** that understands your spending habits, predicts your cash flow, and proactively guides you toward better financial health — all while keeping your data private and offline-first.
+**Bexly** is a cross-platform AI-powered personal finance platform that goes beyond tracking — it **coaches** you. Available on Android, iOS, Web, Windows, macOS, and Linux, Bexly combines an offline-first local database with cloud sync and an AI financial coach that understands your spending patterns, predicts your cash flow, detects anomalies, and proactively guides you toward better financial health.
 
-Built with Flutter. Powered by AI. Designed for real life.
+Think of it as having a personal financial advisor in your pocket — one that learns from your habits, speaks your language, and works even without internet.
 
 ---
 
