@@ -352,9 +352,12 @@ class LoginScreen extends HookConsumerWidget {
       try {
         if (kIsWeb) {
           // Web: Use Supabase signInWithOAuth
+          // Must set redirectTo to current origin so Supabase redirects back here
+          // instead of defaulting to id.dos.me
+          final webRedirectUrl = Uri.base.origin;
           await supabase.auth.signInWithOAuth(
             OAuthProvider.google,
-            redirectTo: kIsWeb ? null : 'com.joy.bexly://login-callback/',
+            redirectTo: webRedirectUrl,
           );
         } else {
           // Mobile: Use native Google Sign-In SDK (initialized in main.dart with serverClientId)
