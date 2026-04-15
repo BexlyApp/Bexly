@@ -2,8 +2,8 @@
 
 > Draft content for slide generation. Copy to Claude Cowork with prompt:
 > "Generate a professional Customer Solution Deck PDF (16:9 slides) from this content.
-> Brand colors: primary blue #2563EB, accent green #10B981, dark background #0F172A, white text.
-> Include diagrams where indicated. Modern fintech/banking style."
+> Brand colors: primary purple #731FE0, light purple #9156FC, accent purple-50 #F6F3FF, dark background #0F172A, white text.
+> Logo is a purple receipt icon with dollar sign. Include diagrams where indicated. Modern fintech/banking style."
 
 ---
 
