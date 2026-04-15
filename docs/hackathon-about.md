@@ -122,11 +122,20 @@ The app parses these actions, executes them against the local database, syncs to
 - **Vietnamese NLP is hard**: Currency formats (150.000 vs 150,000), mixed-script text, and colloquial financial terms required careful prompt engineering
 - **Financial coaching > financial tracking**: Users don't need another app that shows them charts — they need one that tells them what to *do*
 
+## SB1 Expected Outcome Coverage
+
+| # | Shinhan's Expected Outcome | How Bexly Delivers | Status |
+|---|---------------------------|-------------------|--------|
+| 1 | Increase DAU/MAU on SOL | Daily Digest notifications, Financial Health Score, gamification streaks, churn prevention re-engagement | Built |
+| 2 | Improve cross-sell conversion | AI-driven product recommendations (6 Shinhan products) + banking actions (`apply_credit_card`, `open_savings_account`, `apply_loan`) | Built |
+| 3 | Reduce churn through proactive insights | Spending Anomaly Alerts, Spending Forecast, proactive AI coaching after every transaction | Built |
+| 4 | Enhance NPS/CSAT via personalized guidance | Financial Coach persona, personalized conversations, in-app NPS survey (1-5 stars) | Built |
+| 5 | Grow CASA balance through savings recommendations | Auto-Suggest Savings with interest calculations, `transfer_to_savings` action | Built |
+
 ## What's next for Bexly
 
-- **Shinhan SOL App integration**: Direct connection to banking APIs for real-time transaction feeds, eliminating manual entry entirely
-- **Multi-instance Qwen deployment**: Load-balanced vLLM cluster for production-grade throughput on Shinhan's infrastructure
+- **Shinhan SOL App integration**: Embed Bexly AI module inside SOL via Flutter platform channel → real-time transaction feed from Core Banking API, zero manual entry
+- **Multi-instance Qwen deployment**: Load-balanced vLLM cluster for production-grade throughput on Shinhan's GPU infrastructure
 - **Home screen widgets**: Quick glance at balance, budget status, and AI tips without opening the app
 - **Peer benchmarking**: *"You spend 20% more on dining than similar users in HCMC"* using anonymized aggregate data
 - **Open Banking API integration**: Connect to multiple Vietnamese banks for consolidated financial view
-- **Advanced investment tracking**: Portfolio monitoring with AI-driven rebalancing suggestions
