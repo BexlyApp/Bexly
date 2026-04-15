@@ -8,6 +8,8 @@
 <p align="center">
   <a href="https://play.google.com/store/apps/details?id=com.joy.bexly"><img src="https://img.shields.io/badge/Google_Play-Download-00C853?logo=googleplay&logoColor=white" alt="Google Play"/></a>
   <a href="#"><img src="https://img.shields.io/badge/App_Store-TestFlight-007AFF?logo=apple&logoColor=white" alt="App Store"/></a>
+  <a href="https://app.bexly.app"><img src="https://img.shields.io/badge/Web-app.bexly.app-4285F4?logo=googlechrome&logoColor=white" alt="Web"/></a>
+  <img src="https://img.shields.io/badge/macOS-Available-000000?logo=apple&logoColor=white" alt="macOS"/>
   <img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter"/>
   <img src="https://img.shields.io/badge/AI-Qwen_3.5-FF6F00?logo=openai&logoColor=white" alt="AI Powered"/>
   <img src="https://img.shields.io/badge/License-LGPL_v3-blue" alt="License"/>
@@ -81,14 +83,14 @@ Bexly's built-in AI assistant acts as your personal financial advisor:
 
 ## Platform Availability
 
-| Platform | Status |
-|----------|--------|
-| Android | Available on [Google Play](https://play.google.com/store/apps/details?id=com.joy.bexly) |
-| iOS | TestFlight Beta |
-| Web | Available |
-| Windows | Available |
-| macOS | Available |
-| Linux | Available |
+| Platform | Status | Distribution |
+|----------|--------|-------------|
+| Android | **Stable** | [Google Play](https://play.google.com/store/apps/details?id=com.joy.bexly) |
+| iOS | **Beta** | [TestFlight](https://testflight.apple.com/join/bexly) |
+| Web | **Stable** | [app.bexly.app](https://app.bexly.app) |
+| macOS | **Stable** | CI/CD build |
+| Windows | In development | Local build |
+| Linux | In development | Local build |
 
 ---
 
@@ -209,6 +211,48 @@ User message
 ```
 
 The AI doesn't just respond — it acts. Through the ACTION_JSON protocol, the AI can directly create transactions, set budgets, and manage goals within the conversation.
+
+---
+
+## Roadmap
+
+### Completed
+
+- [x] Multi-wallet with multi-currency support
+- [x] Expense & income tracking with custom categories
+- [x] Budget management with weekly/monthly auto-renewal
+- [x] Savings goals with checklist breakdowns
+- [x] Recurring payment & subscription tracking
+- [x] AI Financial Coach (chat, voice input, action execution)
+- [x] Receipt scanning with AI-powered OCR
+- [x] Financial Health Score (0-100 dynamic scoring)
+- [x] End-of-month spending forecast
+- [x] Spending anomaly detection & alerts
+- [x] Daily financial digest notifications
+- [x] Cloud sync via Supabase (offline-first)
+- [x] Family groups & shared wallets
+- [x] Gamification (levels & achievements)
+- [x] Email transaction sync
+- [x] Telegram bot integration
+- [x] Dark/light theme with custom color schemes
+- [x] 14 language localization
+- [x] Google, Apple, Facebook sign-in
+- [x] CI/CD for Android, iOS, Web, macOS, Linux
+
+### In Progress
+
+- [ ] Shinhan Bank integration — product recommendations, cashback optimization
+- [ ] NPS survey & user satisfaction tracking
+- [ ] Churn prevention with re-engagement notifications
+- [ ] Enhanced AI persona with deeper financial coaching
+
+### Planned
+
+- [ ] Home screen widgets (Android & iOS)
+- [ ] Smart notification suggestions from device payment notifications
+- [ ] Advanced investment tracking
+- [ ] Bank account connections via Open Banking APIs
+- [ ] Collaborative budgeting for families and couples
 
 ---
 
