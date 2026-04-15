@@ -1,252 +1,247 @@
-# Welcome to Bexly!
+<p align="center">
+  <img src="assets/icon/icon-transparent-full.png" width="100" alt="Bexly Logo"/>
+</p>
 
-![Flutter](https://img.shields.io/badge/Flutter-blue?logo=flutter)
-![Platform](https://img.shields.io/badge/Android%20(Beta)-purple)
-![Platform](https://img.shields.io/badge/Web%20(soon)-purple)
-![Platform](https://img.shields.io/badge/iOS%20(soon)-purple)
-![Platform](https://img.shields.io/badge/Windows%20(soon)-purple)
-![Platform](https://img.shields.io/badge/MacOS%20(soon)-purple)
-![100%](https://progress-bar.xyz/100/?title=MVP+Launch+(Android)+&progress_color=00b4ab)
+<h1 align="center">Bexly</h1>
+<p align="center"><strong>AI-Powered Personal Finance Assistant</strong></p>
 
-![Forks](https://img.shields.io/github/forks/BexlyApp/Bexly)
-![Stars](https://img.shields.io/github/stars/BexlyApp/Bexly)
-![Activity](https://img.shields.io/github/commit-activity/w/BexlyApp/Bexly?style=social)
-![PR Closed](https://img.shields.io/github/issues-pr-closed/BexlyApp/Bexly?style=social&color=9929EA)
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=com.joy.bexly"><img src="https://img.shields.io/badge/Google_Play-Download-00C853?logo=googleplay&logoColor=white" alt="Google Play"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/App_Store-TestFlight-007AFF?logo=apple&logoColor=white" alt="App Store"/></a>
+  <img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter"/>
+  <img src="https://img.shields.io/badge/AI-Qwen_3.5-FF6F00?logo=openai&logoColor=white" alt="AI Powered"/>
+  <img src="https://img.shields.io/badge/License-LGPL_v3-blue" alt="License"/>
+</p>
 
-<a href="https://github.com/Codelessly/ResponsiveFramework">
-  <img alt="Built with Responsive Framework"
-       src="https://raw.githubusercontent.com/Codelessly/ResponsiveFramework/master/packages/Built%20with%20Responsive%20Badge.png" width="180"/>
-</a>
+<p align="center">
+  <img src="https://img.shields.io/github/stars/BexlyApp/Bexly?style=social" alt="Stars"/>
+  <img src="https://img.shields.io/github/forks/BexlyApp/Bexly?style=social" alt="Forks"/>
+  <img src="https://img.shields.io/github/commit-activity/w/BexlyApp/Bexly?style=social" alt="Activity"/>
+</p>
 
-## Download Bexly
+---
 
-| PlayStore | AppStore* | Microsoft Store* | Browser* |
-| :--------: | :--------: | :--------------: | :------: |
-| [![Google PlayStore](https://www.svgrepo.com/show/353828/google-play-icon.svg)](https://play.google.com/store/apps/details?id=com.joy.bexly) | [![Apple AppStore](https://www.svgrepo.com/show/452159/app-store.svg)](#) | [![Microsoft Store](https://www.svgrepo.com/show/448239/microsoft.svg)](#) | [![Web Browser](https://www.svgrepo.com/show/288320/browser-seo-and-web.svg)](#) |
+**Bexly** is not just another expense tracker. It's your **AI financial coach** that understands your spending habits, predicts your cash flow, and proactively guides you toward better financial health — all while keeping your data private and offline-first.
 
-> _\* Coming Soon_
+Built with Flutter. Powered by AI. Designed for real life.
+
+---
+
+## Why Bexly?
+
+Most finance apps just **record** your money. Bexly **understands** it.
+
+| Traditional Trackers | Bexly |
+|---|---|
+| Log expenses manually | AI scans receipts and auto-categorizes |
+| Static charts and reports | Real-time Financial Health Score (0-100) |
+| No guidance | AI Coach suggests where to cut spending |
+| Month-end surprises | End-of-month spending forecast |
+| Silent when you overspend | Anomaly alerts when spending spikes |
+
+---
+
+## Key Features
+
+### AI Financial Coach
+
+Bexly's built-in AI assistant acts as your personal financial advisor:
 
-## 📝 Overview
+- **Natural conversation** — Ask "How much did I spend on food this month?" or "Create a budget for shopping"
+- **Proactive coaching** — Warns you when a category is trending over budget
+- **Spending insights** — Injects real-time financial data into every conversation
+- **Action execution** — Creates transactions, budgets, and goals through chat
+- **Voice input** — Speak your expenses, AI handles the rest
+- **Receipt scanning** — Point your camera at any receipt and let AI extract the details
+
+### Financial Intelligence
+
+- **Financial Health Score** — A dynamic 0-100 score based on savings rate, budget adherence, expense trends, and goal progress
+- **Spending Forecast** — Predicts your end-of-month balance based on current velocity
+- **Anomaly Detection** — Flags unusual transactions that exceed 3x your category average
+- **Daily Digest** — Morning notification summarizing yesterday's activity and month-to-date status
 
-Say goodbye to spreadsheet-based expense and budget tracking! **Bexly** is your new intuitive, user-friendly app for seamless pocket and wallet-sized finance buddy, tailored for both personal use and small businesses. **Bexly** offers powerful features to simplify cash flow management:
+### Core Finance
 
-* **💸 Expense Tracking**: Easily log daily expenses and categorize them (e.g., groceries, entertainment), so you know exactly where your money goes.
-* **💰 Income Management**: Track multiple income sources, from salaries to side hustles, in one convenient place.
-* **🎯 Budget Goals**: Set and monitor monthly or weekly spending goals to stay within budget and work towards your financial objectives.
-* **📊 Expense Analytics**: Gain insights through visual breakdowns of spending, trends over time, and custom filters for a personalized view.
-* **⏰ Reminders & Notifications**: Get timely alerts for upcoming bill due dates and monthly goals, keeping you on track.
-* **🌍 Multi-Currency Support**: Perfect for a global audience, **Bexly** makes it easy to manage finances across different currencies.
+- **Multi-wallet** — Separate wallets for cash, bank accounts, e-wallets, each with its own currency
+- **Smart budgets** — Monthly/weekly budgets with auto-renewal and progress tracking
+- **Goal planning** — Savings goals with checklists and progress visualization
+- **Recurring payments** — Track subscriptions and bills, get reminded before due dates
+- **Reports & analytics** — Category breakdowns, trends, cash flow charts
+- **14 languages** — Vietnamese, English, Japanese, Korean, Chinese, and more
 
-***
+### Cloud & Sync
 
-### 🌟 What Will You Get
+- **Offline-first** — Works without internet. Your data lives on your device
+- **Cloud sync** — Sign in to sync across devices via Supabase
+- **Family sharing** — Shared wallets and family groups
+- **Backup & restore** — Never lose your financial history
 
-* **100% Free & Open Source**: Completely free, no hidden costs, with open access to the source code — FOREVER!
-* **Cross-Platform**: Seamless use across Android, iOS*, macOS*, Windows, Linux*, and even the browser. Take your budget management anywhere!
-* **No Registration Needed**: Jump right in without the hassle of creating an account or request any access like spreadsheet-based does.
-* **No Ads, Always**: Say goodbye to annoying ads; Bexly is focused solely on helping you manage your finances.
-* **Offline-first**: Your data is always accessible, even offline. Connect only when you want to sync across devices.
-* **Security focused**: For offline use, you are in charge of your own data.
+---
 
-#### 🎉 Signature Feature
+## Platform Availability
 
-* **Advanced Goal Planning:** Set up multiple checklist goals for any occasion, from a wedding gifts, new house furniture, to wishlist shopping.
+| Platform | Status |
+|----------|--------|
+| Android | Available on [Google Play](https://play.google.com/store/apps/details?id=com.joy.bexly) |
+| iOS | TestFlight Beta |
+| Web | Available |
+| Windows | Available |
+| macOS | Available |
+| Linux | Available |
 
-> \* Coming soon
-
-***
-
-### 🎯 User Target
-
-#### Designed For
-
-* **Individuals (Ages 20-35)**
-  * 🎓**Students** who want to easily track their daily spending's and build financial awareness.
-  * 💼**Employees** interested in managing their monthly income, expenses, and budgeting for future goals.
-  * 👨‍👩‍👧**Families** needing a simple, effective way to monitor and optimize their household cash flow.
-  * 💰**Goal-Driven Savers** looking to turn financial goals and wishlists into reality, keeping an eye on every penny along the way!
-* **Micro to Small Businesses**
-  * 👥**Size**: Perfect for teams of 1-5 people, ideal for small operations needing basic cash flow insights.
-  * 💵**Income**: Suited for businesses with a yearly income of approximately **$3,800 - $4,000 USD** (or **€3,500 - €3,700 EUR**), focusing on streamlined, essential budgeting tools.
-
-#### Not Designed For
-
-* 🔗**Bank Account Integration**: This app is geared toward users who manage finances manually, so it doesn’t support linking to bank accounts.
-* 🏢**Large Enterprises**: If your business requires bank integration, payroll systems, or vendor payment management, this app may not be the best fit.
-
-> **Why This Matters**
->
-> Defining our user target helps ensure contributors share the same vision: to build a tool focused on simplicity and accessibility for individuals and small businesses. Our goal with Bexly is to empower users with an easy-to-use, playful, and effective budgeting tool, without the complexities often found in enterprise solutions.
-
-***
-
-### 🔧 Tools We Use
-
-* 🎨**Figma**: Our go-to design tool for creating beautiful, user-friendly interfaces.
-* 💻**Flutter & Dart**: The powerhouse behind Bexly's cross-platform experience, allowing us to build one app for multiple devices.
-* 🛠️**GitHub**: Serving as our central hub for issue tracking and project management, keeping us organized and on track.
-* 🌐**Crowdin**: Enabling seamless collaborative translation and localization so Bexly reaches users in their native languages.
-
-These tools help us bring **Bexly** to life with efficiency, collaboration, and community-driven improvements.
-
-***
-
-## 🤝 Community
-
-Connect with other users, share tips, and contribute to the growth of Bexly. Whether you're seeking advice, reporting issues, or sharing feedback, our community spaces are here for you.
-
-* **[Discord Server](https://discord.gg/xt5wDe4w)**: Engage conversation with the community.
-* **[GitHub Discussions](https://github.com/BexlyApp/Bexly/discussions)**: Join in-depth technical features discussion.
-
-***
-
-## ⚙️ Installation to Contribute
-
-1. **Clone this repository**
-
-   ```bash
-   git clone https://github.com/BexlyApp/Bexly.git
-   ```
-
-2. **Install dependencies**
-   Navigate to the project folder and run:
-
-   ```bash
-   flutter pub get
-   ```
-
-3. **Run the app**
-   Open the project in your preferred IDE (VSCode or Android Studio) and hit **Run** to launch **Bexly**.
-
-**Bexly** is now set up and ready to go! 🎉
-
-***
-
-## 📆 Roadmap
-
-### Q1 (Closed Testing #1) - Core Setup & MVP Launch ![100%](https://progress-bar.xyz/100/?width=40)
-
-* [x] **Splash & Onboarding** - Design and implement welcoming splash screen and onboarding process.
-* [x] **Authentication?** - Just fill personal data for offline use, no registration.
-* [x] **Multiple Wallets** - Add multiple sources, set balances, and customize for easy management.
-* [x] **Expense & Income Tracking** - Allow users to log income/expenses with details like category, date, title, and notes.
-* [x] **Custom Categories** - Enable users to create and manage custom categories for better personalization.
-* [x] **Publish on GitHub** - The first fully offline experience of Bexly.
-
-### Q2 (Open Beta) - Goals & Budgeting with Progression ![100%](https://progress-bar.xyz/100/?width=40)
-
-* [x] **Goals Tracking** - Create goals and its checklist items to breakdown your target.
-* [x] **Budget Tracking** - Set monthly/weekly spending budgets and get the visualization.
-* [x] **Basic Summary & Progression** - View basic progress for monthly income/expense trends, goals, and budgets.
-* [x] **Data Sync & Backup** - Implement backup options to store data securely within device local storage.
-* [x] **Dark Mode** - Easily switch between light and dark themes.
-* [x] **Basic Transaction Filters** - Add filters for date, category, and other custom criteria for transactions.
-* [x] **Open Beta Test** - Bexly will be available on **Google PlayStore** as Early Access open beta test.
-
-### Q3 - Enhanced User Experience ![0%](https://progress-bar.xyz/0/?width=40)
-
-* [ ] **Advanced Summary & Analytics** - Add charts for monthly income/expense trends, custom filters, and analytics.
-* [ ] **Advanced Transaction Filters** - Add filters for date, category, and other custom criteria for transactions.
-* [ ] **Transaction Reminder** - Forgetting things? Chill! Bexly will remind you to record transactions.
-* [ ] **User Reminders & Notifications** - Implement notifications for due dates and spending goals.
-
-### Q4 - Shields On! ![0%](https://progress-bar.xyz/0/?width=40)
-
-* [ ] **Release on Web** - Get a wider view and perspective of Bexly (of course need a network connection).
-* [ ] **Release on Desktop** - Windows users will get the official desktop look and feel of Bexly. **
-* [ ] **Advanced Customization** - Let users set date format, first day of the week/month, and other preferences in settings.
-* [ ] **Improved Accessibility** - Add accessibility features, including screen reader support and keyboard navigation.
-* [ ] **Multi Language Support** - Enable seamless collaborative translation and localization using Crowdin.
-* [ ] **Biometrics and PIN** - Add layers of security so you are in charge of your own wealth condition.
-* [ ] **Publish on PlayStore** - 1st stable version of Bexly that cover all main features.
-
-### Pre Release
-
-* [x] Collect feedbacks
-* [x] Assets finishing
-* [ ] Performance improvement
-* [ ] Create documentation page
-
-### Full Release v1.0
-
-* [ ] Breaking change is possible at this stage.
-
-## 🖥️ Platform Release Priority
-
-* [x] **Android** - Available on PlayStore and GitHub
-* [ ] **Web**
-* [ ] **Windows**
-* [ ] **iOS** *
-* [ ] **MacOS** *
-* [ ] **Linux** **
->
-> * \* Sponsors and/or donations are expected to register to Apple Developer Program.
-> * \** Linux release will follow after Windows release is stable.
-
-***
-
-### 🚀 Innovation and Future Releases
-
-💸**Multi-Currency Support**
-
-* [x] **1 Wallet, 1 Currency**: Set a different currency of your each wallet. Yes! each wallet.
-
-✨**Ask AI**
-
-* [ ] **Smart Summaries**: Utilize AI to respond to queries like "Summarize my expenses this month" or "What were my top spending categories last quarter?"—getting insights has never been easier!
-
-🔔**Enhanced Mobile Experience**
-
-* [ ] **Notification Suggestions**: Bexly will read device notifications from other apps when users make payments or receive transfers, offering personalized suggestions for tracking those transactions in your budget.
-
-* [ ] **Home Screen Widget**: No bother opening the app. Bexly will appear on your mobile home screen, add transaction quickly as well as the simple summary.
-
-These planned features aim to make **Bexly** even smarter and more user-friendly, providing insights and suggestions to simplify your financial management.
-
-> These features are **promising but not a promise**. We will need to see first on how this project and community grow.
-
-***
-
-## 🎨 Design Files
-
-We're excited to share our design files with the community! These files are made available to encourage collaboration, gather feedback, and provide learning opportunities for designers and developers alike.
-
-Feel free to explore, experiment, and contribute your ideas!
-
-### Access the Design File
-
-You can find the Figma design file [here.](https://www.figma.com/design/Zp7JCVYQ5a8IdUKr65ONCy/Bexly?node-id=464-312&t=mHuTdI7maK6nfd5p-1)
-
-### Guidelines for Use
-
-* The design files are provided under the [Creative Commons License](https://creativecommons.org/licenses/).
-* Use them for feedback, personal projects, or contributions to Bexly.
-* Please do not use the designs for commercial purposes without prior approval.
-
-Let us know your thoughts or submit your own suggestions through [GitHub Discussions](https://github.com/BexlyApp/Bexly/discussions) or on Discord!
-
-***
-
-## 🖼️ Resources
-
-For a detailed list of all resources, including links and specific guidelines, check out the [Resources Document](https://github.com/BexlyApp/Bexly/blob/master/RESOURCES.md).
-
-***
-
-## 🤝 Contributing
-
-We welcome contributions to Bexly! Feel free to **fork** this project, **submit issues**, or open **pull requests (PRs)** to help us enhance the app. Your input is invaluable in making Bexly better for everyone!
-
-### 🖥️ Landing Page
-
-Interested in making some changes for our landing page? Just head to our dedicated [landing page repo](https://github.com/BexlyApp/Bexly-landing-page) then do above steps. 
-
-***
-
-## 📄 License
-
-This project is licensed under the **LGPL v3 License**. For more details, please refer to the **LICENSE** tab.
-
-## 💝 Credits
-
-* Platfrom icons are from [www.svgrepo.com](https://www.svgrepo.com/)
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Framework** | Flutter + Dart |
+| **State** | Riverpod + Hooks |
+| **Local DB** | Drift (SQLite) — 16 tables, offline-first |
+| **Cloud** | Supabase (Auth, PostgreSQL, Edge Functions, Realtime) |
+| **AI** | DOS AI (Qwen 3.5 via vLLM) + Gemini fallback |
+| **Auth** | Google, Apple, Facebook sign-in |
+| **Analytics** | Firebase Analytics + Crashlytics |
+| **Payments** | Stripe + Google Play Billing |
+| **CI/CD** | GitHub Actions (Android, iOS, Web, macOS, Linux) |
+
+---
+
+## Architecture
+
+```
+Bexly follows a feature-first modular architecture with 33+ feature modules:
+
+lib/
+├── core/                    # Shared infrastructure
+│   ├── database/            # Drift tables, DAOs, migrations
+│   ├── services/            # AI, sync, notifications, background tasks
+│   ├── components/          # Reusable UI components
+│   └── config/              # App configuration
+├── features/
+│   ├── ai_chat/             # AI financial coach
+│   ├── dashboard/           # Home screen with health score & forecast
+│   ├── transaction/         # Income & expense tracking
+│   ├── budget/              # Budget management with auto-renewal
+│   ├── goal/                # Savings goals with checklists
+│   ├── recurring/           # Subscription & bill tracking
+│   ├── receipt_scanner/     # AI-powered receipt OCR
+│   ├── reports/             # Analytics & visualizations
+│   ├── family/              # Family groups & shared wallets
+│   ├── wallet/              # Multi-wallet management
+│   ├── gamification/        # Levels & achievements
+│   └── ...                  # 20+ more feature modules
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Flutter SDK 3.x
+- Dart SDK
+- Android Studio or VS Code
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/BexlyApp/Bexly.git
+cd Bexly
+
+# Install dependencies
+flutter pub get
+
+# Generate code (Drift schemas, Freezed models)
+dart run build_runner build
+
+# Run on Android
+flutter run -d emulator-5554
+
+# Run on Chrome
+flutter run -d chrome
+```
+
+### Environment
+
+Create a `.env` file in the project root:
+
+```env
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_anon_key
+BEXLY_FREE_AI_KEY=your_ai_key
+BEXLY_FREE_AI_MODEL=dos-ai
+```
+
+---
+
+## AI Integration
+
+Bexly uses a multi-provider AI architecture:
+
+```
+User message
+    │
+    ▼
+┌─────────────────┐     ┌──────────────────┐
+│   DOS AI (Qwen) │────▶│ Gemini (fallback) │
+│   api.dos.ai    │     │ via Edge Function │
+└─────────────────┘     └──────────────────┘
+    │
+    ▼
+┌─────────────────────────────────┐
+│ Financial Context Injection     │
+│ • Health Score    • Forecasts   │
+│ • Budget status   • Anomalies  │
+│ • Spending trends • Goals      │
+└─────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────┐
+│ Action Execution                │
+│ • Create transactions           │
+│ • Set budgets                   │
+│ • Track goals                   │
+│ • Product recommendations       │
+└─────────────────────────────────┘
+```
+
+The AI doesn't just respond — it acts. Through the ACTION_JSON protocol, the AI can directly create transactions, set budgets, and manage goals within the conversation.
+
+---
+
+## Contributing
+
+We welcome contributions! Fork this project, submit issues, or open pull requests.
+
+```bash
+# Run tests
+flutter test
+
+# Check code quality
+flutter analyze
+
+# Generate localization
+flutter gen-l10n
+```
+
+---
+
+## Community
+
+- [GitHub Discussions](https://github.com/BexlyApp/Bexly/discussions) — Feature requests & technical discussion
+- [Discord](https://discord.gg/xt5wDe4w) — Chat with the community
+
+---
+
+## License
+
+This project is licensed under the **LGPL v3 License**. See [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  Built with purpose by <a href="https://dos.ai">DOS Labs</a>
+</p>
