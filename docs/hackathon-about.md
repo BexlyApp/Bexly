@@ -1,30 +1,30 @@
 ## Elevator Pitch
 
-A self-hosted AI financial coach that banks can deploy on their own servers — fully open-source, regulation-ready, zero data leakage.
+A self-hosted AI financial coach that banks can deploy on their own servers - fully open-source, regulation-ready, zero data leakage.
 
 ## Inspiration
 
-Managing personal finances shouldn't require spreadsheets or financial literacy courses. We observed that most banking apps stop at showing transaction history — they don't *understand* the customer's financial behavior or proactively help them improve it.
+Managing personal finances shouldn't require spreadsheets or financial literacy courses. We observed that most banking apps stop at showing transaction history - they don't *understand* the customer's financial behavior or proactively help them improve it.
 
-When we saw Shinhan Bank Vietnam's [SB1] use case — an AI Personal Financial Coach embedded in the SOL app — it aligned perfectly with what we've been building: **an AI assistant that doesn't just track money, but actively coaches users to make better financial decisions**, in their own language.
+When we saw Shinhan Bank Vietnam's [SB1] use case - an AI Personal Financial Coach embedded in the SOL app - it aligned perfectly with what we've been building: **an AI assistant that doesn't just track money, but actively coaches users to make better financial decisions**, in their own language.
 
-Crucially, **banking regulation in Vietnam requires customer financial data to stay within bank infrastructure**. This means cloud-only AI solutions (OpenAI, Google Gemini, etc.) are not viable for production deployment. Our entire stack — from the AI model to the database — is open-source and self-hostable, making it the right fit for Shinhan's compliance requirements.
+Crucially, **banking regulation in Vietnam requires customer financial data to stay within bank infrastructure**. This means cloud-only AI solutions (OpenAI, Google Gemini, etc.) are not viable for production deployment. Our entire stack - from the AI model to the database - is open-source and self-hostable, making it the right fit for Shinhan's compliance requirements.
 
 ## What it does
 
 Bexly is an AI-powered personal financial coach that:
 
 **Conversational Finance Management**
-- Users create transactions, budgets, savings goals, and recurring charges through natural language — *"I spent 150k on lunch"*, *"Set a 5M budget for food this month"*, *"Save 20M for a vacation by December"*
+- Users create transactions, budgets, savings goals, and recurring charges through natural language - *"I spent 150k on lunch"*, *"Set a 5M budget for food this month"*, *"Save 20M for a vacation by December"*
 - The AI understands context: saying *"I pay Netflix 200k monthly"* automatically creates a recurring charge, not a one-time expense
 - Supports 15+ structured actions: `create_expense`, `create_income`, `create_budget`, `create_goal`, `create_recurring`, `get_balance`, `get_summary`, `list_transactions`, and more
 
 **Proactive Financial Coaching**
-- **Financial Health Score (0-100)**: Dynamic score based on savings rate, budget adherence, expense trends, and goal progress — displayed on the dashboard and referenced by the AI in conversations
-- **Spending Forecast**: Predicts end-of-month balance based on current spending velocity — warns users before shortfalls happen
-- **Anomaly Detection**: Flags transactions exceeding 3x the category average — pushes alerts so users catch overspending in real-time
+- **Financial Health Score (0-100)**: Dynamic score based on savings rate, budget adherence, expense trends, and goal progress - displayed on the dashboard and referenced by the AI in conversations
+- **Spending Forecast**: Predicts end-of-month balance based on current spending velocity - warns users before shortfalls happen
+- **Anomaly Detection**: Flags transactions exceeding 3x the category average - pushes alerts so users catch overspending in real-time
 - **Daily Digest**: Morning notification summarizing yesterday's activity and month-to-date status
-- The AI doesn't wait for questions — it proactively coaches: *"Your dining spend is 40% higher than last month — want to set a budget?"*
+- The AI doesn't wait for questions - it proactively coaches: *"Your dining spend is 40% higher than last month - want to set a budget?"*
 
 **Product Recommendation Engine**
 - Based on spending analysis, the AI suggests relevant Shinhan financial products:
@@ -48,7 +48,7 @@ Bexly is an AI-powered personal financial coach that:
 
 ## How we built it
 
-**AI Architecture — Open-Source, Self-Hosted, On-Premise Ready**
+**AI Architecture - Open-Source, Self-Hosted, On-Premise Ready**
 
 Every component of our AI stack is open-source and can be deployed on Shinhan's own infrastructure:
 
@@ -69,30 +69,30 @@ Every component of our AI stack is open-source and can be deployed on Shinhan's 
 **Current Self-Hosted Setup:**
 - vLLM serving Qwen 3.5 via OpenAI-compatible API (`/v1/chat/completions`)
 - Config: `max_model_len=16384`, `gpu-memory-utilization=0.65`
-- 5-second timeout with automatic fallback to Gemini (for development only — production would use multiple Qwen instances)
+- 5-second timeout with automatic fallback to Gemini (for development only - production would use multiple Qwen instances)
 - Vision capabilities for receipt OCR via the same Qwen model
 
 **Action Protocol Design**
 
-The AI doesn't just chat — it *acts*. We designed a structured action protocol where the model embeds JSON actions within its response:
+The AI doesn't just chat - it *acts*. We designed a structured action protocol where the model embeds JSON actions within its response:
 
 ```
 ACTION_JSON: {"action": "create_expense", "amount": 150000, "currency": "VND", "category": "Food & Dining", "description": "Lunch"}
 ```
 
-The app parses these actions, executes them against the local database, syncs to cloud, and confirms back to the user — all in one conversational turn. Destructive actions (delete, bulk operations) require explicit user confirmation via inline buttons.
+The app parses these actions, executes them against the local database, syncs to cloud, and confirms back to the user - all in one conversational turn. Destructive actions (delete, bulk operations) require explicit user confirmation via inline buttons.
 
 **Tech Stack**
-- **Frontend**: Flutter (cross-platform — Android, iOS, Web, macOS, Linux) with Riverpod + Hooks for state management
+- **Frontend**: Flutter (cross-platform - Android, iOS, Web, macOS, Linux) with Riverpod + Hooks for state management
 - **Database**: Drift/SQLite (16 tables, 12 DAOs, schema v27) with cloud sync to Supabase PostgreSQL
 - **Auth**: Supabase with Google/Apple/Facebook social login
-- **AI Proxy**: Supabase Edge Functions (Deno) — routes AI requests with JWT auth, keeps keys server-side
+- **AI Proxy**: Supabase Edge Functions (Deno) - routes AI requests with JWT auth, keeps keys server-side
 - **Background Processing**: WorkManager for email sync, recurring charge automation, daily digest generation
 - **OCR Pipeline**: Strategy pattern with 5 provider implementations (`DosAiOcrProvider`, `GeminiOcrProvider`, `OpenAiOcrProvider`, `ClaudeOcrProvider`, `FallbackOcrProvider`)
 
 ## How Qwen Powers Bexly
 
-Qwen is the brain behind every feature — not a wrapper, but the core reasoning engine:
+Qwen is the brain behind every feature - not a wrapper, but the core reasoning engine:
 
 | # | Role | How Qwen is Used |
 |---|------|-----------------|
@@ -101,13 +101,13 @@ Qwen is the brain behind every feature — not a wrapper, but the core reasoning
 | 3 | **Vision OCR** | Qwen Vision processes receipt/invoice photos → extracts amount, merchant, category, date into structured data |
 | 4 | **Product Recommender** | Qwen analyzes spending patterns against Shinhan product catalog → generates contextual recommendations with reasoning |
 
-All inference runs on a self-hosted vLLM instance — no external API calls, no data leaving the server.
+All inference runs on a self-hosted vLLM instance - no external API calls, no data leaving the server.
 
 ## Challenges we ran into
 
-1. **On-premise model optimization**: Running a 35B-parameter model on a single GPU required careful tuning — quantization (GPTQ-Int4), context length limits, and memory utilization balancing. We achieved <5s response times with `gpu-memory-utilization=0.65`
+1. **On-premise model optimization**: Running a 35B-parameter model on a single GPU required careful tuning - quantization (GPTQ-Int4), context length limits, and memory utilization balancing. We achieved <5s response times with `gpu-memory-utilization=0.65`
 
-2. **Action ambiguity**: *"I pay 200k for electricity every month"* — is this a one-time expense or a recurring charge? We built keyword detection that auto-upgrades `create_expense` to `create_recurring` when frequency words are present
+2. **Action ambiguity**: *"I pay 200k for electricity every month"* - is this a one-time expense or a recurring charge? We built keyword detection that auto-upgrades `create_expense` to `create_recurring` when frequency words are present
 
 3. **Receipt OCR accuracy across Vietnamese receipts**: Vietnamese receipts have inconsistent formats, mixed Vietnamese/English text, and varying quality. We implemented a fallback OCR chain (Qwen Vision → Gemini) and structured prompts that handle receipts, invoices, bank statements, and banking app screenshots
 
@@ -117,23 +117,23 @@ All inference runs on a self-hosted vLLM instance — no external API calls, no 
 
 ## Accomplishments that we're proud of
 
-- **Fully open-source, self-hosted AI stack** — no dependency on proprietary cloud APIs, deployable on bank infrastructure from day one
-- **15+ AI-driven financial actions** executable through natural conversation — not just a chatbot, but a financial operating system
+- **Fully open-source, self-hosted AI stack** - no dependency on proprietary cloud APIs, deployable on bank infrastructure from day one
+- **15+ AI-driven financial actions** executable through natural conversation - not just a chatbot, but a financial operating system
 - **Financial Health Score** that gives users a tangible, trackable metric for their financial well-being
 - **Spending Forecast** that predicts end-of-month balance and warns users before problems happen
-- **5-provider OCR pipeline** with automatic fallback — receipts, screenshots, PDFs all work seamlessly
+- **5-provider OCR pipeline** with automatic fallback - receipts, screenshots, PDFs all work seamlessly
 - **Gmail integration** that turns banking email notifications into structured transactions with AI parsing
-- **14 languages** supported out of the box — critical for a banking app serving diverse markets
-- **33 feature modules** in a clean architecture — from gamification to family shared wallets to subscription management
-- **Zero exposed API keys** — all AI provider keys are server-side via Edge Function proxy
+- **14 languages** supported out of the box - critical for a banking app serving diverse markets
+- **33 feature modules** in a clean architecture - from gamification to family shared wallets to subscription management
+- **Zero exposed API keys** - all AI provider keys are server-side via Edge Function proxy
 
 ## What we learned
 
 - **On-premise is not optional for banking**: Cloud AI APIs are convenient for development, but Vietnamese banking regulation requires data sovereignty. Building on open-source from the start was the right architectural decision
-- **LLMs as action engines, not just chatbots**: The real power isn't in generating text — it's in parsing user intent into structured database operations. The `ACTION_JSON` protocol was the breakthrough that made the AI genuinely useful
+- **LLMs as action engines, not just chatbots**: The real power isn't in generating text - it's in parsing user intent into structured database operations. The `ACTION_JSON` protocol was the breakthrough that made the AI genuinely useful
 - **Fallback chains are essential for production AI**: No single model is 100% reliable. For production banking, this means multiple Qwen instances rather than falling back to cloud providers
 - **Vietnamese NLP is hard**: Currency formats (150.000 vs 150,000), mixed-script text, and colloquial financial terms required careful prompt engineering
-- **Financial coaching > financial tracking**: Users don't need another app that shows them charts — they need one that tells them what to *do*
+- **Financial coaching > financial tracking**: Users don't need another app that shows them charts - they need one that tells them what to *do*
 
 ## SB1 Expected Outcome Coverage
 

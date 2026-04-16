@@ -1,4 +1,4 @@
-# Customer Solution Deck — Bexly for Shinhan Bank Vietnam [SB1]
+# Customer Solution Deck - Bexly for Shinhan Bank Vietnam [SB1]
 
 > Draft content for slide generation. Copy to Claude Cowork with prompt:
 > "Generate a professional Customer Solution Deck PDF (16:9 slides) from this content.
@@ -9,9 +9,9 @@
 
 ## Slide 1: Cover
 
-**Bexly — AI Personal Financial Coach for Shinhan SOL**
+**Bexly - AI Personal Financial Coach for Shinhan SOL**
 
-A self-hosted AI financial coach that banks can deploy on their own servers — fully open-source, regulation-ready, zero data leakage.
+A self-hosted AI financial coach that banks can deploy on their own servers - fully open-source, regulation-ready, zero data leakage.
 
 bexly.app | DOS Labs
 
@@ -22,17 +22,17 @@ bexly.app | DOS Labs
 **Banking apps show data. They don't coach behavior.**
 
 - 78% of Vietnamese consumers want personalized financial advice (PwC Vietnam 2025)
-- Most banking apps stop at transaction history — no proactive insights, no coaching
+- Most banking apps stop at transaction history - no proactive insights, no coaching
 - Financial literacy is low: users don't know *what to do*, not just *what happened*
 - Cross-sell conversion is poor: products are pushed, not recommended based on behavior
 
-**Shinhan's challenge [SB1]:** How to embed an AI assistant in SOL that *actively coaches* each customer — in their language, in real-time, on their data?
+**Shinhan's challenge [SB1]:** How to embed an AI assistant in SOL that *actively coaches* each customer - in their language, in real-time, on their data?
 
 **Regulatory constraint:** Customer financial data MUST stay within bank infrastructure. Cloud-only AI (OpenAI, Gemini) is not an option for production.
 
 ---
 
-## Slide 3: The Solution — Bexly
+## Slide 3: The Solution - Bexly
 
 Bexly is an **AI-powered personal financial coach** that turns banking from passive tracking into active coaching.
 
@@ -40,12 +40,12 @@ Bexly is an **AI-powered personal financial coach** that turns banking from pass
 |--------------------|--------------------|
 | Open app → see balance | Open app → see Financial Health Score (72/100) |
 | Scroll transaction list | Ask "How much did I spend on dining?" → instant answer |
-| Manually set budget | AI suggests: "Your dining is 40% higher — want a 5M budget?" |
+| Manually set budget | AI suggests: "Your dining is 40% higher - want a 5M budget?" |
 | Ignore savings potential | AI calculates: "5M idle → open 6-month savings at 5.5% = 275K interest" |
 | Miss overspending | AI alerts: "This transaction is 3x your category average" |
 | Don't know which products fit | AI recommends: "High dining spend → Shinhan cashback card" |
 
-**The AI doesn't wait for questions — it proactively coaches.**
+**The AI doesn't wait for questions - it proactively coaches.**
 
 ---
 
@@ -56,7 +56,7 @@ Bexly is an **AI-powered personal financial coach** that turns banking from pass
 | # | SB1 Expected Outcome | Bexly Feature | Status |
 |---|---------------------|---------------|--------|
 | 1 | **Increase DAU/MAU** on SOL | Daily Digest notifications, Financial Health Score tracking, gamification streaks | Built |
-| 2 | **Improve cross-sell conversion** (cards, loans, insurance) | Product Recommendation Engine — 6 Shinhan products with AI-driven suggestion rules + banking actions | Built |
+| 2 | **Improve cross-sell conversion** (cards, loans, insurance) | Product Recommendation Engine - 6 Shinhan products with AI-driven suggestion rules + banking actions | Built |
 | 3 | **Reduce churn** through proactive insights | Spending Anomaly Alerts, Churn Prevention (3-day inactivity re-engagement), Spending Forecast | Built |
 | 4 | **Enhance NPS/CSAT** via personalized guidance | Financial Coach persona, personalized AI conversations, in-app NPS survey (1-5 stars every 10 interactions) | Built |
 | 5 | **Grow CASA balance** through savings recommendations | Auto-Suggest Savings Plans with interest calculations, `open_savings_account` action, `transfer_to_savings` action | Built |
@@ -65,7 +65,7 @@ Bexly is an **AI-powered personal financial coach** that turns banking from pass
 
 ---
 
-## Slide 5: Conversational Finance — 15+ AI Actions
+## Slide 5: Conversational Finance - 15+ AI Actions
 
 [DIAGRAM: Chat conversation mockup showing natural language → action]
 
@@ -73,22 +73,22 @@ Bexly is an **AI-powered personal financial coach** that turns banking from pass
 
 ```
 User: "I spent 150k on lunch today"
-AI:   ✅ Recorded 150,000 VND — Food & Dining
+AI:   ✅ Recorded 150,000 VND - Food & Dining
       📊 You've used 80% of your Food budget with 15 days left.
       💡 Consider cooking at home a few days this week to stay on track!
 
 User: "I pay Netflix 200k every month"  
-AI:   ✅ Created recurring charge: Netflix — 200,000 VND/month
+AI:   ✅ Created recurring charge: Netflix - 200,000 VND/month
       📋 You now have 5 recurring charges totaling 1.2M/month.
 
 User: "Set a 5M budget for food this month"
-AI:   ✅ Budget created: Food & Dining — 5,000,000 VND (Apr 2026)
+AI:   ✅ Budget created: Food & Dining - 5,000,000 VND (Apr 2026)
 
 User: "How much did I spend last month?"
 AI:   📊 March 2026 Summary:
       Total expenses: 12,450,000 VND
       Top categories: Food (4.2M), Transport (2.8M), Shopping (2.1M)
-      vs February: ↑15% — mainly dining increased.
+      vs February: ↑15% - mainly dining increased.
 ```
 
 **Supported actions:** `create_expense`, `create_income`, `create_budget`, `create_goal`, `create_recurring`, `get_balance`, `get_summary`, `list_transactions`, `delete_transaction`, `update_transaction`, `open_savings_account`, `apply_credit_card`, `apply_loan`, `transfer_to_savings`, and more.
@@ -102,15 +102,15 @@ AI:   📊 March 2026 Summary:
 **Financial Health Score (0-100)**
 - Formula: savings rate (30%) + budget adherence (25%) + expense stability (20%) + goal progress (15%) + debt ratio (10%)
 - Displayed on dashboard with grade (A+ to F)
-- AI references in conversations: "Your score is 72 — reducing dining spend could push it above 80"
+- AI references in conversations: "Your score is 72 - reducing dining spend could push it above 80"
 
 **Spending Forecast**
 - Predicts end-of-month balance based on daily burn rate
-- Warns users before shortfalls: "At this pace, you'll end April with 1.2M — 800K less than last month"
+- Warns users before shortfalls: "At this pace, you'll end April with 1.2M - 800K less than last month"
 
 **Anomaly Detection**
 - Flags transactions exceeding 3x the 30-day category average
-- Push notification: "Your shopping spend today is 3x your usual — want to review?"
+- Push notification: "Your shopping spend today is 3x your usual - want to review?"
 
 **Daily Digest**
 - Morning notification: yesterday's spending + month-to-date + budget status
@@ -179,7 +179,7 @@ Camera/Gallery/PDF
 
 ## Slide 9: Multi-Language & Multi-Currency
 
-**14 languages out of the box** — critical for Shinhan's diverse customer base:
+**14 languages out of the box** - critical for Shinhan's diverse customer base:
 
 Vietnamese, English, Japanese, Korean, Chinese (Simplified & Traditional), Thai, Indonesian, Malay, Hindi, Arabic, French, German, Spanish
 
@@ -200,17 +200,17 @@ Vietnamese, English, Japanese, Korean, Chinese (Simplified & Traditional), Thai,
 ┌─ Client Layer ─────────────────────────────────────────┐
 │  Android (Play Store)  │  iOS (TestFlight)  │  Web     │
 │  macOS                 │  Linux             │          │
-│  Flutter — Riverpod + Hooks — Single codebase          │
+│  Flutter - Riverpod + Hooks - Single codebase          │
 └──────────────────────────┬─────────────────────────────┘
                            │
 ┌─ Local-First Layer ──────▼─────────────────────────────┐
-│  Drift/SQLite — 16 tables, 12 DAOs, schema v27        │
-│  Source of truth — works fully offline                 │
+│  Drift/SQLite - 16 tables, 12 DAOs, schema v27        │
+│  Source of truth - works fully offline                 │
 │  Soft delete + bidirectional sync with cloud           │
 └──────────────────────────┬─────────────────────────────┘
                            │
 ┌─ Cloud Sync Layer ───────▼─────────────────────────────┐
-│  Supabase PostgreSQL — Schema: bexly                   │
+│  Supabase PostgreSQL - Schema: bexly                   │
 │  Auth (Google/Apple/Facebook SSO)                      │
 │  Edge Functions (AI proxy, webhooks)                   │
 │  Realtime subscriptions for live sync                  │
@@ -219,7 +219,7 @@ Vietnamese, English, Japanese, Korean, Chinese (Simplified & Traditional), Thai,
 ┌─ AI Layer ───────────────▼─────────────────────────────┐
 │  Qwen 3.5 (35B-A3B-GPTQ-Int4) via vLLM               │
 │  OpenAI-compatible API (/v1/chat/completions)          │
-│  Text + Vision (receipt OCR) — single model            │
+│  Text + Vision (receipt OCR) - single model            │
 │  Self-hosted on Linux server with GPU                  │
 └────────────────────────────────────────────────────────┘
 ```
@@ -239,7 +239,7 @@ Cloud-only AI solutions (OpenAI, Google Gemini, Claude) **cannot** be used in pr
 | **Qwen 3.5** | Apache 2.0 | Self-hosted via vLLM on any Linux GPU server |
 | **vLLM** | Apache 2.0 | Docker-ready, OpenAI-compatible API |
 | **Supabase** | Apache 2.0 | Self-hosted PostgreSQL + Auth + Edge Functions |
-| **SQLite/Drift** | Public Domain | Runs on user's device — zero cloud dependency |
+| **SQLite/Drift** | Public Domain | Runs on user's device - zero cloud dependency |
 | **Flutter** | BSD 3-Clause | Fully owned source code, no vendor lock-in |
 
 **Zero dependency on proprietary cloud AI APIs.**
@@ -258,7 +258,7 @@ Cloud-only AI solutions (OpenAI, Google Gemini, Claude) **cannot** be used in pr
 
 | # | Role | How |
 |---|------|-----|
-| 1 | **Financial Coach Brain** | System prompt with coaching persona, spending analysis context, product recommendation rules — all reasoning runs through Qwen |
+| 1 | **Financial Coach Brain** | System prompt with coaching persona, spending analysis context, product recommendation rules - all reasoning runs through Qwen |
 | 2 | **Action Engine** | Qwen parses natural language → embeds `ACTION_JSON` in response → app executes structured database operations |
 | 3 | **Vision OCR** | Qwen Vision processes receipt/invoice photos → extracts amount, merchant, category, date |
 
@@ -290,23 +290,23 @@ ACTION_JSON: {
 
 [DIAGRAM: Integration phases]
 
-**Phase 1 — Standalone (Current)**
+**Phase 1 - Standalone (Current)**
 - Bexly runs as independent app
 - Users manually input or scan transactions
 - AI coaching based on user-reported data
 
-**Phase 2 — SOL SDK Integration**
+**Phase 2 - SOL SDK Integration**
 - Embed Bexly's AI chat as a module inside SOL app
-- Share Shinhan auth (SSO) — no separate login
+- Share Shinhan auth (SSO) - no separate login
 - Flutter module can be integrated via platform channel
 
-**Phase 3 — Full Banking API Integration**
+**Phase 3 - Full Banking API Integration**
 - Connect to Shinhan's Core Banking System
-- Real-time transaction feed — zero manual entry
+- Real-time transaction feed - zero manual entry
 - Banking actions execute directly (open account, apply card, transfer)
 - AI has full context: balances, products, transaction history
 
-**Phase 4 — Scale**
+**Phase 4 - Scale**
 - Multi-instance Qwen behind load balancer
 - A/B test coaching strategies
 - Peer benchmarking with anonymized aggregate data
@@ -318,16 +318,16 @@ ACTION_JSON: {
 
 **Demo scenario: Vietnamese user managing daily finances**
 
-1. **Natural Language Transaction** — "Toi vua an trua 150k" → expense created, budget warning
-2. **Spending Analysis** — "Phan tich chi tieu thang nay" → category breakdown, month-over-month comparison
-3. **Proactive Coaching** — AI suggests budget based on spending patterns
-4. **Receipt OCR** — Snap receipt photo → auto-extract and create transaction
-5. **Product Recommendation** — AI detects high dining spend → recommends Shinhan cashback card
-6. **Savings Suggestion** — AI calculates idle balance → suggests opening savings account
-7. **Banking Action** — User confirms → savings account opened (mock banking API)
-8. **Financial Health Score** — Dashboard shows 72/100 with improvement tips
-9. **Voice Input** — Vietnamese speech → transaction created
-10. **Multi-Language** — Switch to English/Korean → same features, same data
+1. **Natural Language Transaction** - "Toi vua an trua 150k" → expense created, budget warning
+2. **Spending Analysis** - "Phan tich chi tieu thang nay" → category breakdown, month-over-month comparison
+3. **Proactive Coaching** - AI suggests budget based on spending patterns
+4. **Receipt OCR** - Snap receipt photo → auto-extract and create transaction
+5. **Product Recommendation** - AI detects high dining spend → recommends Shinhan cashback card
+6. **Savings Suggestion** - AI calculates idle balance → suggests opening savings account
+7. **Banking Action** - User confirms → savings account opened (mock banking API)
+8. **Financial Health Score** - Dashboard shows 72/100 with improvement tips
+9. **Voice Input** - Vietnamese speech → transaction created
+10. **Multi-Language** - Switch to English/Korean → same features, same data
 
 **Live at:** https://app.bexly.app
 
@@ -339,15 +339,15 @@ ACTION_JSON: {
 |---------|------------------------|--------------------|----|
 | Transaction tracking | Yes | No | **Yes** |
 | Natural language input | No | Yes (text only) | **Yes (text + voice + image)** |
-| Proactive coaching | No | No | **Yes — daily digest, anomaly alerts** |
+| Proactive coaching | No | No | **Yes - daily digest, anomaly alerts** |
 | Financial Health Score | No | No | **Yes (0-100 with grade)** |
-| Spending forecast | No | No | **Yes — end-of-month prediction** |
+| Spending forecast | No | No | **Yes - end-of-month prediction** |
 | Product recommendation | Generic banners | N/A | **AI-driven based on spending patterns** |
-| Banking actions via chat | No | No | **Yes — open account, apply card, transfer** |
-| Receipt OCR | Some (basic) | No | **Yes — 5-provider fallback chain** |
-| On-premise deployable | N/A | No (cloud-only) | **Yes — fully open-source stack** |
+| Banking actions via chat | No | No | **Yes - open account, apply card, transfer** |
+| Receipt OCR | Some (basic) | No | **Yes - 5-provider fallback chain** |
+| On-premise deployable | N/A | No (cloud-only) | **Yes - fully open-source stack** |
 | Multi-language | 1-2 languages | Depends on API | **14 languages** |
-| Offline-first | No | No | **Yes — SQLite local DB** |
+| Offline-first | No | No | **Yes - SQLite local DB** |
 
 ---
 
@@ -359,7 +359,7 @@ ACTION_JSON: {
 - GitHub: github.com/BexlyApp/Bexly
 - Email: joy@dos.ai
 
-**Team:** Anh Le (JOY) — Founder, DOS Labs
+**Team:** Anh Le (JOY) - Founder, DOS Labs
 
 **Next steps:**
 1. Live demo at Qwen AI Build Day (21 Apr 2026)
