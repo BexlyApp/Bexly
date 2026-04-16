@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/services/auto_transaction/bank_senders.dart';
+import 'package:bexly/core/services/auto_transaction/bank_wallet_mapping.dart';
 import 'package:bexly/core/services/auto_transaction/parsed_transaction.dart';
 import 'package:bexly/core/services/auto_transaction/transaction_parser_service.dart';
 
@@ -9,27 +10,6 @@ import 'package:bexly/core/services/auto_transaction/transaction_parser_service.
 
 /// Callback type for when a new transaction is parsed from SMS
 typedef OnTransactionParsed = void Function(ParsedTransaction transaction);
-
-/// SMS scan result for bank sender discovery
-class SmsScanResult {
-  final String senderId;
-  final String bankName;
-  final String bankCode;
-  final String country;
-  final int messageCount;
-  final String detectedCurrency;
-  final List<ParsedTransaction> transactions;
-
-  SmsScanResult({
-    required this.senderId,
-    required this.bankName,
-    required this.bankCode,
-    required this.country,
-    required this.messageCount,
-    required this.detectedCurrency,
-    required this.transactions,
-  });
-}
 
 /// Stub SMS service - all methods return false/empty (SMS disabled)
 class SmsService {
