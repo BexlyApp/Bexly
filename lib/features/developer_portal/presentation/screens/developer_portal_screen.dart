@@ -23,7 +23,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/database/migrations/migrate_existing_goals_to_cloud.dart';
-import 'package:bexly/core/services/demo_data_service.dart';
+import 'package:bexly/features/developer_portal/presentation/widgets/demo_persona_selector.dart';
 
 class DeveloperPortalScreen extends HookConsumerWidget {
   const DeveloperPortalScreen({super.key});
@@ -563,55 +563,11 @@ class DeveloperPortalScreen extends HookConsumerWidget {
                       );
                     },
                   ),
-                  // Load Demo Data for Hackathon
+                  // Demo Account Personas
                   MenuTileButton(
-                    label: 'Load Demo Data (Hackathon)',
-                    icon: HugeIcons.strokeRoundedDatabaseAdd,
-                    onTap: () {
-                      context.openBottomSheet(
-                        isScrollControlled: false,
-                        child: AlertBottomSheet(
-                          title: 'Load Demo Data',
-                          content: Text(
-                            'This will seed realistic Vietnamese spending data:\n\n'
-                            '• 2 months of transactions (income + expenses)\n'
-                            '• 3 budgets (Food 3M, Shopping 2M, Entertainment 1M)\n'
-                            '• 3 savings goals (MacBook, Japan Trip, Emergency Fund)\n'
-                            '• 5 recurring payments (Netflix, Spotify, etc.)\n\n'
-                            'Existing data will NOT be deleted.',
-                            style: AppTextStyles.body2,
-                          ),
-                          onConfirm: () async {
-                            context.pop();
-                            isLoading.value = true;
-                            try {
-                              final demoService = ref.read(demoDataServiceProvider);
-                              final txCount = await demoService.seedAll();
-                              isLoading.value = false;
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('✅ Demo data loaded! $txCount transactions created.'),
-                                    backgroundColor: Colors.green,
-                                    duration: const Duration(seconds: 3),
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              isLoading.value = false;
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('❌ Failed to load demo data: $e'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                        ),
-                      );
-                    },
+                    label: 'Load Demo Account',
+                    icon: HugeIcons.strokeRoundedUserMultiple,
+                    onTap: () => DemoPersonaSelectorSheet.show(context),
                   ),
                   MenuTileButton(
                     label: 'Reset Database',
