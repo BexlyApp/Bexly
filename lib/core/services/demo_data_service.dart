@@ -40,7 +40,30 @@ enum DemoPersona {
   hoangLong,
 }
 
+/// Demo account password matches the email address
+String demoPasswordForEmail(String email) => email;
+
 extension DemoPersonaInfo on DemoPersona {
+  /// Demo email bound to this persona (test1-test5@dos.me)
+  String get demoEmail {
+    switch (this) {
+      case DemoPersona.minhTuan: return 'test1@dos.me';
+      case DemoPersona.thiMai: return 'test2@dos.me';
+      case DemoPersona.vanKhoa: return 'test3@dos.me';
+      case DemoPersona.thanhHa: return 'test4@dos.me';
+      case DemoPersona.hoangLong: return 'test5@dos.me';
+    }
+  }
+
+  /// Look up persona by email, returns null if not a demo account
+  static DemoPersona? fromEmail(String? email) {
+    if (email == null) return null;
+    for (final p in DemoPersona.values) {
+      if (p.demoEmail == email.toLowerCase()) return p;
+    }
+    return null;
+  }
+
   String get displayName {
     switch (this) {
       case DemoPersona.minhTuan: return 'Nguyen Minh Tuan';
