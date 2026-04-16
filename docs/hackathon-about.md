@@ -90,6 +90,19 @@ The app parses these actions, executes them against the local database, syncs to
 - **Background Processing**: WorkManager for email sync, recurring charge automation, daily digest generation
 - **OCR Pipeline**: Strategy pattern with 5 provider implementations (`DosAiOcrProvider`, `GeminiOcrProvider`, `OpenAiOcrProvider`, `ClaudeOcrProvider`, `FallbackOcrProvider`)
 
+## How Qwen Powers Bexly
+
+Qwen is the brain behind every feature — not a wrapper, but the core reasoning engine:
+
+| # | Role | How Qwen is Used |
+|---|------|-----------------|
+| 1 | **Financial Coach Brain** | System prompt with coaching persona + spending context injection → Qwen reasons about user's financial behavior, generates personalized advice, and decides which actions to take |
+| 2 | **Action Engine** | Qwen parses natural language intent → embeds structured `ACTION_JSON` in response → app executes database operations (create transactions, budgets, goals, banking actions) |
+| 3 | **Vision OCR** | Qwen Vision processes receipt/invoice photos → extracts amount, merchant, category, date into structured data |
+| 4 | **Product Recommender** | Qwen analyzes spending patterns against Shinhan product catalog → generates contextual recommendations with reasoning |
+
+All inference runs on a self-hosted vLLM instance — no external API calls, no data leaving the server.
+
 ## Challenges we ran into
 
 1. **On-premise model optimization**: Running a 35B-parameter model on a single GPU required careful tuning — quantization (GPTQ-Int4), context length limits, and memory utilization balancing. We achieved <5s response times with `gpu-memory-utilization=0.65`
