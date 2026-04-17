@@ -58,10 +58,12 @@ class TransactionCard extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(
-                child: Text(
+              Expanded(
+                child: AutoSizeText(
                   title,
                   style: AppTextStyles.body3.copyWith(color: titleColor),
+                  maxLines: 1,
+                  minFontSize: 10,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),

@@ -140,9 +140,24 @@ class AIChatScreen extends HookConsumerWidget {
                       final message = chatState.messages[reversedIndex];
 
                       // Add fade-in animation for smooth message appearance
+                      // Override default layoutBuilder (which uses Stack alignment.center)
+                      // so small messages (typing dots, action buttons) stay left-aligned
+                      // for AI and right-aligned for user instead of drifting to center.
+                      final isUserMsg = message.isFromUser;
                       return AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
                         switchInCurve: Curves.easeInOut,
+                        layoutBuilder: (currentChild, previousChildren) {
+                          return Stack(
+                            alignment: isUserMsg
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            children: <Widget>[
+                              ...previousChildren,
+                              if (currentChild != null) currentChild,
+                            ],
+                          );
+                        },
                         transitionBuilder: (Widget child, Animation<double> animation) {
                           return FadeTransition(
                             opacity: animation,

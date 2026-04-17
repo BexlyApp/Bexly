@@ -132,10 +132,11 @@ class _HealthScoreCard extends StatelessWidget {
                   const Gap(6),
                   Text(
                     health.tips.first,
-                    style: AppTextStyles.body5.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    style: AppTextStyles.body4.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                      height: 1.3,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -166,16 +167,16 @@ class _MiniMetric extends StatelessWidget {
       children: [
         Text(
           label,
-          style: AppTextStyles.body5.copyWith(
-            fontSize: 10,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          style: AppTextStyles.body4.copyWith(
+            fontSize: 11,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
         Text(
           value,
-          style: AppTextStyles.body5.copyWith(
+          style: AppTextStyles.body4.copyWith(
             color: isGood ? Colors.green : Colors.orange,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],

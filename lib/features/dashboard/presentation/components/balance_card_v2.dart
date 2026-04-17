@@ -133,7 +133,7 @@ class BalanceCard extends ConsumerWidget {
                           currency.symbol,
                           style: AppTextStyles.body3,
                         );
-                        final amountWidget = Flexible(
+                        final amountWidget = Expanded(
                           child: AutoSizeText(
                             selectedWallet.balance.toPriceFormat(
                               decimalDigits: currency.decimalDigits,
@@ -142,7 +142,9 @@ class BalanceCard extends ConsumerWidget {
                               height: 1,
                             ),
                             maxLines: 1,
-                            minFontSize: AppTextStyles.numericHeading.fontSize! - 18,
+                            minFontSize: 18,
+                            stepGranularity: 0.5,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         );
 
@@ -162,7 +164,7 @@ class BalanceCard extends ConsumerWidget {
                           symbol,
                           style: AppTextStyles.body3,
                         );
-                        final amountWidget = Flexible(
+                        final amountWidget = Expanded(
                           child: AutoSizeText(
                             totalBalance.toPriceFormat(
                               decimalDigits: currency?.decimalDigits,
@@ -171,7 +173,9 @@ class BalanceCard extends ConsumerWidget {
                               height: 1,
                             ),
                             maxLines: 1,
-                            minFontSize: AppTextStyles.numericHeading.fontSize! - 18,
+                            minFontSize: 18,
+                            stepGranularity: 0.5,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         );
 
