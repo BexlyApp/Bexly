@@ -99,7 +99,12 @@ class LoginScreen extends HookConsumerWidget {
       try {
         final demoService = ref.read(demoDataServiceProvider);
         final txCount = await demoService.seedPersona(demoPersona);
-        Log.i('Demo data seeded: $txCount transactions', label: 'auth');
+        Log.i('Demo data seeded: $txCount transactions, pushing to cloud...', label: 'auth');
+
+        // Push demo data to cloud so Telegram bot can see it
+        final syncService = ref.read(supabaseSyncServiceProvider);
+        await syncService.performFullSync(pushFirst: true);
+        Log.i('Demo data pushed to cloud', label: 'auth');
       } catch (e) {
         Log.e('Failed to seed demo data: $e', label: 'auth');
       }

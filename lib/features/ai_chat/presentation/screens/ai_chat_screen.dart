@@ -589,6 +589,7 @@ class _MessageBubble extends ConsumerWidget {
           // Timestamp and model name row
           Row(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
               Text(
                 _formatTime(context, message.timestamp),

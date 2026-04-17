@@ -1,9 +1,11 @@
-// Telegram Webhook - Full Version with AI Transaction Processing
+// Telegram Webhook - Full Version with AI Transaction Processing + Financial Coach
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { parseTransactionWithAI } from "../_shared/ai-providers.ts";
 import type { UserCategory } from "../_shared/types.ts";
 import { LOCALIZATIONS } from "../_shared/types.ts";
+import { buildSpendingInsights, formatInsightsForTelegram, formatInsightsForAI } from "../_shared/spending-insights.ts";
+import { buildCoachPrompt } from "../_shared/financial-coach-prompt.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -237,6 +239,86 @@ function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 0 }).format(amount);
 }
 
+// ── Financial Coach handler ──────────────────────────────────────────────────
+
+async function handleCoachMessage(
+  chatId: number,
+  userId: string,
+  text: string,
+  lang: string,
+) {
+  const wallet = await getDefaultWallet(userId);
+  if (!wallet) return null; // Fall through to transaction parsing
+
+  // Build spending context
+  const insights = await buildSpendingInsights(userId, wallet.cloud_id);
+  if (!insights) return null;
+
+  const spendingContext = formatInsightsForAI(insights);
+  const systemPrompt = buildCoachPrompt(spendingContext);
+
+  // Call Gemini with full coach prompt
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) return null;
+
+  const model = "gemini-2.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: "user", parts: [{ text }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Coach AI error:", response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!reply) return null;
+
+    // Check if AI returned a transaction JSON (it detected a transaction)
+    const jsonMatch = reply.match(/\{[^}]*"action"\s*:\s*"create_(expense|income)"[^}]*\}/);
+    if (jsonMatch) {
+      // It's a transaction - return null so we fall through to normal parsing
+      return null;
+    }
+
+    // It's a coaching response - send it
+    return reply;
+  } catch (e) {
+    console.error("Coach AI error:", e);
+    return null;
+  }
+}
+
+async function handleInsightsCommand(chatId: number, userId: string, lang: string) {
+  const wallet = await getDefaultWallet(userId);
+  if (!wallet) {
+    const loc = LOCALIZATIONS[lang] ?? LOCALIZATIONS.en;
+    await sendMessage(chatId, loc.noWallet);
+    return;
+  }
+
+  const insights = await buildSpendingInsights(userId, wallet.cloud_id);
+  if (!insights) {
+    await sendMessage(chatId, lang === "vi"
+      ? "📊 Chưa có dữ liệu chi tiêu. Hãy ghi nhận giao dịch trước nhé!"
+      : "📊 No spending data yet. Record some transactions first!");
+    return;
+  }
+
+  const formatted = formatInsightsForTelegram(insights, lang);
+  await sendMessage(chatId, formatted);
+}
+
 // ── Transaction handler ───────────────────────────────────────────────────────
 
 async function handleTransactionMessage(
@@ -246,6 +328,13 @@ async function handleTransactionMessage(
   lang: string,
 ) {
   const loc = LOCALIZATIONS[lang] ?? LOCALIZATIONS.en;
+
+  // Try financial coach first for non-transaction messages
+  const coachReply = await handleCoachMessage(chatId, userId, text, lang);
+  if (coachReply) {
+    await sendMessage(chatId, coachReply);
+    return;
+  }
 
   const wallet = await getDefaultWallet(userId);
   console.log("Wallet:", wallet ? `${wallet.name} (${wallet.currency})` : "null");
@@ -262,8 +351,8 @@ async function handleTransactionMessage(
 
   if (!parsed) {
     const hint = lang === "vi"
-      ? "💬 Tôi chưa hiểu. Thử gõ ví dụ:\n• *ăn trưa 50k*\n• *cafe 30k*\n• *lương 10tr*"
-      : "💬 I didn't understand that. Try:\n• *lunch 50k*\n• *coffee $3*\n• *salary 1000*";
+      ? "💬 Tôi chưa hiểu. Thử gõ ví dụ:\n• *ăn trưa 50k*\n• *cafe 30k*\n• *lương 10tr*\n\nHoặc hỏi: _Tình hình tài chính tháng này?_"
+      : "💬 I didn't understand that. Try:\n• *lunch 50k*\n• *coffee $3*\n• *salary 1000*\n\nOr ask: _How am I doing this month?_";
     await sendMessage(chatId, hint);
     return;
   }
@@ -446,13 +535,18 @@ serve(async (req) => {
 
     if (text === "/start") {
       await sendMessage(chatId,
-        "👋 *Welcome to Bexly AI Assistant!*\n\n" +
-        "I can help you track expenses and income — just chat naturally!\n\n" +
+        "👋 *Welcome to Bexly AI Financial Coach!*\n\n" +
+        "I'm your personal financial assistant powered by Shinhan Bank.\n\n" +
+        "I can:\n" +
+        "📝 Track expenses & income\n" +
+        "📊 Analyze your spending\n" +
+        "💡 Give financial coaching advice\n" +
+        "🏦 Recommend Shinhan banking products\n\n" +
         "📱 First, link your account with /link\n\n" +
-        "Then send messages like:\n" +
-        "• `ăn trưa 50k`\n" +
-        "• `cafe 30k`\n" +
-        "• `salary 5 million`\n\n" +
+        "Then chat naturally:\n" +
+        "• `ăn trưa 50k` - record expense\n" +
+        "• `Tình hình tài chính?` - get coaching\n" +
+        "• `/insights` - spending overview\n\n" +
         "Use /help for all commands."
       );
       return new Response("OK");
@@ -460,16 +554,31 @@ serve(async (req) => {
 
     if (text === "/help") {
       await sendMessage(chatId,
-        "📖 *Bexly Bot Commands*\n\n" +
-        "/link — Link your Bexly account\n" +
-        "/unlink — Unlink your account\n" +
-        "/help — Show this help\n\n" +
-        "*Examples:*\n" +
-        "`ăn sáng 25k` → breakfast expense\n" +
-        "`lunch $10` → lunch expense\n" +
-        "`lương tháng 15 triệu` → salary income\n" +
-        "`cafe hôm qua 50k` → yesterday's coffee"
+        "📖 *Bexly AI Coach Commands*\n\n" +
+        "/link - Link your Bexly account\n" +
+        "/unlink - Unlink your account\n" +
+        "/insights - Spending overview & health score\n" +
+        "/help - Show this help\n\n" +
+        "*Record transactions:*\n" +
+        "`ăn sáng 25k` - breakfast expense\n" +
+        "`lunch $10` - lunch expense\n" +
+        "`lương 15 triệu` - salary income\n\n" +
+        "*Ask for coaching:*\n" +
+        "`Tình hình tài chính tháng này?`\n" +
+        "`How can I save more?`\n" +
+        "`Nên cắt giảm chi tiêu gì?`"
       );
+      return new Response("OK");
+    }
+
+    if (text === "/insights") {
+      const userId = await getUserId(telegramUserId);
+      if (!userId) {
+        const loc = LOCALIZATIONS[lang] ?? LOCALIZATIONS.en;
+        await sendMessage(chatId, `❌ ${loc.linkFirst}\n\nUse /link to connect Bexly.`);
+        return new Response("OK");
+      }
+      await handleInsightsCommand(chatId, userId, lang);
       return new Response("OK");
     }
 
