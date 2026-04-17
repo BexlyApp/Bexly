@@ -142,7 +142,7 @@ class BalanceCard extends ConsumerWidget {
                               height: 1,
                             ),
                             maxLines: 1,
-                            minFontSize: AppTextStyles.numericHeading.fontSize! - 10,
+                            minFontSize: AppTextStyles.numericHeading.fontSize! - 18,
                           ),
                         );
 
@@ -171,7 +171,7 @@ class BalanceCard extends ConsumerWidget {
                               height: 1,
                             ),
                             maxLines: 1,
-                            minFontSize: AppTextStyles.numericHeading.fontSize! - 10,
+                            minFontSize: AppTextStyles.numericHeading.fontSize! - 18,
                           ),
                         );
 

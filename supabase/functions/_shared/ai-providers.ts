@@ -65,6 +65,53 @@ Examples:
 "hi"→{"action":"none","amount":0,"currency":null,"lang":"en","desc":"","note":null,"cat":"","time":null}`;
 }
 
+// Parse with Qwen (DOS AI - OpenAI-compatible API)
+async function parseWithQwen(
+  text: string,
+  dynamicPrompt: string,
+): Promise<string | null> {
+  const apiKey = Deno.env.get("BEXLY_DOS_AI_API_KEY");
+  const baseUrl = Deno.env.get("DOS_AI_URL") || "https://api.dos.ai/v1";
+  const model = AI_CONFIG.models.qwen;
+
+  if (!apiKey) {
+    console.error("DOS AI API key not configured");
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "User-Agent": "Bexly/1.0 (Deno; Supabase Edge Function)",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: dynamicPrompt },
+          { role: "user", content: `Parse this message: "${text}"` },
+        ],
+        temperature: 0.1,
+        max_tokens: 500,
+        enable_thinking: false,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Qwen API error:", response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content?.trim() || null;
+  } catch (e) {
+    console.error("Qwen API error:", e);
+    return null;
+  }
+}
+
 // Parse with Gemini
 async function parseWithGemini(
   text: string,
@@ -207,8 +254,11 @@ export async function parseTransactionWithAI(
       walletCurrency,
     );
 
-    // Use configured AI provider
+    // Use configured AI provider (default: Qwen for hackathon)
     switch (provider) {
+      case "qwen":
+        response = await parseWithQwen(text, dynamicPrompt);
+        break;
       case "gemini":
         response = await parseWithGemini(text, dynamicPrompt);
         break;

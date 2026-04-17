@@ -44,6 +44,8 @@ import 'package:bexly/features/notification/presentation/riverpod/notification_p
 import 'package:bexly/features/notification/presentation/screens/notification_list_screen.dart';
 import 'package:bexly/core/utils/desktop_dialog_helper.dart';
 import 'package:bexly/features/gamification/presentation/components/level_badge_widget.dart';
+import 'package:bexly/features/dashboard/presentation/riverpod/financial_health_provider.dart';
+import 'package:bexly/features/dashboard/presentation/riverpod/spending_forecast_provider.dart';
 
 part '../components/action_button.dart';
 // part '../components/balance_card.dart'; // Legacy - using balance_card_v2 instead
@@ -58,6 +60,8 @@ part '../components/month_navigator.dart';
 part '../components/recent_transaction_list.dart';
 part '../components/spending_progress_chart.dart';
 part '../components/transaction_card.dart';
+part '../components/financial_health_card.dart';
+part '../components/spending_forecast_card.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -103,6 +107,10 @@ class DashboardScreen extends StatelessWidget {
                   child: const Column(
                     children: [
                       DashboardCardsRow(),
+                      Gap(AppSpacing.spacing12),
+                      FinancialHealthCard(),
+                      Gap(AppSpacing.spacing12),
+                      SpendingForecastCard(),
                       Gap(AppSpacing.spacing12),
                       SpendingProgressChart(),
                     ],

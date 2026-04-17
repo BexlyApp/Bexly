@@ -22,114 +22,81 @@
 
 ## P0 — Must Have (covers all 5 SB1 outcomes)
 
-- [ ] **Upgrade system prompt to Financial Coach persona**
+- [x] **Upgrade system prompt to Financial Coach persona** ✅
   - File: `lib/features/ai_chat/data/config/ai_prompts.dart`
-  - Current prompt is transactional only (record/query data)
-  - Add: proactive coaching tone — don't wait for questions, offer insights
-  - Add: spending habit analysis, savings advice, financial health tips
-  - Add: "after recording a transaction, briefly comment on the user's spending pattern if relevant"
-  - Effort: Low (prompt engineering, no new code)
+  - Implemented: proactive coaching tone, spending habit analysis, savings advice, financial health tips
+  - AI proactively comments on spending patterns after recording transactions
   - Covers: #1 DAU/MAU (engaging interactions), #3 churn (proactive), #4 NPS (personalized)
 
-- [ ] **AI Spending Insights in chat**
-  - When user asks "analyze my spending" → compare current vs previous month
-  - Surface: category changes, unusual spikes, budget adherence rate
-  - Also: AI proactively mentions insights after recording transactions ("You've spent 80% of your food budget with 15 days left")
-  - Data source: `FinancialHealthRepository` (already has 6-month trend, weekly breakdown, category data)
-  - Need: inject previous month's category totals + current budget status into AI context
-  - File: `chat_provider.dart` — extend context building before sending message
-  - Effort: Medium
+- [x] **AI Spending Insights in chat** ✅
+  - File: `lib/features/ai_chat/presentation/riverpod/chat_provider.dart` (spending context injection)
+  - Implemented: monthly overview, category breakdown, budget status, wallet balance, savings potential injected into AI context
+  - AI compares current vs previous month, surfaces category changes and budget adherence
   - Covers: #1 DAU/MAU (reason to check daily), #3 churn (insights keep users engaged)
 
-- [ ] **Product Recommendation + Banking Actions via AI**
-  - **Catalog**: Create Shinhan product catalog (credit cards, savings accounts, loans, insurance)
-  - **Recommendation rules** in system prompt:
-    - High dining/shopping spend → Shinhan cashback credit card
-    - Paying high credit card interest → debt consolidation loan
-    - Idle balance sitting in current account → high-yield savings account
-    - No insurance transactions → life/health insurance product
-    - Frequent international spend → Shinhan FX savings card
-  - **Banking Actions** (new action types for SOL integration):
-    - `open_savings_account` — AI creates savings account via banking API
-    - `apply_credit_card` — AI submits credit card application
-    - `apply_loan` — AI initiates loan application
-    - `transfer_to_savings` — AI sweeps idle cash to savings
-  - For hackathon: mock Shinhan Banking API responses, but build the full UX flow
-  - Files: new `lib/features/ai_chat/data/config/shinhan_products.dart`, update `ai_prompts.dart`, update `chat_provider.dart` action handlers
-  - Effort: Medium-High
+- [x] **Product Recommendation + Banking Actions via AI** ✅
+  - File: `lib/features/ai_chat/data/config/shinhan_products.dart` (6-product Shinhan catalog)
+  - File: `chat_provider.dart` — banking action handlers with confirmation dialogs
+  - Implemented: `open_savings_account`, `apply_credit_card`, `apply_loan`, `transfer_to_savings`
+  - Recommendation rules: dining → cashback card, idle balance → savings, no insurance → insurance product, FX spend → FX card
   - Covers: #2 cross-sell (recommend + execute), #5 CASA (open savings in-app)
 
-- [ ] **Auto-Suggest Savings Plan + CASA Growth**
-  - AI calculates: `monthly_income - monthly_expense = savings_potential`
-  - Proactively suggests: "You have 5M idle this month → open a 6-month savings at 5.5% and earn 275k interest"
+- [x] **Auto-Suggest Savings Plan + CASA Growth** ✅
+  - File: `ai_prompts.dart` — proactive savings suggestions with interest calculations
+  - AI calculates savings_potential and suggests: "You have 5M idle → open 6-month savings at 5.5%"
   - Links to `open_savings_account` action — user confirms → account opens
-  - After creating budget/reviewing spending: "If you cut dining by 20%, you could save an extra 2M/month"
-  - Data: already available via `get_summary` + wallet balances
-  - Effort: Low-Medium (prompt engineering + new action handler)
   - Covers: #5 CASA (direct savings growth), #1 DAU/MAU (actionable value)
 
 ---
 
 ## P1 — Should Have (stronger demo, better judges impression)
 
-- [ ] **Daily Financial Digest Push Notification**
-  - Every evening: "Today you spent 350k. Budget remaining: 650k. Keep it up!" or "You overspent by 100k today — here's a tip to stay on track tomorrow"
-  - AI-generated message, not generic template — personalized to actual spending
-  - Drives daily app opens (DAU) — user taps notification → lands in AI chat
-  - Infrastructure: `NotificationService` + `ScheduledNotificationsService` already exist (daily 9PM slot)
-  - Need: replace generic reminder with AI-generated personalized digest
-  - Effort: Medium
+- [x] **Daily Financial Digest Push Notification** ✅
+  - File: `lib/core/services/daily_digest_service.dart`
+  - Implemented: scheduled daily at 8 AM, personalized spending summary, debounced to once per day
+  - User taps notification → lands in AI chat
   - Covers: #1 DAU/MAU (daily re-engagement), #3 churn (proactive outreach)
 
-- [ ] **Spending Anomaly Alert**
-  - Trigger: category spend increases >30% vs previous month, or single large transaction
-  - Push notification: "Your dining spend is 40% higher than last month — want to set a budget?"
-  - Tap → AI chat with context pre-loaded
-  - Need: new `SpendingAnalysisService` that runs after each transaction
-  - Effort: Medium
+- [x] **Spending Anomaly Alert** ✅
+  - File: `lib/core/services/spending_anomaly_service.dart`
+  - Implemented: detects anomalies using 3x rolling 30-day category average or 50% daily spend threshold
+  - Push notification with context-aware message
   - Covers: #3 churn (proactive), #4 NPS (feels like the app watches out for you)
 
-- [ ] **Financial Health Score (0-100)**
-  - Formula: savings_rate (30%) + budget_adherence (25%) + expense_stability (20%) + debt_ratio (15%) + goal_progress (10%)
-  - Display on dashboard as circular progress with color gradient
-  - AI references score in conversations: "Your financial health is 72 — let's get it above 80 by reducing subscriptions"
-  - Gamification: achievements for hitting score milestones
-  - Effort: Medium
+- [x] **Financial Health Score (0-100)** ✅
+  - File: `lib/features/dashboard/presentation/riverpod/financial_health_provider.dart`
+  - Implemented: 0-100 score with grade (A+/A/B+/B/C+/C/D/F) from savings rate, budget adherence, expense trend, goal progress
+  - Displayed on dashboard, AI references score in conversations
   - Covers: #1 DAU/MAU (track score daily), #4 NPS (tangible value)
 
-- [ ] **In-app NPS/CSAT Survey**
-  - Bottom sheet after every 10 AI interactions: "How helpful was this advice?" (1-5 stars)
-  - Optional text feedback
-  - Store in local DB + sync to Supabase for analytics
-  - Use `showModalBottomSheet` (per UI rules — no AlertDialog)
-  - Effort: Low
+- [x] **In-app NPS/CSAT Survey** ✅
+  - File: `lib/features/ai_chat/presentation/widgets/nps_survey_bottom_sheet.dart`
+  - Implemented: 1-5 star rating shown every 10 AI interactions with optional text feedback
+  - Uses `showModalBottomSheet` (per UI rules)
   - Covers: #4 NPS/CSAT (direct measurement)
 
 ---
 
 ## P2 — Nice to Have (bonus points if time permits)
 
-- [ ] **Churn Prevention — Re-engagement Notification**
-  - If user hasn't opened app in 3+ days → push: "You have 3 upcoming bills this week — check your cash flow"
-  - 7+ days → push with financial tip + reminder of unreviewed transactions
-  - Use WorkManager scheduled task
-  - Effort: Low
+- [x] **Churn Prevention — Re-engagement Notification** ✅
+  - File: `lib/core/services/churn_prevention_service.dart`
+  - Implemented: tracks app opens, maintains daily streaks, schedules re-engagement at 3+ day inactivity
   - Covers: #1 DAU/MAU, #3 churn
 
-- [ ] **Spending Forecast**
-  - Predict end-of-month balance based on current spending velocity
-  - "At this rate, you'll end the month with 2M remaining — 500k less than last month"
-  - Visual: projected line on spending chart
-  - Effort: Medium
+- [x] **Spending Forecast** ✅
+  - File: `lib/features/dashboard/presentation/riverpod/spending_forecast_provider.dart`
+  - Implemented: end-of-month projection based on daily burn rate and velocity
+  - AI references forecast in conversations
 
 - [ ] **Peer Benchmarking (Mock)**
   - "You spend 20% more on dining than similar users in HCMC"
   - Mock anonymized aggregate data for demo
   - Effort: Medium
 
-- [ ] **Recurring Payment Optimization**
-  - AI detects: "You pay 3 streaming services totaling 500k/month — consider bundling or dropping one"
-  - Effort: Low
+- [x] **Recurring Payment Optimization** ✅
+  - File: `ai_prompts.dart` — prompt guidance for detecting overlaps, bundling, and high recurring-to-income ratios
+  - AI proactively suggests optimization when recurring charges are detected
 
 ---
 
@@ -144,21 +111,21 @@
 - [ ] Receipt OCR: snap photo → auto-extract transaction
 - [ ] Voice input in Vietnamese
 - [ ] Multi-language switch (Vietnamese ↔ English)
-- [ ] Push notification with personalized financial digest (if P1 done)
+- [ ] Push notification with personalized financial digest
 
 ### Devpost
-- [ ] Project story (done: `docs/hackathon-about.md`)
-- [ ] Elevator pitch / tagline
+- [x] Project story (`docs/hackathon-about.md`) ✅
+- [x] Elevator pitch ✅
 - [ ] Screenshots / images (at least 4-5 screens)
-- [ ] GitHub repo link (done: secrets purged, history clean)
-- [ ] Tech stack: Qwen 3.5, Qwen3-VL, Flutter, Supabase, vLLM
-- [ ] Use case [SB1] clearly referenced
-- [ ] Link to live app (Play Store beta) if allowed
+- [x] GitHub repo link (secrets purged, history clean) ✅
+- [x] Tech stack: Qwen 3.5, vLLM, Flutter, Supabase — all open-source ✅
+- [x] Use case [SB1] clearly referenced ✅
+- [x] Link to live web app: https://app.bexly.app ✅
 
 ### Code
-- [ ] Repo clean for sharing (done: secrets purged, history rewritten)
+- [x] Repo clean for sharing (secrets purged, history rewritten) ✅
 - [ ] `.env.example` updated with all required env vars
-- [ ] README updated for hackathon context (setup instructions for judges)
+- [x] README updated with AI-first branding and cross-platform positioning ✅
 
 ---
 

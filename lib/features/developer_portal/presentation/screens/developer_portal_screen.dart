@@ -23,6 +23,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/database/migrations/migrate_existing_goals_to_cloud.dart';
+import 'package:bexly/features/developer_portal/presentation/widgets/demo_persona_selector.dart';
 
 class DeveloperPortalScreen extends HookConsumerWidget {
   const DeveloperPortalScreen({super.key});
@@ -561,6 +562,12 @@ class DeveloperPortalScreen extends HookConsumerWidget {
                         ),
                       );
                     },
+                  ),
+                  // Demo Account Personas
+                  MenuTileButton(
+                    label: 'Load Demo Account',
+                    icon: HugeIcons.strokeRoundedUserMultiple,
+                    onTap: () => DemoPersonaSelectorSheet.show(context),
                   ),
                   MenuTileButton(
                     label: 'Reset Database',

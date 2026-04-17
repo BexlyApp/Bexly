@@ -117,6 +117,7 @@ class ChatState {
   final bool isTyping;
   final String? error;
   final String draftMessage; // Draft message being typed
+  final bool showNpsSurvey; // Trigger NPS survey bottom sheet
 
   const ChatState({
     this.messages = const [],
@@ -124,6 +125,7 @@ class ChatState {
     this.isTyping = false,
     this.error,
     this.draftMessage = '',
+    this.showNpsSurvey = false,
   });
 
   ChatState copyWith({
@@ -132,6 +134,7 @@ class ChatState {
     bool? isTyping,
     String? error,
     String? draftMessage,
+    bool? showNpsSurvey,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -139,6 +142,7 @@ class ChatState {
       isTyping: isTyping ?? this.isTyping,
       error: error ?? this.error,
       draftMessage: draftMessage ?? this.draftMessage,
+      showNpsSurvey: showNpsSurvey ?? this.showNpsSurvey,
     );
   }
 }

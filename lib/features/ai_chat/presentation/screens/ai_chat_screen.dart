@@ -21,6 +21,8 @@ import 'package:bexly/features/ai_chat/data/services/speech_service.dart';
 import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/presentation/riverpod/chat_provider.dart';
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
+import 'package:bexly/features/ai_chat/presentation/widgets/nps_survey_bottom_sheet.dart';
+import 'package:bexly/core/services/subscription/subscription.dart';
 
 class AIChatScreen extends HookConsumerWidget {
   const AIChatScreen({super.key});
@@ -39,6 +41,19 @@ class AIChatScreen extends HookConsumerWidget {
       textController.addListener(listener);
       return () => textController.removeListener(listener);
     }, [textController]);
+
+    // NPS survey: show bottom sheet when triggered after every 10 AI messages
+    ref.listen<ChatState>(chatProvider, (prev, next) {
+      if (next.showNpsSurvey && !(prev?.showNpsSurvey ?? false)) {
+        chatNotifier.dismissNpsSurvey();
+        final prefs = ref.read(sharedPreferencesProvider);
+        showModalBottomSheet(
+          context: context,
+          showDragHandle: true,
+          builder: (_) => NpsSurveyBottomSheet(prefs: prefs),
+        );
+      }
+    });
 
     // Proactively fetch exchange rate when chat screen opens
     // This ensures AI has exchange rate data for currency conversion messages
@@ -574,6 +589,7 @@ class _MessageBubble extends ConsumerWidget {
           // Timestamp and model name row
           Row(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
               Text(
                 _formatTime(context, message.timestamp),

@@ -26,6 +26,7 @@ import 'package:bexly/core/components/form_fields/custom_input_border.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/services/demo_data_service.dart';
 
 class LoginScreen extends HookConsumerWidget {
   const LoginScreen({super.key});
@@ -87,6 +88,26 @@ class LoginScreen extends HookConsumerWidget {
     } catch (e, stackTrace) {
       Log.e('⚠️ Failed to sync from cloud: $e', label: 'auth');
       Log.e('⚠️ Stack trace: $stackTrace', label: 'auth');
+    }
+
+    if (!context.mounted) return;
+
+    // Auto-seed demo data for test accounts
+    final demoPersona = DemoPersonaInfo.fromEmail(user.email);
+    if (demoPersona != null) {
+      Log.i('Demo account detected (${user.email}), seeding ${demoPersona.displayName}...', label: 'auth');
+      try {
+        final demoService = ref.read(demoDataServiceProvider);
+        final txCount = await demoService.seedPersona(demoPersona);
+        Log.i('Demo data seeded: $txCount transactions, pushing to cloud...', label: 'auth');
+
+        // Push demo data to cloud so Telegram bot can see it
+        final syncService = ref.read(supabaseSyncServiceProvider);
+        await syncService.performFullSync(pushFirst: true);
+        Log.i('Demo data pushed to cloud', label: 'auth');
+      } catch (e) {
+        Log.e('Failed to seed demo data: $e', label: 'auth');
+      }
     }
 
     if (!context.mounted) return;
@@ -352,9 +373,12 @@ class LoginScreen extends HookConsumerWidget {
       try {
         if (kIsWeb) {
           // Web: Use Supabase signInWithOAuth
+          // Must set redirectTo to current origin so Supabase redirects back here
+          // instead of defaulting to id.dos.me
+          final webRedirectUrl = Uri.base.origin;
           await supabase.auth.signInWithOAuth(
             OAuthProvider.google,
-            redirectTo: kIsWeb ? null : 'com.joy.bexly://login-callback/',
+            redirectTo: webRedirectUrl,
           );
         } else {
           // Mobile: Use native Google Sign-In SDK (initialized in main.dart with serverClientId)
@@ -685,10 +709,20 @@ class LoginScreen extends HookConsumerWidget {
                       width: 80,
                       height: 80,
                     ),
-                    const Gap(16),
+                    const Gap(8),
                     Text(
-                      'Sign in to sync across devices',
-                      style: Theme.of(context).textTheme.bodyLarge,
+                      'Bexly',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const Gap(4),
+                    Text(
+                      'Your AI-powered financial coach',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                       textAlign: TextAlign.center,
                     ),
                     const Gap(24),
@@ -927,6 +961,12 @@ class LoginScreen extends HookConsumerWidget {
                         ),
                       ),
                     ),
+                    const Gap(12),
+                    _DemoAccountButton(
+                      isLoading: isLoading,
+                      supabase: supabase,
+                      ref: ref,
+                    ),
                     const Gap(24),
                     // Version number
                     Text(
@@ -943,6 +983,323 @@ class LoginScreen extends HookConsumerWidget {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Demo account button that shows persona selector and auto-logs in
+class _DemoAccountButton extends StatefulWidget {
+  final ValueNotifier<bool> isLoading;
+  final SupabaseClient supabase;
+  final WidgetRef ref;
+
+  const _DemoAccountButton({
+    required this.isLoading,
+    required this.supabase,
+    required this.ref,
+  });
+
+  @override
+  State<_DemoAccountButton> createState() => _DemoAccountButtonState();
+}
+
+class _DemoAccountButtonState extends State<_DemoAccountButton> {
+  bool _isDemoLoading = false;
+  DemoPersona? _loadingPersona;
+
+  Future<void> _loginWithDemoAccount(DemoPersona persona) async {
+    setState(() {
+      _isDemoLoading = true;
+      _loadingPersona = persona;
+    });
+    widget.isLoading.value = true;
+
+    try {
+      // Sign in with demo email + password
+      final response = await widget.supabase.auth.signInWithPassword(
+        email: persona.demoEmail,
+        password: demoPasswordForEmail(persona.demoEmail),
+      );
+
+      if (response.session == null || response.user == null) {
+        throw Exception('Demo login failed - no session created');
+      }
+
+      final user = response.user!;
+      Log.i('Demo login successful: ${user.email} (${persona.displayName})', label: 'auth');
+
+      if (mounted) {
+        // Close the persona selector bottom sheet
+        Navigator.of(context).pop();
+
+        await LoginScreen._postLoginFlow(
+          context: context,
+          ref: widget.ref,
+          user: user,
+          supabase: widget.supabase,
+          displayNameOverride: persona.displayName,
+        );
+      }
+    } on AuthException catch (e) {
+      Log.e('Demo auth error: ${e.message}', label: 'auth');
+      if (mounted) {
+        Navigator.of(context).pop();
+        toastification.show(
+          context: context,
+          title: const Text('Demo Login Failed'),
+          description: Text(e.message),
+          type: ToastificationType.error,
+          style: ToastificationStyle.fillColored,
+          autoCloseDuration: const Duration(seconds: 4),
+        );
+      }
+    } catch (e) {
+      Log.e('Demo login error: $e', label: 'auth');
+      if (mounted) {
+        Navigator.of(context).pop();
+        toastification.show(
+          context: context,
+          title: const Text('Demo Login Failed'),
+          description: Text(e.toString()),
+          type: ToastificationType.error,
+          style: ToastificationStyle.fillColored,
+          autoCloseDuration: const Duration(seconds: 4),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDemoLoading = false;
+          _loadingPersona = null;
+        });
+      }
+      widget.isLoading.value = false;
+    }
+  }
+
+  void _showPersonaSelector() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          return DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.75,
+            maxChildSize: 0.9,
+            minChildSize: 0.5,
+            builder: (_, scrollController) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Drag handle
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Gap(16),
+                  Text(
+                    'Try Demo Account',
+                    style: AppTextStyles.body1.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Gap(4),
+                  Text(
+                    'Choose a persona to explore Bexly with pre-built financial data',
+                    style: AppTextStyles.body4.copyWith(
+                      color: AppColors.neutral500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const Gap(16),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      itemCount: DemoPersona.values.length,
+                      separatorBuilder: (_, _) => const Gap(10),
+                      itemBuilder: (_, index) {
+                        final persona = DemoPersona.values[index];
+                        final isThisLoading = _isDemoLoading && _loadingPersona == persona;
+                        final isDisabled = _isDemoLoading && _loadingPersona != persona;
+
+                        return _DemoPersonaCard(
+                          persona: persona,
+                          isLoading: isThisLoading,
+                          isDisabled: isDisabled,
+                          onTap: _isDemoLoading
+                              ? null
+                              : () {
+                                  // Update parent state for loading indicator
+                                  setState(() {
+                                    _isDemoLoading = true;
+                                    _loadingPersona = persona;
+                                  });
+                                  setSheetState(() {});
+                                  _loginWithDemoAccount(persona);
+                                },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: widget.isLoading.value ? null : _showPersonaSelector,
+      icon: const Icon(Icons.people_outline, size: 20),
+      label: const Text('Try Demo Account'),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+        ),
+      ),
+    );
+  }
+}
+
+/// Card showing a demo persona with name, role, and feature tags
+class _DemoPersonaCard extends StatelessWidget {
+  final DemoPersona persona;
+  final bool isLoading;
+  final bool isDisabled;
+  final VoidCallback? onTap;
+
+  const _DemoPersonaCard({
+    required this.persona,
+    this.isLoading = false,
+    this.isDisabled = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: isDisabled ? 0.5 : 1.0,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.spacing12),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.grey.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.grey.withValues(alpha: 0.15),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Avatar
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primaryContainer
+                      .withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(persona.icon, style: const TextStyle(fontSize: 20)),
+              ),
+              const Gap(AppSpacing.spacing12),
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      persona.displayName,
+                      style: AppTextStyles.body3.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Gap(2),
+                    Text(
+                      persona.subtitle,
+                      style: AppTextStyles.body5.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Gap(4),
+                    // Feature tags
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 3,
+                      children: persona.demoFeatures
+                          .take(3)
+                          .map((f) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer
+                                      .withValues(alpha: 0.4),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  f,
+                                  style: AppTextStyles.body5.copyWith(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                ),
+              ),
+              // Loading or arrow
+              if (isLoading)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Icon(
+                  Icons.chevron_right,
+                  color: AppColors.neutral400,
+                  size: 20,
+                ),
+            ],
           ),
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:bexly/core/localization/background_l10n.dart';
 import 'package:bexly/core/services/notification_service.dart';
+import 'package:bexly/core/services/daily_digest_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:drift/drift.dart';
@@ -165,6 +166,7 @@ class ScheduledNotificationsService {
     await scheduleDailyReminder();
     await scheduleWeeklyReport();
     await scheduleMonthlyReport();
+    await DailyDigestService.schedule();
     Log.i('All scheduled notifications updated', label: 'notification');
   }
 
@@ -173,6 +175,7 @@ class ScheduledNotificationsService {
     await NotificationService.cancelNotification(_dailyReminderId);
     await NotificationService.cancelNotification(_weeklyReportId);
     await NotificationService.cancelNotification(_monthlyReportId);
+    await NotificationService.cancelNotification(DailyDigestService.notificationId);
     Log.i('All scheduled notifications cancelled', label: 'notification');
   }
 

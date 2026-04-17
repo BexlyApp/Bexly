@@ -19,11 +19,9 @@
         android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission
         android:name="android.permission.VIBRATE"/>
-    <!-- SMS permissions for Auto Transaction feature (Android only) -->
-    <uses-permission
-        android:name="android.permission.READ_SMS"/>
-    <uses-permission
-        android:name="android.permission.RECEIVE_SMS"/>
+    <!-- SMS permissions removed for hackathon submission -->
+    <!-- <uses-permission android:name="android.permission.READ_SMS"/> -->
+    <!-- <uses-permission android:name="android.permission.RECEIVE_SMS"/> -->
     <!-- Microphone permission for voice-to-text -->
     <uses-permission
         android:name="android.permission.RECORD_AUDIO"/>

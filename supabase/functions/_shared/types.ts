@@ -134,11 +134,12 @@ export const LOCALIZATIONS: Record<string, Localization> = {
   },
 };
 
-export type AIProvider = "gemini" | "openai" | "claude";
+export type AIProvider = "qwen" | "gemini" | "openai" | "claude";
 
 export const AI_CONFIG = {
-  provider: "gemini" as AIProvider,
+  provider: "qwen" as AIProvider,
   models: {
+    qwen: Deno.env.get("DOS_AI_MODEL") || "dos-ai",
     gemini: "gemini-2.0-flash",
     openai: "gpt-4o-mini",
     claude: "claude-sonnet-4-20250514",

@@ -37,6 +37,9 @@ import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:bexly/features/settings/presentation/riverpod/ai_model_provider.dart';
 import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
+import 'package:bexly/core/services/spending_anomaly_service.dart';
+import 'package:bexly/features/ai_chat/presentation/widgets/nps_survey_bottom_sheet.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Simple category info for AI
 class CategoryInfo {
@@ -349,6 +352,14 @@ class ChatNotifier extends Notifier<ChatState> {
           wallets: walletNames,
           exchangeRate: cachedRate?.rate,
         );
+
+        // Propagate spending insights and budgets to fallback service
+        if (_aiService is AIServicePromptMixin) {
+          final mixin = _aiService as AIServicePromptMixin;
+          geminiService.updateSpendingInsights(mixin.spendingInsightsContext);
+          geminiService.updateBudgetsContext(mixin.budgetsContext);
+          geminiService.updateRecentTransactions(mixin.recentTransactionsContext);
+        }
 
         Log.d('✅ Using Gemini fallback: ${geminiService.modelName}', label: 'AI_FALLBACK');
         return await geminiService.sendMessage(message);
@@ -749,9 +760,10 @@ Please create a transaction based on this receipt data.''';
         );
       }
 
-      // Update AI with recent transactions and budgets context before sending message
+      // Update AI with recent transactions, budgets, and spending insights before sending message
       await _updateRecentTransactionsContext();
       await _updateBudgetsContext();
+      await _updateSpendingInsightsContext();
 
       // Update AI with current wallet context (CRITICAL: wallet list must be current!)
       print('🔧 [CHAT_DEBUG] About to update AI context...');
@@ -1461,6 +1473,58 @@ Please create a transaction based on this receipt data.''';
                 );
                 break;
               }
+            case 'open_savings_account':
+              {
+                Log.d('Processing open_savings_account action: $action', label: 'Chat Provider');
+                pendingAction = PendingAction(
+                  actionType: 'open_savings_account',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Open Account', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
+            case 'transfer_to_savings':
+              {
+                Log.d('Processing transfer_to_savings action: $action', label: 'Chat Provider');
+                pendingAction = PendingAction(
+                  actionType: 'transfer_to_savings',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Transfer', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
+            case 'apply_credit_card':
+              {
+                Log.d('Processing apply_credit_card action: $action', label: 'Chat Provider');
+                pendingAction = PendingAction(
+                  actionType: 'apply_credit_card',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Apply Now', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
+            case 'apply_loan':
+              {
+                Log.d('Processing apply_loan action: $action', label: 'Chat Provider');
+                pendingAction = PendingAction(
+                  actionType: 'apply_loan',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Apply', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
             default:
               {
                 Log.d('Unknown action: $actionType', label: 'Chat Provider');
@@ -1542,6 +1606,17 @@ Please create a transaction based on this receipt data.''';
 
       // Increment AI message usage count
       await ref.read(aiUsageServiceProvider).incrementMessageCount();
+
+      // NPS survey: increment counter and check if survey should show
+      try {
+        final prefs = ref.read(sharedPreferencesProvider);
+        NpsSurveyBottomSheet.incrementMessageCount(prefs);
+        if (NpsSurveyBottomSheet.shouldShow(prefs)) {
+          state = state.copyWith(showNpsSurvey: true);
+        }
+      } catch (e) {
+        Log.e('NPS survey check failed: $e', label: 'Chat Provider');
+      }
 
       Log.d('Message sent and response received successfully', label: 'Chat Provider');
     } catch (error) {
@@ -1627,6 +1702,11 @@ Please create a transaction based on this receipt data.''';
     Log.d('🗑️ clearError called - clearing error state', label: 'Chat Provider');
     state = state.copyWith(error: null);
     Log.d('✅ Error state cleared - error is now: ${state.error}', label: 'Chat Provider');
+  }
+
+  /// Dismiss the NPS survey trigger flag
+  void dismissNpsSurvey() {
+    state = state.copyWith(showNpsSurvey: false);
   }
 
   /// Update draft message (preserves user's typing when navigating away)
@@ -2000,6 +2080,17 @@ Please create a transaction based on this receipt data.''';
 
       Log.d('_createTransactionFromAction COMPLETE', label: 'TRANSACTION_DEBUG');
       Log.d('========================================', label: 'TRANSACTION_DEBUG');
+
+      // Check for spending anomalies (async, non-blocking)
+      try {
+        final anomalyService = ref.read(spendingAnomalyServiceProvider);
+        final anomaly = await anomalyService.checkTransaction(transaction);
+        if (anomaly != null) {
+          Log.w('Spending anomaly detected: ${anomaly.message}', label: 'SpendingAnomaly');
+        }
+      } catch (e) {
+        Log.e('Anomaly check error: $e', label: 'SpendingAnomaly');
+      }
 
       // Return the actual amount that was saved (after currency conversion)
       return amount;
@@ -3680,6 +3771,18 @@ Please create a transaction based on this receipt data.''';
           case 'update_budget':
             resultMessage = await _updateBudgetFromAction(message.pendingAction!.actionData);
             break;
+          case 'open_savings_account':
+            resultMessage = _mockOpenSavingsAccount(message.pendingAction!.actionData);
+            break;
+          case 'transfer_to_savings':
+            resultMessage = _mockTransferToSavings(message.pendingAction!.actionData);
+            break;
+          case 'apply_credit_card':
+            resultMessage = _mockApplyCreditCard(message.pendingAction!.actionData);
+            break;
+          case 'apply_loan':
+            resultMessage = _mockApplyLoan(message.pendingAction!.actionData);
+            break;
         }
       } else if (actionType == 'cancel') {
         resultMessage = '❌ Đã huỷ thao tác.';
@@ -3874,6 +3977,267 @@ Please create a transaction based on this receipt data.''';
     } catch (e) {
       Log.e('Failed to update budgets context: $e', label: 'Chat Provider');
     }
+  }
+
+  /// Build spending insights context for AI financial coaching
+  Future<void> _updateSpendingInsightsContext() async {
+    try {
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      if (wallet == null || wallet.id == null) {
+        _aiService.updateSpendingInsights('');
+        return;
+      }
+
+      final dbInstance = ref.read(databaseProvider);
+      final now = DateTime.now();
+      final currency = wallet.currency;
+
+      // Current month range
+      final currentMonthStart = DateTime(now.year, now.month, 1);
+      final currentMonthEnd = DateTime(now.year, now.month + 1, 1).subtract(const Duration(seconds: 1));
+
+      // Previous month range
+      final prevMonthStart = DateTime(now.year, now.month - 1, 1);
+      final prevMonthEnd = DateTime(now.year, now.month, 1).subtract(const Duration(seconds: 1));
+
+      // Fetch all transactions for this wallet
+      final allTransactions = await dbInstance.transactionDao
+          .watchFilteredTransactionsWithDetails(walletId: wallet.id!, filter: null)
+          .first
+          .timeout(const Duration(seconds: 5), onTimeout: () => []);
+
+      // Filter by month
+      final currentMonthTx = allTransactions.where((t) =>
+          !t.date.isBefore(currentMonthStart) && !t.date.isAfter(currentMonthEnd)).toList();
+      final prevMonthTx = allTransactions.where((t) =>
+          !t.date.isBefore(prevMonthStart) && !t.date.isAfter(prevMonthEnd)).toList();
+
+      // Current month totals
+      final currentIncome = currentMonthTx
+          .where((t) => t.transactionType == TransactionType.income)
+          .fold<double>(0, (s, t) => s + t.amount);
+      final currentExpense = currentMonthTx
+          .where((t) => t.transactionType == TransactionType.expense)
+          .fold<double>(0, (s, t) => s + t.amount);
+
+      // Previous month totals
+      final prevExpense = prevMonthTx
+          .where((t) => t.transactionType == TransactionType.expense)
+          .fold<double>(0, (s, t) => s + t.amount);
+
+      // Category breakdown (current month expenses, top 5)
+      final categorySpending = <String, double>{};
+      for (final tx in currentMonthTx.where((t) => t.transactionType == TransactionType.expense)) {
+        final catName = tx.category.title;
+        categorySpending[catName] = (categorySpending[catName] ?? 0) + tx.amount;
+      }
+      final sortedCategories = categorySpending.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      final topCategories = sortedCategories.take(5);
+
+      // Budget usage
+      final budgetDao = ref.read(budgetDaoProvider);
+      final allBudgets = await budgetDao.watchAllBudgets().first.timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => <BudgetModel>[],
+      );
+      final currentBudgets = allBudgets.where((b) =>
+          b.startDate.isBefore(currentMonthEnd) && b.endDate.isAfter(currentMonthStart)).toList();
+
+      // Build context string
+      String fmt(num v) => v.toInt().toString().replaceAllMapped(
+          RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+      final buffer = StringBuffer();
+
+      // Monthly overview
+      final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+      final daysElapsed = now.day;
+      buffer.writeln('This month ($daysElapsed/$daysInMonth days): Income ${fmt(currentIncome)} $currency, Expense ${fmt(currentExpense)} $currency, Net ${fmt(currentIncome - currentExpense)} $currency');
+
+      // Month-over-month comparison
+      if (prevExpense > 0) {
+        final changePercent = ((currentExpense - prevExpense) / prevExpense * 100).round();
+        final direction = changePercent > 0 ? 'UP' : (changePercent < 0 ? 'DOWN' : 'SAME');
+        buffer.writeln('vs last month: Spending $direction ${changePercent.abs()}% (was ${fmt(prevExpense)} $currency)');
+      }
+
+      // Top spending categories
+      if (topCategories.isNotEmpty) {
+        buffer.write('Top categories: ');
+        buffer.writeln(topCategories.map((e) => '${e.key} ${fmt(e.value)} $currency').join(', '));
+      }
+
+      // Budget status
+      for (final budget in currentBudgets) {
+        final catName = budget.category?.title ?? 'Unknown';
+        final spent = categorySpending[catName] ?? 0;
+        final pct = budget.amount > 0 ? (spent / budget.amount * 100).round() : 0;
+        if (pct >= 50) {
+          buffer.writeln('Budget "$catName": ${fmt(spent)}/${fmt(budget.amount)} $currency ($pct% used)');
+        }
+      }
+
+      // Savings potential and wallet balance (for CASA coaching)
+      final savingsPotential = currentIncome - currentExpense;
+      if (savingsPotential > 0) {
+        final interestEarnings6mo = (savingsPotential * 0.055 * 6 / 12);
+        buffer.writeln('Savings potential: ${fmt(savingsPotential)} $currency idle this month → ${fmt(interestEarnings6mo)} $currency interest if saved 6 months at 5.5%');
+      }
+      buffer.writeln('Wallet "${wallet.name}" balance: ${fmt(wallet.balance)} $currency');
+
+      // Financial Health Score
+      try {
+        final savingsRate = currentIncome > 0
+            ? ((currentIncome - currentExpense) / currentIncome).clamp(-1.0, 1.0)
+            : 0.0;
+        final healthScore = _computeQuickHealthScore(
+          savingsRate: savingsRate,
+          budgetAdherence: currentBudgets.isEmpty
+              ? 1.0
+              : currentBudgets.where((b) =>
+                  (categorySpending[b.category?.title ?? ''] ?? 0) <= b.amount
+                ).length / currentBudgets.length,
+          expenseTrend: prevExpense > 0
+              ? ((currentExpense - prevExpense) / prevExpense).clamp(-1.0, 1.0)
+              : 0.0,
+        );
+        buffer.writeln('Financial Health Score: $healthScore/100 (savings rate ${(savingsRate * 100).round()}%)');
+      } catch (_) {}
+
+      // Active recurring payments (for subscription optimization coaching)
+      try {
+        final allRecurring = await dbInstance.recurringDao.watchAllRecurrings().first
+            .timeout(const Duration(seconds: 3), onTimeout: () => []);
+        final activeRecurring = allRecurring.where((r) => r.isActive).toList();
+        if (activeRecurring.isNotEmpty) {
+          final monthlyTotal = activeRecurring.fold<double>(0, (sum, r) {
+            switch (r.frequency) {
+              case RecurringFrequency.daily: return sum + r.amount * 30;
+              case RecurringFrequency.weekly: return sum + r.amount * 4;
+              case RecurringFrequency.monthly: return sum + r.amount;
+              case RecurringFrequency.yearly: return sum + r.amount / 12;
+              default: return sum + r.amount;
+            }
+          });
+          buffer.writeln('Active recurring (${activeRecurring.length}): ${activeRecurring.map((r) => '${r.name} ${fmt(r.amount)} $currency/${r.frequency.name}').join(', ')} → Total ~${fmt(monthlyTotal)} $currency/month');
+        }
+      } catch (_) {}
+
+      // Spending forecast (end-of-month projection)
+      try {
+        final dailyBurnRate = daysElapsed > 0 ? currentExpense / daysElapsed : 0.0;
+        final projectedExpense = currentExpense + dailyBurnRate * (daysInMonth - daysElapsed);
+        final dailyEarnRate = daysElapsed > 0 ? currentIncome / daysElapsed : 0.0;
+        final projectedIncome = currentIncome + dailyEarnRate * (daysInMonth - daysElapsed);
+        if (projectedExpense > 0 || projectedIncome > 0) {
+          buffer.writeln('End-of-month forecast: projected expense ${fmt(projectedExpense)} $currency, projected income ${fmt(projectedIncome)} $currency, daily burn rate ${fmt(dailyBurnRate)} $currency/day (${daysInMonth - daysElapsed} days remaining)');
+        }
+      } catch (_) {}
+
+      final contextString = buffer.toString().trim();
+      if (contextString.isNotEmpty) {
+        Log.d('Updating AI with spending insights:\n$contextString', label: 'Chat Provider');
+        _aiService.updateSpendingInsights(contextString);
+      } else {
+        _aiService.updateSpendingInsights('');
+      }
+    } catch (e) {
+      Log.e('Failed to update spending insights: $e', label: 'Chat Provider');
+      _aiService.updateSpendingInsights('');
+    }
+  }
+
+  /// Mock: Open Shinhan savings account (hackathon demo)
+  String _mockOpenSavingsAccount(Map<String, dynamic> action) {
+    final amount = (action['amount'] as num?)?.toDouble() ?? 0;
+    final currency = action['currency'] ?? 'VND';
+    final termMonths = (action['termMonths'] as num?)?.toInt() ?? 6;
+    final rate = (action['interestRate'] as num?)?.toDouble() ?? 5.5;
+    final interest = (amount * rate / 100 * termMonths / 12);
+    String fmt(num v) => v.toInt().toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return '✅ **Shinhan Savings Account opened!**\n'
+        '• Amount: ${fmt(amount)} $currency\n'
+        '• Term: $termMonths months at ${rate}% annual\n'
+        '• Estimated interest: ${fmt(interest)} $currency\n'
+        '• Account: SOL-SAV-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
+  }
+
+  /// Mock: Apply for Shinhan credit card (hackathon demo)
+  String _mockApplyCreditCard(Map<String, dynamic> action) {
+    final cardType = action['cardType'] ?? 'cashback';
+    final cardNames = {
+      'cashback': 'Shinhan Cashback Credit Card',
+      'fx': 'Shinhan FX Multi-Currency Card',
+      'premium': 'Shinhan Premium Card',
+    };
+    final cardBenefits = {
+      'cashback': '5% cashback on dining, 3% on shopping',
+      'fx': '0% FX markup, free international ATM',
+      'premium': 'Airport lounge access, travel insurance',
+    };
+    return '✅ **Credit card application submitted!**\n'
+        '• Card: ${cardNames[cardType] ?? cardNames['cashback']}\n'
+        '• Benefits: ${cardBenefits[cardType] ?? cardBenefits['cashback']}\n'
+        '• Status: Under review (1-3 business days)\n'
+        '• Ref: CC-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
+  }
+
+  /// Mock: Apply for Shinhan loan (hackathon demo)
+  String _mockApplyLoan(Map<String, dynamic> action) {
+    final amount = (action['amount'] as num?)?.toDouble() ?? 0;
+    final currency = action['currency'] ?? 'VND';
+    final termMonths = (action['termMonths'] as num?)?.toInt() ?? 24;
+    final purpose = action['purpose'] ?? 'Personal';
+    String fmt(num v) => v.toInt().toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    final monthlyPayment = amount > 0 ? (amount * (1 + 0.079 * termMonths / 12) / termMonths) : 0;
+    return '✅ **Loan application submitted!**\n'
+        '• Amount: ${fmt(amount)} $currency\n'
+        '• Term: $termMonths months at 7.9% annual\n'
+        '• Purpose: $purpose\n'
+        '• Est. monthly payment: ~${fmt(monthlyPayment)} $currency\n'
+        '• Status: Under review (3-5 business days)\n'
+        '• Ref: LN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
+  }
+
+  /// Quick health score computation for AI context (simplified version)
+  int _computeQuickHealthScore({
+    required double savingsRate,
+    required double budgetAdherence,
+    required double expenseTrend,
+  }) {
+    // Savings (30 pts)
+    final savingsScore = savingsRate >= 0.2 ? 30.0
+        : savingsRate >= 0 ? 10.0 + (savingsRate / 0.2) * 20.0
+        : 0.0;
+    // Budget (25 pts)
+    final budgetScore = budgetAdherence * 25.0;
+    // Trend (20 pts)
+    final trendScore = expenseTrend <= -0.1 ? 20.0
+        : expenseTrend <= 0 ? 10.0 + (expenseTrend.abs() / 0.1) * 10.0
+        : (10.0 - (expenseTrend / 0.2) * 10.0).clamp(0.0, 10.0);
+    // Base activity (25 pts assumed for simplicity in AI context)
+    return (savingsScore + budgetScore + trendScore + 15).round().clamp(0, 100);
+  }
+
+  /// Mock: Transfer to Shinhan savings (hackathon demo)
+  String _mockTransferToSavings(Map<String, dynamic> action) {
+    final amount = (action['amount'] as num?)?.toDouble() ?? 0;
+    final currency = action['currency'] ?? 'VND';
+    final fromWallet = action['fromWallet'] ?? 'Current Account';
+    String fmt(num v) => v.toInt().toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return '✅ **Transfer to savings completed!**\n'
+        '• From: $fromWallet\n'
+        '• To: Shinhan Savings Account\n'
+        '• Amount: ${fmt(amount)} $currency\n'
+        '• Ref: TRF-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
   }
 
 }

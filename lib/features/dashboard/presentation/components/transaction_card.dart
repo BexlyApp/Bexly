@@ -58,43 +58,41 @@ class TransactionCard extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: AppTextStyles.body3.copyWith(color: titleColor),
-              ),
               Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.spacing8,
-                    vertical: AppSpacing.spacing4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statsBackgroundColor,
-                    borderRadius: BorderRadius.circular(AppRadius.radiusFull),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      HugeIcon(
-                        icon: percentDifference.isNegative
-                            ? HugeIcons.strokeRoundedArrowDown01
-                            : HugeIcons.strokeRoundedArrowUp01,
-                        size: 14,
-                        color: statsIconColor,
+                child: Text(
+                  title,
+                  style: AppTextStyles.body3.copyWith(color: titleColor),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const Gap(AppSpacing.spacing4),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.spacing8,
+                  vertical: AppSpacing.spacing4,
+                ),
+                decoration: BoxDecoration(
+                  color: statsBackgroundColor,
+                  borderRadius: BorderRadius.circular(AppRadius.radiusFull),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    HugeIcon(
+                      icon: percentDifference.isNegative
+                          ? HugeIcons.strokeRoundedArrowDown01
+                          : HugeIcons.strokeRoundedArrowUp01,
+                      size: 14,
+                      color: statsIconColor,
+                    ),
+                    const Gap(AppSpacing.spacing2),
+                    Text(
+                      _formatPercent(percentDifference),
+                      style: AppTextStyles.body5.copyWith(
+                        color: statsForegroundColor,
                       ),
-                      const Gap(AppSpacing.spacing2),
-                      Flexible(
-                        child: Text(
-                          _formatPercent(percentDifference),
-                          style: AppTextStyles.body5.copyWith(
-                            color: statsForegroundColor,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
