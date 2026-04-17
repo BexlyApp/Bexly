@@ -99,6 +99,17 @@ jobs:
           # Set up Xcode project signing
           xcode-project use-profiles || true
 
+      - name: Setup GoogleService-Info.plist
+        env:
+          IOS_GOOGLE_SERVICE_INFO_BASE64: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_BASE64 }}
+        run: |
+          if [ -z "$IOS_GOOGLE_SERVICE_INFO_BASE64" ]; then
+            echo "⚠️ IOS_GOOGLE_SERVICE_INFO_BASE64 secret is not set — Firebase Crashlytics dSYM upload will be skipped."
+          else
+            echo "$IOS_GOOGLE_SERVICE_INFO_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+            echo "✅ GoogleService-Info.plist written to ios/Runner/"
+          fi
+
       - name: Create .env file
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -148,6 +159,39 @@ jobs:
           name: ios-build-${{ steps.version.outputs.build_number }}
           path: build/ios/ipa/*.ipa
           retention-days: 30
+
+      - name: Upload dSYMs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-dsyms-${{ steps.version.outputs.build_number }}
+          path: build/ios/archive/Runner.xcarchive/dSYMs/
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Upload dSYMs to Firebase Crashlytics
+        run: |
+          DSYM_DIR="build/ios/archive/Runner.xcarchive/dSYMs"
+          GSP_PATH="ios/Runner/GoogleService-Info.plist"
+          UPLOAD_SCRIPT="ios/Pods/FirebaseCrashlytics/upload-symbols"
+
+          if [ ! -f "$GSP_PATH" ]; then
+            echo "⚠️ GoogleService-Info.plist missing — skipping Crashlytics dSYM upload."
+            echo "   Set IOS_GOOGLE_SERVICE_INFO_BASE64 secret to enable automatic symbolication."
+            exit 0
+          fi
+          if [ ! -f "$UPLOAD_SCRIPT" ]; then
+            echo "⚠️ FirebaseCrashlytics pod not found at $UPLOAD_SCRIPT — skipping."
+            exit 0
+          fi
+          if [ ! -d "$DSYM_DIR" ] || [ -z "$(ls -A "$DSYM_DIR" 2>/dev/null)" ]; then
+            echo "⚠️ No dSYMs found at $DSYM_DIR — skipping."
+            exit 0
+          fi
+
+          chmod +x "$UPLOAD_SCRIPT"
+          echo "📤 Uploading dSYMs from $DSYM_DIR to Firebase Crashlytics..."
+          "$UPLOAD_SCRIPT" -gsp "$GSP_PATH" -p ios "$DSYM_DIR"
+          echo "✅ dSYMs uploaded to Firebase Crashlytics."
 
       - name: Upload to TestFlight
         env:

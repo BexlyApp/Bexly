@@ -69,8 +69,7 @@ Every component of our AI stack is open-source and can be deployed on Shinhan's 
 
 **Current Self-Hosted Setup:**
 - vLLM serving Qwen 3.5 via OpenAI-compatible API (`/v1/chat/completions`)
-- Config: `max_model_len=16384`, `gpu-memory-utilization=0.65`
-- 5-second timeout with automatic fallback to Gemini (for development only - production would use multiple Qwen instances)
+- Single-GPU demo deployment with fallback to a secondary Qwen 3.5 cloud endpoint for resilience during hackathon demos - production would run multiple Qwen instances behind a load balancer, fully inside Shinhan's data center
 - Vision capabilities for receipt OCR via the same Qwen model
 
 **Action Protocol Design**
@@ -110,11 +109,11 @@ All inference runs on a self-hosted vLLM instance - no external API calls, no da
 
 ## Challenges we ran into
 
-1. **On-premise model optimization**: Running a 35B-parameter model on a single GPU required careful tuning - quantization (GPTQ-Int4), context length limits, and memory utilization balancing. We achieved <5s response times with `gpu-memory-utilization=0.65`
+1. **On-premise model optimization**: Running a 35B-parameter model on a single GPU required careful tuning - quantization (GPTQ-Int4), context length limits, and memory utilization balancing. We achieved sub-5-second response times suitable for interactive chat on a single consumer GPU
 
 2. **Action ambiguity**: *"I pay 200k for electricity every month"* - is this a one-time expense or a recurring charge? We built keyword detection that auto-upgrades `create_expense` to `create_recurring` when frequency words are present
 
-3. **Receipt OCR accuracy across Vietnamese receipts**: Vietnamese receipts have inconsistent formats, mixed Vietnamese/English text, and varying quality. We implemented a fallback OCR chain (Qwen Vision → Gemini) and structured prompts that handle receipts, invoices, bank statements, and banking app screenshots
+3. **Receipt OCR accuracy across Vietnamese receipts**: Vietnamese receipts have inconsistent formats, mixed Vietnamese/English text, and varying quality. We solved this with Qwen Vision running on-premise plus carefully structured prompts that handle receipts, invoices, bank statements, and banking app screenshots in one unified pipeline
 
 4. **Financial Health Score without banking API access**: Computing a meaningful health score without direct access to bank account data required creative use of transaction history, budget adherence, and goal progress as proxy signals
 

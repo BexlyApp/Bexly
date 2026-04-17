@@ -6,8 +6,8 @@
 <p align="center"><strong>AI-Powered Personal Finance Assistant</strong></p>
 
 <p align="center">
-  <a href="https://play.google.com/store/apps/details?id=com.joy.bexly"><img src="https://img.shields.io/badge/Google_Play-Download-00C853?logo=googleplay&logoColor=white" alt="Google Play"/></a>
-  <a href="#"><img src="https://img.shields.io/badge/App_Store-TestFlight-007AFF?logo=apple&logoColor=white" alt="App Store"/></a>
+  <a href="https://play.google.com/apps/testing/com.joy.bexly"><img src="https://img.shields.io/badge/Google_Play-Beta-00C853?logo=googleplay&logoColor=white" alt="Google Play"/></a>
+  <a href="https://testflight.apple.com/join/bJf9enac"><img src="https://img.shields.io/badge/App_Store-TestFlight-007AFF?logo=apple&logoColor=white" alt="App Store"/></a>
   <a href="https://app.bexly.app"><img src="https://img.shields.io/badge/Web-app.bexly.app-4285F4?logo=googlechrome&logoColor=white" alt="Web"/></a>
   <img src="https://img.shields.io/badge/macOS-Available-000000?logo=apple&logoColor=white" alt="macOS"/>
   <img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter"/>
@@ -50,11 +50,12 @@ Most finance apps just **record** your money. Bexly **understands** it.
 Bexly's built-in AI assistant acts as your personal financial advisor:
 
 - **Natural conversation** — Ask "How much did I spend on food this month?" or "Create a budget for shopping"
-- **Proactive coaching** — Warns you when a category is trending over budget
-- **Spending insights** — Injects real-time financial data into every conversation
-- **Action execution** — Creates transactions, budgets, and goals through chat
+- **Proactive coaching persona** — Warns you when a category trends over budget, encourages better savings, celebrates milestones
+- **Spending insights injection** — Every AI turn automatically receives up-to-date context: monthly totals, month-over-month trend, top categories, budget status, recurring costs, health score and end-of-month forecast
+- **Action execution** — Creates transactions, budgets, and goals through chat via a structured `ACTION_JSON` protocol
 - **Voice input** — Speak your expenses, AI handles the rest
-- **Receipt scanning** — Point your camera at any receipt and let AI extract the details
+- **Receipt scanning** — Point your camera at any receipt and let Qwen Vision extract amount, merchant, category and date
+- **Multilingual** — Automatically detects the user's language and replies in Vietnamese, English, Chinese, Japanese, Korean or Thai
 
 ### Financial Intelligence
 
@@ -72,6 +73,23 @@ Bexly's built-in AI assistant acts as your personal financial advisor:
 - **Reports & analytics** — Category breakdowns, trends, cash flow charts
 - **14 languages** — Vietnamese, English, Japanese, Korean, Chinese, and more
 
+### Banking Actions & Product Recommendations
+
+When the AI detects relevant signals in your spending, it can propose concrete banking actions directly from the chat:
+
+- **Open savings account** — Auto-suggests moving idle balance into a higher-yield savings product
+- **Transfer to savings** — Proposes specific sweep amounts based on cash flow
+- **Apply for a card** — Cashback, FX (foreign-currency), or premium card recommendations triggered by your spending profile
+- **Apply for a loan** — Debt consolidation suggestions when high-interest balances are detected
+
+All recommendations come with clear reasoning based on your real transaction history — no banner ads, no generic upsell.
+
+### Channels
+
+- **Mobile & web app** — Full Flutter experience on Android, iOS, Web, macOS, Windows, Linux
+- **Telegram bot** — Chat with the same Financial Coach on Telegram, log expenses in natural language, get spending summaries on the go
+- **Demo accounts** — Try the Coach with pre-seeded demo profiles (office worker, freelancer, etc.) without creating an account
+
 ### Cloud & Sync
 
 - **Offline-first** — Works without internet. Your data lives on your device
@@ -85,8 +103,8 @@ Bexly's built-in AI assistant acts as your personal financial advisor:
 
 | Platform | Status | Distribution |
 |----------|--------|-------------|
-| Android | **Stable** | [Google Play](https://play.google.com/store/apps/details?id=com.joy.bexly) |
-| iOS | **Beta** | [TestFlight](https://testflight.apple.com/join/bexly) |
+| Android | **Beta** | [Google Play Beta](https://play.google.com/apps/testing/com.joy.bexly) |
+| iOS | **Beta** | [TestFlight](https://testflight.apple.com/join/bJf9enac) |
 | Web | **Stable** | [app.bexly.app](https://app.bexly.app) |
 | macOS | **Stable** | CI/CD build |
 | Windows | In development | Local build |
@@ -102,7 +120,7 @@ Bexly's built-in AI assistant acts as your personal financial advisor:
 | **State** | Riverpod + Hooks |
 | **Local DB** | Drift (SQLite) — 16 tables, offline-first |
 | **Cloud** | Supabase (Auth, PostgreSQL, Edge Functions, Realtime) |
-| **AI** | DOS AI (Qwen 3.5 via vLLM) + Gemini fallback |
+| **AI** | Self-hosted Qwen 3.5 via vLLM (OpenAI-compatible) with cloud Qwen fallback |
 | **Auth** | Google, Apple, Facebook sign-in |
 | **Analytics** | Firebase Analytics + Crashlytics |
 | **Payments** | Stripe + Google Play Billing |
@@ -187,30 +205,33 @@ Bexly uses a multi-provider AI architecture:
 User message
     │
     ▼
-┌─────────────────┐     ┌──────────────────┐
-│   DOS AI (Qwen) │────▶│ Gemini (fallback) │
-│   api.dos.ai    │     │ via Edge Function │
-└─────────────────┘     └──────────────────┘
+┌──────────────────────┐     ┌────────────────────┐
+│ Self-hosted Qwen 3.5 │────▶│ Qwen 3.5 Cloud     │
+│ vLLM / OpenAI API    │     │ (automatic fallback)│
+└──────────────────────┘     └────────────────────┘
     │
     ▼
 ┌─────────────────────────────────┐
 │ Financial Context Injection     │
 │ • Health Score    • Forecasts   │
-│ • Budget status   • Anomalies  │
-│ • Spending trends • Goals      │
+│ • Budget status   • Anomalies   │
+│ • Spending trends • Goals       │
+│ • Recurring costs • Wallet data │
 └─────────────────────────────────┘
     │
     ▼
 ┌─────────────────────────────────┐
 │ Action Execution                │
 │ • Create transactions           │
-│ • Set budgets                   │
-│ • Track goals                   │
+│ • Set budgets & goals           │
+│ • Open savings accounts         │
 │ • Product recommendations       │
 └─────────────────────────────────┘
 ```
 
-The AI doesn't just respond — it acts. Through the ACTION_JSON protocol, the AI can directly create transactions, set budgets, and manage goals within the conversation.
+The AI doesn't just respond — it acts. Through the ACTION_JSON protocol, the AI can directly create transactions, set budgets, open savings accounts, and suggest relevant financial products within the conversation.
+
+Because Qwen 3.5 is open-source and Bexly's inference layer uses the OpenAI-compatible API standard, the entire AI stack can be deployed fully on-premise — suitable for privacy-sensitive environments where customer financial data cannot leave the organization's own infrastructure.
 
 ---
 
@@ -233,7 +254,11 @@ The AI doesn't just respond — it acts. Through the ACTION_JSON protocol, the A
 - [x] Family groups & shared wallets
 - [x] Gamification (levels & achievements)
 - [x] Email transaction sync
-- [x] Telegram bot integration
+- [x] Telegram bot with Financial Coach persona
+- [x] Banking actions from chat (open savings, transfer, card & loan suggestions)
+- [x] Contextual product recommendations based on spending profile
+- [x] Self-hosted AI deployment option (Qwen 3.5 via vLLM)
+- [x] Demo accounts with pre-seeded spending profiles
 - [x] Dark/light theme with custom color schemes
 - [x] 14 language localization
 - [x] Google, Apple, Facebook sign-in
@@ -241,10 +266,9 @@ The AI doesn't just respond — it acts. Through the ACTION_JSON protocol, the A
 
 ### In Progress
 
-- [ ] Shinhan Bank integration — product recommendations, cashback optimization
 - [ ] NPS survey & user satisfaction tracking
 - [ ] Churn prevention with re-engagement notifications
-- [ ] Enhanced AI persona with deeper financial coaching
+- [ ] Richer coaching dialogues with long-term goal planning
 
 ### Planned
 
@@ -277,6 +301,12 @@ flutter gen-l10n
 
 - [GitHub Discussions](https://github.com/BexlyApp/Bexly/discussions) — Feature requests & technical discussion
 - [Discord](https://discord.gg/xt5wDe4w) — Chat with the community
+
+---
+
+## Credits
+
+Bexly is a fork of [**Pockaw**](https://github.com/layground/pockaw), an MIT-licensed Flutter personal finance tracker. Pockaw gave us a production-quality starting point for the core wallet/transaction/budget UI and offline-first Drift database layer, which let us focus our own work on the AI coach, action protocol, self-hosted inference pipeline, contextual product recommender and financial health intelligence. Thanks to the Pockaw team and the broader open-source community.
 
 ---
 
