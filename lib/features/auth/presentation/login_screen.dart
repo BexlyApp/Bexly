@@ -43,10 +43,19 @@ class LoginScreen extends HookConsumerWidget {
     final prefs = await SharedPreferences.getInstance();
     final lastUserId = prefs.getString('lastSupabaseUserId');
     final db = ref.read(databaseProvider);
+    final isDemoUser = DemoPersonaInfo.fromEmail(user.email) != null;
 
-    // Only clear tables if a DIFFERENT user is logging in
-    if (lastUserId != null && lastUserId != user.id) {
-      Log.i('⚠️ Different user detected (was: $lastUserId, now: ${user.id}), clearing stale data', label: 'auth');
+    // Clear local data if:
+    // (1) a DIFFERENT Supabase user is logging in, OR
+    // (2) this is a demo account login (must always start fresh to avoid mixing
+    //     guest/previous-user data with seeded demo data), OR
+    // (3) lastUserId is null but local DB has data (guest mode leftovers)
+    final shouldClear = (lastUserId != null && lastUserId != user.id) ||
+        isDemoUser ||
+        (lastUserId == null && (await db.walletDao.getAllWallets()).isNotEmpty);
+
+    if (shouldClear) {
+      Log.i('⚠️ Clearing stale data (lastUserId: $lastUserId, newUserId: ${user.id}, demo: $isDemoUser)', label: 'auth');
       await db.clearAllTables();
     }
 

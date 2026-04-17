@@ -1,4 +1,3 @@
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:bexly/core/constants/app_colors.dart';
@@ -130,7 +129,7 @@ class RecurringCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Row 1: Name only (can be long)
-                      AutoSizeText(
+                      Text(
                         recurring.name,
                         style: AppTextStyles.body3.bold,
                         maxLines: 1,
@@ -142,14 +141,14 @@ class RecurringCard extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: AutoSizeText(
+                            child: Text(
                               recurring.category.title,
                               style: AppTextStyles.body4,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          AutoSizeText(
+                          Text(
                             '${recurring.category.transactionType == 'income' ? '+' : '-'}${formatCurrency(recurring.amount.toPriceFormat(), _getCurrencySymbol(recurring.currency), recurring.currency)}',
                             style: AppTextStyles.numericRegular.copyWith(
                               color: recurring.category.transactionType == 'income'
@@ -159,6 +158,7 @@ class RecurringCard extends StatelessWidget {
                               fontSize: 14,
                             ),
                             maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),

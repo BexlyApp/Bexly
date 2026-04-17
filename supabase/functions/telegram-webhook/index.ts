@@ -120,20 +120,16 @@ async function showDemoSelector(chatId: number, prefix?: string) {
     lines.push(`*${d.num}. ${d.name}* - ${d.desc}`);
   }
   lines.push("");
-  lines.push("_Each account has different spending patterns & Shinhan product triggers._");
+  lines.push("_Tap a button below to select:_");
 
   await sendMessage(chatId, lines.join("\n"), {
     reply_markup: {
-      inline_keyboard: [
-        DEMO_ACCOUNTS.slice(0, 3).map((d) => ({
-          text: `${d.num}. ${d.name}`,
-          callback_data: `demo_${d.num}`,
-        })),
-        DEMO_ACCOUNTS.slice(3).map((d) => ({
-          text: `${d.num}. ${d.name}`,
-          callback_data: `demo_${d.num}`,
-        })),
+      keyboard: [
+        DEMO_ACCOUNTS.slice(0, 3).map((d) => ({ text: `${d.num}. ${d.name}` })),
+        DEMO_ACCOUNTS.slice(3).map((d) => ({ text: `${d.num}. ${d.name}` })),
       ],
+      one_time_keyboard: true,
+      resize_keyboard: true,
     },
   });
 }
@@ -709,6 +705,31 @@ serve(async (req) => {
         },
       });
       return new Response("OK");
+    }
+
+    // Demo account selection via reply keyboard (e.g. "5. Duc")
+    const demoMatch = text.match(/^(\d)\.\s*(\w+)$/);
+    if (demoMatch) {
+      const demoNum = parseInt(demoMatch[1]);
+      const demo = DEMO_ACCOUNTS.find((d) => d.num === demoNum);
+      if (demo) {
+        const ok = await linkToDemoAccount(telegramUserId, demoNum);
+        if (ok) {
+          await sendMessage(chatId,
+            `✅ *Switched to ${demo.name}'s account!*\n\n` +
+            `${demo.desc}\n\n` +
+            `Try these:\n` +
+            `• /insights - View spending overview\n` +
+            `• \`Tình hình tài chính?\` - Get coaching\n` +
+            `• \`ăn trưa 50k\` - Record expense\n` +
+            `• /demo - Switch account`,
+            { reply_markup: { remove_keyboard: true } },
+          );
+        } else {
+          await sendMessage(chatId, "❌ Failed to switch. Try again.");
+        }
+        return new Response("OK");
+      }
     }
 
     // Any other message → try to parse as transaction
