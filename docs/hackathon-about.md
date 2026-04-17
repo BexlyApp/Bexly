@@ -145,6 +145,51 @@ All inference runs on a self-hosted vLLM instance - no external API calls, no da
 | 4 | Enhance NPS/CSAT via personalized guidance | Financial Coach persona, personalized conversations, in-app NPS survey (1-5 stars) | Built |
 | 5 | Grow CASA balance through savings recommendations | Auto-Suggest Savings with interest calculations, `transfer_to_savings` action | Built |
 
+## How to Test
+
+### Telegram Bot (@BexlyBot)
+
+1. Open Telegram and search for **@BexlyBot**
+2. Send `/start` - the bot will show a welcome message and demo account selector
+3. **Pick a demo account** - each has different financial profiles:
+   - **Minh** - Office Worker, 20M VND/month salary, high dining spend
+   - **Lan** - Freelancer, irregular income, 8 subscriptions
+   - **Huy** - Student, tight budget, minimal savings
+   - **Trang** - Business Owner, multi-currency (VND/USD/EUR/JPY), 4 wallets
+   - **Duc** - Expat, USD+VND, international spending patterns
+4. Try these commands:
+   - `/insights` - View spending overview with Financial Health Score
+   - `/demo` - Switch to a different demo account
+   - `/help` - See all available commands
+5. Chat naturally with the AI coach:
+   - `Tinh hinh tai chinh thang nay?` - Get personalized coaching advice
+   - `How can I save more?` - Financial coaching in English
+   - `ăn trưa 50k` - Record a lunch expense
+   - `lương 15 triệu` - Record salary income
+6. The AI will reference real spending data and suggest relevant **Shinhan banking products** based on each persona's patterns
+
+### Mobile App (Flutter)
+
+1. Download and install Bexly from the provided APK/TestFlight link
+2. On the login screen, tap **"Demo Accounts"** to see 5 pre-configured accounts
+3. Select any demo account - it auto-fills credentials and logs in
+4. Explore features:
+   - **Dashboard**: Financial Health Score, spending forecast, budget status
+   - **AI Chat**: Tap the chat icon, try natural language commands
+   - **Transactions**: View seeded transaction history
+   - **Budgets & Goals**: See budget tracking with progress bars
+   - **Receipt Scanner**: Take a photo of any receipt for AI OCR
+
+### What Each Demo Account Triggers
+
+| Account | Shinhan Product Triggers |
+|---------|------------------------|
+| Minh (test1) | Cashback Credit Card (high dining), Auto-Save (many small transactions) |
+| Lan (test2) | Auto-Save (8 subscriptions), Personal Loan (irregular income) |
+| Huy (test3) | Premium Savings (idle balance), Life Insurance (no coverage) |
+| Trang (test4) | FX Multi-Currency Card (international transactions), Personal Loan |
+| Duc (test5) | FX Multi-Currency Card (USD spending), Premium Savings |
+
 ## What's next for Bexly
 
 - **Shinhan SOL App integration**: Embed Bexly AI module inside SOL via Flutter platform channel → real-time transaction feed from Core Banking API, zero manual entry

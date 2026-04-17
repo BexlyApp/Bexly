@@ -7,7 +7,7 @@ import { LOCALIZATIONS } from "../_shared/types.ts";
 import { buildSpendingInsights, formatInsightsForTelegram, formatInsightsForAI } from "../_shared/spending-insights.ts";
 import { buildCoachPrompt } from "../_shared/financial-coach-prompt.ts";
 
-const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+const TELEGRAM_BOT_TOKEN = Deno.env.get("BEXLY_TELEGRAM_BOT_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -16,6 +16,15 @@ function getSupabaseClient() {
     db: { schema: "bexly" },
   });
 }
+
+// ── Demo accounts for hackathon ──────────────────────────────────────────────
+const DEMO_ACCOUNTS = [
+  { num: 1, userId: "035bf828-fd7d-4210-9d57-5e8f9c2b9cda", name: "Minh", desc: "Office Worker - 20M VND/month, high dining spend" },
+  { num: 2, userId: "c50071e9-f4eb-464b-8b45-0d96c1c935ab", name: "Lan", desc: "Freelancer - irregular income, 8 subscriptions" },
+  { num: 3, userId: "43d7a628-2bde-445f-a8ff-8fdff1e5571b", name: "Huy", desc: "Student - tight budget, minimal savings" },
+  { num: 4, userId: "001531ce-bb0c-4070-b042-a7f62c5efa5f", name: "Trang", desc: "Business Owner - multi-currency, 4 wallets" },
+  { num: 5, userId: "a0ea0178-56c1-45b7-976f-9807a2078a3a", name: "Duc", desc: "Expat - USD+VND, international spending" },
+];
 
 // ── Telegram API helpers ──────────────────────────────────────────────────────
 
@@ -76,6 +85,57 @@ async function getUserId(telegramId: string): Promise<string | null> {
     .eq("platform_user_id", telegramId)
     .single();
   return data?.user_id ?? null;
+}
+
+// Link telegram user to a demo account (upsert)
+async function linkToDemoAccount(telegramId: string, demoNum: number): Promise<boolean> {
+  const demo = DEMO_ACCOUNTS.find((d) => d.num === demoNum);
+  if (!demo) return false;
+
+  // Delete existing link for this telegram user
+  await getSupabaseClient()
+    .from("user_integrations")
+    .delete()
+    .eq("platform", "telegram")
+    .eq("platform_user_id", telegramId);
+
+  // Insert new link
+  const { error } = await getSupabaseClient()
+    .from("user_integrations")
+    .insert({
+      user_id: demo.userId,
+      platform: "telegram",
+      platform_user_id: telegramId,
+    });
+
+  return !error;
+}
+
+async function showDemoSelector(chatId: number, prefix?: string) {
+  const lines = [
+    prefix || "👤 *Choose a demo account to explore:*",
+    "",
+  ];
+  for (const d of DEMO_ACCOUNTS) {
+    lines.push(`*${d.num}. ${d.name}* - ${d.desc}`);
+  }
+  lines.push("");
+  lines.push("_Each account has different spending patterns & Shinhan product triggers._");
+
+  await sendMessage(chatId, lines.join("\n"), {
+    reply_markup: {
+      inline_keyboard: [
+        DEMO_ACCOUNTS.slice(0, 3).map((d) => ({
+          text: `${d.num}. ${d.name}`,
+          callback_data: `demo_${d.num}`,
+        })),
+        DEMO_ACCOUNTS.slice(3).map((d) => ({
+          text: `${d.num}. ${d.name}`,
+          callback_data: `demo_${d.num}`,
+        })),
+      ],
+    },
+  });
 }
 
 async function unlinkUser(telegramId: string): Promise<boolean> {
@@ -257,31 +317,39 @@ async function handleCoachMessage(
   const spendingContext = formatInsightsForAI(insights);
   const systemPrompt = buildCoachPrompt(spendingContext);
 
-  // Call Gemini with full coach prompt
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  // Call Qwen (DOS AI) with full coach prompt - OpenAI-compatible API
+  const apiKey = Deno.env.get("BEXLY_DOS_AI_API_KEY");
+  const baseUrl = Deno.env.get("DOS_AI_URL") || "https://api.dos.ai/v1";
+  const model = Deno.env.get("DOS_AI_MODEL") || "dos-ai";
   if (!apiKey) return null;
 
-  const model = "gemini-2.5-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
   try {
-    const response = await fetch(url, {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "User-Agent": "Bexly/1.0 (Deno; Supabase Edge Function)",
+      },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: text },
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+        enable_thinking: false,
       }),
     });
 
     if (!response.ok) {
-      console.error("Coach AI error:", response.status);
+      console.error("Coach AI error:", response.status, await response.text());
       return null;
     }
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const reply = data.choices?.[0]?.message?.content?.trim();
     if (!reply) return null;
 
     // Check if AI returned a transaction JSON (it detected a transaction)
@@ -516,6 +584,27 @@ serve(async (req) => {
       } else if (data.startsWith("unlink_cancel_")) {
         await answerCallbackQuery(cbId);
         await editMessageText(chatId, messageId, "✅ Cancelled. Account still linked.");
+
+      } else if (data.startsWith("demo_")) {
+        const demoNum = parseInt(data.slice(5));
+        const demo = DEMO_ACCOUNTS.find((d) => d.num === demoNum);
+        if (!demo) { await answerCallbackQuery(cbId, "Invalid demo"); return new Response("OK"); }
+
+        const ok = await linkToDemoAccount(telegramUserId, demoNum);
+        await answerCallbackQuery(cbId);
+        if (ok) {
+          await editMessageText(chatId, messageId,
+            `✅ *Switched to ${demo.name}'s account!*\n\n` +
+            `${demo.desc}\n\n` +
+            `Try these:\n` +
+            `• /insights - View spending overview\n` +
+            `• \`Tình hình tài chính?\` - Get coaching\n` +
+            `• \`ăn trưa 50k\` - Record expense\n` +
+            `• /demo - Switch account`
+          );
+        } else {
+          await editMessageText(chatId, messageId, "❌ Failed to switch. Try again.");
+        }
       }
 
       return new Response("OK", { status: 200 });
@@ -535,29 +624,36 @@ serve(async (req) => {
 
     if (text === "/start") {
       await sendMessage(chatId,
-        "👋 *Welcome to Bexly AI Financial Coach!*\n\n" +
-        "I'm your personal financial assistant powered by Shinhan Bank.\n\n" +
+        "👋 *Welcome to Bexly AI Financial Coach!*\n" +
+        "_Powered by Qwen AI & Shinhan Bank_\n\n" +
         "I can:\n" +
         "📝 Track expenses & income\n" +
-        "📊 Analyze your spending\n" +
-        "💡 Give financial coaching advice\n" +
+        "📊 Analyze your spending patterns\n" +
+        "💡 Give personalized financial coaching\n" +
         "🏦 Recommend Shinhan banking products\n\n" +
-        "📱 First, link your account with /link\n\n" +
-        "Then chat naturally:\n" +
-        "• `ăn trưa 50k` - record expense\n" +
-        "• `Tình hình tài chính?` - get coaching\n" +
-        "• `/insights` - spending overview\n\n" +
-        "Use /help for all commands."
+        "👇 *Pick a demo account to get started:*"
       );
+      await showDemoSelector(chatId);
+      return new Response("OK");
+    }
+
+    if (text === "/demo") {
+      const existing = await getUserId(telegramUserId);
+      const currentDemo = existing ? DEMO_ACCOUNTS.find((d) => d.userId === existing) : null;
+      const prefix = currentDemo
+        ? `🔄 *Switch demo account*\n_Currently: ${currentDemo.name} (#${currentDemo.num})_`
+        : "👤 *Choose a demo account to explore:*";
+      await showDemoSelector(chatId, prefix);
       return new Response("OK");
     }
 
     if (text === "/help") {
       await sendMessage(chatId,
         "📖 *Bexly AI Coach Commands*\n\n" +
-        "/link - Link your Bexly account\n" +
-        "/unlink - Unlink your account\n" +
+        "/demo - Choose/switch demo account\n" +
         "/insights - Spending overview & health score\n" +
+        "/link - Link your real Bexly account\n" +
+        "/unlink - Unlink your account\n" +
         "/help - Show this help\n\n" +
         "*Record transactions:*\n" +
         "`ăn sáng 25k` - breakfast expense\n" +
@@ -574,8 +670,7 @@ serve(async (req) => {
     if (text === "/insights") {
       const userId = await getUserId(telegramUserId);
       if (!userId) {
-        const loc = LOCALIZATIONS[lang] ?? LOCALIZATIONS.en;
-        await sendMessage(chatId, `❌ ${loc.linkFirst}\n\nUse /link to connect Bexly.`);
+        await showDemoSelector(chatId, "📊 *Pick an account first to view insights:*");
         return new Response("OK");
       }
       await handleInsightsCommand(chatId, userId, lang);
@@ -619,8 +714,7 @@ serve(async (req) => {
     // Any other message → try to parse as transaction
     const userId = await getUserId(telegramUserId);
     if (!userId) {
-      const loc = LOCALIZATIONS[lang] ?? LOCALIZATIONS.en;
-      await sendMessage(chatId, `❌ ${loc.linkFirst}\n\nUse /link to connect Bexly.`);
+      await showDemoSelector(chatId, "👋 *Welcome!* Pick a demo account to get started:");
       return new Response("OK");
     }
 

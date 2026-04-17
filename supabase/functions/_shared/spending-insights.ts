@@ -157,13 +157,12 @@ export async function buildSpendingInsights(
     .filter((t: any) => t.transaction_type === "expense")
     .reduce((s: number, t: any) => s + t.amount, 0);
 
-  // Budgets
+  // Budgets (no is_deleted column on budgets table)
   const { data: budgetRows } = await db
     .from("budgets")
     .select("category_id, amount")
     .eq("user_id", userId)
     .eq("wallet_id", wId)
-    .eq("is_deleted", false)
     .gte("end_date", thisMonthStart);
 
   const budgets: BudgetStatus[] = (budgetRows ?? []).map((b: any) => {
@@ -178,12 +177,12 @@ export async function buildSpendingInsights(
     };
   });
 
-  // Recurring
+  // Recurring (table is recurring_transactions, uses is_active not is_deleted)
   const { data: recurrings } = await db
-    .from("recurrings")
+    .from("recurring_transactions")
     .select("amount")
     .eq("user_id", userId)
-    .eq("is_deleted", false)
+    .eq("is_active", true)
     .eq("status", "active");
 
   const recurringTotal = (recurrings ?? []).reduce((s: number, r: any) => s + r.amount, 0);
