@@ -59,6 +59,7 @@ Every component of our AI stack is open-source and can be deployed on Shinhan's 
 | **Supabase** | Apache 2.0 | Self-hosted (PostgreSQL + Auth + Edge Functions) |
 | **SQLite/Drift** | Public Domain | Runs locally on user's device |
 | **Flutter** | BSD 3-Clause | Fully owned source code |
+| **Pockaw** (upstream) | MIT | Open-source Flutter personal-finance starter we forked and extended |
 
 **No dependency on proprietary cloud AI APIs.** The entire inference pipeline runs on a single GPU server. For production banking deployment, Shinhan can:
 1. Deploy vLLM + Qwen on their own GPU cluster
@@ -89,6 +90,10 @@ The app parses these actions, executes them against the local database, syncs to
 - **AI Proxy**: Supabase Edge Functions (Deno) - routes AI requests with JWT auth, keeps keys server-side
 - **Background Processing**: WorkManager for email sync, recurring charge automation, daily digest generation
 - **OCR Pipeline**: Strategy pattern with 5 provider implementations (`DosAiOcrProvider`, `GeminiOcrProvider`, `OpenAiOcrProvider`, `ClaudeOcrProvider`, `FallbackOcrProvider`)
+
+**Built on Open-Source Foundation**
+
+Bexly is a fork of [**Pockaw**](https://github.com/layground/pockaw) - an MIT-licensed Flutter personal finance tracker. Pockaw gave us a production-quality starting point for the core wallet/transaction/budget UI and offline-first Drift database layer, so we could focus our hackathon effort on what matters for SB1: the AI coach, action protocol, self-hosted inference pipeline, Shinhan product recommender, and financial health intelligence. This is the open-source philosophy in action - stand on the shoulders of the community, contribute back when possible, and avoid rebuilding what already works well.
 
 ## How Qwen Powers Bexly
 
