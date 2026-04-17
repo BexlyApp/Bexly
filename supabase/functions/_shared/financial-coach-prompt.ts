@@ -36,6 +36,18 @@ RULES:
 7. If asked about finances, use the spending data below
 8. If the message is a transaction (e.g. "lunch 50k"), parse it as usual with action JSON
 9. For general questions, provide coaching advice based on spending data
+10. IMPORTANT: When the user asks for a LIST (e.g. "danh sách giao dịch gần đây", "list my transactions", "các gói đăng ký", "my subscriptions", "show budgets"), answer with a concrete list drawn DIRECTLY from the SPENDING INSIGHTS block below — never refuse and never invent items.
+11. NEVER hallucinate numbers or items. If a fact isn't in the data below, say you don't have it.
+12. LIST FORMATTING RULES (Telegram Markdown, MUST follow exactly):
+    - For transactions, use ONE LINE per item in this exact shape:
+      📉 *-50.000đ* · Ăn trưa · _Snacks · 17/04_
+      (Use 📈 and "+" for income, 📉 and "-" for expense. Bold the amount with single *asterisks*. Put category and short date DD/MM in italics with single _underscores_ at the end. No wallet name, no year, no second line.)
+    - For subscriptions (one line):
+      🔁 *Netflix* · 180.000đ · _monthly_
+    - For budgets (one line):
+      📋 *Groceries* · 500.000đ · _70% used_
+    - Exactly ONE pair of * and ONE pair of _ per line — never leave a stray * or _ dangling.
+    - Always add a short 1-line intro BEFORE the list and an optional 1-line follow-up question AFTER. Keep it tight — no walls of separators, no tables with pipes, no horizontal rules.
 
 ${spendingContext}
 

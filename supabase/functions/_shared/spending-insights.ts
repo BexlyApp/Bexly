@@ -25,12 +25,33 @@ interface BudgetStatus {
   pct: number;
 }
 
+interface RecentTransaction {
+  amount: number;
+  type: "income" | "expense" | "transfer";
+  title: string;
+  category: string;
+  wallet: string;
+  currency: string;
+  date: string;
+  notes?: string | null;
+}
+
+interface RecurringItem {
+  title: string;
+  amount: number;
+  frequency: string;
+  currency: string;
+  nextDueDate?: string | null;
+}
+
 interface SpendingInsights {
   thisMonth: MonthlyData;
   lastMonth: MonthlyData;
   budgets: BudgetStatus[];
   recurringTotal: number;
   recurringCount: number;
+  recurringItems: RecurringItem[];
+  recentTransactions: RecentTransaction[];
   healthScore: number;
   currency: string;
   walletName: string;
@@ -84,29 +105,35 @@ export async function buildSpendingInsights(
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
   const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
 
-  // Get wallet info
-  let walletFilter = db
+  // Resolve wallet scope. If walletId is omitted we aggregate across ALL
+  // active wallets of the user — matches how the Flutter dashboard shows totals.
+  const { data: allWallets } = await db
     .from("wallets")
     .select("cloud_id, name, currency, balance")
     .eq("user_id", userId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
 
-  if (walletId) {
-    walletFilter = walletFilter.eq("cloud_id", walletId);
-  }
+  if (!allWallets?.length) return null;
 
-  const { data: wallets } = await walletFilter.limit(1).single();
-  if (!wallets) return null;
+  const scopedWallets = walletId
+    ? allWallets.filter((w: any) => w.cloud_id === walletId)
+    : allWallets;
+  if (!scopedWallets.length) return null;
 
-  const currency = wallets.currency || "VND";
-  const wId = wallets.cloud_id;
+  const walletIds = scopedWallets.map((w: any) => w.cloud_id);
+  // Pick a representative currency — first wallet's currency, or VND.
+  const currency = scopedWallets[0].currency || "VND";
+  const walletLabel = walletId
+    ? scopedWallets[0].name
+    : (scopedWallets.length === 1 ? scopedWallets[0].name : "All wallets");
 
-  // This month transactions
+  // This month transactions across scoped wallets
   const { data: thisMonthTx } = await db
     .from("transactions")
     .select("amount, transaction_type, category_id")
     .eq("user_id", userId)
-    .eq("wallet_id", wId)
+    .in("wallet_id", walletIds)
     .eq("is_deleted", false)
     .gte("transaction_date", thisMonthStart);
 
@@ -115,7 +142,7 @@ export async function buildSpendingInsights(
     .from("transactions")
     .select("amount, transaction_type, category_id")
     .eq("user_id", userId)
-    .eq("wallet_id", wId)
+    .in("wallet_id", walletIds)
     .eq("is_deleted", false)
     .gte("transaction_date", lastMonthStart)
     .lte("transaction_date", lastMonthEnd);
@@ -162,7 +189,7 @@ export async function buildSpendingInsights(
     .from("budgets")
     .select("category_id, amount")
     .eq("user_id", userId)
-    .eq("wallet_id", wId)
+    .in("wallet_id", walletIds)
     .gte("end_date", thisMonthStart);
 
   const budgets: BudgetStatus[] = (budgetRows ?? []).map((b: any) => {
@@ -180,13 +207,44 @@ export async function buildSpendingInsights(
   // Recurring (table is recurring_transactions, uses is_active not is_deleted)
   const { data: recurrings } = await db
     .from("recurring_transactions")
-    .select("amount")
+    .select("title, amount, frequency, currency, next_due_date")
     .eq("user_id", userId)
     .eq("is_active", true)
-    .eq("status", "active");
+    .eq("status", "active")
+    .order("amount", { ascending: false });
 
-  const recurringTotal = (recurrings ?? []).reduce((s: number, r: any) => s + r.amount, 0);
+  const recurringTotal = (recurrings ?? []).reduce((s: number, r: any) => s + Number(r.amount), 0);
   const recurringCount = (recurrings ?? []).length;
+  const recurringItems: RecurringItem[] = (recurrings ?? []).map((r: any) => ({
+    title: r.title,
+    amount: Number(r.amount),
+    frequency: r.frequency,
+    currency: r.currency || currency,
+    nextDueDate: r.next_due_date,
+  }));
+
+  // Recent 10 transactions across scoped wallets — needed so the LLM can answer
+  // "list recent transactions / what did I spend on yesterday" without guessing.
+  const { data: recentTxRows } = await db
+    .from("transactions")
+    .select("amount, transaction_type, title, category_id, wallet_id, currency, transaction_date, notes")
+    .eq("user_id", userId)
+    .in("wallet_id", walletIds)
+    .eq("is_deleted", false)
+    .order("transaction_date", { ascending: false })
+    .limit(10);
+
+  const walletNameMap = new Map(scopedWallets.map((w: any) => [w.cloud_id, w.name]));
+  const recentTransactions: RecentTransaction[] = (recentTxRows ?? []).map((t: any) => ({
+    amount: Number(t.amount),
+    type: t.transaction_type,
+    title: t.title || catMap.get(t.category_id) || "—",
+    category: catMap.get(t.category_id) || "—",
+    wallet: walletNameMap.get(t.wallet_id) || "—",
+    currency: t.currency || currency,
+    date: t.transaction_date,
+    notes: t.notes,
+  }));
 
   const insights: SpendingInsights = {
     thisMonth: { income: thisIncome, expense: thisExpense, topCategories: topCats },
@@ -194,9 +252,11 @@ export async function buildSpendingInsights(
     budgets,
     recurringTotal,
     recurringCount,
+    recurringItems,
+    recentTransactions,
     healthScore: 0,
     currency,
-    walletName: wallets.name,
+    walletName: walletLabel,
   };
   insights.healthScore = calcHealthScore(insights);
 
@@ -227,6 +287,11 @@ export function formatInsightsForAI(i: SpendingInsights): string {
 
   if (i.recurringCount > 0) {
     lines.push(`Recurring: ${i.recurringCount} subscriptions totaling ${fmt(i.recurringTotal, c)}/month`);
+    // Full list so the LLM can answer "what subscriptions do I have?" etc.
+    lines.push("Subscriptions:");
+    for (const r of i.recurringItems) {
+      lines.push(`  - ${r.title}: ${fmt(r.amount, r.currency)}/${r.frequency}${r.nextDueDate ? ` (next ${r.nextDueDate.slice(0, 10)})` : ""}`);
+    }
   }
 
   lines.push(`Financial Health Score: ${i.healthScore}/100`);
@@ -234,6 +299,25 @@ export function formatInsightsForAI(i: SpendingInsights): string {
   if (i.thisMonth.income > 0) {
     const savingsRate = Math.round(((i.thisMonth.income - i.thisMonth.expense) / i.thisMonth.income) * 100);
     lines.push(`Savings rate: ${savingsRate}%`);
+  }
+
+  // Raw recent transactions so the LLM can answer "list my recent transactions",
+  // "what did I spend on yesterday", "which wallet charged me most today", etc.
+  if (i.recentTransactions.length > 0) {
+    lines.push("");
+    lines.push(`RECENT TRANSACTIONS (last ${i.recentTransactions.length}):`);
+    for (const t of i.recentTransactions) {
+      const sign = t.type === "income" ? "+" : "-";
+      // Compact date: DD/MM HH:mm (no year, no seconds)
+      const d = new Date(t.date);
+      const dd = String(d.getUTCDate()).padStart(2, "0");
+      const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const hh = String(d.getUTCHours()).padStart(2, "0");
+      const mi = String(d.getUTCMinutes()).padStart(2, "0");
+      const dateStr = `${dd}/${mm} ${hh}:${mi}`;
+      const noteStr = t.notes ? ` | note: ${t.notes}` : "";
+      lines.push(`  - ${dateStr} | ${sign}${fmt(t.amount, t.currency)} | ${t.title} | ${t.category} | ${t.wallet}${noteStr}`);
+    }
   }
 
   return lines.join("\n");

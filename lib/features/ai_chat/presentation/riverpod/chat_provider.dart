@@ -3461,27 +3461,20 @@ Please create a transaction based on this receipt data.''';
   }
 
   /// Update AI service with recent transactions context
+  /// Aggregates across ALL user wallets so the coach has the full picture
+  /// (matches dashboard behavior which also shows cross-wallet totals).
   Future<void> _updateRecentTransactionsContext() async {
     try {
       print('[AI_CONTEXT] _updateRecentTransactionsContext START');
-      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
-      if (wallet == null || wallet.id == null) {
-        print('[AI_CONTEXT] No active wallet, skipping');
-        Log.d('No active wallet or wallet ID is null, skipping transaction context update', label: 'Chat Provider');
-        return;
-      }
-
-      print('[AI_CONTEXT] Getting transactions for wallet: ${wallet.id}');
-      // Get recent 10 transactions
       final db = ref.read(databaseProvider);
-      final transactions = await db.transactionDao.watchFilteredTransactionsWithDetails(
-        walletId: wallet.id!,
-        filter: null,
-      ).first.timeout(const Duration(seconds: 5), onTimeout: () {
+      final transactions = await db.transactionDao
+          .watchAllTransactionsWithDetails()
+          .first
+          .timeout(const Duration(seconds: 5), onTimeout: () {
         print('[AI_CONTEXT] Transaction fetch TIMEOUT');
         return [];
       });
-      print('[AI_CONTEXT] Got ${transactions.length} transactions');
+      print('[AI_CONTEXT] Got ${transactions.length} transactions across all wallets');
 
       // Take only the 10 most recent
       final recentTransactions = transactions.take(10).toList();
@@ -3492,12 +3485,12 @@ Please create a transaction based on this receipt data.''';
         return;
       }
 
-      // Format transactions as context string
+      // Format transactions as context string (include wallet name so AI knows source)
       final context = StringBuffer();
       for (final tx in recentTransactions) {
-        final amountText = _formatAmount(tx.amount, currency: wallet.currency);
+        final amountText = _formatAmount(tx.amount, currency: tx.wallet.currency);
         final typeIcon = tx.transactionType == TransactionType.income ? '📈' : '📉';
-        context.writeln('#${tx.id} - $typeIcon $amountText - ${tx.title} (${tx.category.title})');
+        context.writeln('#${tx.id} - $typeIcon $amountText - ${tx.title} (${tx.category.title}) [${tx.wallet.name}]');
       }
 
       final contextString = context.toString().trim();
@@ -3980,17 +3973,29 @@ Please create a transaction based on this receipt data.''';
   }
 
   /// Build spending insights context for AI financial coaching
+  /// Aggregates across ALL user wallets (matches dashboard behavior).
   Future<void> _updateSpendingInsightsContext() async {
     try {
-      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
-      if (wallet == null || wallet.id == null) {
+      final dbInstance = ref.read(databaseProvider);
+      final allWalletsAsync = ref.read(allWalletsStreamProvider);
+      final allWallets = _unwrapAsyncValue(allWalletsAsync) ?? [];
+      if (allWallets.isEmpty) {
         _aiService.updateSpendingInsights('');
         return;
       }
 
-      final dbInstance = ref.read(databaseProvider);
+      // Use active wallet's currency if available, else first wallet's currency.
+      // When wallets have mixed currencies we still aggregate amounts as-is
+      // (same approximation the dashboard uses).
+      final activeWallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      final primaryWallet = activeWallet ?? allWallets.first;
+      final currency = primaryWallet.currency;
+      final walletLabel = allWallets.length == 1
+          ? allWallets.first.name
+          : 'All wallets (${allWallets.length})';
+      final totalBalance = allWallets.fold<double>(0, (s, w) => s + w.balance);
+
       final now = DateTime.now();
-      final currency = wallet.currency;
 
       // Current month range
       final currentMonthStart = DateTime(now.year, now.month, 1);
@@ -4000,9 +4005,9 @@ Please create a transaction based on this receipt data.''';
       final prevMonthStart = DateTime(now.year, now.month - 1, 1);
       final prevMonthEnd = DateTime(now.year, now.month, 1).subtract(const Duration(seconds: 1));
 
-      // Fetch all transactions for this wallet
+      // Fetch all transactions across all wallets
       final allTransactions = await dbInstance.transactionDao
-          .watchFilteredTransactionsWithDetails(walletId: wallet.id!, filter: null)
+          .watchAllTransactionsWithDetails()
           .first
           .timeout(const Duration(seconds: 5), onTimeout: () => []);
 
@@ -4084,7 +4089,7 @@ Please create a transaction based on this receipt data.''';
         final interestEarnings6mo = (savingsPotential * 0.055 * 6 / 12);
         buffer.writeln('Savings potential: ${fmt(savingsPotential)} $currency idle this month → ${fmt(interestEarnings6mo)} $currency interest if saved 6 months at 5.5%');
       }
-      buffer.writeln('Wallet "${wallet.name}" balance: ${fmt(wallet.balance)} $currency');
+      buffer.writeln('$walletLabel total balance: ${fmt(totalBalance)} $currency');
 
       // Financial Health Score
       try {

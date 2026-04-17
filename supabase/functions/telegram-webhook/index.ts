@@ -28,20 +28,72 @@ const DEMO_ACCOUNTS = [
 
 // ── Telegram API helpers ──────────────────────────────────────────────────────
 
+// Convert Markdown-style `*bold*` / `_italic_` to Telegram HTML tags.
+// Safer than legacy Markdown because HTML parser tolerates punctuation
+// adjacent to markers (e.g. `*-1.500đ*` which Markdown rejects).
+function mdToHtml(text: string): string {
+  let out = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  // **bold** first (rare but possible)
+  out = out.replace(/\*\*([^\n*]+)\*\*/g, "<b>$1</b>");
+  // *bold* — non-greedy, no newlines inside
+  out = out.replace(/\*([^\n*]+)\*/g, "<b>$1</b>");
+  // _italic_ — non-greedy, no newlines inside
+  out = out.replace(/_([^\n_]+)_/g, "<i>$1</i>");
+  return out;
+}
+
 async function sendMessage(chatId: number, text: string, extra?: object) {
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+  const basePayload = { chat_id: chatId, text, ...extra };
+  // First try: Markdown parse mode (unless caller overrode)
+  const firstPayload = { parse_mode: "Markdown", ...basePayload };
+  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown", ...extra }),
+    body: JSON.stringify(firstPayload),
   });
+  if (res.ok) return;
+  // Markdown likely has unpaired `*` / `_` → retry as plain text
+  const errBody = await res.text().catch(() => "");
+  console.warn(`[sendMessage] Markdown failed (${res.status}): ${errBody.slice(0, 200)} — retrying plain text`);
+  const plainPayload = { ...basePayload };
+  // remove parse_mode entirely
+  delete (plainPayload as Record<string, unknown>).parse_mode;
+  const retry = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(plainPayload),
+  });
+  if (!retry.ok) {
+    const retryErr = await retry.text().catch(() => "");
+    console.error(`[sendMessage] Plain-text retry also failed (${retry.status}): ${retryErr.slice(0, 200)}`);
+  }
 }
 
 async function editMessageText(chatId: number, messageId: number, text: string, extra?: object) {
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+  const basePayload = { chat_id: chatId, message_id: messageId, text, ...extra };
+  const firstPayload = { parse_mode: "Markdown", ...basePayload };
+  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: "Markdown", ...extra }),
+    body: JSON.stringify(firstPayload),
   });
+  if (res.ok) return;
+  const errBody = await res.text().catch(() => "");
+  console.warn(`[editMessageText] Markdown failed (${res.status}): ${errBody.slice(0, 200)} — retrying plain text`);
+  const plainPayload = { ...basePayload };
+  delete (plainPayload as Record<string, unknown>).parse_mode;
+  const retry = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(plainPayload),
+  });
+  if (!retry.ok) {
+    const retryErr = await retry.text().catch(() => "");
+    console.error(`[editMessageText] Plain-text retry also failed (${retry.status}): ${retryErr.slice(0, 200)}`);
+  }
 }
 
 async function answerCallbackQuery(id: string, text?: string) {
@@ -204,11 +256,16 @@ async function deletePendingTransaction(id: string) {
 // ── User data helpers ─────────────────────────────────────────────────────────
 
 async function getDefaultWallet(userId: string) {
+  // Deterministic selection so INSERT and later queries pick the same wallet.
+  // Otherwise Postgres may return a different wallet per call, breaking coach
+  // context (transaction lands in one wallet, insights query a different one).
   const { data } = await getSupabaseClient()
     .from("wallets")
     .select("cloud_id, name, currency, balance")
     .eq("user_id", userId)
     .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .order("cloud_id", { ascending: true })
     .limit(1)
     .single();
   return data ?? null;
@@ -295,6 +352,45 @@ function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 0 }).format(amount);
 }
 
+// ── Chat history (shared with Flutter app via chat_messages table) ───────────
+
+const HISTORY_LIMIT = 6; // Last N messages passed to AI for context
+
+async function getChatHistory(
+  userId: string,
+): Promise<Array<{ role: "user" | "assistant"; content: string }>> {
+  const { data } = await getSupabaseClient()
+    .from("chat_messages")
+    .select("content, is_from_user, timestamp")
+    .eq("user_id", userId)
+    .order("timestamp", { ascending: false })
+    .limit(HISTORY_LIMIT);
+
+  if (!data?.length) return [];
+
+  // Reverse so oldest comes first (chronological)
+  return data.reverse().map((m: any) => ({
+    role: m.is_from_user ? "user" : "assistant",
+    content: m.content,
+  }));
+}
+
+async function saveChatMessage(
+  userId: string,
+  content: string,
+  isFromUser: boolean,
+): Promise<void> {
+  await getSupabaseClient()
+    .from("chat_messages")
+    .insert({
+      message_id: crypto.randomUUID(),
+      user_id: userId,
+      content,
+      is_from_user: isFromUser,
+      timestamp: new Date().toISOString(),
+    });
+}
+
 // ── Financial Coach handler ──────────────────────────────────────────────────
 
 async function handleCoachMessage(
@@ -306,12 +402,21 @@ async function handleCoachMessage(
   const wallet = await getDefaultWallet(userId);
   if (!wallet) return null; // Fall through to transaction parsing
 
-  // Build spending context
-  const insights = await buildSpendingInsights(userId, wallet.cloud_id);
+  // Build spending context aggregated across ALL user wallets
+  // (matches Flutter dashboard which shows cross-wallet totals)
+  const insights = await buildSpendingInsights(userId);
   if (!insights) return null;
 
   const spendingContext = formatInsightsForAI(insights);
   const systemPrompt = buildCoachPrompt(spendingContext);
+
+  // Strict language enforcement to prevent Chinese/other-language bleed from Qwen
+  const languageRule = lang === "vi"
+    ? "\n\nSTRICT LANGUAGE RULE: Respond ONLY in Vietnamese. Never use Chinese, Japanese, Korean, or any other language. Never mix scripts. If you are about to write a Chinese character, stop and rewrite in Vietnamese."
+    : "\n\nSTRICT LANGUAGE RULE: Respond ONLY in English. Never use Chinese, Japanese, Korean, or any other non-English script. Never mix languages.";
+
+  // Load recent conversation history (shared with Flutter app)
+  const history = await getChatHistory(userId);
 
   // Call Qwen (DOS AI) with full coach prompt - OpenAI-compatible API
   const apiKey = Deno.env.get("BEXLY_DOS_AI_API_KEY");
@@ -330,11 +435,12 @@ async function handleCoachMessage(
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: systemPrompt + languageRule },
+          ...history,
           { role: "user", content: text },
         ],
-        temperature: 0.7,
-        max_tokens: 500,
+        temperature: 0.4,
+        max_tokens: 900,
         enable_thinking: false,
       }),
     });
@@ -355,8 +461,14 @@ async function handleCoachMessage(
       return null;
     }
 
-    // It's a coaching response - send it
-    return reply;
+    // Strip any stray CJK characters that leaked through (belt-and-suspenders)
+    const cleaned = reply.replace(/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g, "").trim();
+
+    // Persist conversation so both the app and future bot turns see it
+    await saveChatMessage(userId, text, true);
+    await saveChatMessage(userId, cleaned, false);
+
+    return cleaned;
   } catch (e) {
     console.error("Coach AI error:", e);
     return null;
@@ -371,7 +483,7 @@ async function handleInsightsCommand(chatId: number, userId: string, lang: strin
     return;
   }
 
-  const insights = await buildSpendingInsights(userId, wallet.cloud_id);
+  const insights = await buildSpendingInsights(userId);
   if (!insights) {
     await sendMessage(chatId, lang === "vi"
       ? "📊 Chưa có dữ liệu chi tiêu. Hãy ghi nhận giao dịch trước nhé!"
@@ -393,13 +505,6 @@ async function handleTransactionMessage(
 ) {
   const loc = LOCALIZATIONS[lang] ?? LOCALIZATIONS.en;
 
-  // Try financial coach first for non-transaction messages
-  const coachReply = await handleCoachMessage(chatId, userId, text, lang);
-  if (coachReply) {
-    await sendMessage(chatId, coachReply);
-    return;
-  }
-
   const wallet = await getDefaultWallet(userId);
   console.log("Wallet:", wallet ? `${wallet.name} (${wallet.currency})` : "null");
   if (!wallet) { await sendMessage(chatId, loc.noWallet); return; }
@@ -408,12 +513,19 @@ async function handleTransactionMessage(
   console.log("Categories count:", categories.length, "first 5:", categories.slice(0, 5).map(c => c.title));
   if (!categories.length) { await sendMessage(chatId, loc.noCategory); return; }
 
-  // AI parse
+  // Parse transaction FIRST — only falls through to coach if message is not a transaction
   console.log("Parsing with AI:", text, "lang:", lang, "currency:", wallet.currency);
   const parsed = await parseTransactionWithAI(text, categories, wallet.currency);
   console.log("AI parsed result:", parsed);
 
   if (!parsed) {
+    // Not a transaction — try financial coach (has history + spending context)
+    const coachReply = await handleCoachMessage(chatId, userId, text, lang);
+    if (coachReply) {
+      await sendMessage(chatId, mdToHtml(coachReply), { parse_mode: "HTML" });
+      return;
+    }
+
     const hint = lang === "vi"
       ? "💬 Tôi chưa hiểu. Thử gõ ví dụ:\n• *ăn trưa 50k*\n• *cafe 30k*\n• *lương 10tr*\n\nHoặc hỏi: _Tình hình tài chính tháng này?_"
       : "💬 I didn't understand that. Try:\n• *lunch 50k*\n• *coffee $3*\n• *salary 1000*\n\nOr ask: _How am I doing this month?_";

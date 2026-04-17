@@ -43,19 +43,21 @@ class LoginScreen extends HookConsumerWidget {
     final prefs = await SharedPreferences.getInstance();
     final lastUserId = prefs.getString('lastSupabaseUserId');
     final db = ref.read(databaseProvider);
-    final isDemoUser = DemoPersonaInfo.fromEmail(user.email) != null;
 
-    // Clear local data if:
-    // (1) a DIFFERENT Supabase user is logging in, OR
-    // (2) this is a demo account login (must always start fresh to avoid mixing
-    //     guest/previous-user data with seeded demo data), OR
-    // (3) lastUserId is null but local DB has data (guest mode leftovers)
-    final shouldClear = (lastUserId != null && lastUserId != user.id) ||
-        isDemoUser ||
-        (lastUserId == null && (await db.walletDao.getAllWallets()).isNotEmpty);
+    // Clear local data only when switching users:
+    // (1) a DIFFERENT Supabase user is logging in (including switching demo accounts), OR
+    // (2) lastUserId is null (fresh install or guest mode) AND local DB has data
+    //     (guest mode leftovers that shouldn't bleed into a new account)
+    // Same user re-login must preserve local data.
+    final isSameUser = lastUserId != null && lastUserId == user.id;
+    final isDifferentUser = lastUserId != null && lastUserId != user.id;
+    final hasGuestLeftovers =
+        lastUserId == null && (await db.walletDao.getAllWallets()).isNotEmpty;
+
+    final shouldClear = !isSameUser && (isDifferentUser || hasGuestLeftovers);
 
     if (shouldClear) {
-      Log.i('⚠️ Clearing stale data (lastUserId: $lastUserId, newUserId: ${user.id}, demo: $isDemoUser)', label: 'auth');
+      Log.i('⚠️ Clearing stale data (lastUserId: $lastUserId, newUserId: ${user.id})', label: 'auth');
       await db.clearAllTables();
     }
 
