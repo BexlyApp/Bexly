@@ -85,6 +85,9 @@ web/drift_worker.js
 web/drift_worker.js.deps
 web/drift_worker.js.map
 
+# Claude Code local workspace
+.claude/
+
 # Firebase
 .firebase/
 firestore.rules
