@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bexly - Pitch 4 min · Shinhan Future's Lab SB1</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, "Segoe UI", "Noto Sans", sans-serif;
+    background: #ffffff;
+    color: #0f172a;
+    overflow: hidden;
+  }
+  .deck { position: relative; height: 100vh; width: 100vw; }
+  .slide {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    padding: 44px 64px 56px;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+    overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide:not(.cover) { align-items: center; }
+  .slide:not(.cover) > * { max-width: 1320px; width: 100%; }
+  .slide.cover { align-items: center; text-align: center; }
+  .slide.cover > * { max-width: 1100px; width: 100%; }
+  .slide.cover .subtitle { margin-left: auto; margin-right: auto; }
+  .slide.cover .cover-logo { width: 148px; height: 148px; margin-bottom: 16px; object-fit: contain; }
+  .slide.cover .cover-meta { font-size: 16px; color: #475569; font-weight: 600; margin-top: 36px; padding-top: 16px; border-top: 1px solid #e2e8f0; letter-spacing: 0.03em; max-width: 720px; margin-left: auto; margin-right: auto; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  h1 {
+    font-size: 84px;
+    color: #731FE0;
+    margin-bottom: 12px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-weight: 900;
+  }
+  h2 {
+    font-size: 40px;
+    color: #0f172a;
+    margin-bottom: 20px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    font-weight: 800;
+  }
+  p { font-size: 20px; line-height: 1.45; margin-bottom: 10px; color: #334155; }
+  ul { font-size: 19px; line-height: 1.5; list-style: none; }
+  ul li { margin-bottom: 8px; padding-left: 26px; position: relative; color: #334155; }
+  ul li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: #731FE0;
+    font-weight: bold;
+  }
+  strong { color: #731FE0; font-weight: 700; }
+  .subtitle { font-size: 26px; color: #64748b; margin-top: 8px; font-style: italic; line-height: 1.35; max-width: 900px; }
+  .highlight {
+    background: #731FE0;
+    color: white;
+    padding: 2px 12px;
+    border-radius: 5px;
+    font-weight: 700;
+  }
+  .tag {
+    display: inline-block;
+    padding: 5px 12px;
+    margin: 4px 4px 4px 0;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    font-size: 15px;
+    color: #334155;
+    font-weight: 500;
+  }
+  .tag.purple { background: #F6F3FF; border-color: #DED4FF; color: #51189A; }
+  .tag.green { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+  .nav {
+    position: fixed;
+    bottom: 14px;
+    right: 14px;
+    display: flex;
+    gap: 6px;
+    z-index: 100;
+  }
+  .nav button {
+    background: #f1f5f9;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .nav button:hover { background: #e2e8f0; }
+  .counter {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .timer {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    font-size: 28px;
+    color: #16a34a;
+    font-weight: 700;
+    font-family: "SF Mono", monospace;
+  }
+  .green { color: #16a34a; }
+  .purple { color: #731FE0; }
+  .amber { color: #d97706; }
+  .muted { color: #64748b; }
+
+  /* Slide 2 - Problem cards */
+  .problem-lede { font-size: 20px; color: #334155; margin: 4px 0 18px; max-width: 1100px; line-height: 1.45; }
+  .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 4px; }
+  .problem-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-top: 4px solid #731FE0;
+    padding: 18px 20px;
+    border-radius: 12px;
+  }
+  .problem-card .stat { font-size: 44px; color: #731FE0; font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
+  .problem-card .label { font-size: 13px; color: #731FE0; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+  .problem-card .desc { font-size: 16px; color: #334155; margin-top: 12px; line-height: 1.45; }
+  .problem-punch { margin-top: 18px; padding: 14px 20px; background: #F6F3FF; border-left: 4px solid #731FE0; border-radius: 6px; font-size: 17px; color: #51189A; line-height: 1.45; }
+  .problem-punch strong { color: #51189A; }
+
+  /* Slide 3 - Type or talk contrast */
+  .punchline { font-size: 22px; color: #64748b; margin-bottom: 18px; font-weight: 500; }
+  .contrast-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 4px; }
+  .contrast-col { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 22px 24px 20px; display: flex; flex-direction: column; gap: 14px; min-height: 420px; }
+  .contrast-col.old { border-top: 4px solid #cbd5e1; }
+  .contrast-col.new { border-top: 4px solid #731FE0; background: linear-gradient(180deg, #faf7ff 0%, #ffffff 70%); }
+  .col-label { font-size: 15px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; }
+  .contrast-col.new .col-label { color: #731FE0; }
+  .menu-chain { display: flex; flex-direction: column; gap: 7px; }
+  .menu-step { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 14px; font-size: 15px; color: #475569; font-weight: 500; }
+  .menu-step:first-child { background: #e2e8f0; color: #0f172a; font-weight: 600; }
+  .metric-row { display: flex; gap: 10px; margin-top: auto; padding-top: 8px; }
+  .metric-bad, .metric-good { flex: 1; text-align: center; padding: 10px 8px; border-radius: 8px; font-weight: 700; font-size: 16px; }
+  .metric-bad { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .metric-good { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  .chat-demo { display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 92%; }
+  .msg.bot-msg { align-self: flex-start; background: #F6F3FF; border: 1px solid #DED4FF; border-radius: 14px 14px 14px 4px; padding: 12px 16px; font-size: 15px; color: #51189A; line-height: 1.4; font-weight: 500; }
+  .msg.bot-msg strong { color: #731FE0; }
+  .voice-msg { align-self: flex-end; background: #1e3a5f; border-radius: 14px 14px 4px 14px; padding: 12px 14px 10px; color: #dbeafe; width: 100%; box-shadow: 0 2px 8px rgba(30, 58, 95, 0.18); }
+  .voice-row { display: flex; align-items: center; gap: 12px; }
+  .voice-play { width: 44px; height: 44px; border-radius: 50%; background: #2563eb; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 18px; flex-shrink: 0; }
+  .voice-body { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .voice-wave { display: flex; align-items: center; gap: 2px; height: 26px; }
+  .voice-wave span { display: block; width: 3px; background: #93c5fd; border-radius: 2px; }
+  .voice-meta { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #bfdbfe; font-weight: 500; }
+  .voice-dot { width: 6px; height: 6px; border-radius: 50%; background: #60a5fa; }
+  .voice-collapse { width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; color: #93c5fd; font-size: 14px; flex-shrink: 0; }
+  .voice-transcript { margin-top: 10px; padding: 10px 12px 8px; border-top: 1px solid rgba(147, 197, 253, 0.22); font-size: 15px; color: #e0f2fe; font-style: italic; line-height: 1.4; }
+  .voice-time { display: flex; justify-content: flex-end; align-items: center; gap: 4px; font-size: 12px; color: #93c5fd; margin-top: 4px; }
+  .voice-time .ticks { color: #60a5fa; font-weight: 700; }
+  .contrast-footer { margin-top: 16px; padding: 12px 18px; background: #F6F3FF; border-left: 4px solid #731FE0; border-radius: 6px; font-size: 17px; color: #51189A; font-weight: 500; }
+
+  /* Slide 3 - pillars */
+  .pillar-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 10px;
+  }
+  .pillar-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 20px 22px;
+    border-radius: 12px;
+    border-top: 4px solid #731FE0;
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    column-gap: 16px;
+    align-items: start;
+  }
+  .pillar-box .icon { font-size: 40px; line-height: 1; grid-row: span 2; align-self: center; }
+  .pillar-box .title { font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 6px; line-height: 1.2; }
+  .pillar-box p { font-size: 16px; color: #334155; line-height: 1.45; margin: 0; }
+  .pillar-box .metric { color: #16a34a; font-weight: 700; }
+  .punchline { margin: 8px 0 18px; font-size: 18px; color: #334155; font-weight: 500; text-align: center; }
+  .punchline .purple { font-weight: 700; }
+  .stack-bar {
+    margin-top: 16px;
+    padding: 16px 22px;
+    background: #F6F3FF;
+    border-left: 4px solid #731FE0;
+    border-radius: 6px;
+    font-size: 17px;
+    color: #51189A;
+    line-height: 1.45;
+  }
+  .stack-bar strong { color: #51189A; }
+
+  /* Slide 4 - Action catalogue */
+  .action-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 4px; }
+  .action-col {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-top: 4px solid #731FE0;
+    padding: 18px 22px;
+    border-radius: 12px;
+  }
+  .action-col.bank { border-top-color: #16a34a; }
+  .action-col .col-head { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #731FE0; margin-bottom: 10px; }
+  .action-col.bank .col-head { color: #16a34a; }
+  .action-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-family: "SF Mono", "Menlo", monospace;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .chip.bank { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+  .action-example {
+    margin-top: 16px;
+    padding: 16px 22px;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 10px;
+    font-family: "SF Mono", monospace;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .action-example .user { color: #F6F3FF; }
+  .action-example .arrow { color: #94a3b8; }
+  .action-example .json { color: #AA86FF; }
+  .action-example .done { color: #4ade80; font-weight: 700; }
+  .footer-metrics { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .metric-pill { background: #F6F3FF; border: 1px solid #DED4FF; color: #51189A; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 700; }
+
+  /* Slide 5 - Live demo */
+  .demo-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 24px; align-items: start; margin-top: 6px; }
+  .demo-script { display: flex; flex-direction: column; gap: 12px; }
+  .demo-step {
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    column-gap: 14px;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #731FE0;
+    padding: 14px 18px;
+    border-radius: 10px;
+  }
+  .demo-step .step-num { width: 40px; height: 40px; border-radius: 50%; background: #731FE0; color: white; font-weight: 900; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .demo-step .step-body .t { font-size: 17px; font-weight: 800; color: #0f172a; line-height: 1.3; }
+  .demo-step .step-body .d { font-size: 14px; color: #475569; margin-top: 4px; line-height: 1.4; }
+  .demo-side {
+    background: #F6F3FF;
+    border: 1px solid #DED4FF;
+    border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .demo-side .label { font-size: 13px; font-weight: 800; color: #731FE0; text-transform: uppercase; letter-spacing: 0.08em; }
+  .demo-side .big { font-size: 36px; color: #0f172a; font-weight: 900; margin: 8px 0 4px; line-height: 1.1; letter-spacing: -0.02em; }
+  .demo-side .handle { font-family: "SF Mono", monospace; color: #731FE0; font-size: 18px; font-weight: 700; }
+  .demo-side .note { font-size: 14px; color: #475569; margin-top: 12px; line-height: 1.45; }
+  .demo-side .tag-row { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* Slide 6 - architecture */
+  .arch-frame {
+    background: #F6F3FF;
+    border: 2px solid #731FE0;
+    border-radius: 16px;
+    padding: 22px 26px;
+    margin-top: 6px;
+  }
+  .arch-frame .frame-label { font-size: 13px; font-weight: 800; color: #731FE0; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; text-align: center; }
+  .arch-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: stretch; }
+  .arch-node {
+    background: #ffffff;
+    border: 1px solid #DED4FF;
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .arch-node .ico { font-size: 30px; line-height: 1; margin-bottom: 6px; }
+  .arch-node .name { font-size: 18px; font-weight: 800; color: #0f172a; }
+  .arch-node .sub { font-size: 15px; color: #64748b; margin-top: 4px; }
+  .arch-arrow { font-size: 24px; color: #731FE0; text-align: center; align-self: center; font-weight: 900; }
+  .arch-bottom { margin-top: 14px; padding: 10px 14px; background: #ffffff; border: 1px dashed #DED4FF; border-radius: 8px; text-align: center; font-size: 14px; color: #51189A; font-weight: 600; }
+  .arch-after { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; margin-top: 16px; align-items: start; }
+  .arch-banner { padding: 14px 20px; background: #f0fdf4; border-left: 4px solid #16a34a; border-radius: 8px; font-size: 16px; color: #15803d; font-weight: 700; line-height: 1.4; }
+  .license-table { font-size: 14px; border-collapse: collapse; width: 100%; }
+  .license-table th, .license-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #e2e8f0; }
+  .license-table th { color: #731FE0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; background: #F6F3FF; }
+  .license-table td.lic { color: #15803d; font-weight: 700; font-family: "SF Mono", monospace; font-size: 13px; }
+
+  /* Slide 7 - SB1 outcomes table */
+  .outcomes {
+    margin-top: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .outcomes table { width: 100%; border-collapse: collapse; }
+  .outcomes th { background: #F6F3FF; color: #51189A; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; padding: 12px 18px; text-align: left; }
+  .outcomes td { padding: 14px 18px; border-top: 1px solid #e2e8f0; font-size: 17px; color: #334155; vertical-align: middle; }
+  .outcomes tr td:first-child { font-weight: 800; color: #0f172a; width: 60px; text-align: center; }
+  .outcomes tr td:last-child { text-align: center; font-size: 26px; width: 70px; }
+  .outcomes .outcome-name { color: #0f172a; font-weight: 700; }
+  .outcomes .outcome-feat { color: #475569; font-size: 15px; margin-top: 2px; display: block; }
+  .outcome-footer { margin-top: 14px; font-size: 16px; color: #51189A; text-align: center; font-style: italic; }
+
+  /* Slide 7 - differentiators */
+  .diff-list { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .diff-item {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 18px;
+    align-items: center;
+    padding: 16px 22px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #731FE0;
+    border-radius: 10px;
+  }
+  .diff-ico { font-size: 38px; line-height: 1; text-align: center; }
+  .diff-title { font-size: 21px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+  .diff-desc { font-size: 17px; color: #475569; line-height: 1.5; }
+  .diff-desc em { color: #16a34a; font-style: normal; font-weight: 600; }
+
+  /* Slide 8 - roadmap */
+  .phase-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 10px; }
+  .phase {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-top: 4px solid #731FE0;
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .phase .ph-label { font-size: 12px; color: #731FE0; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+  .phase .ph-title { font-size: 19px; color: #0f172a; font-weight: 800; margin: 6px 0 10px; line-height: 1.2; }
+  .phase ul { font-size: 15px; line-height: 1.5; }
+  .phase ul li { padding-left: 20px; margin-bottom: 6px; font-size: 15px; color: #475569; }
+  .phase ul li::before { color: #731FE0; }
+  .roadmap-bottom { margin-top: 16px; padding: 16px 22px; background: #F6F3FF; border-left: 4px solid #731FE0; border-radius: 6px; font-size: 17px; color: #51189A; line-height: 1.45; font-style: italic; text-align: center; }
+  .roadmap-bottom strong { color: #51189A; font-style: normal; }
+
+  /* Slide 9 - close */
+  .close-wrap { text-align: center; }
+  .close-wrap h1 { font-size: 96px; margin-bottom: 18px; }
+  .close-wrap .tagline { font-size: 28px; color: #51189A; font-weight: 700; margin-bottom: 10px; }
+  .close-wrap .sub { font-size: 20px; color: #64748b; font-style: italic; margin-bottom: 30px; }
+  .close-cta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 860px; margin: 0 auto 20px; }
+  .cta-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-top: 4px solid #731FE0;
+    padding: 18px 22px;
+    border-radius: 12px;
+    text-align: left;
+  }
+  .cta-card .ct-label { font-size: 14px; color: #731FE0; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+  .cta-card .ct-url { font-family: "SF Mono", monospace; font-size: 21px; color: #0f172a; font-weight: 800; margin-top: 8px; }
+  .cta-card .ct-note { font-size: 16px; color: #475569; margin-top: 6px; }
+  .contact-bar { margin-top: 16px; padding: 12px 18px; background: #F6F3FF; border-left: 4px solid #731FE0; border-radius: 6px; font-size: 16px; color: #51189A; text-align: center; }
+  .contact-bar strong { color: #51189A; }
+
+  /* Slide 7 - merged demo + CTA */
+  .demo-close-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; margin-top: 14px; align-items: start; }
+  .demo-script-compact {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #731FE0;
+    padding: 18px 22px;
+    border-radius: 12px;
+  }
+  .dsc-label { font-size: 14px; color: #731FE0; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px; }
+  .dsc-step { font-size: 18px; color: #0f172a; margin-bottom: 10px; line-height: 1.5; }
+  .dsc-step .n {
+    display: inline-block;
+    width: 26px; height: 26px; line-height: 26px;
+    background: #731FE0; color: #fff;
+    border-radius: 50%; text-align: center; font-size: 14px; font-weight: 800;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+  .dsc-step code { background: #ede9fe; color: #51189A; padding: 2px 8px; border-radius: 4px; font-size: 15px; font-family: "SF Mono", monospace; }
+  .dsc-step em { color: #51189A; font-style: italic; }
+  .dsc-note { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cbd5e1; font-size: 15px; color: #16a34a; font-weight: 600; }
+  .cta-stack { display: flex; flex-direction: column; gap: 14px; }
+  .cta-stack .cta-card { margin: 0; }
+
+  /* Print to PDF: all slides stacked, no chrome */
+  @media print {
+    @page { size: 1280px 720px; margin: 0; }
+    html, body { height: auto; overflow: visible; background: #ffffff; }
+    .deck { position: static; height: auto; width: 1280px; }
+    .slide {
+      position: relative !important;
+      display: flex !important;
+      width: 1280px;
+      height: 720px;
+      page-break-after: always;
+      break-after: page;
+      animation: none !important;
+    }
+    .slide:last-child { page-break-after: auto; break-after: auto; }
+    .nav, .counter, .timer { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="timer" id="timer">0:00</div>
+<div class="counter" id="counter">1 / 9</div>
+
+<div class="deck">
+
+<!-- SLIDE 1: COVER -->
+<section class="slide cover active">
+  <img class="cover-logo" src="../assets/icon/Bexly-logo-no-bg.png" alt="Bexly">
+  <h1>Bexly</h1>
+  <p class="subtitle">Retail banking's first AI coach that <strong>thinks, acts, and stays on-premise</strong>.</p>
+  <div style="margin-top: 32px;">
+    <span class="tag">AI Financial Coach</span>
+    <span class="tag">15+ banking actions from chat</span>
+    <span class="tag">Qwen 3.5 · vLLM · open-source</span>
+    <span class="tag green">Deployable on any on-premise</span>
+  </div>
+  <div class="cover-meta">
+    Shinhan Future's Lab · SB1 applicability · MetaDOS · bexly.app
+  </div>
+</section>
+
+<!-- SLIDE 2: PROBLEM -->
+<section class="slide">
+  <h2>Banking apps track money. <span class="highlight">They don't coach.</span></h2>
+  <p class="problem-lede">Banking app users see every transaction - but nothing helps them understand, save, or pick the right product.</p>
+  <div class="problem-grid">
+    <div class="problem-card">
+      <div class="stat">80%</div>
+      <div class="label">open app, check balance, leave</div>
+      <div class="desc">Daily engagement collapses after balance-check. No reason to come back the same day.</div>
+    </div>
+    <div class="problem-card">
+      <div class="stat">&lt; 1%</div>
+      <div class="label">banner-ad cross-sell conversion</div>
+      <div class="desc">Static banners don't read context. Right product, wrong moment - ignored.</div>
+    </div>
+    <div class="problem-card">
+      <div class="stat">❌</div>
+      <div class="label">cloud AI · data sovereignty</div>
+      <div class="desc">Cloud AI APIs cannot process VN banking data - customer financial data can't leave the bank.</div>
+    </div>
+  </div>
+  <div class="problem-punch"><strong>The gap:</strong> banks need a coach that understands behavior, cross-sells in context, and can run fully inside their own data center.</div>
+</section>
+
+<!-- SLIDE 3: TYPE OR TALK -->
+<section class="slide">
+  <h2>Type or talk. <span class="highlight">That's it.</span></h2>
+  <p class="punchline">One message replaces ten taps. Zero menu navigation.</p>
+  <div class="contrast-grid">
+    <div class="contrast-col old">
+      <div class="col-label">Today's banking app</div>
+      <div class="menu-chain">
+        <div class="menu-step">📱 Open app · FaceID login</div>
+        <div class="menu-step">→ Home → Services</div>
+        <div class="menu-step">→ Services → Savings &amp; Goals</div>
+        <div class="menu-step">→ Pick product (7 options)</div>
+        <div class="menu-step">→ Fill form: amount · duration · source</div>
+        <div class="menu-step">→ Set auto-transfer schedule</div>
+        <div class="menu-step">→ Review · accept terms</div>
+        <div class="menu-step">→ OTP · confirm</div>
+      </div>
+      <div class="metric-row">
+        <span class="metric-bad">Dozens of taps</span>
+        <span class="metric-bad">Many forms</span>
+        <span class="metric-bad">Minutes</span>
+      </div>
+    </div>
+    <div class="contrast-col new">
+      <div class="col-label">With Bexly</div>
+      <div class="chat-demo">
+        <div class="voice-msg">
+          <div class="voice-row">
+            <div class="voice-play">▶</div>
+            <div class="voice-body">
+              <div class="voice-wave">
+                <span style="height:40%"></span><span style="height:70%"></span><span style="height:55%"></span><span style="height:90%"></span><span style="height:65%"></span><span style="height:30%"></span><span style="height:75%"></span><span style="height:85%"></span><span style="height:50%"></span><span style="height:95%"></span><span style="height:60%"></span><span style="height:40%"></span><span style="height:80%"></span><span style="height:70%"></span><span style="height:45%"></span><span style="height:90%"></span><span style="height:55%"></span><span style="height:75%"></span><span style="height:35%"></span><span style="height:65%"></span><span style="height:50%"></span><span style="height:85%"></span><span style="height:40%"></span><span style="height:70%"></span><span style="height:60%"></span><span style="height:30%"></span><span style="height:80%"></span><span style="height:50%"></span>
+              </div>
+              <div class="voice-meta"><span>0:04</span><span class="voice-dot"></span></div>
+            </div>
+            <div class="voice-collapse">⌃</div>
+          </div>
+          <div class="voice-transcript">"Để dành 3 triệu mỗi tháng cho quỹ Tết"</div>
+          <div class="voice-time"><span>11:06 AM</span><span class="ticks">✓✓</span></div>
+        </div>
+        <div class="msg bot-msg">✓ Savings account opened · auto-transfer <strong>3M/month</strong> scheduled · Tet goal tracked</div>
+      </div>
+      <div class="metric-row">
+        <span class="metric-good">1 message</span>
+        <span class="metric-good">0 screens</span>
+        <span class="metric-good">1 second</span>
+      </div>
+    </div>
+  </div>
+  <div class="contrast-footer">Conversational banking = zero navigation friction. Works the same via chat or voice.</div>
+</section>
+
+<!-- SLIDE 4: SOLUTION -->
+<section class="slide">
+  <h2>Bexly: a conversational AI that <span class="highlight">acts on financial data</span></h2>
+  <p class="punchline">Three pillars · one product · ready to embed into SOL or run on Shinhan's own GPUs.</p>
+  <div class="pillar-grid">
+    <div class="pillar-box">
+      <div class="icon">💬</div>
+      <div>
+        <div class="title">Proactive Coach</div>
+        <p>Spending insights injected every turn · savings nudges, budget warnings, product fit reasoning <span class="metric">in 14 languages</span>.</p>
+      </div>
+    </div>
+    <div class="pillar-box">
+      <div class="icon">⚡</div>
+      <div>
+        <div class="title">Action Engine</div>
+        <p><span class="metric">15+ structured actions</span> via natural language - creates transactions, budgets, goals, opens savings, applies for cards.</p>
+      </div>
+    </div>
+    <div class="pillar-box">
+      <div class="icon">🏦</div>
+      <div>
+        <div class="title">On-Premise Stack</div>
+        <p>Qwen 3.5 + vLLM + self-hosted Supabase · <span class="metric">100% open-source</span> · zero external API calls.</p>
+      </div>
+    </div>
+  </div>
+  <div class="stack-bar">
+    <strong>Open-source stack:</strong> Qwen 3.5 (Apache 2.0) · vLLM (Apache 2.0) · Supabase (Apache 2.0) · Flutter (BSD-3) · Drift/SQLite (Public Domain)
+  </div>
+</section>
+
+<!-- SLIDE 4: WHAT THE AI DOES -->
+<section class="slide">
+  <h2>Beyond chat: <span class="highlight">15+ banking actions</span> from plain language</h2>
+  <div class="action-wrap">
+    <div class="action-col">
+      <div class="col-head">Finance actions</div>
+      <div class="action-chips">
+        <span class="chip">create_expense</span>
+        <span class="chip">create_income</span>
+        <span class="chip">create_budget</span>
+        <span class="chip">create_goal</span>
+        <span class="chip">create_recurring</span>
+        <span class="chip">update_transaction</span>
+        <span class="chip">list_transactions</span>
+        <span class="chip">get_balance</span>
+        <span class="chip">get_summary</span>
+      </div>
+    </div>
+    <div class="action-col bank">
+      <div class="col-head">Banking actions (SB1-applicable)</div>
+      <div class="action-chips">
+        <span class="chip bank">open_savings_account</span>
+        <span class="chip bank">transfer_to_savings</span>
+        <span class="chip bank">apply_credit_card</span>
+        <span class="chip bank">apply_loan</span>
+      </div>
+    </div>
+  </div>
+  <div class="action-example">
+    <span class="user">User:</span> <em>"Để dành 100tr cuối năm có khả thi không?"</em><br>
+    <span class="arrow">→</span> Qwen đọc 90 ngày: income 23M, chi 15M <strong>→ thiếu 38M so với goal</strong><br>
+    <span class="arrow">→</span> Đề xuất: cắt 1.5M dining + Tết bonus 15M <strong>→ khả thi</strong><br>
+    <span class="json">ACTION_JSON: [<br>
+    &nbsp;&nbsp;{"action":"create_goal","target":100000000,"deadline":"2026-12-31"},<br>
+    &nbsp;&nbsp;{"action":"open_savings_account","product":"shinhan_premium_savings","monthly":8000000}<br>
+    ]</span><br>
+    <span class="done">✓ Goal + Shinhan Premium Savings 6.5% APY · auto 8M/tháng → 102M</span>
+  </div>
+  <div class="footer-metrics">
+    <span class="metric-pill">Financial Health Score 0–100</span>
+    <span class="metric-pill">End-of-month Spending Forecast</span>
+    <span class="metric-pill">Anomaly Alerts</span>
+    <span class="metric-pill">Daily Digest</span>
+  </div>
+</section>
+
+<!-- SLIDE 5: ARCHITECTURE -->
+<section class="slide">
+  <h2>Architecture built for <span class="highlight">zero data leakage</span></h2>
+  <div class="arch-frame">
+    <div class="frame-label">Any on-premise / private cloud (deployable inside Shinhan)</div>
+    <div class="arch-row">
+      <div class="arch-node"><div class="ico">📱</div><div class="name">Client App</div><div class="sub">Bexly today · SOL-ready tomorrow</div></div>
+      <div class="arch-node"><div class="ico">🗄️</div><div class="name">Supabase (self-host)</div><div class="sub">Postgres · auth · realtime</div></div>
+      <div class="arch-node"><div class="ico">🧠</div><div class="name">vLLM + Qwen 3.5</div><div class="sub">35B-A3B · GPU</div></div>
+    </div>
+    <div class="arch-bottom">↕ Core Banking API (when integrated) · ❌ No external API calls · ❌ No cloud LLM</div>
+  </div>
+  <div class="arch-after">
+    <div class="arch-banner">🔒 Compliance-ready by design · when deployed at Shinhan, customer financial data never leaves the bank perimeter.</div>
+    <table class="license-table">
+      <thead><tr><th>Stack</th><th>License</th></tr></thead>
+      <tbody>
+        <tr><td>Qwen 3.5 35B-A3B</td><td class="lic">Apache 2.0</td></tr>
+        <tr><td>vLLM</td><td class="lic">Apache 2.0</td></tr>
+        <tr><td>Supabase</td><td class="lic">Apache 2.0</td></tr>
+        <tr><td>Flutter · Drift/SQLite</td><td class="lic">BSD-3 · Public Domain</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- SLIDE 6: WHAT MAKES BEXLY DIFFERENT -->
+<section class="slide">
+  <h2>What makes <span class="highlight">Bexly different</span></h2>
+  <div class="diff-list">
+    <div class="diff-item">
+      <div class="diff-ico">🧠</div>
+      <div>
+        <div class="diff-title">Proactive Coach</div>
+        <div class="diff-desc">Reads 90 days of spending, nudges before habits go wrong · <em>users come back without a push notification</em></div>
+      </div>
+    </div>
+    <div class="diff-item">
+      <div class="diff-ico">⚡</div>
+      <div>
+        <div class="diff-title">Chat → Action</div>
+        <div class="diff-desc">15+ structured actions emitted as JSON · <em>every conversation can end in a created goal, opened savings, or applied card</em></div>
+      </div>
+    </div>
+    <div class="diff-item">
+      <div class="diff-ico">🎯</div>
+      <div>
+        <div class="diff-title">Product reasoning with real VND</div>
+        <div class="diff-desc">"Cashback 3M/năm cho pattern dining của bạn" · <em>cross-sell that feels like advice, not a banner</em></div>
+      </div>
+    </div>
+    <div class="diff-item">
+      <div class="diff-ico">🚨</div>
+      <div>
+        <div class="diff-title">Anomaly + Forecast</div>
+        <div class="diff-desc">Flags unusual spikes, projects end-of-month · <em>keeps users engaged across the full monthly cycle</em></div>
+      </div>
+    </div>
+    <div class="diff-item">
+      <div class="diff-ico">🌏</div>
+      <div>
+        <div class="diff-title">14 languages · Vietnamese-first</div>
+        <div class="diff-desc">Natural tone with cultural context · <em>higher satisfaction in markets cloud tools can't serve</em></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 7: LIVE DEMO + CTA -->
+<section class="slide">
+  <h2>See it live · <span class="highlight">@BexlyBot</span> on Telegram</h2>
+  <div class="demo-close-grid">
+    <div class="demo-script-compact">
+      <div class="dsc-label">Demo script · persona "Minh" · 20M VND/month · 90 days seeded</div>
+      <div class="dsc-step"><span class="n">1</span> <code>/start</code> → pick <strong>Minh · Office Worker</strong></div>
+      <div class="dsc-step"><span class="n">2</span> <em>"Ăn tối hôm qua 1tr500k"</em> → ✓ saved + budget nudge</div>
+      <div class="dsc-step"><span class="n">3</span> <em>"Giao dịch gần đây của tôi?"</em> → 10 tx + Health Score</div>
+      <div class="dsc-step"><span class="n">4</span> <em>"Để dành 100tr cuối năm"</em> → goal + Shinhan Premium Savings</div>
+      <div class="dsc-note">Every answer is generated by <strong>Qwen 3.5 on our own GPU</strong> · zero cloud LLM calls.</div>
+    </div>
+    <div class="cta-stack">
+      <div class="cta-card">
+        <div class="ct-label">Try it now</div>
+        <div class="ct-url">t.me/BexlyBot</div>
+        <div class="ct-note">Vietnamese + English · demo personas inside.</div>
+      </div>
+      <div class="cta-card">
+        <div class="ct-label">Source code</div>
+        <div class="ct-url">github.com/BexlyApp/Bexly</div>
+        <div class="ct-note">Flutter · vLLM · Supabase · edge functions.</div>
+      </div>
+    </div>
+  </div>
+  <div class="contact-bar">
+    <strong>Anh Le (JOY)</strong> · Founder, MetaDOS · <strong>joy@dos.ai</strong> · bexly.app · dos.ai
+  </div>
+</section>
+
+</div>
+
+<div class="nav">
+  <button onclick="resetTimer()">⏱ Reset</button>
+  <button onclick="toggleTimer()" id="timerBtn">▶ Start</button>
+  <button onclick="prev()">← Prev</button>
+  <button onclick="next()">Next →</button>
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let current = 0;
+
+function show(i) {
+  slides.forEach(s => s.classList.remove('active'));
+  slides[i].classList.add('active');
+  document.getElementById('counter').textContent = `${i+1} / ${slides.length}`;
+}
+
+function next() { if (current < slides.length - 1) { current++; show(current); } }
+function prev() { if (current > 0) { current--; show(current); } }
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft') prev();
+  else if (e.key === 'f') document.documentElement.requestFullscreen();
+  else if (e.key === 't') toggleTimer();
+  else if (e.key === 'r') resetTimer();
+});
+
+let seconds = 0;
+let timerInterval = null;
+function updateTimer() {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  const el = document.getElementById('timer');
+  el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  if (seconds >= 240) el.style.color = '#DC2626';
+  else if (seconds >= 210) el.style.color = '#d97706';
+  else el.style.color = '#16a34a';
+}
+function toggleTimer() {
+  const btn = document.getElementById('timerBtn');
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    btn.textContent = '▶ Resume';
+  } else {
+    timerInterval = setInterval(() => { seconds++; updateTimer(); }, 1000);
+    btn.textContent = '⏸ Pause';
+  }
+}
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  seconds = 0;
+  updateTimer();
+  document.getElementById('timerBtn').textContent = '▶ Start';
+}
+updateTimer();
+</script>
+</body>
+</html>
