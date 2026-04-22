@@ -80,6 +80,11 @@ input.txt
 reload.txt
 docs/REF_ANALYSIS.md
 
+# Flutter web build artifacts (regenerated on every build)
+web/drift_worker.js
+web/drift_worker.js.deps
+web/drift_worker.js.map
+
 # Firebase
 .firebase/
 firestore.rules
