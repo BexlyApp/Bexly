@@ -1,5 +1,6 @@
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/localization/background_l10n.dart';
 import 'package:bexly/core/services/notification_service.dart';
+import 'package:bexly/core/services/daily_digest_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:drift/drift.dart';
@@ -57,44 +58,20 @@ class ScheduledNotificationsService {
 
       // Get localized strings
       final langCode = await _getLanguageCode();
-      final title = AppLocalizations.getByLocale(langCode, 'notifDailyReminderTitle');
-      final body = AppLocalizations.getByLocale(langCode, 'notifDailyReminderBody');
+      final l10n = await BackgroundL10n.load(langCode);
+      final title = l10n.notifDailyReminderTitle;
+      final body = l10n.notifDailyReminderBody;
 
-      // Schedule for 9 PM today (or tomorrow if past 9 PM)
-      final now = tz.TZDateTime.now(tz.local);
-      var scheduledDate = tz.TZDateTime(
-        tz.local,
-        now.year,
-        now.month,
-        now.day,
-        21, // 9 PM
-        0,
-      );
-
-      // If 9 PM has passed today, schedule for tomorrow
-      if (scheduledDate.isBefore(now)) {
-        scheduledDate = scheduledDate.add(const Duration(days: 1));
-      }
-
-      await NotificationService.scheduleNotification(
+      // Schedule daily at 9 PM (21:00)
+      await NotificationService.scheduleDailyNotification(
         id: _dailyReminderId,
         title: title,
         body: body,
-        scheduledDate: scheduledDate,
+        hour: 21,
+        minute: 0,
       );
 
-      // Create notification record in database
-      await _createNotificationRecord(
-        title: title,
-        body: body,
-        type: 'daily_reminder',
-        scheduledFor: scheduledDate,
-      );
-
-      // Schedule to repeat daily
-      await _scheduleRepeatingDaily();
-
-      Log.i('Daily reminder scheduled for $scheduledDate', label: 'notification');
+      Log.i('Daily reminder scheduled for 21:00', label: 'notification');
     } catch (e) {
       Log.e('Failed to schedule daily reminder: $e', label: 'notification');
     }
@@ -114,43 +91,21 @@ class ScheduledNotificationsService {
 
       // Get localized strings
       final langCode = await _getLanguageCode();
-      final title = AppLocalizations.getByLocale(langCode, 'notifWeeklyReportTitle');
-      final body = AppLocalizations.getByLocale(langCode, 'notifWeeklyReportBody');
+      final l10n = await BackgroundL10n.load(langCode);
+      final title = l10n.notifWeeklyReportTitle;
+      final body = l10n.notifWeeklyReportBody;
 
-      // Schedule for next Monday at 9 AM
-      final now = tz.TZDateTime.now(tz.local);
-      var scheduledDate = tz.TZDateTime(
-        tz.local,
-        now.year,
-        now.month,
-        now.day,
-        9, // 9 AM
-        0,
-      );
-
-      // Find next Monday
-      int daysUntilMonday = (DateTime.monday - scheduledDate.weekday + 7) % 7;
-      if (daysUntilMonday == 0 && scheduledDate.isBefore(now)) {
-        daysUntilMonday = 7; // Schedule for next week if Monday 9 AM has passed
-      }
-      scheduledDate = scheduledDate.add(Duration(days: daysUntilMonday));
-
-      await NotificationService.scheduleNotification(
+      // Schedule weekly on Monday at 9 AM
+      await NotificationService.scheduleWeeklyNotification(
         id: _weeklyReportId,
         title: title,
         body: body,
-        scheduledDate: scheduledDate,
+        weekday: DateTime.monday,
+        hour: 9,
+        minute: 0,
       );
 
-      // Create notification record in database
-      await _createNotificationRecord(
-        title: title,
-        body: body,
-        type: 'weekly_report',
-        scheduledFor: scheduledDate,
-      );
-
-      Log.i('Weekly report scheduled for $scheduledDate', label: 'notification');
+      Log.i('Weekly report scheduled for Monday 9:00', label: 'notification');
     } catch (e) {
       Log.e('Failed to schedule weekly report: $e', label: 'notification');
     }
@@ -170,8 +125,9 @@ class ScheduledNotificationsService {
 
       // Get localized strings
       final langCode = await _getLanguageCode();
-      final title = AppLocalizations.getByLocale(langCode, 'notifMonthlyReportTitle');
-      final body = AppLocalizations.getByLocale(langCode, 'notifMonthlyReportBody');
+      final l10n = await BackgroundL10n.load(langCode);
+      final title = l10n.notifMonthlyReportTitle;
+      final body = l10n.notifMonthlyReportBody;
 
       // Schedule for 1st day of next month at 9 AM
       final now = tz.TZDateTime.now(tz.local);
@@ -210,6 +166,7 @@ class ScheduledNotificationsService {
     await scheduleDailyReminder();
     await scheduleWeeklyReport();
     await scheduleMonthlyReport();
+    await DailyDigestService.schedule();
     Log.i('All scheduled notifications updated', label: 'notification');
   }
 
@@ -218,14 +175,8 @@ class ScheduledNotificationsService {
     await NotificationService.cancelNotification(_dailyReminderId);
     await NotificationService.cancelNotification(_weeklyReportId);
     await NotificationService.cancelNotification(_monthlyReportId);
+    await NotificationService.cancelNotification(DailyDigestService.notificationId);
     Log.i('All scheduled notifications cancelled', label: 'notification');
   }
 
-  /// Helper to schedule repeating daily notification
-  /// Note: This is a placeholder - proper implementation needs background job
-  static Future<void> _scheduleRepeatingDaily() async {
-    // For now, we just schedule once
-    // In production, use WorkManager or similar for true repeating notifications
-    // Or reschedule after each notification is shown
-  }
 }

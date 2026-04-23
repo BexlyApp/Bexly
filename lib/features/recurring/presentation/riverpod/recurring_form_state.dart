@@ -7,10 +7,9 @@ import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/recurring/presentation/riverpod/recurring_providers.dart';
 import 'package:bexly/features/recurring/services/recurring_notification_service.dart';
 import 'package:bexly/core/utils/logger.dart';
-import 'package:bexly/core/services/sync/cloud_sync_service.dart';
 import 'package:bexly/core/services/recurring_charge_service.dart';
 import 'package:bexly/core/services/subscription/subscription.dart';
-import 'package:bexly/core/riverpod/auth_providers.dart';
+import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 import 'package:bexly/core/database/database_provider.dart';
 
 /// Provider for recurring form state
@@ -342,24 +341,13 @@ class RecurringFormNotifier extends Notifier<RecurringFormState> {
         }
       }
 
-      // Sync to cloud if user is authenticated
-      final user = ref.read(authStateProvider).value;
-      if (user?.uid != null && savedRecurringId != null) {
+      // TODO: Implement Supabase sync for recurring transactions
+      // Cloud sync removed with Firebase Auth migration
+      if (savedRecurringId != null) {
         try {
-          final db = ref.read(databaseProvider);
-          final syncService = ref.read(cloudSyncServiceProvider);
-
-          // Get the recurring entity from database
-          final recurringEntity = await (db.select(db.recurrings)
-                ..where((r) => r.id.equals(savedRecurringId!)))
-              .getSingleOrNull();
-
-          if (recurringEntity != null) {
-            await syncService.syncRecurring(recurringEntity);
-            Log.i('Recurring synced to cloud successfully', label: 'RecurringForm');
-          }
+          Log.i('Recurring saved locally (cloud sync not implemented)', label: 'RecurringForm');
         } catch (e) {
-          Log.e('Failed to sync recurring to cloud: $e', label: 'RecurringForm');
+          Log.e('Error: $e', label: 'RecurringForm');
           // Don't fail the save operation if cloud sync fails
         }
       }

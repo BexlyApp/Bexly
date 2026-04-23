@@ -77,12 +77,13 @@ class FinancialHealthRepository {
     return summaryList;
   }
 
-  /// Fetches data for the CURRENT month and buckets it into 4 weeks.
-  Future<List<WeeklyFinancialSummary>> getCurrentMonthWeeklySummary() async {
-    final now = DateTime.now();
-    // Filter for current month only
+  /// Fetches data for the specified month and buckets it into 4 weeks.
+  Future<List<WeeklyFinancialSummary>> getWeeklySummaryForMonth(DateTime monthDate) async {
+    final year = monthDate.year;
+    final month = monthDate.month;
+    // Filter for specified month only
     final currentMonthTransactions = _transactions.where((t) {
-      return t.date.year == now.year && t.date.month == now.month;
+      return t.date.year == year && t.date.month == month;
     }).toList();
 
     List<WeeklyFinancialSummary> weeklyData = [];
@@ -93,10 +94,10 @@ class FinancialHealthRepository {
       int endDay = (i == 4) ? 31 : i * 7; // Week 4 catches everything else
 
       // Calculate actual DateTimes for this range
-      final weekStart = DateTime(now.year, now.month, startDay);
-      final lastDayOfMonth = DateTime(now.year, now.month + 1, 0).day;
+      final weekStart = DateTime(year, month, startDay);
+      final lastDayOfMonth = DateTime(year, month + 1, 0).day;
       final actualEndDay = endDay > lastDayOfMonth ? lastDayOfMonth : endDay;
-      final weekEnd = DateTime(now.year, now.month, actualEndDay);
+      final weekEnd = DateTime(year, month, actualEndDay);
 
       final transactionsInWeek = currentMonthTransactions.where((t) {
         return t.date.day >= startDay && t.date.day <= endDay;

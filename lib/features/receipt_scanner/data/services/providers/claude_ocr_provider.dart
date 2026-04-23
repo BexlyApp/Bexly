@@ -3,68 +3,57 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
 import 'package:bexly/features/receipt_scanner/data/services/providers/ocr_provider.dart';
 
 class ClaudeOcrProvider implements OcrProvider {
-  final String apiKey;
-  static const String _baseUrl = 'https://api.anthropic.com/v1';
-  static const String _model = 'claude-sonnet-4-20250514';
-  static const String _apiVersion = '2023-06-01';
-
-  ClaudeOcrProvider({required this.apiKey});
+  ClaudeOcrProvider();
 
   @override
   String get providerName => 'Claude Sonnet 4';
 
   @override
-  bool get isConfigured => apiKey.isNotEmpty;
+  bool get isConfigured => LLMDefaultConfig.proxyAccessToken != null;
 
   @override
   Future<ReceiptScanResult> analyzeReceipt({
     required Uint8List imageBytes,
     String? additionalPrompt,
   }) async {
-    if (!isConfigured) throw Exception('Claude API key not configured');
+    final headers = LLMDefaultConfig.proxyHeaders;
+    if (headers == null) {
+      throw Exception('Not authenticated — please sign in to use receipt scanning.');
+    }
 
     final String base64Image = base64Encode(imageBytes);
 
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/messages'),
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': _apiVersion,
-        },
+        Uri.parse(LLMDefaultConfig.proxyUrl),
+        headers: headers,
         body: jsonEncode({
-          'model': _model,
-          'max_tokens': 1024,
-          'temperature': 0.2,
+          'provider': 'claude',
+          'action': 'ocr',
+          'image': base64Image,
           'messages': [
-            {
-              'role': 'user',
-              'content': [
-                {
-                  'type': 'image',
-                  'source': {
-                    'type': 'base64',
-                    'media_type': 'image/jpeg',
-                    'data': base64Image,
-                  },
-                },
-                {'type': 'text', 'text': _buildPrompt(additionalPrompt)},
-              ],
-            },
+            {'role': 'user', 'content': _buildPrompt(additionalPrompt)},
           ],
+          'temperature': 0.2,
+          'max_tokens': 1024,
         }),
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
-        String content = jsonResponse['content'][0]['text'];
 
-        // Claude might wrap in JSON markdown
+        if (jsonResponse['error'] != null) {
+          throw Exception(jsonResponse['error']);
+        }
+
+        String content = jsonResponse['content'] as String;
+
+        // Proxy might still return markdown-wrapped JSON
         if (content.contains('```json')) {
           content = content.split('```json')[1].split('```')[0].trim();
         }
@@ -72,7 +61,6 @@ class ClaudeOcrProvider implements OcrProvider {
         final resultJson = jsonDecode(content);
         Log.i('Receipt scanned: ${resultJson['merchant']}', label: 'Claude_OCR');
 
-        // Create result with imageBytes included
         return ReceiptScanResult(
           amount: (resultJson['amount'] is num)
               ? (resultJson['amount'] as num).toDouble()
@@ -85,10 +73,11 @@ class ClaudeOcrProvider implements OcrProvider {
           items: (resultJson['items'] as List<dynamic>).cast<String>(),
           taxAmount: resultJson['tax_amount'] as String?,
           tipAmount: resultJson['tip_amount'] as String?,
-          imageBytes: imageBytes, // Pass the receipt image
+          imageBytes: imageBytes,
         );
       } else {
-        throw Exception('API Error: ${response.statusCode}');
+        final errorBody = jsonDecode(response.body);
+        throw Exception(errorBody['error'] ?? 'API Error: ${response.statusCode}');
       }
     } catch (e) {
       Log.e('Claude OCR error: $e', label: 'Claude_OCR');
@@ -98,15 +87,27 @@ class ClaudeOcrProvider implements OcrProvider {
 
   String _buildPrompt(String? additionalPrompt) {
     return '''
-Analyze this receipt and extract JSON:
-{"amount": <number>, "currency": "ISO code like VND/USD", "merchant": "meaningful transaction description", "category": "Food & Dining|Transportation|Shopping|Entertainment|Healthcare|Utilities|Other", "date": "YYYY-MM-DD", "payment_method": "Cash|Credit Card|Debit Card|QR Code|E-Wallet|Other", "items": ["item1"], "tax_amount": "string", "tip_amount": "string"}
+Analyze this image and extract transaction information in JSON format.
+The image may be a receipt, invoice, bank statement, or banking app screenshot.
+If multiple transactions are visible, extract the MOST RECENT or MOST PROMINENT one.
+
+{"amount": <number>, "currency": "ISO code like VND/USD", "merchant": "meaningful transaction description", "category": "Food & Dining|Transportation|Shopping|Entertainment|Healthcare|Utilities|Other", "date": "YYYY-MM-DD", "payment_method": "Cash|Credit Card|Debit Card|QR Code|E-Wallet|Bank Transfer|Other", "items": ["item1"], "tax_amount": "string", "tip_amount": "string"}
 
 IMPORTANT:
 - merchant must be a meaningful description, NOT just store name
 - Vietnamese examples: "Ăn tối tại [Store]", "Ăn trưa tại [Store]", "Cà phê tại [Store]", "Mua sắm tại [Store]"
 - English examples: "Dinner at [Store]", "Lunch at [Store]", "Coffee at [Store]", "Shopping at [Store]"
 - Use Title Case (e.g., "Ăn tối tại Ẩm Thực Phú Long" NOT "ĂN TỐI TẠI ÂM THỰC PHÚ LONG")
-- Infer meal time from receipt time if available
+- For banking app screenshots: extract the most recent/topmost transaction
+- amount must be a number WITHOUT currency symbols (e.g., 261590 not 261.590đ)
 Return ONLY the JSON object.''';
+  }
+
+  @override
+  Future<List<ReceiptScanResult>> analyzeScreenshot({
+    required Uint8List imageBytes,
+  }) async {
+    final result = await analyzeReceipt(imageBytes: imageBytes);
+    return [result];
   }
 }

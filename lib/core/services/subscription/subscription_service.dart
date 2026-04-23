@@ -55,29 +55,44 @@ class SubscriptionService {
     Log.i('SubscriptionService initialized', label: 'Subscription');
   }
 
-  /// Load available products from the store
-  Future<void> loadProducts() async {
+  /// Load available products from the store with retry
+  Future<void> loadProducts({int retryCount = 3}) async {
     if (!_isAvailable) return;
 
-    try {
-      final response = await _inAppPurchase.queryProductDetails(
-        SubscriptionProducts.allProductIds,
-      );
+    for (int attempt = 1; attempt <= retryCount; attempt++) {
+      try {
+        Log.i('Loading products (attempt $attempt/$retryCount)...', label: 'Subscription');
 
-      if (response.notFoundIDs.isNotEmpty) {
-        Log.w(
-          'Products not found: ${response.notFoundIDs}',
+        final response = await _inAppPurchase.queryProductDetails(
+          SubscriptionProducts.allProductIds,
+        );
+
+        if (response.notFoundIDs.isNotEmpty) {
+          Log.w(
+            'Products not found: ${response.notFoundIDs}',
+            label: 'Subscription',
+          );
+        }
+
+        _products = response.productDetails;
+        Log.i(
+          'Loaded ${_products.length} products: ${_products.map((p) => p.id).join(", ")}',
           label: 'Subscription',
         );
-      }
 
-      _products = response.productDetails;
-      Log.i(
-        'Loaded ${_products.length} products: ${_products.map((p) => p.id).join(", ")}',
-        label: 'Subscription',
-      );
-    } catch (e) {
-      Log.e('Error loading products: $e', label: 'Subscription');
+        // Success - exit retry loop
+        if (_products.isNotEmpty) return;
+
+        // No products found, wait before retry
+        if (attempt < retryCount) {
+          await Future.delayed(Duration(seconds: attempt * 2));
+        }
+      } catch (e) {
+        Log.e('Error loading products (attempt $attempt): $e', label: 'Subscription');
+        if (attempt < retryCount) {
+          await Future.delayed(Duration(seconds: attempt * 2));
+        }
+      }
     }
   }
 
@@ -104,14 +119,39 @@ class SubscriptionService {
     }
   }
 
+  /// Track if we're in a restore operation
+  bool _isRestoring = false;
+  SubscriptionTier _restoredTier = SubscriptionTier.free;
+
   /// Restore previous purchases
+  /// This will reset tier to free if no valid purchases are found (e.g., after refund)
   Future<void> restorePurchases() async {
     if (!_isAvailable) return;
 
     try {
+      _isRestoring = true;
+      _restoredTier = SubscriptionTier.free;
+
       await _inAppPurchase.restorePurchases();
       Log.i('Restore purchases initiated', label: 'Subscription');
+
+      // Give time for restore callbacks to complete
+      await Future.delayed(const Duration(seconds: 2));
+
+      // After restore completes, update tier to what was actually restored
+      // If no valid purchases were restored, _restoredTier stays at free
+      if (_currentTier != _restoredTier) {
+        Log.i(
+          'Subscription changed after restore: ${_currentTier.displayName} -> ${_restoredTier.displayName}',
+          label: 'Subscription',
+        );
+        _currentTier = _restoredTier;
+        onSubscriptionChanged?.call(_currentTier);
+      }
+
+      _isRestoring = false;
     } catch (e) {
+      _isRestoring = false;
       Log.e('Error restoring purchases: $e', label: 'Subscription');
     }
   }
@@ -171,12 +211,20 @@ class SubscriptionService {
       newTier = SubscriptionTier.plus;
     }
 
-    // Update tier if higher than current
-    if (newTier.index > _currentTier.index) {
-      _currentTier = newTier;
-      onSubscriptionChanged?.call(_currentTier);
-      Log.i('Subscription tier updated to: ${_currentTier.displayName}',
-          label: 'Subscription');
+    // If restoring, track the highest tier found
+    if (_isRestoring) {
+      if (newTier.index > _restoredTier.index) {
+        _restoredTier = newTier;
+        Log.i('Restored tier: ${_restoredTier.displayName}', label: 'Subscription');
+      }
+    } else {
+      // Normal purchase - update tier immediately if higher
+      if (newTier.index > _currentTier.index) {
+        _currentTier = newTier;
+        onSubscriptionChanged?.call(_currentTier);
+        Log.i('Subscription tier updated to: ${_currentTier.displayName}',
+            label: 'Subscription');
+      }
     }
 
     // Complete the purchase

@@ -67,6 +67,8 @@ class GoalFormService {
           iconName: goal.iconName,
           associatedAccountId: goal.associatedAccountId,
           pinned: goal.pinned,
+          isDeleted: goal.isDeleted,
+          deletedAt: goal.deletedAt,
         ),
       );
     }

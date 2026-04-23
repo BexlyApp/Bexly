@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/features/ai_chat/data/config/ai_prompts.dart';
 
 abstract class AIService {
@@ -10,6 +10,7 @@ abstract class AIService {
   Stream<String> sendMessageStream(String message);
   void updateRecentTransactions(String recentTransactionsContext);
   void updateBudgetsContext(String budgetsContext); // Update budgets list for AI
+  void updateSpendingInsights(String spendingInsightsContext); // Update spending analysis for coaching
   void updateContext({
     String? walletName,
     String? walletCurrency,
@@ -17,6 +18,7 @@ abstract class AIService {
     double? exchangeRate,
   }); // Update wallet context dynamically
   void clearHistory(); // Clear conversation history
+  String get modelName; // Get current model name for display
 }
 
 /// Mixin for shared prompt generation logic across AI services
@@ -24,6 +26,7 @@ mixin AIServicePromptMixin {
   List<String> get categories;
   String get recentTransactionsContext;
   String get budgetsContext; // Current budgets for AI context
+  String get spendingInsightsContext; // Spending analysis for coaching
   String? get categoryHierarchy => null; // Optional hierarchy text
   String? get walletCurrency => null; // Optional wallet currency for conversion notification
   String? get walletName => null; // Optional wallet name for personalized responses
@@ -40,6 +43,20 @@ mixin AIServicePromptMixin {
         exchangeRateVndToUsd: exchangeRateVndToUsd,
         wallets: wallets,
         budgetsContext: budgetsContext,
+        spendingInsightsContext: spendingInsightsContext,
+      );
+
+  /// Compact system prompt for DOS AI (8192 token limit — remove once --max-model-len >= 16384)
+  String get compactSystemPrompt => AIPrompts.buildCompactSystemPrompt(
+        categories: categories,
+        recentTransactionsContext: recentTransactionsContext,
+        categoryHierarchy: categoryHierarchy,
+        walletCurrency: walletCurrency,
+        walletName: walletName,
+        exchangeRateVndToUsd: exchangeRateVndToUsd,
+        wallets: wallets,
+        budgetsContext: budgetsContext,
+        spendingInsightsContext: spendingInsightsContext,
       );
 
   // Legacy getters for backwards compatibility (all delegate to AIPrompts)
@@ -78,12 +95,19 @@ class OpenAIService with AIServicePromptMixin implements AIService {
 
   String _recentTransactionsContext = '';
   String _budgetsContext = '';
+  String _spendingInsightsContext = '';
 
   @override
   String get recentTransactionsContext => _recentTransactionsContext;
 
   @override
   String get budgetsContext => _budgetsContext;
+
+  @override
+  String get spendingInsightsContext => _spendingInsightsContext;
+
+  @override
+  String get modelName => model;
 
   // Conversation history for context
   final List<Map<String, String>> _conversationHistory = [];
@@ -115,6 +139,12 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   }
 
   @override
+  void updateSpendingInsights(String spendingInsightsContext) {
+    _spendingInsightsContext = spendingInsightsContext;
+    Log.d('Updated spending insights context (${spendingInsightsContext.length} chars)', label: 'AI Service');
+  }
+
+  @override
   void updateContext({
     String? walletName,
     String? walletCurrency,
@@ -143,22 +173,12 @@ class OpenAIService with AIServicePromptMixin implements AIService {
   @override
   Future<String> sendMessage(String message) async {
     try {
-      Log.d('Sending message to OpenAI: $message', label: 'OpenAI Service');
+      Log.d('Sending message to OpenAI via proxy: $message', label: 'OpenAI Service');
 
-      // Better API key validation and logging
-      if (apiKey == 'USER_MUST_PROVIDE_API_KEY' || apiKey.isEmpty) {
-        throw Exception('No API key configured. Please add OPENAI_API_KEY to your .env file.');
+      final headers = LLMDefaultConfig.proxyHeaders;
+      if (headers == null) {
+        throw Exception('Not authenticated — cannot use AI proxy. Please sign in first.');
       }
-
-      // Validate API key format (should start with sk-)
-      if (!apiKey.startsWith('sk-')) {
-        Log.e('Invalid API key format. OpenAI keys should start with "sk-"', label: 'OpenAI Service');
-      }
-
-      final maskedKey = apiKey.length > 10
-          ? '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}'
-          : 'Invalid key';
-      Log.d('Using API key: $maskedKey', label: 'OpenAI Service');
 
       // Build messages array with history
       final messages = [
@@ -166,7 +186,7 @@ class OpenAIService with AIServicePromptMixin implements AIService {
           'role': 'system',
           'content': systemPrompt,
         },
-        ..._conversationHistory, // Include previous messages
+        ..._conversationHistory,
         {
           'role': 'user',
           'content': message,
@@ -175,84 +195,43 @@ class OpenAIService with AIServicePromptMixin implements AIService {
 
       final response = await http
           .post(
-            Uri.parse('$baseUrl/chat/completions'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $apiKey',
-            },
+            Uri.parse(LLMDefaultConfig.proxyUrl),
+            headers: headers,
             body: jsonEncode({
-          'model': model,
-          'messages': messages,
-          // Lower temperature for more focused responses
-          'temperature': 0.3,
-          // Encourage JSON structure even if not strict JSON mode
-          'response_format': { 'type': 'text' },
-          'max_tokens': 2000, // Increased for reasoning + JSON
+              'provider': 'openai',
+              'action': 'chat',
+              'model': model,
+              'messages': messages,
+              'temperature': 0.3,
+              'max_tokens': 2000,
             }),
           )
           .timeout(
             const Duration(seconds: 30),
             onTimeout: () {
-              Log.e('OpenAI API request timed out after 30 seconds', label: 'OpenAI Service');
               throw Exception('Request timed out. Please check your internet connection and try again.');
             },
           );
 
-      Log.d('OpenAI Response status: ${response.statusCode}', label: 'OpenAI Service');
-      Log.d('OpenAI Response body (first 500 chars): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}', label: 'OpenAI Service');
+      Log.d('Proxy Response status: ${response.statusCode}', label: 'OpenAI Service');
 
       if (response.statusCode == 200) {
-        try {
-          final data = jsonDecode(response.body);
-          final content = data['choices'][0]['message']['content'];
-          Log.d('OpenAI Response content: $content', label: 'OpenAI Service');
+        final data = jsonDecode(response.body);
+        if (data['error'] != null) throw Exception(data['error']);
+        final content = data['content'] as String;
 
-          // Save conversation to history
-          _conversationHistory.add({
-            'role': 'user',
-            'content': message,
-          });
-          _conversationHistory.add({
-            'role': 'assistant',
-            'content': content,
-          });
+        _conversationHistory.add({'role': 'user', 'content': message});
+        _conversationHistory.add({'role': 'assistant', 'content': content});
 
-          Log.d('Conversation history updated (${_conversationHistory.length} messages)', label: 'AI Service');
-
-          return content.trim();
-        } catch (e) {
-          Log.e('Failed to parse OpenAI response as JSON: $e', label: 'OpenAI Service');
-          Log.e('Response body: ${response.body}', label: 'OpenAI Service');
-          throw Exception('Invalid response format from OpenAI API. Response was not valid JSON.');
-        }
+        return content.trim();
       } else {
-        Log.e('OpenAI API error: ${response.statusCode} - ${response.body}', label: 'OpenAI Service');
-
-        // Parse error details for better user feedback
-        String errorMessage = 'API Error';
-        try {
-          final errorData = jsonDecode(response.body);
-          if (errorData['error'] != null) {
-            errorMessage = errorData['error']['message'] ?? 'Unknown error';
-          }
-        } catch (_) {
-          errorMessage = 'API Error: ${response.statusCode}';
-        }
-
-        // Check for specific error codes
-        if (response.statusCode == 401) {
-          throw Exception('Invalid API key. Please check your OpenAI API key.');
-        } else if (response.statusCode == 429) {
-          throw Exception('Rate limit exceeded. Please try again later.');
-        } else if (response.statusCode == 500 || response.statusCode == 503) {
-          throw Exception('OpenAI service is temporarily unavailable. Please try again later.');
-        } else {
-          throw Exception(errorMessage);
-        }
+        final data = jsonDecode(response.body);
+        final error = data['error'] ?? 'API Error: ${response.statusCode}';
+        throw Exception(error);
       }
     } catch (e) {
-      Log.e('Error calling OpenAI API: $e', label: 'OpenAI Service');
-      throw e;
+      Log.e('Error calling OpenAI via proxy: $e', label: 'OpenAI Service');
+      rethrow;
     }
   }
 
@@ -289,6 +268,7 @@ class GeminiService with AIServicePromptMixin implements AIService {
 
   String _recentTransactionsContext = '';
   String _budgetsContext = '';
+  String _spendingInsightsContext = '';
 
   @override
   String get recentTransactionsContext => _recentTransactionsContext;
@@ -296,20 +276,26 @@ class GeminiService with AIServicePromptMixin implements AIService {
   @override
   String get budgetsContext => _budgetsContext;
 
-  // Conversation history for context (using Gemini's Content format)
-  final List<Content> _conversationHistory = [];
+  @override
+  String get spendingInsightsContext => _spendingInsightsContext;
+
+  @override
+  String get modelName => model;
+
+  // Conversation history (OpenAI-compatible format, proxy handles translation)
+  final List<Map<String, String>> _conversationHistory = [];
 
   GeminiService({
     required this.apiKey,
-    this.model = 'gemini-2.5-flash',
+    String? model,
     this.categories = const [],
     this.categoryHierarchy,
     this.walletCurrency,
     this.walletName,
     this.exchangeRateVndToUsd,
     this.wallets,
-  }) {
-    Log.d('GeminiService initialized with model: $model, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}', label: 'AI Service');
+  }) : model = model ?? LLMDefaultConfig.geminiModel {
+    Log.d('GeminiService initialized with model: ${this.model}, categories: ${categories.length}, wallet: "$walletName" ($walletCurrency), wallets: ${wallets?.length ?? 0}', label: 'AI Service');
   }
 
   @override
@@ -322,6 +308,12 @@ class GeminiService with AIServicePromptMixin implements AIService {
   void updateBudgetsContext(String budgetsContext) {
     _budgetsContext = budgetsContext;
     Log.d('Updated budgets context (${budgetsContext.length} chars)', label: 'Gemini Service');
+  }
+
+  @override
+  void updateSpendingInsights(String spendingInsightsContext) {
+    _spendingInsightsContext = spendingInsightsContext;
+    Log.d('Updated spending insights context (${spendingInsightsContext.length} chars)', label: 'Gemini Service');
   }
 
   @override
@@ -387,74 +379,58 @@ class GeminiService with AIServicePromptMixin implements AIService {
   }
 
   Future<String> _sendMessageInternal(String message) async {
-    Log.d('🔵 === GEMINI API CALL START ===', label: 'Gemini Service');
-    Log.d('🔵 User input: "$message"', label: 'Gemini Service');
-    Log.d('🔵 Input length: ${message.length} characters', label: 'Gemini Service');
-    Log.d('🔵 Input encoding (first 50 chars): ${message.length > 50 ? message.substring(0, 50).codeUnits : message.codeUnits}', label: 'Gemini Service');
+    Log.d('Sending message to Gemini via proxy: $message', label: 'Gemini Service');
 
-    // Log if Chinese characters detected
-    final hasChinese = message.contains(RegExp(r'[\u4e00-\u9fa5]'));
-    final hasJapanese = message.contains(RegExp(r'[\u3040-\u309f\u30a0-\u30ff]'));
-    if (hasChinese) {
-      Log.d('🔍 Chinese characters detected in input', label: 'Gemini Service');
-    }
-    if (hasJapanese) {
-      Log.d('🔍 Japanese characters detected in input', label: 'Gemini Service');
+    final headers = LLMDefaultConfig.proxyHeaders;
+    if (headers == null) {
+      throw Exception('Not authenticated — cannot use AI proxy. Please sign in first.');
     }
 
-    // Validate API key
-    if (apiKey.isEmpty || apiKey == 'USER_MUST_PROVIDE_API_KEY') {
-      throw Exception('No Gemini API key configured. Please add GEMINI_API_KEY to your .env file.');
-    }
-
-    // Log system prompt for debugging
-    Log.d('System Prompt:\n$systemPrompt', label: 'Gemini Service');
-    print('====== SYSTEM PROMPT DEBUG ======');
-    print(systemPrompt);
-    print('=================================');
-
-    // Create model with system instruction (cached, not counted in tokens!)
-    final modelWithSystemPrompt = GenerativeModel(
-      model: model,
-      apiKey: apiKey,
-      systemInstruction: Content.text(systemPrompt),
-      generationConfig: GenerationConfig(
-        temperature: 0.3, // Lower temp for more focused responses
-        maxOutputTokens: 2000, // Increase limit for reasoning + JSON
-      ),
-    );
-
-    // Create chat with conversation history
-    final chat = modelWithSystemPrompt.startChat(history: _conversationHistory);
+    // Build messages array with history (OpenAI-compatible format)
+    final messages = [
+      {'role': 'system', 'content': systemPrompt},
+      ..._conversationHistory,
+      {'role': 'user', 'content': message},
+    ];
 
     Log.d('Starting chat with ${_conversationHistory.length} previous messages', label: 'Gemini Service');
 
-    // Send user message
-    final response = await chat.sendMessage(
-      Content.text(message),
-    ).timeout(
-      const Duration(seconds: 30),
-      onTimeout: () {
-        Log.e('Gemini API request timed out after 30 seconds', label: 'Gemini Service');
-        throw Exception('Request timed out. Please check your internet connection and try again.');
-      },
-    );
+    final response = await http
+        .post(
+          Uri.parse(LLMDefaultConfig.proxyUrl),
+          headers: headers,
+          body: jsonEncode({
+            'provider': 'gemini',
+            'action': 'chat',
+            'model': model,
+            'messages': messages,
+            'temperature': 0.3,
+            'max_tokens': 2000,
+          }),
+        )
+        .timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw Exception('Request timed out. Please check your internet connection and try again.');
+          },
+        );
 
-    final content = response.text ?? '';
-    Log.d('Gemini Response content: $content', label: 'Gemini Service');
+    Log.d('Proxy Response status: ${response.statusCode}', label: 'Gemini Service');
 
-    // FORCE print for debugging - works in release mode
-    print('========== GEMINI RAW RESPONSE ==========');
-    print(content);
-    print('=========================================');
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['error'] != null) throw Exception(data['error']);
+      final content = data['content'] as String;
 
-    // Save conversation to history
-    _conversationHistory.add(Content.text(message)); // User message
-    _conversationHistory.add(Content.model([TextPart(content)])); // AI response
+      _conversationHistory.add({'role': 'user', 'content': message});
+      _conversationHistory.add({'role': 'assistant', 'content': content});
 
-    Log.d('Conversation history updated (${_conversationHistory.length} messages)', label: 'AI Service');
-
-    return content.trim();
+      return content.trim();
+    } else {
+      final data = jsonDecode(response.body);
+      final error = data['error'] ?? 'API Error: ${response.statusCode}';
+      throw Exception(error);
+    }
   }
 
   @override
@@ -472,14 +448,21 @@ class GeminiService with AIServicePromptMixin implements AIService {
       Log.e('❌ Error toString: ${e.toString()}', label: 'Gemini Service');
 
       // Parse error for user-friendly message
-      String userFriendlyMessage = 'Sorry, an error occurred with Gemini AI.';
+      final errorStr = e.toString();
+      String userFriendlyMessage;
 
-      if (e.toString().contains('API key')) {
+      if (errorStr.contains('API key')) {
         userFriendlyMessage = 'Invalid Gemini API key. Please check your configuration.';
-      } else if (e.toString().contains('quota') || e.toString().contains('rate limit')) {
+      } else if (errorStr.contains('quota') || errorStr.contains('rate limit')) {
         userFriendlyMessage = 'Gemini API quota exceeded. Please try again later.';
-      } else if (e.toString().contains('timeout')) {
+      } else if (errorStr.contains('timeout') || errorStr.contains('timed out')) {
         userFriendlyMessage = 'Request timed out. Please check your internet connection.';
+      } else if (errorStr.contains('Not authenticated')) {
+        userFriendlyMessage = 'Please sign in to use AI features.';
+      } else {
+        // Show actual error for debugging
+        final cleanError = errorStr.replaceFirst('Exception: ', '');
+        userFriendlyMessage = 'Gemini AI error: $cleanError';
       }
 
       throw Exception(userFriendlyMessage);
@@ -522,6 +505,7 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
 
   String _recentTransactionsContext = '';
   String _budgetsContext = '';
+  String _spendingInsightsContext = '';
 
   @override
   String get recentTransactionsContext => _recentTransactionsContext;
@@ -529,8 +513,18 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
   @override
   String get budgetsContext => _budgetsContext;
 
+  @override
+  String get spendingInsightsContext => _spendingInsightsContext;
+
+  @override
+  String get modelName => _resolvedModel ?? model;
+
   // Conversation history for context
   final List<Map<String, String>> _conversationHistory = [];
+
+  // Auto-resolved model name (populated on 404 by querying /v1/models)
+  String? _resolvedModel;
+  String get _activeModel => _resolvedModel ?? model;
 
   CustomLLMService({
     required this.baseUrl,
@@ -559,6 +553,12 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
   }
 
   @override
+  void updateSpendingInsights(String spendingInsightsContext) {
+    _spendingInsightsContext = spendingInsightsContext;
+    Log.d('Updated spending insights context (${spendingInsightsContext.length} chars)', label: 'Custom LLM');
+  }
+
+  @override
   void updateContext({
     String? walletName,
     String? walletCurrency,
@@ -579,85 +579,201 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
     Log.d('Conversation history cleared', label: 'Custom LLM');
   }
 
-  @override
-  Future<String> sendMessage(String message) async {
-    try {
-      Log.d('Sending message to Custom LLM ($baseUrl): $message', label: 'Custom LLM');
+  // Retry helper with exponential backoff
+  Future<T> _retryWithBackoff<T>(
+    Future<T> Function() operation, {
+    int maxRetries = 3,
+    Duration initialDelay = const Duration(milliseconds: 500),
+  }) async {
+    int attempt = 0;
+    Duration delay = initialDelay;
 
-      // Build messages array with history
-      final messages = [
-        {
-          'role': 'system',
-          'content': systemPrompt,
-        },
-        ..._conversationHistory,
-        {
-          'role': 'user',
-          'content': message,
+    while (true) {
+      try {
+        attempt++;
+        if (attempt > 1) {
+          Log.d('🔄 Retry attempt $attempt/$maxRetries', label: 'Custom LLM');
         }
-      ];
+        return await operation();
+      } catch (e) {
+        // Don't retry on auth, API key, quota, or timeout errors
+        if (e.toString().contains('API key') ||
+            e.toString().contains('401') ||
+            e.toString().contains('quota') ||
+            e.toString().contains('DOS_AI_TIMEOUT') ||
+            attempt >= maxRetries) {
+          rethrow;
+        }
 
-      // Prepare headers
+        // Retry on timeout/network errors
+        if (attempt < maxRetries) {
+          Log.w('⚠️ Attempt $attempt failed, retrying in ${delay.inMilliseconds}ms...', label: 'Custom LLM');
+          await Future.delayed(delay);
+          delay *= 2; // Exponential backoff
+        } else {
+          rethrow;
+        }
+      }
+    }
+  }
+
+  /// Query /v1/models and return the first available model ID.
+  /// Used as fallback when the configured model returns 404.
+  Future<String?> _fetchFirstAvailableModel() async {
+    try {
       final headers = <String, String>{
-        'Content-Type': 'application/json',
+        'User-Agent': 'Bexly/1.0 (Dart; Flutter)',
+        'Accept': 'application/json',
       };
-
-      // Add Authorization header if API key is provided
       if (apiKey.isNotEmpty && apiKey != 'no-key-required') {
         headers['Authorization'] = 'Bearer $apiKey';
       }
-
       final response = await http
-          .post(
-            Uri.parse('$baseUrl/chat/completions'),
-            headers: headers,
-            body: jsonEncode({
-              'model': model,
-              'messages': messages,
-              'temperature': 0.3,
-              'max_tokens': 2000,
-            }),
-          )
-          .timeout(
-            const Duration(seconds: 60), // Longer timeout for self-hosted
-            onTimeout: () {
-              Log.e('Custom LLM request timed out after 60 seconds', label: 'Custom LLM');
-              throw Exception('Request timed out. Please check your self-hosted LLM server.');
-            },
-          );
-
-      Log.d('Custom LLM Response status: ${response.statusCode}', label: 'Custom LLM');
-
+          .get(Uri.parse('$baseUrl/models'), headers: headers)
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
-        try {
-          final data = jsonDecode(response.body);
-          final content = data['choices'][0]['message']['content'];
-          Log.d('Custom LLM Response: $content', label: 'Custom LLM');
-
-          // Save conversation to history
-          _conversationHistory.add({
-            'role': 'user',
-            'content': message,
-          });
-          _conversationHistory.add({
-            'role': 'assistant',
-            'content': content,
-          });
-
-          return content.trim();
-        } catch (e) {
-          Log.e('Failed to parse Custom LLM response: $e', label: 'Custom LLM');
-          throw Exception('Invalid response format from Custom LLM.');
-        }
-      } else {
-        Log.e('Custom LLM API error: ${response.statusCode} - ${response.body}', label: 'Custom LLM');
-
-        if (response.statusCode == 503) {
-          throw Exception('Self-hosted LLM server is not available. Please check if vLLM/Ollama is running.');
-        } else {
-          throw Exception('Custom LLM Error: ${response.statusCode}');
+        final data = jsonDecode(response.body);
+        final models = data['data'] as List?;
+        if (models != null && models.isNotEmpty) {
+          return models.first['id'] as String?;
         }
       }
+    } catch (e) {
+      Log.w('Failed to fetch available models: $e', label: 'Custom LLM');
+    }
+    return null;
+  }
+
+  Future<String> _sendMessageInternal(String message) async {
+    Log.d('Sending message to Custom LLM ($baseUrl): $message', label: 'Custom LLM');
+
+    // Trim conversation history to last 6 turns (3 user + 3 assistant)
+    final trimmedHistory = _conversationHistory.length > 6
+        ? _conversationHistory.sublist(_conversationHistory.length - 6)
+        : _conversationHistory;
+
+    // Build messages array with history
+    // TODO: switch back to systemPrompt once vLLM --max-model-len >= 16384
+    final messages = [
+      {
+        'role': 'system',
+        'content': compactSystemPrompt,
+      },
+      ...trimmedHistory,
+      {
+        'role': 'user',
+        'content': message,
+      }
+    ];
+
+    // Prepare headers
+    // User-Agent is REQUIRED - Cloudflare WAF blocks requests without a proper UA
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'User-Agent': 'Bexly/1.0 (Dart; Flutter)',
+      'Accept': 'application/json',
+    };
+
+    // Add Authorization header if API key is provided
+    if (apiKey.isNotEmpty && apiKey != 'no-key-required') {
+      headers['Authorization'] = 'Bearer $apiKey';
+    }
+
+    final timeoutSeconds = LLMDefaultConfig.customTimeoutSeconds;
+
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/chat/completions'),
+          headers: headers,
+          body: jsonEncode({
+            'model': _activeModel,
+            'messages': messages,
+            'temperature': 0.3,
+            'max_tokens': 2000,
+            // Disable Qwen3/3.5 thinking mode (top-level for raw HTTP, not inside extra_body)
+            'chat_template_kwargs': {'enable_thinking': false},
+          }),
+        )
+        .timeout(
+          Duration(seconds: timeoutSeconds),
+          onTimeout: () {
+            Log.e('Custom LLM request timed out after ${timeoutSeconds}s', label: 'Custom LLM');
+            throw Exception('DOS_AI_TIMEOUT');
+          },
+        );
+
+    Log.d('Custom LLM Response status: ${response.statusCode}', label: 'Custom LLM');
+
+    // Model not found — cascade: try alias 'dos-ai', then auto-detect from /v1/models
+    if (response.statusCode == 404) {
+      if (_activeModel != 'dos-ai') {
+        // Step 1: try the well-known alias
+        Log.w('404 for model "$_activeModel", falling back to alias "dos-ai"', label: 'Custom LLM');
+        _resolvedModel = 'dos-ai';
+      } else {
+        // Step 2: alias also failed, query /v1/models
+        Log.w('404 for alias "dos-ai", querying /v1/models...', label: 'Custom LLM');
+        final detected = await _fetchFirstAvailableModel();
+        if (detected != null) {
+          Log.i('Auto-detected model: $detected', label: 'Custom LLM');
+          _resolvedModel = detected;
+        }
+      }
+      throw Exception('Custom LLM Error: 404 (retrying with ${_resolvedModel ?? model})');
+    }
+
+    // Auth failure — don't retry, fail fast
+    if (response.statusCode == 401) {
+      Log.e('401 Unauthorized - API key rejected. Response: ${response.body}', label: 'Custom LLM');
+      throw Exception('DOS AI API key rejected (401). Check your API key configuration.');
+    }
+
+    // Cloudflare WAF block detection
+    if (response.statusCode == 403) {
+      Log.e('403 Forbidden - likely Cloudflare WAF block. Response: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}', label: 'Custom LLM');
+      throw Exception('DOS AI blocked by firewall (403). Please try again.');
+    }
+
+    if (response.statusCode == 200) {
+      try {
+        final data = jsonDecode(response.body);
+        final content = data['choices'][0]['message']['content'];
+        Log.d('Custom LLM Response: $content', label: 'Custom LLM');
+
+        // Save conversation to history
+        _conversationHistory.add({
+          'role': 'user',
+          'content': message,
+        });
+        _conversationHistory.add({
+          'role': 'assistant',
+          'content': content,
+        });
+
+        return content.trim();
+      } catch (e) {
+        Log.e('Failed to parse Custom LLM response: $e', label: 'Custom LLM');
+        throw Exception('Invalid response format from Custom LLM.');
+      }
+    } else {
+      Log.e('Custom LLM API error: ${response.statusCode} - ${response.body}', label: 'Custom LLM');
+
+      if (response.statusCode == 503) {
+        throw Exception('Self-hosted LLM server is not available. Please check if vLLM/Ollama is running.');
+      } else {
+        throw Exception('Custom LLM Error: ${response.statusCode}');
+      }
+    }
+  }
+
+  @override
+  Future<String> sendMessage(String message) async {
+    try {
+      return await _retryWithBackoff(
+        () => _sendMessageInternal(message),
+        maxRetries: 3,
+        initialDelay: const Duration(milliseconds: 500),
+      );
     } catch (e) {
       Log.e('Error calling Custom LLM API: $e', label: 'Custom LLM');
       rethrow;

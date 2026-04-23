@@ -11,6 +11,7 @@ import 'package:bexly/core/database/daos/wallet_dao.dart'; // Import new DAO
 import 'package:bexly/core/database/daos/chat_message_dao.dart';
 import 'package:bexly/core/database/daos/recurring_dao.dart';
 import 'package:bexly/core/database/daos/notification_dao.dart';
+import 'package:bexly/core/database/daos/family_dao.dart';
 import 'package:bexly/core/database/tables/budgets_table.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/transaction_table.dart';
@@ -21,6 +22,14 @@ import 'package:bexly/core/database/tables/wallet_table.dart'; // Import new tab
 import 'package:bexly/core/database/tables/chat_messages_table.dart';
 import 'package:bexly/core/database/tables/recurrings_table.dart';
 import 'package:bexly/core/database/tables/notifications_table.dart';
+import 'package:bexly/core/database/tables/family_group_table.dart';
+import 'package:bexly/core/database/tables/family_member_table.dart';
+import 'package:bexly/core/database/tables/family_invitation_table.dart';
+import 'package:bexly/core/database/tables/shared_wallet_table.dart';
+import 'package:bexly/core/database/tables/parsed_email_transaction_table.dart';
+import 'package:bexly/core/database/daos/parsed_email_transaction_dao.dart';
+import 'package:bexly/core/database/tables/pending_transaction_table.dart';
+import 'package:bexly/core/database/daos/pending_transaction_dao.dart';
 import 'package:bexly/core/services/data_population_service/category_population_service.dart';
 import 'package:bexly/core/services/data_population_service/wallet_population_service.dart'; // Import new population service
 import 'package:bexly/core/utils/logger.dart';
@@ -39,6 +48,12 @@ part 'app_database.g.dart';
     ChatMessages,
     Recurrings,
     Notifications,
+    FamilyGroups,
+    FamilyMembers,
+    FamilyInvitations,
+    SharedWallets,
+    ParsedEmailTransactions,
+    PendingTransactions,
   ],
   daos: [
     UserDao,
@@ -51,13 +66,16 @@ part 'app_database.g.dart';
     ChatMessageDao,
     RecurringDao,
     NotificationDao,
+    FamilyDao,
+    ParsedEmailTransactionDao,
+    PendingTransactionDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 18; // Add localizedTitles column to categories for multi-language support
+  int get schemaVersion => 27; // Add imagePath column to chat_messages
 
   @override
   MigrationStrategy get migration {
@@ -235,6 +253,135 @@ class AppDatabase extends _$AppDatabase {
           }
         }
 
+        // For version 19, add family sharing tables and columns
+        if (from < 19) {
+          try {
+            // Create new family sharing tables
+            await m.createTable(familyGroups);
+            await m.createTable(familyMembers);
+            await m.createTable(familyInvitations);
+            await m.createTable(sharedWallets);
+            Log.i('Created family sharing tables', label: 'database');
+
+            // Add user tracking columns to transactions
+            await m.addColumn(transactions, transactions.createdByUserId);
+            await m.addColumn(transactions, transactions.lastModifiedByUserId);
+            Log.i('Added user tracking columns to transactions', label: 'database');
+
+            // Add sharing columns to wallets
+            await m.addColumn(wallets, wallets.ownerUserId);
+            await m.addColumn(wallets, wallets.isShared);
+            Log.i('Added sharing columns to wallets', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add family sharing schema: $e', label: 'database');
+          }
+        }
+
+        // For version 20, add parsed email transactions table for email sync
+        if (from < 20) {
+          try {
+            await m.createTable(parsedEmailTransactions);
+            Log.i('Created parsed_email_transactions table for email sync', label: 'database');
+          } catch (e) {
+            Log.e('Failed to create parsed_email_transactions table: $e', label: 'database');
+          }
+        }
+
+        // For version 21, add initialBalance column to wallets for tracking
+        if (from < 21) {
+          try {
+            await m.addColumn(wallets, wallets.initialBalance);
+            Log.i('Added initialBalance column to wallets', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add initialBalance column: $e', label: 'database');
+          }
+        }
+
+        // For version 22, add unified pending_transactions table
+        if (from < 22) {
+          try {
+            await m.createTable(pendingTransactions);
+            Log.i('Created pending_transactions table for unified pending review', label: 'database');
+          } catch (e) {
+            Log.e('Failed to create pending_transactions table: $e', label: 'database');
+          }
+        }
+
+        // For version 23, add isDeleted column to transactions for soft delete sync
+        if (from < 23) {
+          try {
+            await m.addColumn(transactions, transactions.isDeleted);
+            Log.i('Added isDeleted column to transactions for soft delete sync', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add isDeleted column to transactions: $e', label: 'database');
+          }
+        }
+
+        // For version 24, add isDeleted/deletedAt to goals and isDeleted to categories
+        if (from < 24) {
+          try {
+            await m.addColumn(goals, goals.isDeleted);
+            await m.addColumn(goals, goals.deletedAt);
+            Log.i('Added isDeleted + deletedAt columns to goals', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add soft delete columns to goals: $e', label: 'database');
+          }
+          try {
+            await m.addColumn(categories, categories.isDeleted);
+            Log.i('Added isDeleted column to categories', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add isDeleted column to categories: $e', label: 'database');
+          }
+        }
+
+        // For version 25, add source/builtInId/hasBeenModified columns to categories
+        if (from < 25) {
+          try {
+            await m.addColumn(categories, categories.source);
+            Log.i('Added source column to categories', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add source column to categories: $e', label: 'database');
+          }
+          try {
+            await m.addColumn(categories, categories.builtInId);
+            Log.i('Added builtInId column to categories', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add builtInId column to categories: $e', label: 'database');
+          }
+          try {
+            await m.addColumn(categories, categories.hasBeenModified);
+            Log.i('Added hasBeenModified column to categories', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add hasBeenModified column to categories: $e', label: 'database');
+          }
+        }
+
+        // For version 26, add routinePeriod column to budgets
+        if (from < 26) {
+          try {
+            await m.addColumn(budgets, budgets.routinePeriod);
+            Log.i('Added routinePeriod column to budgets', label: 'database');
+
+            // Migrate existing routine budgets to 'monthly'
+            await customStatement(
+              "UPDATE budgets SET routine_period = 'monthly' WHERE is_routine = 1",
+            );
+            Log.i('Migrated existing routine budgets to monthly period', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add routinePeriod column: $e', label: 'database');
+          }
+        }
+
+        // For version 27, add imagePath column to chat_messages
+        if (from < 27) {
+          try {
+            await m.addColumn(chatMessages, chatMessages.imagePath);
+            Log.i('Added imagePath column to chat_messages', label: 'database');
+          } catch (e) {
+            Log.e('Failed to add imagePath column: $e', label: 'database');
+          }
+        }
+
         // Don't reset database if already at current version
         if (from == to) {
           Log.i('Database already at version $to, no migration needed', label: 'database');
@@ -314,6 +461,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _deleteAllChecklistItems() => delete(checklistItems).go();
   Future<void> _deleteAllBudgets() => delete(budgets).go();
   Future<void> _deleteAllTransactions() => delete(transactions).go();
+  Future<void> _deleteAllRecurrings() => delete(recurrings).go();
   Future<void> _deleteAllGoals() => delete(goals).go();
   Future<void> _deleteAllUsers() => delete(users).go();
   Future<void> _deleteAllWallets() => delete(wallets).go();
@@ -327,8 +475,9 @@ class AppDatabase extends _$AppDatabase {
       await _deleteAllChecklistItems();
       await _deleteAllBudgets();
       await _deleteAllTransactions();
+      await _deleteAllRecurrings();
       await _deleteAllGoals();
-      await _deleteAllUsers(); // Users table has no incoming FKs from other tables
+      await _deleteAllUsers();
       await _deleteAllWallets();
       await _deleteAllCategories();
     });

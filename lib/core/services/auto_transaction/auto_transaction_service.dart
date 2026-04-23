@@ -1,16 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/utils/logger.dart';
-import 'package:bexly/features/category/data/model/category_model.dart';
-import 'package:bexly/features/category/presentation/riverpod/category_providers.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_type.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
+import 'package:bexly/core/services/ai/background_ai_service.dart';
 import 'package:bexly/core/services/auto_transaction/bank_wallet_mapping.dart';
 import 'package:bexly/core/services/auto_transaction/parsed_transaction.dart';
 import 'package:bexly/core/services/auto_transaction/sms_service.dart';
@@ -29,6 +30,7 @@ class AutoTransactionService {
   final Ref _ref;
   SmsService? _smsService;
   NotificationListenerServiceWrapper? _notificationService;
+  AIDuplicateCheckService? _aiDuplicateCheckService;
   final BankWalletMappingService _mappingService = BankWalletMappingService();
 
   bool _isInitialized = false;
@@ -47,15 +49,16 @@ class AutoTransactionService {
 
     await _loadSettings();
 
-    // Initialize parser service with Gemini API key
-    final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
-    if (apiKey.isEmpty) {
-      Log.w('Gemini API key not configured, auto transaction disabled', label: 'AutoTransaction');
+    // Initialize AI service using configured provider
+    if (!BackgroundAIService.isAvailable) {
+      Log.w('No AI provider available, auto transaction disabled', label: 'AutoTransaction');
       return;
     }
 
-    final parserService = TransactionParserService(apiKey: apiKey);
+    final backgroundAI = BackgroundAIService();
+    final parserService = TransactionParserService(ai: backgroundAI);
     final deduplicationService = TransactionDeduplicationService();
+    _aiDuplicateCheckService = AIDuplicateCheckService(ai: backgroundAI);
 
     _smsService = SmsService(
       parserService: parserService,
@@ -65,6 +68,12 @@ class AutoTransactionService {
       parserService: parserService,
       deduplicationService: deduplicationService,
     );
+
+    // Check if there's a pending notification permission request.
+    // Android may kill the app when the user toggles notification listener
+    // permission in system settings. On restart, this check detects that
+    // the permission was granted and auto-enables the listener.
+    await _checkPendingNotificationPermissionOnStartup();
 
     // Start listening if SMS is enabled
     if (_smsEnabled && _smsService!.isAvailable) {
@@ -91,6 +100,38 @@ class AutoTransactionService {
         label: 'AutoTransaction');
   }
 
+  /// Check if there's a pending notification permission request from before
+  /// the app was killed by Android.
+  Future<void> _checkPendingNotificationPermissionOnStartup() async {
+    if (_notificationService == null) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pendingRequest = prefs.getBool('pending_notification_permission_request') ?? false;
+      if (!pendingRequest) return;
+
+      Log.d('Detected pending notification permission request from before app kill',
+          label: 'AutoTransaction');
+
+      final granted = await _notificationService!.hasPermission();
+
+      // Clear the flag regardless
+      await prefs.remove('pending_notification_permission_request');
+
+      if (granted) {
+        _notificationEnabled = true;
+        await prefs.setBool('auto_transaction_notification_enabled', true);
+        Log.d('Notification listener permission granted after app restart — auto-enabled',
+            label: 'AutoTransaction');
+      } else {
+        Log.w('Notification listener permission NOT granted after app restart',
+            label: 'AutoTransaction');
+      }
+    } catch (e) {
+      Log.e('Error checking pending notification permission: $e', label: 'AutoTransaction');
+    }
+  }
+
   /// Start listening for SMS messages
   Future<bool> _startSmsListening() async {
     if (_smsService == null) return false;
@@ -109,49 +150,169 @@ class AutoTransactionService {
     );
   }
 
-  /// Handle a parsed transaction
+  /// Handle a parsed transaction — routes to Pending Tab for user review
   void _handleParsedTransaction(ParsedTransaction parsed) async {
     Log.d('Handling parsed transaction: $parsed', label: 'AutoTransaction');
 
     try {
-      // Get wallet to use - first try mapping, then fall back to default
-      final wallet = await _getTargetWalletForTransaction(parsed);
-      if (wallet == null) {
-        Log.e('No wallet available for auto transaction', label: 'AutoTransaction');
-        return;
-      }
-
-      // Get appropriate category
-      final category = await _findBestCategory(parsed);
-
-      // Create transaction model
-      final transaction = TransactionModel(
-        transactionType: parsed.type,
-        amount: parsed.amount,
-        date: parsed.dateTime,
-        title: parsed.title,
-        category: category,
-        wallet: wallet,
-        notes: '${parsed.notes}\n\n[Auto-created from ${parsed.source}]',
-      );
-
-      // Save to database
-      final db = _ref.read(databaseProvider);
-      final id = await db.transactionDao.addTransaction(transaction);
-
-      Log.d('Auto-created transaction with ID: $id', label: 'AutoTransaction');
-
-      // TODO: Show local notification to user about the new transaction
+      await _addToPendingTab(parsed);
     } catch (e, stack) {
-      Log.e('Failed to create auto transaction: $e', label: 'AutoTransaction');
+      Log.e('Failed to add to pending tab: $e', label: 'AutoTransaction');
       Log.e('Stack: $stack', label: 'AutoTransaction');
     }
   }
 
-  /// Get the target wallet for a specific parsed transaction
-  /// First checks bank-wallet mapping, then falls back to default wallet
+  /// Add a parsed transaction to the pending_transactions table.
+  ///
+  /// Flow: parse → hash dedup → DB dedup → AI duplicate check → insert to pending
+  /// All automation sources (SMS, notification, email) go through this.
+  Future<bool> _addToPendingTab(ParsedTransaction parsed) async {
+    final db = _ref.read(databaseProvider);
+    final sourceId = parsed.deduplicationHash;
+
+    // 1. Check if already exists in pending_transactions (source+sourceId unique)
+    final alreadyProcessed = await db.pendingTransactionDao.isAlreadyProcessed(
+      parsed.source,
+      sourceId,
+    );
+    if (alreadyProcessed) {
+      Log.d('Already in pending tab, skipping: $sourceId', label: 'AutoTransaction');
+      return false;
+    }
+
+    // 2. AI duplicate check against existing transactions in DB
+    String? duplicateNote;
+    final isDuplicate = await _aiDuplicateCheckAgainstDb(parsed);
+    if (isDuplicate) {
+      duplicateNote = '[AI: Possible duplicate of existing transaction]';
+      Log.d('AI flagged as possible duplicate: $parsed', label: 'AutoTransaction');
+    }
+
+    // 3. Try to find target wallet
+    final wallet = await _getTargetWalletForTransaction(parsed);
+
+    // 4. Build category hint from merchant
+    final categoryHint = parsed.merchant;
+
+    // 5. Insert to pending_transactions table
+    final now = DateTime.now();
+    await db.pendingTransactionDao.insertOrIgnore(PendingTransactionsCompanion(
+      source: Value(parsed.source),
+      sourceId: Value(sourceId),
+      amount: Value(parsed.amount),
+      currency: Value(parsed.currency),
+      transactionType: Value(
+        parsed.type == TransactionType.income ? 'income' : 'expense',
+      ),
+      title: Value(parsed.title),
+      merchant: Value(parsed.merchant),
+      transactionDate: Value(parsed.dateTime),
+      confidence: const Value(0.8),
+      categoryHint: Value(categoryHint),
+      sourceDisplayName: Value(parsed.bankName ?? parsed.source),
+      accountIdentifier: Value(parsed.accountNumber),
+      targetWalletId: wallet != null ? Value(wallet.id!) : const Value.absent(),
+      rawSourceData: Value(jsonEncode(parsed.toJson())),
+      userNotes: duplicateNote != null ? Value(duplicateNote) : const Value.absent(),
+      status: const Value('pending_review'),
+      createdAt: Value(now),
+      updatedAt: Value(now),
+    ));
+
+    Log.d('Added to pending tab: ${parsed.title} (${parsed.amount})',
+        label: 'AutoTransaction');
+
+    // Fire-and-forget: use AI to clean up title and suggest category
+    unawaited(_enhancePendingWithAI(parsed, sourceId));
+
+    return true;
+  }
+
+  /// Use AI to improve the title and suggest a category for a pending transaction.
+  /// Runs in the background after insert — updates the record when done.
+  Future<void> _enhancePendingWithAI(ParsedTransaction parsed, String sourceId) async {
+    try {
+      final ai = BackgroundAIService();
+      final typeStr = parsed.type == TransactionType.income ? 'income' : 'expense';
+      final prompt =
+          'Transaction: type=$typeStr, amount=${parsed.amount}, '
+          'merchant="${parsed.merchant}", raw_title="${parsed.title}", '
+          'bank="${parsed.bankName ?? parsed.source}". '
+          'Reply with JSON only (no markdown): '
+          '{"title":"short clean title max 40 chars","category":"one of: '
+          'Food & Drink, Shopping, Transport, Entertainment, Health, '
+          'Education, Bills & Utilities, Salary & Income, Transfer, Other"}';
+
+      final response = await ai.complete(prompt, maxTokens: 100);
+      if (response == null) return;
+
+      // Strip markdown code fences if present
+      var json = response.trim();
+      if (json.startsWith('```')) {
+        json = json.replaceAll(RegExp(r'```[a-z]*\n?'), '').trim();
+      }
+
+      final data = jsonDecode(json) as Map<String, dynamic>;
+      final title = (data['title'] as String?)?.trim();
+      final category = (data['category'] as String?)?.trim();
+
+      final db = _ref.read(databaseProvider);
+      await db.pendingTransactionDao.updateTitleAndCategoryHint(
+        source: parsed.source,
+        sourceId: sourceId,
+        title: title?.isNotEmpty == true ? title : null,
+        categoryHint: category?.isNotEmpty == true ? category : null,
+      );
+
+      Log.d('AI enhanced pending tx: title="$title" category="$category"',
+          label: 'AutoTransaction');
+    } catch (e) {
+      Log.w('AI enhancement failed for pending tx: $e', label: 'AutoTransaction');
+    }
+  }
+
+  /// Run AI duplicate check against existing transactions in the database.
+  ///
+  /// Pre-filters by amount (±20%) and date (last 7 days) before calling AI.
+  Future<bool> _aiDuplicateCheckAgainstDb(ParsedTransaction parsed) async {
+    if (_aiDuplicateCheckService == null) return false;
+
+    try {
+      final db = _ref.read(databaseProvider);
+      final allTx = await db.transactionDao.getAllTransactions();
+
+      // Pre-filter: same amount ±20%, within last 7 days
+      final amountLow = parsed.amount * 0.8;
+      final amountHigh = parsed.amount * 1.2;
+      final dateCutoff = parsed.dateTime.subtract(const Duration(days: 7));
+
+      final candidates = allTx.where((tx) {
+        if (tx.amount < amountLow || tx.amount > amountHigh) return false;
+        if (tx.date.isBefore(dateCutoff)) return false;
+        return true;
+      }).take(10).map((tx) => {
+        'amount': tx.amount,
+        'date': tx.date.toIso8601String(),
+        'title': tx.title,
+        'notes': tx.notes ?? '',
+      }).toList();
+
+      if (candidates.isEmpty) return false;
+
+      return await _aiDuplicateCheckService!.isDuplicate(
+        parsed: parsed,
+        candidates: candidates,
+      );
+    } catch (e) {
+      Log.w('AI duplicate check error: $e', label: 'AutoTransaction');
+      return false; // On error, allow through
+    }
+  }
+
+  /// Get the target wallet for a specific parsed transaction.
+  /// Priority: (1) senderId mapping → (2) fuzzy match wallet name by bankName/senderId → (3) default wallet
   Future<WalletModel?> _getTargetWalletForTransaction(ParsedTransaction parsed) async {
-    // First try to find wallet via bank mapping
+    // 1. Explicit senderId → wallet mapping
     if (parsed.senderId != null) {
       final mappedWalletId = await _mappingService.getWalletIdForSender(parsed.senderId!);
       if (mappedWalletId != null) {
@@ -164,8 +325,42 @@ class AutoTransactionService {
       }
     }
 
-    // Fall back to default wallet selection
+    // 2. Fuzzy match wallet name by bankName or senderId
+    final matched = await _matchWalletByBankName(parsed.bankName, parsed.senderId);
+    if (matched != null) return matched;
+
+    // 3. Default wallet
     return _getDefaultWallet();
+  }
+
+  /// Try to find a wallet whose name matches the bank name or sender ID (case-insensitive substring match).
+  Future<WalletModel?> _matchWalletByBankName(String? bankName, String? senderId) async {
+    if (bankName == null && senderId == null) return null;
+    try {
+      final db = _ref.read(databaseProvider);
+      final allWallets = await db.walletDao.getAllWallets();
+
+      for (final wallet in allWallets) {
+        final walletName = wallet.name.toLowerCase();
+        if (bankName != null) {
+          final bank = bankName.toLowerCase();
+          if (walletName.contains(bank) || bank.contains(walletName)) {
+            Log.d('Matched wallet "${wallet.name}" by bankName "$bankName"', label: 'AutoTransaction');
+            return wallet.toModel();
+          }
+        }
+        if (senderId != null) {
+          final sid = senderId.toLowerCase();
+          if (walletName.contains(sid) || sid.contains(walletName)) {
+            Log.d('Matched wallet "${wallet.name}" by senderId "$senderId"', label: 'AutoTransaction');
+            return wallet.toModel();
+          }
+        }
+      }
+    } catch (e) {
+      Log.w('Wallet fuzzy match error: $e', label: 'AutoTransaction');
+    }
+    return null;
   }
 
   /// Get the default wallet (either user-selected default or active wallet)
@@ -182,84 +377,6 @@ class AutoTransactionService {
     // Otherwise use the active wallet
     final activeWalletAsync = _ref.read(activeWalletProvider);
     return activeWalletAsync.value;
-  }
-
-  /// Find the best category for the transaction
-  Future<CategoryModel> _findBestCategory(ParsedTransaction parsed) async {
-    final categoriesAsync = _ref.read(hierarchicalCategoriesProvider);
-    final categories = categoriesAsync.value ?? [];
-
-    if (categories.isEmpty) {
-      throw Exception('No categories available');
-    }
-
-    // Flatten categories for searching
-    final allCategories = _flattenCategories(categories);
-
-    // Try to match based on transaction type and merchant
-    CategoryModel? matched;
-
-    if (parsed.type == TransactionType.income) {
-      // Look for income-related categories
-      matched = allCategories.firstWhere(
-        (c) => c.title.toLowerCase().contains('income') ||
-               c.title.toLowerCase().contains('salary') ||
-               c.title.toLowerCase().contains('received'),
-        orElse: () => allCategories.first,
-      );
-    } else {
-      // For expenses, try to match merchant to category
-      final merchant = parsed.merchant?.toLowerCase() ?? '';
-
-      // Common category mappings
-      if (merchant.contains('restaurant') ||
-          merchant.contains('cafe') ||
-          merchant.contains('food') ||
-          merchant.contains('eat')) {
-        matched = _findCategoryByKeywords(allCategories, ['food', 'restaurant', 'dining', 'eat']);
-      } else if (merchant.contains('grab') ||
-                 merchant.contains('uber') ||
-                 merchant.contains('taxi') ||
-                 merchant.contains('transport')) {
-        matched = _findCategoryByKeywords(allCategories, ['transport', 'taxi', 'travel']);
-      } else if (merchant.contains('shop') ||
-                 merchant.contains('store') ||
-                 merchant.contains('mart')) {
-        matched = _findCategoryByKeywords(allCategories, ['shopping', 'groceries', 'store']);
-      } else if (merchant.contains('electric') ||
-                 merchant.contains('water') ||
-                 merchant.contains('internet') ||
-                 merchant.contains('phone')) {
-        matched = _findCategoryByKeywords(allCategories, ['utilities', 'bills', 'electric']);
-      }
-    }
-
-    // Fallback to first category if no match
-    return matched ?? allCategories.first;
-  }
-
-  CategoryModel? _findCategoryByKeywords(List<CategoryModel> categories, List<String> keywords) {
-    for (final keyword in keywords) {
-      final match = categories.firstWhere(
-        (c) => c.title.toLowerCase().contains(keyword),
-        orElse: () => categories.first,
-      );
-      if (match.title.toLowerCase().contains(keyword)) {
-        return match;
-      }
-    }
-    return null;
-  }
-
-  List<CategoryModel> _flattenCategories(List<CategoryModel> categories) {
-    final result = <CategoryModel>[];
-    for (final cat in categories) {
-      result.add(cat);
-      if (cat.subCategories != null) {
-        result.addAll(_flattenCategories(cat.subCategories!));
-      }
-    }
-    return result;
   }
 
   /// Enable/disable SMS listening
@@ -337,9 +454,10 @@ class AutoTransactionService {
     return _notificationService?.hasPermission() ?? Future.value(false);
   }
 
-  /// Request notification permissions (opens system settings)
-  Future<bool> requestNotificationPermission() async {
-    return _notificationService?.requestPermission() ?? Future.value(false);
+  /// Request notification permissions (opens system settings).
+  /// Android may kill the app when the user toggles the permission.
+  Future<void> requestNotificationPermission() async {
+    await _notificationService?.requestPermission();
   }
 
   /// Dispose the service
@@ -363,11 +481,12 @@ class AutoTransactionService {
     if (_smsService == null) return [];
 
     // Calculate maxAge from startDate if provided
-    Duration effectiveMaxAge;
+    // null startDate means "all time" — pass null maxAge to scan everything
+    Duration? effectiveMaxAge;
     if (startDate != null) {
       effectiveMaxAge = DateTime.now().difference(startDate);
     } else {
-      effectiveMaxAge = maxAge ?? const Duration(days: 90);
+      effectiveMaxAge = maxAge; // null = no time limit
     }
 
     return await _smsService!.scanForBankSenders(
@@ -432,10 +551,11 @@ class AutoTransactionService {
     ));
   }
 
-  /// Import transactions for a specific bank into a wallet
+  /// Import transactions for a specific bank into pending tab for review.
+  /// [walletId] is optional — wallet assignment is resolved at import time via bank mapping or default wallet.
   Future<ImportResult> importTransactionsForBank({
     required String bankCode,
-    required int walletId,
+    int? walletId,
     int limit = 100,
     Duration? maxAge,
     void Function(int current, int total)? onProgress,
@@ -445,20 +565,11 @@ class AutoTransactionService {
       return ImportResult(imported: 0, duplicates: 0, errors: 0);
     }
 
-    // Get the wallet
-    final db = _ref.read(databaseProvider);
-    final walletData = await db.walletDao.getWalletById(walletId);
-    if (walletData == null) {
-      Log.e('Wallet $walletId not found', label: 'AutoTransaction');
-      return ImportResult(imported: 0, duplicates: 0, errors: 0);
-    }
-    final wallet = walletData.toModel();
-
-    // Parse transactions
+    // Parse transactions from SMS (null maxAge = no time limit)
     final transactions = await _smsService!.parseTransactionsForSender(
       bankCode: bankCode,
       limit: limit,
-      maxAge: maxAge ?? const Duration(days: 90),
+      maxAge: maxAge,
       onProgress: onProgress,
     );
 
@@ -470,60 +581,21 @@ class AutoTransactionService {
 
     for (final parsed in transactions) {
       try {
-        // Check for duplicate in database
-        final isDuplicate = await _checkDuplicateInDb(parsed, walletId);
-        if (isDuplicate) {
+        final added = await _addToPendingTab(parsed);
+        if (added) {
+          imported++;
+        } else {
           duplicates++;
-          continue;
         }
-
-        // Get category
-        final category = await _findBestCategory(parsed);
-
-        // Create transaction
-        final transaction = TransactionModel(
-          transactionType: parsed.type,
-          amount: parsed.amount,
-          date: parsed.dateTime,
-          title: parsed.title,
-          category: category,
-          wallet: wallet,
-          notes: '${parsed.notes}\n\n[Imported from SMS]',
-        );
-
-        await db.transactionDao.addTransaction(transaction);
-        imported++;
       } catch (e) {
-        Log.e('Error importing transaction: $e', label: 'AutoTransaction');
+        Log.e('Error adding to pending: $e', label: 'AutoTransaction');
         errors++;
       }
     }
 
-    Log.d('Import complete: $imported imported, $duplicates duplicates, $errors errors', label: 'AutoTransaction');
+    Log.d('Import to pending complete: $imported added, $duplicates skipped, $errors errors',
+        label: 'AutoTransaction');
     return ImportResult(imported: imported, duplicates: duplicates, errors: errors);
-  }
-
-  /// Check if a similar transaction already exists in the database
-  Future<bool> _checkDuplicateInDb(ParsedTransaction parsed, int walletId) async {
-    final db = _ref.read(databaseProvider);
-
-    // Get all transactions for this wallet and check for duplicates
-    // A duplicate is same amount within 5 minutes of the same time
-    final allTransactions = await db.transactionDao.getAllTransactions();
-
-    final startTime = parsed.dateTime.subtract(const Duration(minutes: 5));
-    final endTime = parsed.dateTime.add(const Duration(minutes: 5));
-
-    for (final tx in allTransactions) {
-      if (tx.walletId != walletId) continue;
-      if (tx.date.isBefore(startTime) || tx.date.isAfter(endTime)) continue;
-
-      if ((tx.amount - parsed.amount).abs() < 0.01) {
-        return true; // Found duplicate
-      }
-    }
-
-    return false;
   }
 
   /// Get bank color for wallet as hex string
@@ -594,7 +666,7 @@ class AutoTransactionService {
     _notificationService?.setStorePendingMode(enabled);
   }
 
-  /// Process pending notifications and create transactions
+  /// Process pending notifications and add to pending tab for review
   ///
   /// This method should be called when the user opens the app and
   /// there are pending notifications that need wallet mapping.
@@ -613,31 +685,6 @@ class AutoTransactionService {
 
     for (final notification in pending) {
       try {
-        // Build the mapping key
-        final bankKey = notification.bankCode ?? 'unknown';
-        final accountKey = notification.accountId ?? 'default';
-        final mappingKey = '${bankKey}_$accountKey';
-
-        // Check if we have a wallet mapping for this bank/account
-        final walletId = bankAccountToWalletMap[mappingKey] ??
-            bankAccountToWalletMap[bankKey]; // Fallback to bank-only mapping
-
-        if (walletId == null) {
-          Log.d('No wallet mapping for $mappingKey, skipping', label: 'AutoTransaction');
-          skipped++;
-          continue;
-        }
-
-        // Get wallet
-        final db = _ref.read(databaseProvider);
-        final walletData = await db.walletDao.getWalletById(walletId);
-        if (walletData == null) {
-          Log.e('Wallet $walletId not found', label: 'AutoTransaction');
-          errors++;
-          continue;
-        }
-        final wallet = walletData.toModel();
-
         // Parse the notification
         final parsed = await _notificationService!.processPendingNotification(notification);
         if (parsed == null) {
@@ -646,39 +693,22 @@ class AutoTransactionService {
           continue;
         }
 
-        // Check for duplicate in database
-        final isDuplicate = await _checkDuplicateInDb(parsed, walletId);
-        if (isDuplicate) {
-          Log.d('Duplicate transaction from notification, skipping', label: 'AutoTransaction');
+        // Add to pending tab (includes AI duplicate check)
+        final added = await _addToPendingTab(parsed);
+        if (added) {
+          processed++;
+        } else {
           skipped++;
-          continue;
         }
 
-        // Get category
-        final category = await _findBestCategory(parsed);
-
-        // Create transaction
-        final transaction = TransactionModel(
-          transactionType: parsed.type,
-          amount: parsed.amount,
-          date: parsed.dateTime,
-          title: parsed.title,
-          category: category,
-          wallet: wallet,
-          notes: '${parsed.notes}\n\n[Auto-created from notification]',
-        );
-
-        await db.transactionDao.addTransaction(transaction);
-        processed++;
-
-        Log.d('Created transaction from pending notification ${notification.id}', label: 'AutoTransaction');
+        Log.d('Processed notification ${notification.id} → pending tab', label: 'AutoTransaction');
       } catch (e) {
         Log.e('Error processing pending notification: $e', label: 'AutoTransaction');
         errors++;
       }
     }
 
-    Log.d('Processed pending notifications: $processed processed, $skipped skipped, $errors errors',
+    Log.d('Processed notifications: $processed added to pending, $skipped skipped, $errors errors',
         label: 'AutoTransaction');
 
     return PendingProcessResult(processed: processed, skipped: skipped, errors: errors);

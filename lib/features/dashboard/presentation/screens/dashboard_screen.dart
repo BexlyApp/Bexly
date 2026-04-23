@@ -11,7 +11,6 @@ import 'package:bexly/core/components/buttons/custom_icon_button.dart';
 import 'package:bexly/core/components/progress_indicators/custom_progress_indicator.dart';
 import 'package:bexly/core/components/progress_indicators/custom_progress_indicator_legend.dart';
 import 'package:bexly/core/constants/app_colors.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/constants/app_font_weights.dart';
 import 'package:bexly/core/constants/app_radius.dart';
@@ -23,8 +22,6 @@ import 'package:bexly/core/extensions/double_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/core/router/routes.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:bexly/core/riverpod/auth_providers.dart' as firebase_auth;
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
 import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
@@ -42,7 +39,13 @@ import 'package:bexly/features/wallet_switcher/presentation/screens/wallet_switc
 import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_wallet_filter_provider.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/selected_month_provider.dart';
 import 'package:bexly/features/dashboard/presentation/riverpod/cash_flow_providers.dart';
+import 'package:bexly/features/dashboard/presentation/riverpod/dashboard_category_spending_provider.dart';
 import 'package:bexly/features/notification/presentation/riverpod/notification_providers.dart';
+import 'package:bexly/features/notification/presentation/screens/notification_list_screen.dart';
+import 'package:bexly/core/utils/desktop_dialog_helper.dart';
+import 'package:bexly/features/gamification/presentation/components/level_badge_widget.dart';
+import 'package:bexly/features/dashboard/presentation/riverpod/financial_health_provider.dart';
+import 'package:bexly/features/dashboard/presentation/riverpod/spending_forecast_provider.dart';
 
 part '../components/action_button.dart';
 // part '../components/balance_card.dart'; // Legacy - using balance_card_v2 instead
@@ -50,12 +53,15 @@ part '../components/balance_card_v2.dart';
 part '../components/wallet_amount_visibility_button.dart';
 part '../components/wallet_amount_edit_button.dart';
 part '../components/cash_flow_cards.dart';
+part '../components/dashboard_cards_row.dart';
 part '../components/greeting_card.dart';
 part '../components/header.dart';
 part '../components/month_navigator.dart';
 part '../components/recent_transaction_list.dart';
 part '../components/spending_progress_chart.dart';
 part '../components/transaction_card.dart';
+part '../components/financial_health_card.dart';
+part '../components/spending_forecast_card.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -68,20 +74,23 @@ class DashboardScreen extends StatelessWidget {
         preferredSize: Size.fromHeight(114 + MediaQuery.of(context).padding.top),
         child: const Header(),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            backgroundColor: Colors.transparent,
-            builder: (context) => const TransactionOptionsMenu(),
-          );
-        },
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        child: HugeIcon(
-          icon: HugeIcons.strokeRoundedPlusSign,
-          color: Theme.of(context).colorScheme.onPrimary,
-        ),
-      ),
+      // Hide FAB on desktop - use sidebar button instead
+      floatingActionButton: context.isDesktopLayout
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const TransactionOptionsMenu(),
+                );
+              },
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedPlusSign,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
       body: Column(
         children: [
           Expanded(
@@ -97,9 +106,11 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   child: const Column(
                     children: [
-                      BalanceCard(),
+                      DashboardCardsRow(),
                       Gap(AppSpacing.spacing12),
-                      CashFlowCards(),
+                      FinancialHealthCard(),
+                      Gap(AppSpacing.spacing12),
+                      SpendingForecastCard(),
                       Gap(AppSpacing.spacing12),
                       SpendingProgressChart(),
                     ],

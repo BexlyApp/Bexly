@@ -9,26 +9,40 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/date_time_extension.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/extensions/screen_utils_extensions.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
 import 'package:bexly/features/budget/presentation/screens/budget_filter_dialog.dart';
 import 'package:bexly/features/budget/presentation/screens/budget_screen.dart';
 import 'package:bexly/features/goal/presentation/screens/goal_form_dialog.dart';
 import 'package:bexly/features/goal/presentation/screens/goal_screen.dart';
+import 'package:bexly/features/planning/presentation/riverpod/planning_tab_provider.dart';
 
 class PlanningScreen extends HookConsumerWidget {
   const PlanningScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tabController = useTabController(initialLength: 2);
-    final currentTab = useState(0);
-    final l10n = AppLocalizations.of(context)!;
+    // Get initial tab from provider (set by sidebar)
+    final initialTabFromProvider = ref.watch(planningTabProvider);
+    final tabController = useTabController(initialLength: 2, initialIndex: initialTabFromProvider);
+    final currentTab = useState(initialTabFromProvider);
+    final l10n = context.l10n;
+
+    // Sync tab controller with provider changes (from sidebar)
+    useEffect(() {
+      if (tabController.index != initialTabFromProvider) {
+        tabController.animateTo(initialTabFromProvider);
+      }
+      return null;
+    }, [initialTabFromProvider]);
 
     useEffect(() {
       void listener() {
         currentTab.value = tabController.index;
+        // Sync back to provider
+        ref.read(planningTabProvider.notifier).setTab(tabController.index);
       }
       tabController.addListener(listener);
       return () => tabController.removeListener(listener);
@@ -83,27 +97,30 @@ class PlanningScreen extends HookConsumerWidget {
             ],
           ),
       ],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navigate to budget or goal form based on current tab
-          if (currentTab.value == 0) {
-            // Budget tab - navigate to budget form
-            context.push(Routes.budgetForm);
-          } else {
-            // Goals tab - show goal form dialog
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              builder: (context) => const GoalFormDialog(),
-            );
-          }
-        },
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        child: HugeIcon(
-          icon: HugeIcons.strokeRoundedPlusSign as dynamic,
-          color: Theme.of(context).colorScheme.onPrimary,
-        ),
-      ),
+      // Hide FAB on desktop - use sidebar button instead
+      floatingActionButton: context.isDesktopLayout
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                // Navigate to budget or goal form based on current tab
+                if (currentTab.value == 0) {
+                  // Budget tab - navigate to budget form
+                  context.push(Routes.budgetForm);
+                } else {
+                  // Goals tab - show goal form dialog
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (context) => const GoalFormDialog(),
+                  );
+                }
+              },
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedPlusSign as dynamic,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
       body: Column(
         children: [
           Container(
@@ -114,17 +131,29 @@ class PlanningScreen extends HookConsumerWidget {
               indicatorWeight: 3,
               labelColor: AppColors.primary600,
               unselectedLabelColor: AppColors.neutral400,
-              labelStyle: AppTextStyles.body2.copyWith(
+              labelStyle: AppTextStyles.body3.copyWith(
                 fontWeight: FontWeight.w600,
               ),
               tabs: [
                 Tab(
-                  text: l10n.budget,
-                  icon: const Icon(Icons.account_balance_wallet),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.account_balance_wallet, size: 18),
+                      const SizedBox(width: 6),
+                      Text(l10n.budget),
+                    ],
+                  ),
                 ),
                 Tab(
-                  text: l10n.goals,
-                  icon: const Icon(Icons.flag),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.flag, size: 18),
+                      const SizedBox(width: 6),
+                      Text(l10n.goals),
+                    ],
+                  ),
                 ),
               ],
             ),

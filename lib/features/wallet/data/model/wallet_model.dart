@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/core/extensions/currency_extension.dart';
 import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/features/currency_picker/data/sources/currency_local_source.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart'; // For currency formatting in the extension
@@ -25,6 +26,10 @@ abstract class WalletModel with _$WalletModel {
     /// The current balance of the wallet.
     @Default(0.0) double balance,
 
+    /// Initial balance when wallet was created (for tracking purposes)
+    /// This value should never change after wallet creation
+    @Default(0.0) double initialBalance,
+
     /// The currency code for the wallet's balance (e.g., "USD", "EUR", "NGN").
     @Default('IDR') String currency,
 
@@ -46,6 +51,12 @@ abstract class WalletModel with _$WalletModel {
     /// Annual interest rate in percentage for credit cards/loans
     double? interestRate,
 
+    /// Firebase UID of the wallet owner (for family sharing)
+    String? ownerUserId,
+
+    /// Whether this wallet is currently shared with a family group
+    @Default(false) bool isShared,
+
     /// Timestamp when wallet was created
     DateTime? createdAt,
 
@@ -61,7 +72,7 @@ abstract class WalletModel with _$WalletModel {
 /// Utility extensions for the [WalletModel].
 extension WalletModelUtils on WalletModel {
   String get formattedBalance {
-    return '$currency ${balance.toPriceFormat()}';
+    return formatCurrency(balance.toPriceFormat(), currency.currencySymbol, currency);
   }
 
   Currency currencyByIsoCode(WidgetRef ref) {

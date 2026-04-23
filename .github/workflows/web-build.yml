@@ -1,0 +1,118 @@
+name: Web Build
+
+on:
+  workflow_run:
+    workflows: ["Auto Version Bump"]
+    types:
+      - completed
+    branches: [main]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    # Only run if triggered by workflow_dispatch, tag push, or if version-bump succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Create .env file
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          BEXLY_FREE_AI_KEY: ${{ secrets.BEXLY_FREE_AI_KEY }}
+        run: |
+          cat > .env << EOF
+          SUPABASE_URL=${SUPABASE_URL}
+          SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
+          BEXLY_FREE_AI_URL=https://api.dos.ai/v1
+          BEXLY_FREE_AI_KEY=${BEXLY_FREE_AI_KEY}
+          BEXLY_FREE_AI_MODEL=dos-ai
+          DOS_AI_TIMEOUT=5
+          DOS_AI_VISION_TIMEOUT=30
+          EOF
+
+      - name: Get version info
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          BUILD_NUMBER=$(echo $VERSION | cut -d'+' -f2)
+          VERSION_NAME=$(echo $VERSION | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Building version: $VERSION_NAME (build $BUILD_NUMBER)"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Compile drift_worker.dart for web database
+        run: dart compile js -O4 web/drift_worker.dart -o web/drift_worker.js
+
+      - name: Build web (${{ steps.version.outputs.build_number }})
+        run: flutter build web --release
+
+      - name: Copy SQLite WASM files to build output
+        run: |
+          cp web/sqlite3.wasm build/web/
+          cp web/drift_worker.js build/web/
+          echo "✅ Copied sqlite3.wasm and drift_worker.js to build/web/"
+          ls -la build/web/*.wasm build/web/drift_worker.js
+
+      - name: Create Vercel config for Flutter SPA
+        run: |
+          cat > build/web/vercel.json << 'EOF'
+          {
+            "headers": [
+              {
+                "source": "/(.*)",
+                "headers": [
+                  { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+                  { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" },
+                  { "key": "Cross-Origin-Resource-Policy", "value": "cross-origin" }
+                ]
+              },
+              {
+                "source": "/(.*\\.wasm)",
+                "headers": [
+                  { "key": "Content-Type", "value": "application/wasm" }
+                ]
+              },
+              {
+                "source": "/(.*\\.js)",
+                "headers": [
+                  { "key": "Content-Type", "value": "application/javascript" }
+                ]
+              }
+            ],
+            "rewrites": [
+              { "source": "/(.*)", "destination": "/index.html" }
+            ]
+          }
+          EOF
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build-${{ steps.version.outputs.build_number }}
+          path: build/web
+          retention-days: 30
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: build/web
+          vercel-args: '--prod'

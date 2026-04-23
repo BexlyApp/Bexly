@@ -41,6 +41,9 @@ class TransactionCard extends ConsumerWidget {
         : currencies.fromIsoCode(baseCurrency);
     final String currencySymbol = currency?.symbol ?? baseCurrency;
     final int? decimalDigits = currency?.decimalDigits;
+    final String isoCode = currency?.isoCode ?? baseCurrency;
+    const symbolAfterCurrencies = ['VND', 'JPY', 'KRW'];
+    final isSymbolAfter = symbolAfterCurrencies.contains(isoCode.toUpperCase());
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.spacing16),
@@ -55,10 +58,16 @@ class TransactionCard extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: AppTextStyles.body3.copyWith(color: titleColor),
+              Expanded(
+                child: AutoSizeText(
+                  title,
+                  style: AppTextStyles.body3.copyWith(color: titleColor),
+                  maxLines: 1,
+                  minFontSize: 10,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const Gap(AppSpacing.spacing4),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.spacing8,
@@ -80,7 +89,7 @@ class TransactionCard extends ConsumerWidget {
                     ),
                     const Gap(AppSpacing.spacing2),
                     Text(
-                      '${percentDifference.toStringAsFixed(1)}%',
+                      _formatPercent(percentDifference),
                       style: AppTextStyles.body5.copyWith(
                         color: statsForegroundColor,
                       ),
@@ -95,10 +104,11 @@ class TransactionCard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             spacing: AppSpacing.spacing2,
             children: [
-              Text(
-                currencySymbol,
-                style: AppTextStyles.body3.copyWith(color: amountColor),
-              ),
+              if (!isSymbolAfter)
+                Text(
+                  currencySymbol,
+                  style: AppTextStyles.body3.copyWith(color: amountColor),
+                ),
               Expanded(
                 child: AutoSizeText(
                   amount.toPriceFormat(decimalDigits: decimalDigits),
@@ -110,10 +120,22 @@ class TransactionCard extends ConsumerWidget {
                   minFontSize: AppTextStyles.numericTitle.fontSize! - 8,
                 ),
               ),
+              if (isSymbolAfter)
+                Text(
+                  currencySymbol,
+                  style: AppTextStyles.body3.copyWith(color: amountColor),
+                ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  /// Format percent value, capping display at 999.9% to prevent overflow
+  String _formatPercent(double value) {
+    final abs = value.abs();
+    if (abs >= 1000) return '999.9%+';
+    return '${abs.toStringAsFixed(1)}%';
   }
 }

@@ -61,15 +61,30 @@ class NotificationService {
   /// Request notification permission (Android 13+, iOS)
   static Future<bool> requestPermission() async {
     try {
-      // Check Android version
-      if (await Permission.notification.isDenied) {
-        final status = await Permission.notification.request();
-        Log.d('Notification permission: $status', label: 'notification');
-        return status.isGranted;
+      // First check current status
+      final currentStatus = await Permission.notification.status;
+      Log.d('Current notification permission status: $currentStatus', label: 'notification');
+
+      if (currentStatus.isGranted) {
+        return true;
       }
 
-      // Already granted
-      return true;
+      if (currentStatus.isPermanentlyDenied) {
+        Log.w('Notification permission permanently denied', label: 'notification');
+        return false;
+      }
+
+      // Request permission
+      final status = await Permission.notification.request();
+      Log.d('Notification permission after request: $status', label: 'notification');
+
+      // Also request from flutter_local_notifications for iOS
+      final iosGranted = await _notifications
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+      Log.d('iOS notification permission: $iosGranted', label: 'notification');
+
+      return status.isGranted || (iosGranted ?? false);
     } catch (e) {
       Log.e('Failed to request notification permission: $e', label: 'notification');
       return false;
@@ -87,13 +102,13 @@ class NotificationService {
     }
   }
 
-  /// Schedule a notification for recurring payment reminder
+  /// Schedule a one-time notification
   ///
-  /// [id] - Unique notification ID (use recurring ID)
+  /// [id] - Unique notification ID
   /// [title] - Notification title
   /// [body] - Notification body
   /// [scheduledDate] - When to show notification
-  /// [payload] - Data to pass when notification is tapped (recurring ID)
+  /// [payload] - Data to pass when notification is tapped
   static Future<void> scheduleNotification({
     required int id,
     required String title,
@@ -107,11 +122,19 @@ class NotificationService {
     }
 
     try {
+      final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
+
+      // Don't schedule if the date is in the past
+      if (tzScheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
+        Log.w('Scheduled date is in the past, skipping: $scheduledDate', label: 'notification');
+        return;
+      }
+
       // Android notification details
       const androidDetails = AndroidNotificationDetails(
-        'recurring_payments', // Channel ID
-        'Recurring Payments', // Channel name
-        channelDescription: 'Reminders for upcoming recurring payments',
+        'scheduled_reminders', // Channel ID
+        'Scheduled Reminders', // Channel name
+        channelDescription: 'Reminders for recurring payments and reports',
         importance: Importance.high,
         priority: Priority.high,
         icon: '@mipmap/launcher_icon',
@@ -131,12 +154,11 @@ class NotificationService {
         iOS: iosDetails,
       );
 
-      // Schedule notification
       await _notifications.zonedSchedule(
         id,
         title,
         body,
-        tz.TZDateTime.from(scheduledDate, tz.local),
+        tzScheduledDate,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         payload: payload,
@@ -148,6 +170,155 @@ class NotificationService {
       );
     } catch (e) {
       Log.e('Failed to schedule notification: $e', label: 'notification');
+    }
+  }
+
+  /// Schedule a daily repeating notification at a specific time
+  static Future<void> scheduleDailyNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int hour,
+    required int minute,
+    String? payload,
+  }) async {
+    if (!_initialized) {
+      Log.w('Notification service not initialized', label: 'notification');
+      return;
+    }
+
+    try {
+      // Calculate next occurrence
+      final now = tz.TZDateTime.now(tz.local);
+      var scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        hour,
+        minute,
+      );
+
+      // If time has passed today, schedule for tomorrow
+      if (scheduledDate.isBefore(now)) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+      }
+
+      const androidDetails = AndroidNotificationDetails(
+        'daily_reminders',
+        'Daily Reminders',
+        channelDescription: 'Daily reminder notifications',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/launcher_icon',
+        enableVibration: true,
+        playSound: true,
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _notifications.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time, // Repeat daily at same time
+        payload: payload,
+      );
+
+      Log.i(
+        'Scheduled daily notification $id at $hour:$minute',
+        label: 'notification',
+      );
+    } catch (e) {
+      Log.e('Failed to schedule daily notification: $e', label: 'notification');
+    }
+  }
+
+  /// Schedule a weekly repeating notification
+  static Future<void> scheduleWeeklyNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int weekday, // 1 = Monday, 7 = Sunday
+    required int hour,
+    required int minute,
+    String? payload,
+  }) async {
+    if (!_initialized) {
+      Log.w('Notification service not initialized', label: 'notification');
+      return;
+    }
+
+    try {
+      // Calculate next occurrence
+      final now = tz.TZDateTime.now(tz.local);
+      var scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        hour,
+        minute,
+      );
+
+      // Find next occurrence of the weekday
+      int daysUntil = (weekday - scheduledDate.weekday + 7) % 7;
+      if (daysUntil == 0 && scheduledDate.isBefore(now)) {
+        daysUntil = 7;
+      }
+      scheduledDate = scheduledDate.add(Duration(days: daysUntil));
+
+      const androidDetails = AndroidNotificationDetails(
+        'weekly_reports',
+        'Weekly Reports',
+        channelDescription: 'Weekly summary notifications',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/launcher_icon',
+        enableVibration: true,
+        playSound: true,
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _notifications.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        payload: payload,
+      );
+
+      Log.i(
+        'Scheduled weekly notification $id for weekday $weekday at $hour:$minute',
+        label: 'notification',
+      );
+    } catch (e) {
+      Log.e('Failed to schedule weekly notification: $e', label: 'notification');
     }
   }
 

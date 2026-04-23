@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../Bexly-Landing"
+		}
+	],
+	"settings": {
+		"chat.mcp.discovery.enabled": {
+			"cursor-global": true,
+			"cursor-workspace": true,
+			"claude-desktop": true
+		}
+	}
+}

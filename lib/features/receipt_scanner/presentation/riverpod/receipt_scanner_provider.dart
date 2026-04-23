@@ -1,11 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:bexly/features/receipt_scanner/data/services/receipt_scanner_service.dart';
 import 'package:bexly/features/receipt_scanner/data/services/providers/ocr_provider.dart';
 
 class SelectedOcrProviderNotifier extends Notifier<OcrProviderType> {
   @override
-  OcrProviderType build() => OcrProviderType.gemini;
+  OcrProviderType build() => OcrProviderType.dosAi;
 
   void setProvider(OcrProviderType provider) => state = provider;
 }
@@ -17,6 +16,8 @@ final selectedOcrProviderProvider = NotifierProvider<SelectedOcrProviderNotifier
 final ocrProviderNameProvider = Provider<String>((ref) {
   final providerType = ref.watch(selectedOcrProviderProvider);
   switch (providerType) {
+    case OcrProviderType.dosAi:
+      return 'DOS AI → Gemini';
     case OcrProviderType.gemini:
       return 'Gemini 2.5 Flash';
     case OcrProviderType.openai:
@@ -28,29 +29,9 @@ final ocrProviderNameProvider = Provider<String>((ref) {
 
 final receiptScannerServiceProvider = Provider<ReceiptScannerService>((ref) {
   final providerType = ref.watch(selectedOcrProviderProvider);
-
-  final geminiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
-  final openaiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
-  final claudeKey = dotenv.env['CLAUDE_API_KEY'] ?? '';
-
-  return ReceiptScannerService.fromType(
-    type: providerType,
-    apiKey: _getApiKey(providerType, geminiKey, openaiKey, claudeKey),
-  );
-});
-
-String _getApiKey(
-  OcrProviderType type,
-  String geminiKey,
-  String openaiKey,
-  String claudeKey,
-) {
-  switch (type) {
-    case OcrProviderType.gemini:
-      return geminiKey;
-    case OcrProviderType.openai:
-      return openaiKey;
-    case OcrProviderType.claude:
-      return claudeKey;
+  // DOS AI uses fallback to Gemini
+  if (providerType == OcrProviderType.dosAi) {
+    return ReceiptScannerService.dosAiWithGeminiFallback();
   }
-}
+  return ReceiptScannerService.fromType(type: providerType);
+});

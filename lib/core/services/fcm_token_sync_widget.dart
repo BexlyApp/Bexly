@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:bexly/core/riverpod/auth_providers.dart';
+import 'package:bexly/core/services/auth/supabase_auth_service.dart';
 import 'package:bexly/core/services/firebase_messaging_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 
-/// Widget wrapper to sync FCM token with Firestore when user auth state changes
+/// Widget wrapper to sync FCM token when user auth state changes
 class FcmTokenSyncWidget extends ConsumerStatefulWidget {
   final Widget child;
 
@@ -19,32 +19,22 @@ class _FcmTokenSyncWidgetState extends ConsumerState<FcmTokenSyncWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen to Firebase auth state changes
-    ref.listen(authStateProvider, (previous, next) {
-      next.when(
-        data: (user) {
-          if (user != null) {
-            // User logged in
-            final userId = user.uid;
-            if (_lastSyncedUserId != userId) {
-              _syncFcmToken(userId);
-              _lastSyncedUserId = userId;
-            }
-          } else {
-            // User logged out
-            if (_lastSyncedUserId != null) {
-              Log.i('User logged out - FCM token cleared', label: 'FCM Sync');
-              _lastSyncedUserId = null;
-            }
-          }
-        },
-        loading: () {
-          // Auth state loading
-        },
-        error: (error, stack) {
-          Log.e('Auth state error: $error', label: 'FCM Sync');
-        },
-      );
+    // Listen to Supabase auth state changes
+    ref.listen(supabaseAuthServiceProvider, (previous, next) {
+      if (next.isAuthenticated && next.userId != null) {
+        // User logged in
+        final userId = next.userId!;
+        if (_lastSyncedUserId != userId) {
+          _syncFcmToken(userId);
+          _lastSyncedUserId = userId;
+        }
+      } else {
+        // User logged out
+        if (_lastSyncedUserId != null) {
+          Log.i('User logged out - FCM token cleared', label: 'FCM Sync');
+          _lastSyncedUserId = null;
+        }
+      }
     });
 
     return widget.child;

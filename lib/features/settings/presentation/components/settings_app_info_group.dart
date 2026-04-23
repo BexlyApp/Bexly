@@ -31,12 +31,41 @@ class SettingsAppInfoGroup extends ConsumerWidget {
           icon: HugeIcons.strokeRoundedFileCorrupt,
           onTap: () => context.openBottomSheet(child: ReportLogFileDialog()),
         ),
-        if (kDebugMode)
-          MenuTileButton(
-            label: context.l10n.developerPortal,
-            icon: HugeIcons.strokeRoundedCode,
-            onTap: () => context.push(Routes.developerPortal),
+        // Developer Portal - Always show (not just debug mode)
+        MenuTileButton(
+          label: context.l10n.developerPortal,
+          icon: HugeIcons.strokeRoundedCode,
+          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+            context,
+            route: Routes.developerPortal,
+            desktopWidget: const DeveloperPortalScreen(),
           ),
+        ),
+        MenuTileButton(
+          label: context.l10n.signOut,
+          icon: HugeIcons.strokeRoundedLogout01,
+          onTap: () {
+            final parentContext = context;
+            showModalBottomSheet(
+              context: context,
+              showDragHandle: true,
+              builder: (sheetContext) => AlertBottomSheet(
+                title: sheetContext.l10n.signOut,
+                content: Text(
+                  sheetContext.l10n.signOutConfirm,
+                  style: AppTextStyles.body2,
+                ),
+                onConfirm: () async {
+                  sheetContext.pop(); // Close bottom sheet
+                  await ref.read(authStateProvider.notifier).logout();
+                  if (parentContext.mounted) {
+                    parentContext.go('/login'); // Use parent context for navigation
+                  }
+                },
+              ),
+            );
+          },
+        ),
       ],
     );
   }

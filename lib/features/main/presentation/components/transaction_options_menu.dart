@@ -1,15 +1,38 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/core/utils/desktop_dialog_helper.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
+import 'package:bexly/features/transaction/presentation/screens/transaction_form.dart';
 
 class TransactionOptionsMenu extends StatelessWidget {
   const TransactionOptionsMenu({super.key});
+
+  /// Shows transaction form as dialog on desktop, or navigates to full page on mobile
+  static void showTransactionForm(
+    BuildContext context, {
+    int? transactionId,
+    ReceiptScanResult? receiptData,
+  }) {
+    DesktopDialogHelper.showScreen(
+      context,
+      desktopWidget: TransactionForm(
+        transactionId: transactionId,
+        receiptData: receiptData,
+      ),
+      mobileRoute: transactionId != null
+          ? '/transaction/$transactionId'
+          : Routes.transactionForm,
+      mobileRouteExtra: receiptData,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +48,7 @@ class TransactionOptionsMenu extends StatelessWidget {
           ListTile(
             onTap: () {
               Navigator.pop(context);
-              context.push(Routes.transactionForm);
+              showTransactionForm(context);
             },
             leading: Container(
               padding: const EdgeInsets.all(AppSpacing.spacing8),
@@ -57,16 +80,29 @@ class TransactionOptionsMenu extends StatelessWidget {
           ListTile(
             onTap: () async {
               Navigator.pop(context);
-              Log.d('🔵 Opening receipt scanner', label: 'TransactionOptions');
-              final result = await context.push<ReceiptScanResult>(Routes.scanReceipt);
-              Log.d('🔵 Received result from scanner: $result', label: 'TransactionOptions');
-              Log.d('🔵 Result is null: ${result == null}', label: 'TransactionOptions');
-              Log.d('🔵 Context mounted: ${context.mounted}', label: 'TransactionOptions');
-              if (result != null && context.mounted) {
-                Log.d('🔵 Navigating to transaction form with result', label: 'TransactionOptions');
-                context.push(Routes.transactionForm, extra: result);
+              if (kIsWeb) {
+                // On web, use image picker to upload receipt
+                Log.d('🔵 Opening image picker for receipt upload', label: 'TransactionOptions');
+                final picker = ImagePicker();
+                final image = await picker.pickImage(source: ImageSource.gallery);
+                if (image != null && context.mounted) {
+                  Log.d('🔵 Image selected: ${image.path}', label: 'TransactionOptions');
+                  // Navigate to receipt scanner with uploaded image
+                  context.push(Routes.scanReceipt, extra: image.path);
+                }
               } else {
-                Log.d('🔵 FAILED: Result is null=${result == null} or context not mounted=${!context.mounted}', label: 'TransactionOptions');
+                // On mobile, use camera scanner
+                Log.d('🔵 Opening receipt scanner', label: 'TransactionOptions');
+                final result = await context.push<ReceiptScanResult>(Routes.scanReceipt);
+                Log.d('🔵 Received result from scanner: $result', label: 'TransactionOptions');
+                Log.d('🔵 Result is null: ${result == null}', label: 'TransactionOptions');
+                Log.d('🔵 Context mounted: ${context.mounted}', label: 'TransactionOptions');
+                if (result != null && context.mounted) {
+                  Log.d('🔵 Navigating to transaction form with result', label: 'TransactionOptions');
+                  context.push(Routes.transactionForm, extra: result);
+                } else {
+                  Log.d('🔵 FAILED: Result is null=${result == null} or context not mounted=${!context.mounted}', label: 'TransactionOptions');
+                }
               }
             },
             leading: Container(
@@ -76,19 +112,19 @@ class TransactionOptionsMenu extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.radius8),
               ),
               child: Icon(
-                Icons.camera_alt_outlined,
+                kIsWeb ? Icons.upload_file_outlined : Icons.camera_alt_outlined,
                 color: AppColors.green200,
               ),
             ),
             title: Text(
-              'Scan Receipt',
+              kIsWeb ? 'Upload Receipt' : 'Scan Receipt',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
             ),
             subtitle: Text(
-              'Capture receipt with camera',
+              kIsWeb ? 'Upload receipt image from device' : 'Capture receipt with camera',
               style: TextStyle(
                 fontSize: 12,
                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),

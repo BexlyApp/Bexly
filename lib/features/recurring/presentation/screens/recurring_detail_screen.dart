@@ -6,14 +6,14 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/components/loading_indicators/loading_indicator.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/core/extensions/currency_extension.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/features/recurring/data/model/recurring_model.dart';
 import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/recurring/services/recurring_notification_service.dart';
-import 'package:bexly/core/services/sync/cloud_sync_service.dart';
-import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:intl/intl.dart';
 
@@ -80,7 +80,7 @@ class RecurringDetailScreen extends HookConsumerWidget {
                           ),
                         ),
                         Text(
-                          '${currentRecurring.amount.toPriceFormat()} ${currentRecurring.currency}',
+                          formatCurrency(currentRecurring.amount.toPriceFormat(), currentRecurring.currency.currencySymbol, currentRecurring.currency),
                           style: AppTextStyles.numericLarge.copyWith(
                             color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.bold,
@@ -207,23 +207,9 @@ class RecurringDetailScreen extends HookConsumerWidget {
                   await db.recurringDao.pauseRecurring(currentRecurring.id!);
                 }
 
-                // Sync to cloud
-                final user = ref.read(authStateProvider).value;
-                if (user?.uid != null) {
-                  try {
-                    final syncService = ref.read(cloudSyncServiceProvider);
-                    final recurringEntity = await (db.select(db.recurrings)
-                          ..where((r) => r.id.equals(currentRecurring.id!)))
-                        .getSingleOrNull();
-
-                    if (recurringEntity != null) {
-                      await syncService.syncRecurring(recurringEntity);
-                      Log.i('Recurring status synced to cloud', label: 'RecurringDetail');
-                    }
-                  } catch (e) {
-                    Log.e('Failed to sync recurring status to cloud: $e', label: 'RecurringDetail');
-                  }
-                }
+                // TODO: Implement Supabase sync for recurring status
+                // Cloud sync removed with Firebase Auth migration
+                Log.i('Recurring status updated locally (cloud sync not implemented)', label: 'RecurringDetail');
 
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -288,32 +274,15 @@ class RecurringDetailScreen extends HookConsumerWidget {
 
               if (confirmed == true && context.mounted) {
                 try {
-                  final db = ref.read(databaseProvider);
-
-                  // Sync delete to cloud first
-                  final user = ref.read(authStateProvider).value;
-                  if (user?.uid != null) {
-                    try {
-                      final syncService = ref.read(cloudSyncServiceProvider);
-                      final recurringEntity = await (db.select(db.recurrings)
-                            ..where((r) => r.id.equals(currentRecurring.id!)))
-                          .getSingleOrNull();
-
-                      if (recurringEntity != null) {
-                        await syncService.deleteRecurring(recurringEntity);
-                        Log.i('Recurring deleted from cloud', label: 'RecurringDetail');
-                      }
-                    } catch (e) {
-                      Log.e('Failed to delete recurring from cloud: $e', label: 'RecurringDetail');
-                    }
-                  }
+                  // Use recurringDaoProvider (has Ref injection for cloud sync)
+                  final recurringDao = ref.read(recurringDaoProvider);
 
                   // Cancel notification for this recurring
                   await RecurringNotificationService.cancelNotification(currentRecurring.id!);
                   Log.i('Notification cancelled for recurring ${currentRecurring.id}', label: 'RecurringDetail');
 
-                  // Delete from local database
-                  await db.recurringDao.deleteRecurring(currentRecurring.id!);
+                  // Delete from local database AND cloud (sync handled by DAO)
+                  await recurringDao.deleteRecurring(currentRecurring.id!);
                   if (context.mounted) {
                     Navigator.of(context).pop(); // Go back to list
                   }
@@ -620,7 +589,7 @@ class _PaymentHistoryItem extends StatelessWidget {
           ),
         ),
         trailing: Text(
-          '${payment.amount.toPriceFormat()} $currency',
+          formatCurrency(payment.amount.toPriceFormat(), currency.currencySymbol, currency),
           style: AppTextStyles.numericMedium.copyWith(
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.primary,

@@ -444,29 +444,62 @@ class ConflictResolutionService {
       for (final doc in transactionsSnapshot.docs) {
         final data = doc.data();
 
-        // Handle missing categoryId or walletId with fallback
-        var categoryId = data['categoryId'] as int?;
-        var walletId = data['walletId'] as int?;
+        // CRITICAL FIX: Handle both String (cloudId/UUID) and int (legacy) formats
+        // Cloud data stores walletId and categoryId as String (cloudId), not int
+        int? categoryId;
+        int? walletId;
 
-        // Skip if categoryId is null (can't guess category)
-        if (categoryId == null) {
-          print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} - missing categoryId (cannot infer category)');
+        // Handle categoryId - can be String (cloudId) or int (legacy)
+        final categoryIdData = data['categoryId'];
+        if (categoryIdData is String) {
+          // New format: cloudId (UUID) - look up by cloudId
+          final category = await (_localDb.select(_localDb.categories)
+            ..where((c) => c.cloudId.equals(categoryIdData)))
+            .getSingleOrNull();
+          categoryId = category?.id;
+          if (categoryId == null) {
+            print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} - category with cloudId=$categoryIdData not found');
+            continue;
+          }
+        } else if (categoryIdData is int) {
+          // Legacy format: direct int ID
+          categoryId = categoryIdData;
+        } else {
+          print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} - missing or invalid categoryId');
           continue;
         }
 
-        // Fallback to default wallet if walletId is null
-        if (walletId == null) {
-          if (defaultWallet != null) {
-            walletId = defaultWallet.id;
-            print('⚠️ [DOWNLOAD] Transaction ${doc.id} missing walletId - using default wallet "${defaultWallet.name}" (${defaultWallet.currency})');
-            print('   WARNING: If this transaction was from a different currency wallet, the amount may be incorrect');
-          } else {
-            print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} - missing walletId and no default wallet available');
+        // Handle walletId - can be String (cloudId) or int (legacy)
+        final walletIdData = data['walletId'];
+        if (walletIdData is String) {
+          // New format: cloudId (UUID) - look up by cloudId
+          final wallet = await (_localDb.select(_localDb.wallets)
+            ..where((w) => w.cloudId.equals(walletIdData)))
+            .getSingleOrNull();
+          walletId = wallet?.id;
+          if (walletId == null) {
+            print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} - wallet with cloudId=$walletIdData not found');
             continue;
           }
+        } else if (walletIdData is int) {
+          // Legacy format: direct int ID - use default wallet as fallback
+          if (defaultWallet != null) {
+            walletId = defaultWallet.id;
+            print('⚠️ [DOWNLOAD] Transaction ${doc.id} has legacy int walletId=$walletIdData - using default wallet');
+          } else {
+            print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} - legacy walletId and no default wallet');
+            continue;
+          }
+        } else if (walletIdData == null && defaultWallet != null) {
+          // No walletId at all - use default
+          walletId = defaultWallet.id;
+          print('⚠️ [DOWNLOAD] Transaction ${doc.id} missing walletId - using default wallet');
+        } else {
+          print('⚠️ [DOWNLOAD] Skipping transaction ${doc.id} - missing walletId and no default wallet');
+          continue;
         }
 
-        // CRITICAL FIX: Check if transaction already exists by cloudId to prevent duplicates
+        // Check if transaction already exists by cloudId to prevent duplicates
         final existingTransaction = await (_localDb.select(_localDb.transactions)
               ..where((t) => t.cloudId.equals(doc.id)))
             .getSingleOrNull();
@@ -479,7 +512,7 @@ class ConflictResolutionService {
         await (_localDb.into(_localDb.transactions)).insert(
           TransactionsCompanion.insert(
             transactionType: data['transactionType'] as int,
-            amount: data['amount'] as double,
+            amount: (data['amount'] as num).toDouble(),
             date: (data['date'] as Timestamp).toDate(),
             title: data['title'] as String,
             categoryId: categoryId,
@@ -492,6 +525,7 @@ class ConflictResolutionService {
             updatedAt: Value((data['updatedAt'] as Timestamp).toDate()),
           ),
         );
+        print('[DOWNLOAD] Inserted transaction: ${data['title']} (cloudId=${doc.id})');
       }
       print('✅ [DOWNLOAD] Transactions inserted to local DB');
 

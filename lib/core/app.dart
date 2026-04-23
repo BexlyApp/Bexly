@@ -6,9 +6,8 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_constants.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/localization/generated/app_localizations.dart';
 import 'package:bexly/core/router/app_router.dart';
-import 'package:bexly/core/services/sync/sync_manager_widget.dart';
 import 'package:bexly/core/services/lifecycle_manager.dart';
 import 'package:bexly/core/services/fcm_token_sync_widget.dart';
 import 'package:bexly/features/settings/presentation/riverpod/language_provider.dart';
@@ -48,6 +47,7 @@ class MyApp extends ConsumerWidget {
         tertiary: AppColors.tertiary,
         tertiaryContainer: AppColors.tertiary100,
         error: AppColors.red,
+        surface: AppColors.light,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
@@ -112,6 +112,7 @@ class MyApp extends ConsumerWidget {
         tertiary: AppColors.tertiary400,
         tertiaryContainer: AppColors.tertiary900,
         error: AppColors.red400,
+        surface: AppColors.dark,
       ),
       appBarTheme: const AppBarTheme(backgroundColor: AppColors.dark),
       inputDecorationTheme: InputDecorationTheme(
@@ -163,10 +164,9 @@ class MyApp extends ConsumerWidget {
     );
 
     return LifecycleManager(
-      child: SyncManagerWidget(
-        child: FcmTokenSyncWidget(
-          child: ToastificationWrapper(
-            child: MaterialApp.router(
+      child: FcmTokenSyncWidget(
+        child: ToastificationWrapper(
+          child: MaterialApp.router(
           key: rootKey,
           title: AppConstants.appName,
           debugShowCheckedModeBanner: false,
@@ -174,28 +174,8 @@ class MyApp extends ConsumerWidget {
           darkTheme: darkTheme,
           themeMode: themeMode, // Set the theme mode from the provider
           locale: Locale(currentLanguage.code),
-          supportedLocales: const [
-            Locale('en', ''), // English
-            Locale('vi', ''), // Vietnamese
-            Locale('zh', ''), // Chinese
-            Locale('fr', ''), // French
-            Locale('th', ''), // Thai
-            Locale('id', ''), // Indonesian
-            Locale('es', ''), // Spanish
-            Locale('pt', ''), // Portuguese
-            Locale('ja', ''), // Japanese
-            Locale('ko', ''), // Korean
-            Locale('de', ''), // German
-            Locale('hi', ''), // Hindi
-            Locale('ru', ''), // Russian
-            Locale('ar', ''), // Arabic (RTL)
-          ],
-          localizationsDelegates: const [
-            AppLocalizationsDelegate(),
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
           builder: (context, child) => ResponsiveBreakpoints.builder(
             child: MediaQuery(
               data: MediaQuery.of(context).copyWith(
@@ -231,7 +211,6 @@ class MyApp extends ConsumerWidget {
           routerConfig: router,
         ),
       ),
-        ),
       ),
     );
   }

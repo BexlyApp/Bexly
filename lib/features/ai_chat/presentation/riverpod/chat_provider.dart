@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,13 +26,20 @@ import 'package:bexly/features/ai_chat/presentation/riverpod/chat_dao_provider.d
 import 'package:bexly/core/database/app_database.dart' as db;
 import 'package:drift/drift.dart' as drift;
 import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
-import 'package:bexly/core/services/sync/chat_message_sync_service.dart';
 import 'package:bexly/core/utils/category_translation_map.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/features/receipt_scanner/presentation/riverpod/receipt_scanner_provider.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
+import 'package:bexly/features/pending_transactions/data/models/pending_transaction_model.dart';
+import 'package:bexly/core/database/daos/pending_transaction_dao.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 import 'package:bexly/core/services/subscription/subscription.dart';
 import 'package:bexly/features/settings/presentation/riverpod/ai_model_provider.dart';
+import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
+import 'package:bexly/core/services/spending_anomaly_service.dart';
+import 'package:bexly/features/ai_chat/presentation/widgets/nps_survey_bottom_sheet.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Simple category info for AI
 class CategoryInfo {
@@ -238,22 +246,10 @@ final aiServiceProvider = Provider<AIService>((ref) {
   // Map AIModel setting to service
   switch (selectedModel) {
     case AIModel.gemini:
-      // Use Gemini service
-      final apiKey = LLMDefaultConfig.geminiApiKey.isEmpty
-          ? 'USER_MUST_PROVIDE_API_KEY'
-          : LLMDefaultConfig.geminiApiKey;
-
-      if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length >= 11) {
-        final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
-        Log.d('Using Gemini Service with API key: $maskedKey, model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-      } else if (apiKey == 'USER_MUST_PROVIDE_API_KEY') {
-        Log.e('Invalid or missing Gemini API key!', label: 'Chat Provider');
-      } else {
-        Log.d('Using Gemini Service with API key: [SHORT_KEY], model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-      }
+      Log.d('Using Gemini Service via proxy, model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
 
       return GeminiService(
-        apiKey: apiKey,
+        apiKey: '', // API key managed server-side via proxy
         model: LLMDefaultConfig.geminiModel,
         categories: categories,
         categoryHierarchy: categoryHierarchy,
@@ -264,22 +260,10 @@ final aiServiceProvider = Provider<AIService>((ref) {
       );
 
     case AIModel.openAI:
-      // OpenAI service
-      final apiKey = LLMDefaultConfig.apiKey.isEmpty
-          ? 'USER_MUST_PROVIDE_API_KEY'
-          : LLMDefaultConfig.apiKey;
-
-      if (apiKey != 'USER_MUST_PROVIDE_API_KEY' && apiKey.length >= 11) {
-        final maskedKey = '${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}';
-        Log.d('Using OpenAI Service with API key: $maskedKey, model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-      } else if (apiKey == 'USER_MUST_PROVIDE_API_KEY') {
-        Log.e('Invalid or missing OpenAI API key!', label: 'Chat Provider');
-      } else {
-        Log.d('Using OpenAI Service with API key: [SHORT_KEY], model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-      }
+      Log.d('Using OpenAI Service via proxy, model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
 
       return OpenAIService(
-        apiKey: apiKey,
+        apiKey: '', // API key managed server-side via proxy
         model: LLMDefaultConfig.model,
         categories: categories,
         categoryHierarchy: categoryHierarchy,
@@ -322,8 +306,106 @@ class ChatNotifier extends Notifier<ChatState> {
   // Store current receipt image for attaching to transactions
   Uint8List? _currentReceiptImage;
 
+  // Store pending screenshot transactions for quick action handling
+  List<ReceiptScanResult>? _pendingScreenshotTransactions;
+
   // Get AI service when needed to avoid provider rebuilds
   AIService get _aiService => ref.read(aiServiceProvider);
+
+  // Track if we're using fallback model
+  bool _usingFallback = false;
+  String? _fallbackModelName;
+
+  // Cache fallback Gemini service to preserve conversation history
+  GeminiService? _fallbackGeminiService;
+
+  /// Send message with fallback: DOS AI (api.dos.ai handles local→Qwen Cloud) → Gemini
+  Future<String> _sendMessageWithFallback(String message) async {
+    final selectedModel = ref.read(aiModelProvider);
+
+    // If using DOS AI, try with Gemini fallback
+    if (selectedModel == AIModel.dosAI) {
+      try {
+        Log.d('🚀 Trying DOS AI first...', label: 'AI_FALLBACK');
+        _usingFallback = false;
+        _fallbackModelName = null;
+        return await _aiService.sendMessage(message);
+      } catch (e) {
+        // DOS AI failed (server handles its own Qwen Cloud fallback) — fall back to Gemini
+        Log.w('⚠️ DOS AI failed: $e, falling back to Gemini...', label: 'AI_FALLBACK');
+        _usingFallback = true;
+
+        final geminiService = _getOrCreateFallbackGeminiService();
+        _fallbackModelName = geminiService.modelName;
+
+        // Update context for current wallet
+        final activeWallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+        final allWalletsAsync = ref.read(allWalletsStreamProvider);
+        final allWallets = _unwrapAsyncValue(allWalletsAsync) ?? [];
+        final walletNames = allWallets.map((w) => '${w.name} (${w.currency}, ${w.walletType.displayName})').toList();
+        final exchangeRateCache = ref.read(exchangeRateCacheProvider);
+        final cachedRate = exchangeRateCache['VND_USD'];
+
+        geminiService.updateContext(
+          walletName: activeWallet?.name,
+          walletCurrency: activeWallet?.currency,
+          wallets: walletNames,
+          exchangeRate: cachedRate?.rate,
+        );
+
+        // Propagate spending insights and budgets to fallback service
+        if (_aiService is AIServicePromptMixin) {
+          final mixin = _aiService as AIServicePromptMixin;
+          geminiService.updateSpendingInsights(mixin.spendingInsightsContext);
+          geminiService.updateBudgetsContext(mixin.budgetsContext);
+          geminiService.updateRecentTransactions(mixin.recentTransactionsContext);
+        }
+
+        Log.d('✅ Using Gemini fallback: ${geminiService.modelName}', label: 'AI_FALLBACK');
+        return await geminiService.sendMessage(message);
+      }
+    }
+
+    // Not DOS AI - use primary service directly
+    _usingFallback = false;
+    _fallbackModelName = null;
+    return await _aiService.sendMessage(message);
+  }
+
+  /// Get or create cached fallback Gemini service (preserves conversation history)
+  GeminiService _getOrCreateFallbackGeminiService() {
+    if (_fallbackGeminiService != null) {
+      return _fallbackGeminiService!;
+    }
+
+    final categoriesAsync = ref.read(hierarchicalCategoriesProvider);
+    final categories = categoriesAsync.when(
+      data: (cats) => cats.expand((c) {
+        if (c.subCategories != null && c.subCategories!.isNotEmpty) {
+          return c.subCategories!.map((sub) => sub.title);
+        }
+        return [c.title];
+      }).toList(),
+      loading: () => <String>[],
+      error: (_, _) => <String>[],
+    );
+
+    _fallbackGeminiService = GeminiService(
+      apiKey: '', // API key managed server-side via proxy
+      model: LLMDefaultConfig.geminiModel,
+      categories: categories,
+    );
+
+    return _fallbackGeminiService!;
+  }
+
+  /// Get the actual model name used (considering fallback)
+  String get _actualModelName {
+    if (_usingFallback && _fallbackModelName != null) {
+      return _fallbackModelName!;
+    }
+    return _aiService.modelName;
+  }
 
   // Helper method to unwrap AsyncValue
   T? _unwrapAsyncValue<T>(AsyncValue<T> asyncValue) {
@@ -360,41 +442,39 @@ class ChatNotifier extends Notifier<ChatState> {
 
   void _initializeChat() async {
     final dao = ref.read(chatMessageDaoProvider);
-    final syncService = ref.read(chatMessageSyncServiceProvider);
+    // Cloud sync removed - chat messages stored locally only
+    // TODO: Implement Supabase chat message sync
 
-    // STEP 1: Try to download messages from cloud (if authenticated)
+    // STEP 1: Load messages from local database
     try {
-      final cloudMessages = await syncService.downloadAllMessages();
-
-      if (cloudMessages.isNotEmpty) {
-        Log.d('Downloaded ${cloudMessages.length} messages from cloud', label: 'Chat Provider');
-
-        // Save cloud messages to local database (with dedup check)
-        int insertedCount = 0;
-        for (final cloudMsg in cloudMessages) {
-          final result = await dao.addMessageIfNotExists(db.ChatMessagesCompanion(
-            messageId: drift.Value(cloudMsg['messageId']),
-            content: drift.Value(cloudMsg['content']),
-            isFromUser: drift.Value(cloudMsg['isFromUser']),
-            timestamp: drift.Value(cloudMsg['timestamp']),
-            error: drift.Value(cloudMsg['error']),
-            isTyping: drift.Value(cloudMsg['isTyping']),
-          ));
-          if (result > 0) insertedCount++;
-        }
-        Log.d('Inserted $insertedCount new messages (skipped ${cloudMessages.length - insertedCount} duplicates)', label: 'Chat Provider');
+      final localMessages = await dao.getAllMessages();
+      if (localMessages.isNotEmpty) {
+        Log.d('Loaded ${localMessages.length} messages from local database', label: 'Chat Provider');
       }
     } catch (e) {
-      Log.w('Failed to download messages from cloud: $e', label: 'Chat Provider');
+      Log.w('Failed to load messages: $e', label: 'Chat Provider');
     }
 
-    // STEP 2: Load messages from local database
+    // Load all saved messages
     final savedMessages = await dao.getAllMessages();
 
     if (savedMessages.isNotEmpty) {
       // Convert database messages to ChatMessage model and DEDUP by messageId
       final Map<String, ChatMessage> uniqueMessages = {};
       for (final dbMsg in savedMessages) {
+        // Load image from file if path is stored
+        Uint8List? imageBytes;
+        if (dbMsg.imagePath != null) {
+          try {
+            final file = File(dbMsg.imagePath!);
+            if (file.existsSync()) {
+              imageBytes = await file.readAsBytes();
+            }
+          } catch (e) {
+            Log.w('Failed to load chat image: $e', label: 'Chat Provider');
+          }
+        }
+
         final message = ChatMessage(
           id: dbMsg.messageId,
           content: dbMsg.content,
@@ -402,6 +482,7 @@ class ChatNotifier extends Notifier<ChatState> {
           timestamp: dbMsg.timestamp,
           error: dbMsg.error,
           isTyping: dbMsg.isTyping,
+          imageBytes: imageBytes,
         );
         // Keep only the first occurrence (or latest if you prefer)
         if (!uniqueMessages.containsKey(dbMsg.messageId)) {
@@ -415,8 +496,10 @@ class ChatNotifier extends Notifier<ChatState> {
       state = state.copyWith(messages: messages);
     } else {
       // Add welcome message if no history
+      // Use fixed ID to prevent duplicates when syncing
+      const welcomeMessageId = 'welcome_message_v1';
       final welcomeMessage = ChatMessage(
-        id: _uuid.v4(),
+        id: welcomeMessageId,
         content: 'Welcome to Bexly AI Assistant! I can help you track expenses, record income, check balances, and view transaction summaries. Note: Budget creation is now supported via chat!',
         isFromUser: false,
         timestamp: DateTime.now(),
@@ -432,6 +515,24 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 
   Future<void> _saveMessageToDatabase(ChatMessage message, {bool shouldSync = true}) async {
+    // Save image to file if present
+    String? imagePath;
+    if (message.imageBytes != null) {
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final chatImagesDir = Directory('${dir.path}/chat_images');
+        if (!chatImagesDir.existsSync()) {
+          chatImagesDir.createSync(recursive: true);
+        }
+        final file = File('${chatImagesDir.path}/${message.id}.jpg');
+        await file.writeAsBytes(message.imageBytes!);
+        imagePath = file.path;
+        Log.d('Saved chat image: $imagePath', label: 'Chat Provider');
+      } catch (e) {
+        Log.e('Failed to save chat image: $e', label: 'Chat Provider');
+      }
+    }
+
     final dao = ref.read(chatMessageDaoProvider);
     await dao.addMessage(db.ChatMessagesCompanion(
       messageId: drift.Value(message.id),
@@ -440,23 +541,14 @@ class ChatNotifier extends Notifier<ChatState> {
       timestamp: drift.Value(message.timestamp),
       error: drift.Value(message.error),
       isTyping: drift.Value(message.isTyping),
+      imagePath: drift.Value(imagePath),
     ));
 
     // Sync to cloud (if authenticated)
-    // Don't sync typing messages or welcome messages
+    // Cloud sync removed - messages stored locally only
+    // TODO: Implement Supabase chat message sync
     if (shouldSync && !message.isTyping) {
-      final syncService = ref.read(chatMessageSyncServiceProvider);
-      final dbMessage = db.ChatMessage(
-        id: 0, // Not used for Firestore sync
-        messageId: message.id,
-        content: message.content,
-        isFromUser: message.isFromUser,
-        timestamp: message.timestamp,
-        error: message.error,
-        isTyping: message.isTyping,
-        createdAt: message.timestamp,
-      );
-      await syncService.syncMessage(dbMessage);
+      Log.d('Message saved locally (cloud sync not implemented)', label: 'Chat Provider');
     }
   }
 
@@ -464,15 +556,37 @@ class ChatNotifier extends Notifier<ChatState> {
     print('🚀 [DEBUG] sendMessage() CALLED with content: ${content.substring(0, content.length > 30 ? 30 : content.length)}... imageBytes: ${imageBytes != null ? "${imageBytes.length} bytes" : "null"}');
     if ((content.trim().isEmpty && imageBytes == null) || state.isLoading) return;
 
-    // Check AI message limit
+    // Check AI message limit (skip in debug mode for testing)
     final aiUsageService = ref.read(aiUsageServiceProvider);
     final limits = ref.read(subscriptionLimitsProvider);
-    if (!aiUsageService.canSendMessage(limits)) {
-      final remaining = aiUsageService.getRemainingMessages(limits);
-      state = state.copyWith(
-        error: 'You have used all ${ limits.maxAiMessagesPerMonth} AI messages this month. Upgrade to Plus for more messages.',
+    const isDebugMode = bool.fromEnvironment('dart.vm.product') == false;
+    if (!isDebugMode && !aiUsageService.canSendMessage(limits)) {
+      Log.w('AI message limit reached: 0 remaining', label: 'Chat');
+
+      // Add user message first
+      final userMessage = ChatMessage(
+        id: _uuid.v4(),
+        content: content.trim(),
+        isFromUser: true,
+        timestamp: DateTime.now(),
+        imageBytes: imageBytes,
       );
-      Log.w('AI message limit reached: $remaining remaining', label: 'Chat');
+
+      // Create limit reached message in chat (not as error toast)
+      final used = aiUsageService.getUsedMessagesThisMonth();
+      final max = limits.maxAiMessagesPerMonth;
+      final limitMessage = ChatMessage(
+        id: _uuid.v4(),
+        content: '⚠️ **Đã hết lượt chat AI tháng này**\n\n'
+            'Bạn đã sử dụng **$used/$max** tin nhắn AI trong tháng.\n\n'
+            '💡 Nâng cấp lên **Plus** để có 240 tin nhắn/tháng, hoặc **Pro** để không giới hạn.',
+        isFromUser: false,
+        timestamp: DateTime.now(),
+      );
+
+      state = state.copyWith(
+        messages: [...state.messages, userMessage, limitMessage],
+      );
       return;
     }
 
@@ -497,35 +611,123 @@ class ChatNotifier extends Notifier<ChatState> {
 
     // Add user message and set loading state
     print('[CHAT_DEBUG] Adding user message. Current count: ${state.messages.length}');
+
+    // If image is provided, show analyzing indicator immediately (before any async ops)
+    // so user sees feedback right away without waiting for DB save.
+    final List<ChatMessage> initialMessages = [
+      ...state.messages,
+      userMessage,
+      if (imageBytes != null)
+        ChatMessage(
+          id: 'typing_indicator',
+          content: 'Đang phân tích hình ảnh...',
+          isFromUser: false,
+          timestamp: DateTime.now(),
+          isTyping: true,
+        ),
+    ];
     state = state.copyWith(
-      messages: [...state.messages, userMessage],
+      messages: initialMessages,
       isLoading: true,
-      isTyping: false,
+      isTyping: imageBytes != null,
       error: null,
     );
     print('[CHAT_DEBUG] User message added. New count: ${state.messages.length}');
 
-    // Save user message to database
-    await _saveMessageToDatabase(userMessage);
+    // Save user message to database in background (non-blocking for UX)
+    unawaited(_saveMessageToDatabase(userMessage));
 
     try {
-      // If image is provided, analyze it as a receipt first
+      // If image is provided, analyze it (receipt or banking screenshot)
       String enhancedContent = content;
       if (imageBytes != null) {
-        print('📸 [RECEIPT] Receipt image detected, analyzing...');
-        Log.d('Receipt image detected, analyzing...', label: 'Chat Provider');
+        print('📸 [RECEIPT] Image detected, analyzing...');
+        Log.d('Image detected, analyzing...', label: 'Chat Provider');
 
         try {
           final receiptService = ref.read(receiptScannerServiceProvider);
-          final receiptResult = await receiptService.analyzeReceipt(imageBytes: imageBytes);
+          final results = await receiptService.analyzeScreenshot(imageBytes: imageBytes);
 
+          if (results.length > 1) {
+            // Multi-transaction: banking screenshot
+            Log.d('Banking screenshot: ${results.length} transactions extracted', label: 'Chat Provider');
+
+            // Deduplicate against existing transactions
+            final deduped = await _deduplicateScreenshotResults(results);
+            final skipped = results.length - deduped.length;
+
+            // Remove analyzing indicator
+            final messagesWithoutAnalyzing = state.messages
+                .where((msg) => !msg.isTyping)
+                .toList();
+
+            if (deduped.isEmpty) {
+              // All duplicates
+              final aiMsg = ChatMessage(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                content: '🔍 Đã quét **${results.length} giao dịch** nhưng tất cả đã có trong ví. Không có giao dịch mới.',
+                isFromUser: false,
+                timestamp: DateTime.now(),
+              );
+              state = state.copyWith(
+                messages: [...messagesWithoutAnalyzing, aiMsg],
+                isLoading: false,
+                isTyping: false,
+              );
+              unawaited(_saveMessageToDatabase(aiMsg));
+              return;
+            }
+
+            // Store for quick action handling
+            _pendingScreenshotTransactions = deduped;
+
+            final walletName = ref.read(activeWalletProvider).value?.name ?? 'My VND Wallet';
+            final summaryLines = deduped.take(5).map((r) =>
+              '• ${r.merchant} — ${_formatAmount(r.amount, currency: r.currency ?? 'VND')}'
+            ).join('\n');
+            final moreText = deduped.length > 5 ? '\n• ... và ${deduped.length - 5} giao dịch khác' : '';
+
+            final aiMsg = ChatMessage(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              content: '🔍 Đã quét **${results.length} giao dịch**${skipped > 0 ? ' (bỏ $skipped trùng)' : ''}. '
+                  '**${deduped.length} giao dịch mới**:\n\n$summaryLines$moreText',
+              isFromUser: false,
+              timestamp: DateTime.now(),
+              pendingAction: PendingAction(
+                actionType: 'screenshot_transactions',
+                actionData: {
+                  'count': deduped.length,
+                  'walletName': walletName,
+                },
+                buttons: [
+                  ChatActionButton(
+                    label: '✅ Thêm tất cả ${deduped.length} vào $walletName',
+                    actionType: 'screenshot_bulk_create',
+                  ),
+                  ChatActionButton(
+                    label: '📋 Duyệt ở danh sách chờ',
+                    actionType: 'screenshot_to_pending',
+                  ),
+                ],
+              ),
+            );
+
+            state = state.copyWith(
+              messages: [...messagesWithoutAnalyzing, aiMsg],
+              isLoading: false,
+              isTyping: false,
+            );
+            unawaited(_saveMessageToDatabase(aiMsg));
+            return;
+          }
+
+          // Single receipt — existing flow
+          final receiptResult = results.first;
           print('📸 [RECEIPT] Receipt analyzed: ${receiptResult.merchant}, ${receiptResult.amount} ${receiptResult.currency}');
           Log.d('Receipt analyzed: ${receiptResult.merchant}, ${receiptResult.amount} ${receiptResult.currency}', label: 'Chat Provider');
 
-          // Store receipt image for attaching to transaction
           _currentReceiptImage = imageBytes;
 
-          // Build enhanced prompt with receipt data
           enhancedContent = '''${content.trim()}
 
 RECEIPT_DATA:
@@ -541,18 +743,27 @@ ${receiptResult.tipAmount != null ? '- Tip: ${receiptResult.tipAmount}' : ''}
 Please create a transaction based on this receipt data.''';
 
           print('📸 [RECEIPT] Enhanced content prepared');
-          Log.d('Enhanced content prepared for AI', label: 'Chat Provider');
         } catch (e) {
-          print('❌ [RECEIPT] Failed to analyze receipt: $e');
-          Log.e('Failed to analyze receipt: $e', label: 'Chat Provider');
-          enhancedContent = '${content.trim()}\n\n[Failed to analyze receipt image. Please try again or enter transaction details manually.]';
-          _currentReceiptImage = null; // Clear on error
+          print('❌ [RECEIPT] Failed to analyze image: $e');
+          Log.e('Failed to analyze image: $e', label: 'Chat Provider');
+          enhancedContent = '${content.trim()}\n\n[Failed to analyze image. Please try again or enter transaction details manually.]';
+          _currentReceiptImage = null;
         }
+
+        // Remove "analyzing image" indicator
+        final messagesWithoutAnalyzing = state.messages
+            .where((msg) => !msg.isTyping)
+            .toList();
+        state = state.copyWith(
+          messages: messagesWithoutAnalyzing,
+          isTyping: false,
+        );
       }
 
-      // Update AI with recent transactions and budgets context before sending message
+      // Update AI with recent transactions, budgets, and spending insights before sending message
       await _updateRecentTransactionsContext();
       await _updateBudgetsContext();
+      await _updateSpendingInsightsContext();
 
       // Update AI with current wallet context (CRITICAL: wallet list must be current!)
       print('🔧 [CHAT_DEBUG] About to update AI context...');
@@ -585,10 +796,11 @@ Please create a transaction based on this receipt data.''';
       // Start typing indicator
       _startTypingEffect();
 
-      // Get AI response (use enhancedContent if receipt was analyzed)
-      final response = await _aiService.sendMessage(enhancedContent);
+      // Get AI response with fallback (DOS AI -> Gemini if timeout)
+      final response = await _sendMessageWithFallback(enhancedContent);
 
       print('📱 [DEBUG] AI Response received, length: ${response.length}');
+      print('📱 [DEBUG] Used fallback: $_usingFallback, model: $_actualModelName');
       print('📱 [DEBUG] Response FULL: $response');
       print('📱 [DEBUG] Contains ACTION_JSON: ${response.contains('ACTION_JSON')}');
       Log.d('AI Response: $response', label: 'Chat Provider');
@@ -650,6 +862,10 @@ Please create a transaction based on this receipt data.''';
       print('📱 [DEBUG] Found ${actions.length} ACTION_JSON actions');
       Log.d('🔍 Found ${actions.length} ACTION_JSON actions', label: 'Chat Provider');
 
+      // Strip any "ACTION_JSON: null" or bare "ACTION_JSON:" lines from display message
+      // This happens when the model outputs it literally instead of omitting it
+      displayMessage = displayMessage.replaceAll(RegExp(r'ACTION_JSON:\s*null', caseSensitive: false), '').trim();
+
       if (actions.isNotEmpty) {
         print('📱 [DEBUG] Processing ${actions.length} actions...');
 
@@ -664,8 +880,60 @@ Please create a transaction based on this receipt data.''';
           // Process each action
           for (final action in actions) {
           // Parse the action
-          final String actionType = (action['action'] ?? '').toString();
+          String actionType = (action['action'] ?? '').toString();
           Log.d('🔍 Action type: $actionType', label: 'Chat Provider');
+
+          // SAFETY NET: LLM (especially smaller models like Qwen3.5) often misses
+          // recurring indicators and creates one-time transactions instead.
+          // Auto-upgrade to create_recurring when user message contains frequency keywords.
+          if (actionType == 'create_expense' || actionType == 'create_income') {
+            final lowerMsg = content.toLowerCase();
+            final hasRecurringKeyword = RegExp(
+              r'\b(mỗi tháng|hàng tháng|hằng tháng|mỗi tuần|hàng tuần|hằng tuần|mỗi ngày|hàng ngày|hằng ngày|mỗi năm|hàng năm|hằng năm|monthly|weekly|daily|yearly|every\s+(month|week|day|year)|định kỳ|recurring|subscription)\b',
+              caseSensitive: false,
+            ).hasMatch(lowerMsg);
+
+            if (hasRecurringKeyword) {
+              Log.w('⚠️ SAFETY NET: LLM returned $actionType but user message contains recurring keywords. Upgrading to create_recurring.', label: 'Chat Provider');
+
+              // Detect frequency from user message
+              String frequency = 'monthly'; // default
+              if (RegExp(r'mỗi ngày|hàng ngày|hằng ngày|daily|every\s+day', caseSensitive: false).hasMatch(lowerMsg)) {
+                frequency = 'daily';
+              } else if (RegExp(r'mỗi tuần|hàng tuần|hằng tuần|weekly|every\s+week', caseSensitive: false).hasMatch(lowerMsg)) {
+                frequency = 'weekly';
+              } else if (RegExp(r'mỗi năm|hàng năm|hằng năm|yearly|every\s+year', caseSensitive: false).hasMatch(lowerMsg)) {
+                frequency = 'yearly';
+              }
+
+              // Detect if income based on original action type or category
+              final isIncome = actionType == 'create_income';
+
+              // Convert action to create_recurring
+              actionType = 'create_recurring';
+              action['action'] = 'create_recurring';
+              action['frequency'] = action['frequency'] ?? frequency;
+              action['name'] = action['description'] ?? action['name'] ?? 'Recurring Payment';
+              action['autoCreate'] = action['autoCreate'] ?? true;
+              if (isIncome) action['isIncome'] = true;
+
+              // Try to parse due day from message (e.g., "vào ngày 5", "on the 25th")
+              final dayMatch = RegExp(r'(?:ngày|on\s+(?:the\s+)?|day\s+)(\d{1,2})').firstMatch(lowerMsg);
+              if (dayMatch != null && action['nextDueDate'] == null) {
+                final day = int.parse(dayMatch.group(1)!);
+                if (day >= 1 && day <= 31) {
+                  final now = DateTime.now();
+                  var nextDate = DateTime(now.year, now.month, day);
+                  if (nextDate.isBefore(now)) {
+                    nextDate = DateTime(now.year, now.month + 1, day);
+                  }
+                  action['nextDueDate'] = nextDate.toIso8601String().split('T')[0];
+                }
+              }
+
+              Log.d('Upgraded action: frequency=$frequency, isIncome=$isIncome, name=${action['name']}', label: 'Chat Provider');
+            }
+          }
 
           switch (actionType) {
             case 'create_expense':
@@ -755,7 +1023,14 @@ Please create a transaction based on this receipt data.''';
                 Log.d('Creating transaction: action=${action['action']}, amount=$amount $aiCurrency, desc=$description, cat=$category', label: 'Chat Provider');
 
                 // Get the actual amount saved (after currency conversion if needed)
-                final actualAmount = await _createTransactionFromAction(action, wallet: wallet);
+                final actualAmount = await _createTransactionFromAction(action, wallet: wallet, userMessage: content);
+
+                // If transaction creation failed, don't show success message from AI
+                // Error message was already added by _createTransactionFromAction via _addErrorMessage
+                if (actualAmount == null) {
+                  displayMessage = ''; // Clear success message, error is already shown
+                  break;
+                }
 
                 // IMPORTANT: Replace "Active Wallet" with actual wallet name in AI response
                 // AI service was built with potentially stale wallet info, so we fix it here
@@ -763,7 +1038,7 @@ Please create a transaction based on this receipt data.''';
 
                 // Add conversion info if currency was converted
                 // Show wallet currency amount first, with note about original amount
-                if (aiCurrency != wallet.currency && actualAmount != null) {
+                if (aiCurrency != wallet.currency) {
                   // Format amounts with proper separators
                   final convertedFormatted = _formatAmount(actualAmount, currency: wallet.currency);
                   final originalFormatted = _formatAmount(amount, currency: aiCurrency);
@@ -857,7 +1132,16 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing create_budget action: $action', label: 'Chat Provider');
 
-                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                var wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                if (wallet == null) {
+                  final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+                  if (defaultWallet != null) {
+                    wallet = defaultWallet;
+                  } else {
+                    final allWallets = _unwrapAsyncValue(ref.read(allWalletsStreamProvider)) ?? [];
+                    if (allWallets.isNotEmpty) wallet = allWallets.first;
+                  }
+                }
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
@@ -873,18 +1157,32 @@ Please create a transaction based on this receipt data.''';
                   amount = amount / 25000;
                 }
 
-                await _createBudgetFromAction({
+                final budgetCreated = await _createBudgetFromAction({
                   ...action,
                   'amount': amount,
                 });
-                // AI already provides confirmation in user's language
+
+                // If budget creation failed, don't show success message from AI
+                // Error message was already added by _createBudgetFromAction via _addErrorMessage
+                if (!budgetCreated) {
+                  displayMessage = ''; // Clear success message, error is already shown
+                }
                 break;
               }
             case 'create_goal':
               {
                 Log.d('Processing create_goal action: $action', label: 'Chat Provider');
 
-                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                var wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                if (wallet == null) {
+                  final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+                  if (defaultWallet != null) {
+                    wallet = defaultWallet;
+                  } else {
+                    final allWallets = _unwrapAsyncValue(ref.read(allWalletsStreamProvider)) ?? [];
+                    if (allWallets.isNotEmpty) wallet = allWallets.first;
+                  }
+                }
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
@@ -932,7 +1230,16 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing update_transaction action: $action', label: 'Chat Provider');
 
-                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                var wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                if (wallet == null) {
+                  final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+                  if (defaultWallet != null) {
+                    wallet = defaultWallet;
+                  } else {
+                    final allWallets = _unwrapAsyncValue(ref.read(allWalletsStreamProvider)) ?? [];
+                    if (allWallets.isNotEmpty) wallet = allWallets.first;
+                  }
+                }
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
@@ -946,7 +1253,16 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing delete_transaction action: $action', label: 'Chat Provider');
 
-                final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                var wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+                if (wallet == null) {
+                  final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+                  if (defaultWallet != null) {
+                    wallet = defaultWallet;
+                  } else {
+                    final allWallets = _unwrapAsyncValue(ref.read(allWalletsStreamProvider)) ?? [];
+                    if (allWallets.isNotEmpty) wallet = allWallets.first;
+                  }
+                }
                 if (wallet == null) {
                   displayMessage += '\n\n❌ No active wallet selected.';
                   break;
@@ -969,16 +1285,19 @@ Please create a transaction based on this receipt data.''';
                 Log.d('🔵 Processing create_recurring action: $action', label: 'Chat Provider');
                 Log.d('🔵 AI Response: $response', label: 'Chat Provider');
 
-                // CRITICAL: Check if categories are loaded before processing
-                final categoriesAsync = ref.read(hierarchicalCategoriesProvider);
-                final hierarchicalCategories = _unwrapAsyncValue(categoriesAsync) ?? [];
+                // CRITICAL: Query categories directly from database instead of relying on provider state
+                // This avoids timing issues where StreamProvider hasn't emitted yet
+                final categoryDao = ref.read(databaseProvider).categoryDao;
+                final categoryEntities = await categoryDao.watchAllCategories().first;
 
-                if (hierarchicalCategories.isEmpty) {
+                if (categoryEntities.isEmpty) {
                   Log.w('⚠️ Categories not loaded yet, skipping recurring creation. Action: $action', label: 'Chat Provider');
                   print('⚠️ [CREATE_RECURRING] Categories not ready, action skipped');
                   displayMessage += '\n\n⚠️ Error: Categories not loaded yet. Please try again in a few seconds.';
                   break;
                 }
+
+                Log.d('🔵 Loaded ${categoryEntities.length} categories from database', label: 'Chat Provider');
 
                 // Get wallet used by recurring (query directly from database)
                 final walletDao = ref.read(walletDaoProvider);
@@ -1043,15 +1362,23 @@ Please create a transaction based on this receipt data.''';
                 }
 
                 Log.d('🔵 Calling _createRecurringFromAction...', label: 'Chat Provider');
-                final convertedAmount = await _createRecurringFromAction(action);
-                Log.d('✅ _createRecurringFromAction completed', label: 'Chat Provider');
+                double? convertedAmount;
+                try {
+                  convertedAmount = await _createRecurringFromAction(action, userMessage: content);
+                  Log.d('✅ _createRecurringFromAction completed', label: 'Chat Provider');
+                } catch (e) {
+                  Log.e('❌ _createRecurringFromAction failed: $e', label: 'Chat Provider');
+                  _addErrorMessage('❌ $e');
+                  displayMessage = ''; // Clear success message, error is already shown
+                  break;
+                }
 
                 // IMPORTANT: Replace "Active Wallet" with actual wallet name in AI response
                 if (usedWallet != null) {
                   displayMessage = displayMessage.replaceAll('Active Wallet', usedWallet.name);
 
                   // Add conversion info if currency was converted
-                  if (aiCurrency != usedWallet.currency) {
+                  if (aiCurrency != usedWallet.currency && convertedAmount != null) {
                     // Format amounts with proper separators
                     final convertedFormatted = _formatAmount(convertedAmount, currency: usedWallet.currency);
                     final originalFormatted = _formatAmount(originalAmount, currency: aiCurrency);
@@ -1087,6 +1414,20 @@ Please create a transaction based on this receipt data.''';
               {
                 Log.d('Processing list_budgets action: $action', label: 'Chat Provider');
                 final listText = await _getBudgetsListText(action);
+                displayMessage += '\n\n' + listText;
+                break;
+              }
+            case 'list_goals':
+              {
+                Log.d('Processing list_goals action: $action', label: 'Chat Provider');
+                final listText = await _getGoalsListText();
+                displayMessage += '\n\n' + listText;
+                break;
+              }
+            case 'list_recurring':
+              {
+                Log.d('Processing list_recurring action: $action', label: 'Chat Provider');
+                final listText = await _getRecurringListText(action);
                 displayMessage += '\n\n' + listText;
                 break;
               }
@@ -1132,6 +1473,58 @@ Please create a transaction based on this receipt data.''';
                 );
                 break;
               }
+            case 'open_savings_account':
+              {
+                Log.d('Processing open_savings_account action: $action', label: 'Chat Provider');
+                pendingAction = PendingAction(
+                  actionType: 'open_savings_account',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Open Account', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
+            case 'transfer_to_savings':
+              {
+                Log.d('Processing transfer_to_savings action: $action', label: 'Chat Provider');
+                pendingAction = PendingAction(
+                  actionType: 'transfer_to_savings',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Transfer', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
+            case 'apply_credit_card':
+              {
+                Log.d('Processing apply_credit_card action: $action', label: 'Chat Provider');
+                pendingAction = PendingAction(
+                  actionType: 'apply_credit_card',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Apply Now', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
+            case 'apply_loan':
+              {
+                Log.d('Processing apply_loan action: $action', label: 'Chat Provider');
+                pendingAction = PendingAction(
+                  actionType: 'apply_loan',
+                  actionData: action,
+                  buttons: [
+                    ChatActionButton(label: '✅ Apply', actionType: 'confirm', actionData: action),
+                    ChatActionButton(label: 'Cancel', actionType: 'cancel'),
+                  ],
+                );
+                break;
+              }
             default:
               {
                 Log.d('Unknown action: $actionType', label: 'Chat Provider');
@@ -1153,16 +1546,37 @@ Please create a transaction based on this receipt data.''';
       print('[CHAT_DEBUG] pendingAction buttons: ${pendingAction?.buttons.length ?? 0}');
       print('[CHAT_DEBUG] displayMessage FINAL: $displayMessage');
 
+      // Skip creating AI message if displayMessage is empty
+      // This happens when transaction creation fails and error was already shown via _addErrorMessage
+      if (displayMessage.isEmpty) {
+        print('[CHAT_DEBUG] displayMessage is empty, skipping AI message creation (error already shown)');
+        // Just remove typing indicator and update loading state
+        try {
+          final messagesWithoutTyping = state.messages
+              .where((msg) => !msg.isTyping)
+              .toList();
+          state = state.copyWith(
+            messages: messagesWithoutTyping,
+            isLoading: false,
+            isTyping: false,
+          );
+        } catch (e) {
+          print('[CHAT_DEBUG] ⚠️ Failed to update state: $e');
+        }
+        return;
+      }
+
       final aiMessage = ChatMessage(
         id: _uuid.v4(),
         content: displayMessage,
         isFromUser: false,
         timestamp: DateTime.now(),
         pendingAction: pendingAction,
+        modelName: _actualModelName, // Use actual model (considering fallback)
       );
 
       print('[CHAT_DEBUG] Created AI message: ${aiMessage.content.length > 50 ? aiMessage.content.substring(0, 50) + '...' : aiMessage.content}');
-      print('[CHAT_DEBUG] AI message hasPendingAction: ${aiMessage.hasPendingAction}');
+      print('[CHAT_DEBUG] AI message hasPendingAction: ${aiMessage.hasPendingAction}, model: ${aiMessage.modelName}, fallback: $_usingFallback');
 
       // Update state - wrap ALL state access in try-catch to handle dispose
       try {
@@ -1192,6 +1606,17 @@ Please create a transaction based on this receipt data.''';
 
       // Increment AI message usage count
       await ref.read(aiUsageServiceProvider).incrementMessageCount();
+
+      // NPS survey: increment counter and check if survey should show
+      try {
+        final prefs = ref.read(sharedPreferencesProvider);
+        NpsSurveyBottomSheet.incrementMessageCount(prefs);
+        if (NpsSurveyBottomSheet.shouldShow(prefs)) {
+          state = state.copyWith(showNpsSurvey: true);
+        }
+      } catch (e) {
+        Log.e('NPS survey check failed: $e', label: 'Chat Provider');
+      }
 
       Log.d('Message sent and response received successfully', label: 'Chat Provider');
     } catch (error) {
@@ -1223,15 +1648,16 @@ Please create a transaction based on this receipt data.''';
         error: errorString,
       );
 
-      // Update state
+      // Update state - remove typing message first, then add error message
+      final messagesWithoutTyping = state.messages
+          .where((msg) => !msg.isTyping)
+          .toList();
+
       state = state.copyWith(
+        messages: [...messagesWithoutTyping, errorMessage],
         isLoading: false,
         isTyping: false,
         error: errorString,
-      );
-
-      state = state.copyWith(
-        messages: [...state.messages, errorMessage],
       );
 
       // Save error message to database
@@ -1278,6 +1704,16 @@ Please create a transaction based on this receipt data.''';
     Log.d('✅ Error state cleared - error is now: ${state.error}', label: 'Chat Provider');
   }
 
+  /// Dismiss the NPS survey trigger flag
+  void dismissNpsSurvey() {
+    state = state.copyWith(showNpsSurvey: false);
+  }
+
+  /// Update draft message (preserves user's typing when navigating away)
+  void updateDraftMessage(String draft) {
+    state = state.copyWith(draftMessage: draft);
+  }
+
   void clearChat() async {
     _cancelTypingEffect();
 
@@ -1285,12 +1721,13 @@ Please create a transaction based on this receipt data.''';
     final dao = ref.read(chatMessageDaoProvider);
     await dao.clearAllMessages();
 
-    // Clear messages from cloud (if authenticated)
-    final syncService = ref.read(chatMessageSyncServiceProvider);
-    await syncService.clearAllMessages();
+    // Cloud sync removed - messages cleared locally only
+    Log.d('Chat messages cleared from local database', label: 'Chat Provider');
 
     // Clear AI conversation history
     _aiService.clearHistory();
+    _fallbackGeminiService?.clearHistory();
+    _fallbackGeminiService = null; // Reset fallback service
     Log.d('AI conversation history cleared', label: 'Chat Provider');
 
     // Reset state
@@ -1301,7 +1738,7 @@ Please create a transaction based on this receipt data.''';
   }
 
   /// Returns the actual amount saved (after currency conversion if needed)
-  Future<double?> _createTransactionFromAction(Map<String, dynamic> action, {WalletModel? wallet}) async {
+  Future<double?> _createTransactionFromAction(Map<String, dynamic> action, {WalletModel? wallet, String userMessage = ''}) async {
     try {
       // Print to console for debugging
       print('========================================');
@@ -1374,21 +1811,57 @@ Please create a transaction based on this receipt data.''';
       Log.d('Looking for category: "$categoryName"', label: 'TRANSACTION_DEBUG');
       Log.d('Available flattened categories: ${allCategories.map((c) => c.title).join(", ")}', label: 'TRANSACTION_DEBUG');
 
-      // Simple exact match (case insensitive) - Trust LLM output, just validate
-      final category = allCategories.firstWhereOrNull(
+      // Step 1: Exact match (case insensitive)
+      CategoryModel? category = allCategories.firstWhereOrNull(
         (c) => c.title.toLowerCase() == categoryName.toLowerCase(),
       );
 
       if (category != null) {
-        Log.d('✅ Category matched: "${category.title}" (id: ${category.id})', label: 'TRANSACTION_DEBUG');
-      } else {
-        // LLM sent invalid category - fail loudly to improve prompt
+        Log.d('✅ Category matched (exact): "${category.title}" (id: ${category.id})', label: 'TRANSACTION_DEBUG');
+      }
+
+      // Step 2: Translation map fallback (AI returns English, DB may have localized names)
+      if (category == null) {
+        final availableTitles = allCategories.map((c) => c.title).toList();
+        final matchedTitle = CategoryTranslationMap.findMatchingCategory(
+          categoryName,
+          availableTitles,
+        );
+        if (matchedTitle != null) {
+          category = allCategories.firstWhereOrNull((c) => c.title == matchedTitle);
+          Log.d('✅ Category matched (translation): "$categoryName" → "${category?.title}"', label: 'TRANSACTION_DEBUG');
+        }
+      }
+
+      // Step 3: Partial/contains match (e.g. "Coffee & Tea" matches "Coffee")
+      if (category == null) {
+        category = allCategories.firstWhereOrNull(
+          (c) => c.title.toLowerCase().contains(categoryName.toLowerCase()) ||
+                 categoryName.toLowerCase().contains(c.title.toLowerCase()),
+        );
+        if (category != null) {
+          Log.d('✅ Category matched (partial): "$categoryName" → "${category.title}" (id: ${category.id})', label: 'TRANSACTION_DEBUG');
+        }
+      }
+
+      // Step 4: If matched a parent category, use first subcategory
+      if (category != null && category.subCategories != null && category.subCategories!.isNotEmpty) {
+        Log.w('⚠️ Matched parent category "${category.title}", using first subcategory', label: 'TRANSACTION_DEBUG');
+        category = category.subCategories!.first;
+        Log.d('   → Switched to: "${category.title}" (id: ${category.id})', label: 'TRANSACTION_DEBUG');
+      }
+
+      // Step 5: Fallback to "Others"
+      if (category == null) {
         final availableCategories = allCategories.map((c) => c.title).join(', ');
         Log.e('❌ Invalid category "$categoryName" from LLM. Available: $availableCategories', label: 'TRANSACTION_DEBUG');
-        print('[TRANSACTION_ERROR] ❌ Invalid category "$categoryName" from LLM');
-        print('[TRANSACTION_ERROR] Available categories: $availableCategories');
-        _addErrorMessage('❌ Category "$categoryName" not found. Please try again with a valid category.');
-        return null;
+        category = allCategories.firstWhereOrNull((c) => c.title == 'Others' && (c.subCategories == null || c.subCategories!.isEmpty));
+        category ??= allCategories.firstWhereOrNull((c) => c.subCategories == null || c.subCategories!.isEmpty);
+        if (category == null) {
+          _addErrorMessage('❌ Category "$categoryName" not found. Please try again with a valid category.');
+          return null;
+        }
+        Log.w('⚠️ Using fallback category: "${category.title}" (id: ${category.id})', label: 'TRANSACTION_DEBUG');
       }
 
       // Create transaction model
@@ -1400,9 +1873,11 @@ Please create a transaction based on this receipt data.''';
 
       // Log for debugging
       Log.d('Transaction type from category "${category.title}": ${category.transactionType} → $transactionType', label: 'TRANSACTION_DEBUG');
-      double amount = (action['amount'] as num).toDouble();
+      final rawLlmAmount = (action['amount'] as num).toDouble();
       final String? actionCurrency = action['currency'] as String?;
       final String walletCurrency = wallet.currency;
+      // Sanity check: LLM often returns wrong VND amounts (e.g., 100tr → 100B instead of 100M)
+      double amount = _sanitizeVndAmount(rawLlmAmount, userMessage, actionCurrency ?? walletCurrency);
       final rawTitle = action['description'] as String;
       // Capitalize first letter of title
       final title = rawTitle.isEmpty
@@ -1572,21 +2047,23 @@ Please create a transaction based on this receipt data.''';
         }
       }
 
-      // Adjust wallet balance
-      Log.d('Adjusting wallet balance...', label: 'TRANSACTION_DEBUG');
-      await _adjustWalletBalanceAfterCreate(transaction);
-      Log.d('Wallet balance adjusted', label: 'TRANSACTION_DEBUG');
+      // NOTE: Wallet balance is already adjusted inside transactionDao.addTransaction()
+      // Do NOT call _adjustWalletBalanceAfterCreate() here - it would cause double deduction!
+      Log.d('Wallet balance already adjusted by DAO', label: 'TRANSACTION_DEBUG');
 
-      // IMPORTANT: Force refresh transaction providers to update UI
-      // This ensures the transaction list is refreshed after insert
-      Log.d('Forcing transaction provider refresh...', label: 'TRANSACTION_DEBUG');
+      // IMPORTANT: Force refresh providers to update UI
+      // This ensures the transaction list and wallet balance are refreshed after insert
+      Log.d('Forcing provider refresh...', label: 'TRANSACTION_DEBUG');
 
-      // Invalidate both transaction providers to update UI
-      // Wallet balance is already updated via _adjustWalletBalanceAfterCreate
+      // Invalidate transaction providers
       ref.invalidate(transactionListProvider);
       ref.invalidate(allTransactionsProvider);
 
-      Log.d('Transaction list provider invalidated, UI should update', label: 'TRANSACTION_DEBUG');
+      // Invalidate wallet providers to refresh balance in UI (dashboard, wallet selector, etc.)
+      ref.invalidate(activeWalletProvider);
+      ref.invalidate(allWalletsStreamProvider);
+
+      Log.d('Transaction and wallet providers invalidated, UI should update', label: 'TRANSACTION_DEBUG');
 
       // Note: Success message is NOT added here because AI already provides
       // natural language confirmation in its response (e.g., "Đã ghi nhận chi tiêu...")
@@ -1603,6 +2080,17 @@ Please create a transaction based on this receipt data.''';
 
       Log.d('_createTransactionFromAction COMPLETE', label: 'TRANSACTION_DEBUG');
       Log.d('========================================', label: 'TRANSACTION_DEBUG');
+
+      // Check for spending anomalies (async, non-blocking)
+      try {
+        final anomalyService = ref.read(spendingAnomalyServiceProvider);
+        final anomaly = await anomalyService.checkTransaction(transaction);
+        if (anomaly != null) {
+          Log.w('Spending anomaly detected: ${anomaly.message}', label: 'SpendingAnomaly');
+        }
+      } catch (e) {
+        Log.e('Anomaly check error: $e', label: 'SpendingAnomaly');
+      }
 
       // Return the actual amount that was saved (after currency conversion)
       return amount;
@@ -1624,47 +2112,74 @@ Please create a transaction based on this receipt data.''';
     }
   }
 
-  Future<void> _createBudgetFromAction(Map<String, dynamic> action) async {
+  /// Returns true if budget was created successfully, false otherwise
+  Future<bool> _createBudgetFromAction(Map<String, dynamic> action) async {
     Log.d('Creating budget from action: $action', label: 'BUDGET_DEBUG');
 
     try {
-      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      var wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      if (wallet == null) {
+        // Fallback: try default wallet, then first available
+        final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+        if (defaultWallet != null) {
+          wallet = defaultWallet;
+          Log.d('No active wallet for budget, using default: ${wallet.name}', label: 'BUDGET_DEBUG');
+        } else {
+          final allWallets = _unwrapAsyncValue(ref.read(allWalletsStreamProvider)) ?? [];
+          if (allWallets.isNotEmpty) {
+            wallet = allWallets.first;
+            Log.d('No active wallet for budget, using first available: ${wallet.name}', label: 'BUDGET_DEBUG');
+          }
+        }
+      }
       if (wallet == null) {
         Log.e('No active wallet for budget creation', label: 'BUDGET_DEBUG');
-        return;
+        _addErrorMessage('❌ Cannot create budget: No wallet available. Please create a wallet first.');
+        return false;
       }
 
       // Get category
-      // CRITICAL: hierarchicalCategoriesProvider returns only PARENT categories!
-      // We need to FLATTEN to include ALL subcategories for matching
       final categoryName = action['category']?.toString() ?? 'Others';
       Log.d('🔍 Searching for category: "$categoryName"', label: 'BUDGET_DEBUG');
 
-      final hierarchicalCategories = _unwrapAsyncValue(ref.read(hierarchicalCategoriesProvider)) ?? [];
+      // CRITICAL FIX: Fetch categories directly from database to avoid provider race condition
+      // (same issue as transaction creation - provider may not be loaded yet)
+      final db = ref.read(databaseProvider);
+      final categoryEntities = await db.categoryDao.getAllCategories();
+      Log.d('📦 Fetched ${categoryEntities.length} categories directly from database', label: 'BUDGET_DEBUG');
 
-      if (hierarchicalCategories.isEmpty) {
+      if (categoryEntities.isEmpty) {
         Log.e('❌ No categories available for budget', label: 'BUDGET_DEBUG');
-        return;
+        _addErrorMessage('❌ Cannot create budget: No categories available. Please create categories first.');
+        return false;
       }
 
-      Log.d('📂 Found ${hierarchicalCategories.length} parent categories', label: 'BUDGET_DEBUG');
-
-      // Flatten hierarchy to include BOTH parent and subcategories
+      // Convert to models and flatten hierarchy
       final List<CategoryModel> allCategories = [];
       final Map<String, CategoryModel> parentToFirstSubcategory = {};
+      final Map<int?, List<CategoryModel>> childrenByParentIdMap = {};
 
-      for (final cat in hierarchicalCategories) {
-        // Always add parent category
-        allCategories.add(cat);
+      // Convert all entities to models
+      final allModels = categoryEntities.map((e) => e.toModel()).toList();
 
-        if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
-          Log.d('  📁 ${cat.title} has ${cat.subCategories!.length} subcategories: ${cat.subCategories!.map((s) => s.title).join(", ")}', label: 'BUDGET_DEBUG');
-          // Map parent title to first subcategory for fallback
-          parentToFirstSubcategory[cat.title.toLowerCase()] = cat.subCategories!.first;
-          // Also add all subcategories
-          allCategories.addAll(cat.subCategories!);
+      // Group by parentId
+      for (final model in allModels) {
+        childrenByParentIdMap.putIfAbsent(model.parentId, () => []).add(model);
+      }
+
+      // Get top-level categories (parentId == null)
+      final topLevelCategories = childrenByParentIdMap[null] ?? [];
+
+      // Flatten: Add all categories and build parent-to-subcategory mapping
+      for (final parent in topLevelCategories) {
+        allCategories.add(parent);
+        final children = childrenByParentIdMap[parent.id] ?? [];
+        if (children.isNotEmpty) {
+          Log.d('  📁 ${parent.title} has ${children.length} subcategories: ${children.map((s) => s.title).join(", ")}', label: 'BUDGET_DEBUG');
+          parentToFirstSubcategory[parent.title.toLowerCase()] = children.first;
+          allCategories.addAll(children);
         } else {
-          Log.d('  📄 ${cat.title} (no subcategories)', label: 'BUDGET_DEBUG');
+          Log.d('  📄 ${parent.title} (no subcategories)', label: 'BUDGET_DEBUG');
         }
       }
 
@@ -1707,13 +2222,30 @@ Please create a transaction based on this receipt data.''';
         }
       }
 
+      // 4.5. Special case: "Bills" → search in Utilities subcategories
+      if (category == null && categoryName.toLowerCase().contains('bill')) {
+        Log.d('🔍 Step 4.5: Detected "bills" keyword, searching in Utilities subcategories...', label: 'BUDGET_DEBUG');
+        final utilitiesParent = topLevelCategories.firstWhereOrNull(
+          (c) => c.title.toLowerCase() == 'utilities'
+        );
+        if (utilitiesParent != null) {
+          final subcategories = childrenByParentIdMap[utilitiesParent.id] ?? [];
+          if (subcategories.isNotEmpty) {
+            // Default to first utility (usually Electricity)
+            category = subcategories.first;
+            Log.d('✅ Step 4.5: Mapped "Bills" → "${category.title}" from Utilities', label: 'BUDGET_DEBUG');
+          }
+        }
+      }
+
       // 5. Fallback to "Others" or first non-parent category
       if (category == null) {
         category = allCategories.firstWhereOrNull((c) => c.title == 'Others' && (c.subCategories == null || c.subCategories!.isEmpty));
         category ??= allCategories.firstWhereOrNull((c) => c.subCategories == null || c.subCategories!.isEmpty);
         if (category == null) {
           Log.e('❌ Step 5: No categories available for budget (even after fallback)', label: 'BUDGET_DEBUG');
-          return;
+          _addErrorMessage('❌ Cannot create budget: No valid category found.');
+          return false;
         }
         Log.w('⚠️ Step 5: Using FALLBACK category: "${category.title}" (ID: ${category.id})', label: 'BUDGET_DEBUG');
       }
@@ -1749,22 +2281,28 @@ Please create a transaction based on this receipt data.''';
       final amount = (action['amount'] as num).toDouble();
       final isRoutine = action['isRoutine'] ?? false;
 
-      // Check for duplicate budget before creating
-      final existingBudgets = await ref.read(budgetListProvider.future);
+      // Check for overlapping budget before creating
+      // CRITICAL FIX: Fetch budgets directly from database to avoid provider race condition
+      final budgetDao = ref.read(budgetDaoProvider);
+      final existingBudgetEntities = await budgetDao.getAllBudgets();
+      Log.d('📦 Fetched ${existingBudgetEntities.length} existing budgets from database', label: 'BUDGET_DEBUG');
+
       final categoryId = category.id;
       final walletId = wallet.id;
-      final isDuplicate = existingBudgets.any((b) =>
-          b.category.id == categoryId &&
-          b.wallet.id == walletId &&
-          b.amount == amount &&
-          b.startDate.year == startDate.year &&
-          b.startDate.month == startDate.month &&
-          b.endDate.year == endDate.year &&
-          b.endDate.month == endDate.month);
 
-      if (isDuplicate) {
-        Log.d('Skipping duplicate budget: category=${category.title}, amount=$amount', label: 'BUDGET_DEBUG');
-        return;
+      // Check for overlapping periods: Budget periods should NOT overlap
+      // Two periods overlap if: period1.start < period2.end AND period1.end > period2.start
+      final hasOverlap = existingBudgetEntities.any((b) =>
+          b.categoryId == categoryId &&
+          b.walletId == walletId &&
+          // Check if time periods overlap
+          (b.startDate.isBefore(endDate) || b.startDate.isAtSameMomentAs(endDate)) &&
+          (b.endDate.isAfter(startDate) || b.endDate.isAtSameMomentAs(startDate)));
+
+      if (hasOverlap) {
+        Log.w('⚠️ Budget period overlaps with existing budget for ${category.title}', label: 'BUDGET_DEBUG');
+        _addErrorMessage('⚠️ Đã có ngân sách cho "${category.title}" trong khoảng thời gian này rồi. Vui lòng chọn thời gian khác.');
+        return false; // CRITICAL: Return false to indicate failure, caller will skip success message
       }
 
       // Import budget model and providers
@@ -1780,8 +2318,7 @@ Please create a transaction based on this receipt data.''';
 
       Log.d('Creating budget: amount=$amount, category=${category.title}, period=$period', label: 'BUDGET_DEBUG');
 
-      // Save budget to database
-      final budgetDao = ref.read(budgetDaoProvider);
+      // Save budget to database (budgetDao already fetched above for duplicate check)
       await budgetDao.addBudget(budget);
 
       Log.d('Budget created successfully', label: 'BUDGET_DEBUG');
@@ -1798,9 +2335,13 @@ Please create a transaction based on this receipt data.''';
       //   Log.i('Cloud sync failed (may not be authenticated): $e', label: 'BUDGET_DEBUG');
       // }
 
+      return true; // Success!
+
     } catch (e, stackTrace) {
       Log.e('Failed to create budget: $e', label: 'BUDGET_ERROR');
       Log.e('Stack trace: $stackTrace', label: 'BUDGET_ERROR');
+      _addErrorMessage('❌ Lỗi khi tạo ngân sách: $e');
+      return false;
     }
   }
 
@@ -1858,9 +2399,34 @@ Please create a transaction based on this receipt data.''';
         pinned: drift.Value(goal.pinned),
       );
 
-      await database.goalDao.addGoal(companion);
+      final goalId = await database.goalDao.addGoal(companion);
 
-      Log.d('Goal created successfully', label: 'GOAL_DEBUG');
+      Log.d('Goal created successfully with ID: $goalId', label: 'GOAL_DEBUG');
+
+      // Parse and create checklist items if provided
+      if (action['checklist'] != null && action['checklist'] is List) {
+        final checklistData = action['checklist'] as List;
+        Log.d('Creating ${checklistData.length} checklist items...', label: 'GOAL_DEBUG');
+
+        for (final item in checklistData) {
+          if (item is Map<String, dynamic>) {
+            final itemTitle = item['title']?.toString() ?? 'Checklist Item';
+            final itemAmount = ((item['amount'] ?? 0) as num).toDouble();
+
+            final checklistCompanion = db.ChecklistItemsCompanion(
+              goalId: drift.Value(goalId),
+              title: drift.Value(itemTitle),
+              amount: drift.Value(itemAmount),
+              completed: const drift.Value(false),
+            );
+
+            final checklistItemId = await database.checklistItemDao.addChecklistItem(checklistCompanion);
+            Log.d('  ✅ Created checklist item "$itemTitle" (amount: $itemAmount) with ID: $checklistItemId', label: 'GOAL_DEBUG');
+          }
+        }
+
+        Log.d('All checklist items created successfully', label: 'GOAL_DEBUG');
+      }
 
       // Invalidate goal list to refresh UI
       ref.invalidate(goalsListProvider);
@@ -1880,21 +2446,72 @@ Please create a transaction based on this receipt data.''';
     }
   }
 
+  /// Detect language from user's last message
+  /// Returns 'vi' for Vietnamese, 'en' for English (default)
+  String _detectUserLanguage() {
+    // Find last user message
+    final userMessages = state.messages.where((m) => m.isFromUser).toList();
+    if (userMessages.isEmpty) return 'en';
+
+    final lastUserMessage = userMessages.last.content.toLowerCase();
+
+    // Vietnamese character patterns
+    final vietnamesePattern = RegExp(r'[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]');
+
+    // Vietnamese common words
+    final vietnameseWords = ['tháng', 'năm', 'tuần', 'hôm', 'ngày', 'tiền', 'chi', 'thu', 'ví', 'của', 'trong', 'cho', 'với', 'và', 'là', 'có', 'không', 'được', 'này', 'đó', 'tôi', 'mình', 'bạn', 'xem', 'kiểm', 'tra'];
+
+    // Check for Vietnamese characters
+    if (vietnamesePattern.hasMatch(lastUserMessage)) {
+      return 'vi';
+    }
+
+    // Check for Vietnamese words
+    for (final word in vietnameseWords) {
+      if (lastUserMessage.contains(word)) {
+        return 'vi';
+      }
+    }
+
+    return 'en';
+  }
+
   Future<String> _getActiveWalletBalanceText() async {
+    final lang = _detectUserLanguage();
     final walletState = ref.read(activeWalletProvider);
     final wallet = _unwrapAsyncValue(walletState);
     if (wallet == null) {
-      return 'No active wallet selected.';
+      return lang == 'vi' ? 'Chưa chọn ví.' : 'No active wallet selected.';
     }
     final amount = (wallet.balance).toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => m.group(1)! + '.');
-    return 'Current balance in "' + wallet.name + '": ' + amount + ' ' + wallet.currency;
+    return lang == 'vi'
+        ? 'Số dư ví "${wallet.name}": $amount ${wallet.currency}'
+        : 'Current balance in "${wallet.name}": $amount ${wallet.currency}';
   }
 
   Future<String> _getSummaryText(Map<String, dynamic> action) async {
+    final lang = _detectUserLanguage();
     try {
       final db = ref.read(databaseProvider);
-      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
-      if (wallet == null || wallet.id == null) return 'No active wallet selected.';
+      WalletModel? wallet = ref.read(activeWalletProvider).value;
+
+      // Fallback to default wallet or first available wallet
+      if (wallet == null || wallet.id == null) {
+        final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+        if (defaultWallet != null) {
+          wallet = defaultWallet;
+        } else {
+          final walletsAsync = ref.read(allWalletsStreamProvider);
+          final allWallets = _unwrapAsyncValue(walletsAsync) ?? [];
+          if (allWallets.isNotEmpty) {
+            wallet = allWallets.first;
+          }
+        }
+      }
+
+      if (wallet == null || wallet.id == null) {
+        return lang == 'vi' ? 'Chưa chọn ví.' : 'No active wallet selected.';
+      }
 
       final now = DateTime.now();
       final String range = (action['range'] ?? 'month').toString();
@@ -1941,21 +2558,54 @@ Please create a transaction based on this receipt data.''';
       final net = income - expense;
 
       String fmt(num v) => v.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
-      return 'Summary $range (${start.toIso8601String().substring(0,10)} → ${end.toIso8601String().substring(0,10)}):\n'
-          '• Income: ${fmt(income)} ${wallet.currency}\n'
-          '• Expense: ${fmt(expense)} ${wallet.currency}\n'
-          '• Net: ${fmt(net)} ${wallet.currency}';
+
+      // Localized range labels
+      final rangeLabels = {
+        'vi': {'today': 'hôm nay', 'week': 'tuần này', 'month': 'tháng này', 'quarter': 'quý này', 'year': 'năm nay', 'custom': 'tùy chỉnh'},
+        'en': {'today': 'today', 'week': 'this week', 'month': 'this month', 'quarter': 'this quarter', 'year': 'this year', 'custom': 'custom'},
+      };
+      final rangeLabel = rangeLabels[lang]?[range] ?? range;
+
+      if (lang == 'vi') {
+        return 'Tổng kết $rangeLabel (${start.toIso8601String().substring(0,10)} → ${end.toIso8601String().substring(0,10)}):\n'
+            '• Thu nhập: ${fmt(income)} ${wallet.currency}\n'
+            '• Chi tiêu: ${fmt(expense)} ${wallet.currency}\n'
+            '• Còn lại: ${fmt(net)} ${wallet.currency}';
+      } else {
+        return 'Summary $rangeLabel (${start.toIso8601String().substring(0,10)} → ${end.toIso8601String().substring(0,10)}):\n'
+            '• Income: ${fmt(income)} ${wallet.currency}\n'
+            '• Expense: ${fmt(expense)} ${wallet.currency}\n'
+            '• Net: ${fmt(net)} ${wallet.currency}';
+      }
     } catch (e) {
       Log.e('Summary error: $e', label: 'Chat Provider');
-      return 'Could not generate summary.';
+      return lang == 'vi' ? 'Không thể tạo báo cáo tổng kết.' : 'Could not generate summary.';
     }
   }
 
   Future<String> _getTransactionsListText(Map<String, dynamic> action) async {
+    final lang = _detectUserLanguage();
     try {
       final db = ref.read(databaseProvider);
-      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
-      if (wallet == null || wallet.id == null) return 'No active wallet selected.';
+      WalletModel? wallet = ref.read(activeWalletProvider).value;
+
+      // Fallback to default wallet or first available wallet
+      if (wallet == null || wallet.id == null) {
+        final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
+        if (defaultWallet != null) {
+          wallet = defaultWallet;
+        } else {
+          final walletsAsync = ref.read(allWalletsStreamProvider);
+          final allWallets = _unwrapAsyncValue(walletsAsync) ?? [];
+          if (allWallets.isNotEmpty) {
+            wallet = allWallets.first;
+          }
+        }
+      }
+
+      if (wallet == null || wallet.id == null) {
+        return lang == 'vi' ? 'Chưa chọn ví.' : 'No active wallet selected.';
+      }
 
       final now = DateTime.now();
       final String range = (action['range'] ?? 'month').toString();
@@ -1990,16 +2640,120 @@ Please create a transaction based on this receipt data.''';
       filtered.sort((a, b) => b.date.compareTo(a.date));
       final int limit = (action['limit'] is num) ? (action['limit'] as num).toInt() : 5;
       final take = filtered.take(limit).toList();
-      if (take.isEmpty) return 'No transactions found in this time period.';
+      if (take.isEmpty) {
+        return lang == 'vi' ? 'Không có giao dịch nào trong khoảng thời gian này.' : 'No transactions found in this time period.';
+      }
 
       String fmt(num v) => v.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
       final lines = take.map((t) =>
           '- ${t.title} • ${(t.transactionType == TransactionType.expense ? '-' : '+')}${fmt(t.amount)} ${t.wallet.currency} • ${t.category.title}');
-      return 'Recent transactions:\n' + lines.join('\n');
+      final header = lang == 'vi' ? 'Giao dịch gần đây:' : 'Recent transactions:';
+      return '$header\n${lines.join('\n')}';
     } catch (e) {
       Log.e('List tx error: $e', label: 'Chat Provider');
-      return 'Unable to retrieve transaction list.';
+      return lang == 'vi' ? 'Không thể lấy danh sách giao dịch.' : 'Unable to retrieve transaction list.';
     }
+  }
+
+  /// Sanity check for VND amounts from LLM.
+  /// LLMs often multiply "tr" (triệu/million) by 1B instead of 1M,
+  /// resulting in amounts 1000x too large.
+  /// Re-parse from user message to get the correct amount.
+  /// Deduplicate screenshot OCR results against existing transactions in DB.
+  /// Match by: amount exact + date ±1 day + description fuzzy match.
+  Future<List<ReceiptScanResult>> _deduplicateScreenshotResults(
+    List<ReceiptScanResult> results,
+  ) async {
+    try {
+      final db = ref.read(databaseProvider);
+      // Get recent transactions (last 7 days) for matching
+      final now = DateTime.now();
+      final weekAgo = now.subtract(const Duration(days: 7));
+      final allTxEntities = await db.transactionDao.getAllTransactions();
+      final recentTransactions = allTxEntities.where((t) =>
+          t.date.isAfter(weekAgo)).toList();
+
+      return results.where((result) {
+        for (final tx in recentTransactions) {
+          // 1. Amount must match exactly
+          if (result.amount != tx.amount) continue;
+
+          // 2. Date within ±1 day
+          DateTime resultDate;
+          try {
+            resultDate = DateTime.parse(result.date);
+          } catch (_) {
+            continue;
+          }
+          final dayDiff = resultDate.difference(tx.date).inDays.abs();
+          if (dayDiff > 1) continue;
+
+          // 3. Description similarity
+          final a = result.merchant.toLowerCase();
+          final b = tx.title.toLowerCase();
+          if (a.contains(b) || b.contains(a) || _fuzzyMatchStrings(a, b)) {
+            Log.d('Dedupe: skipping "${result.merchant}" (matches "${tx.title}")',
+                label: 'SCREENSHOT_DEDUPE');
+            return false; // Duplicate found
+          }
+        }
+        return true; // Not a duplicate
+      }).toList();
+    } catch (e) {
+      Log.e('Dedupe error: $e', label: 'SCREENSHOT_DEDUPE');
+      return results; // On error, keep all
+    }
+  }
+
+  /// Simple fuzzy match: check if words overlap significantly
+  bool _fuzzyMatchStrings(String a, String b) {
+    final wordsA = a.split(RegExp(r'\s+')).where((w) => w.length > 2).toSet();
+    final wordsB = b.split(RegExp(r'\s+')).where((w) => w.length > 2).toSet();
+    if (wordsA.isEmpty || wordsB.isEmpty) return false;
+    final overlap = wordsA.intersection(wordsB).length;
+    final minLen = wordsA.length < wordsB.length ? wordsA.length : wordsB.length;
+    return minLen > 0 && overlap / minLen >= 0.5;
+  }
+
+  double _sanitizeVndAmount(double llmAmount, String userMessage, String currency) {
+    if (currency != 'VND') return llmAmount;
+
+    // Try to parse amount from user message directly
+    final lower = userMessage.toLowerCase();
+    final amountPattern = RegExp(r'(\d+[\.,]?\d*)\s*(ty|tỷ|tr|trieu|triệu|k|nghin|nghìn|ngan|ngàn)?');
+    final match = amountPattern.firstMatch(lower);
+    if (match == null) return llmAmount;
+
+    final numStr = match.group(1)?.replaceAll('.', '').replaceAll(',', '.') ?? '0';
+    final unit = match.group(2) ?? '';
+    final base = double.tryParse(numStr) ?? 0.0;
+
+    int multiplier = 1;
+    switch (unit) {
+      case 'k':
+      case 'nghin':
+      case 'nghìn':
+      case 'ngan':
+      case 'ngàn':
+        multiplier = 1000;
+        break;
+      case 'tr':
+      case 'trieu':
+      case 'triệu':
+        multiplier = 1000000;
+        break;
+      case 'ty':
+      case 'tỷ':
+        multiplier = 1000000000;
+        break;
+    }
+
+    final parsed = base * multiplier;
+    if (parsed > 0 && (llmAmount / parsed).abs() > 100) {
+      Log.w('⚠️ VND SANITY CHECK: LLM returned $llmAmount but parsed "$userMessage" as $parsed. Using parsed value.', label: 'AMOUNT_SANITY');
+      return parsed;
+    }
+    return llmAmount;
   }
 
   String _formatAmount(num value, {String? currency}) {
@@ -2148,25 +2902,6 @@ Please create a transaction based on this receipt data.''';
     }
   }
 
-  Future<void> _adjustWalletBalanceAfterCreate(TransactionModel newTransaction) async {
-    try {
-      final walletDao = ref.read(walletDaoProvider);
-      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
-      if (wallet == null || wallet.id == null) return;
-      double balanceChange = 0.0;
-      if (newTransaction.transactionType == TransactionType.income) {
-        balanceChange += newTransaction.amount;
-      } else if (newTransaction.transactionType == TransactionType.expense) {
-        balanceChange -= newTransaction.amount;
-      }
-      final updatedWallet = wallet.copyWith(balance: wallet.balance + balanceChange);
-      await walletDao.updateWallet(updatedWallet);
-      ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
-    } catch (e) {
-      Log.e('adjust wallet after create failed: $e', label: 'Chat Provider');
-    }
-  }
-
   Future<String> _updateTransactionFromAction(Map<String, dynamic> action) async {
     try {
       final transactionId = (action['transactionId'] as num).toInt();
@@ -2303,13 +3038,15 @@ Please create a transaction based on this receipt data.''';
   }
 
   /// Returns the converted amount in wallet currency
-  Future<double> _createRecurringFromAction(Map<String, dynamic> action) async {
+  Future<double> _createRecurringFromAction(Map<String, dynamic> action, {String userMessage = ''}) async {
     try {
       Log.d('🔵 _createRecurringFromAction() START', label: 'CREATE_RECURRING');
 
       final name = (action['name'] as String?) ?? 'New Recurring';
-      final amount = (action['amount'] as num?)?.toDouble() ?? 0.0;
       final aiCurrency = (action['currency'] as String?) ?? 'VND';
+      // Sanity check: LLM often returns wrong VND amounts (e.g., 100tr → 100B instead of 100M)
+      final rawAmount = (action['amount'] as num?)?.toDouble() ?? 0.0;
+      final amount = _sanitizeVndAmount(rawAmount, userMessage, aiCurrency);
       final categoryName = (action['category'] as String?) ?? 'Others';
       final frequencyString = (action['frequency'] as String?) ?? 'monthly';
       final nextDueDateString = action['nextDueDate'] as String?;
@@ -2320,24 +3057,71 @@ Please create a transaction based on this receipt data.''';
       Log.d('Creating recurring: $name, amount: $amount, aiCurrency: $aiCurrency, frequency: $frequencyString', label: 'CREATE_RECURRING');
       Log.d('AI Action received: ${action.toString()}', label: 'CREATE_RECURRING');
 
-      // Find wallet matching currency
+      // Find wallet - Priority: AI specified wallet name > currency match > active wallet > default
       final walletsAsync = ref.read(allWalletsStreamProvider);
       final allWallets = _unwrapAsyncValue(walletsAsync) ?? [];
-      WalletModel? wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
+      WalletModel? wallet;
 
-      if (wallet == null) {
-        wallet = ref.read(activeWalletProvider).value;
+      // Priority 1: If AI specified a wallet name, try EXACT match only
+      // Partial matches are unreliable and can cause wrong wallet selection
+      final aiWalletName = action['wallet'] as String?;
+      if (aiWalletName != null && aiWalletName.isNotEmpty) {
+        final aiWalletLower = aiWalletName.toLowerCase();
+
+        // Try exact match ONLY - partial matches are too risky
+        wallet = allWallets.firstWhereOrNull((w) =>
+          w.name.toLowerCase() == aiWalletLower);
+
+        if (wallet != null) {
+          Log.d('Using AI-specified wallet (exact match): "${wallet.name}" (${wallet.currency})', label: 'CREATE_RECURRING');
+        } else {
+          // Check if wallet name contains currency hint (e.g., "My USD Wallet", "ví USD")
+          final walletNameUpper = aiWalletName.toUpperCase();
+          String? hintedCurrency;
+          if (walletNameUpper.contains('USD') || walletNameUpper.contains('DOLLAR') || walletNameUpper.contains('ĐÔ')) {
+            hintedCurrency = 'USD';
+          } else if (walletNameUpper.contains('VND') || walletNameUpper.contains('ĐỒNG')) {
+            hintedCurrency = 'VND';
+          }
+
+          if (hintedCurrency != null) {
+            wallet = allWallets.firstWhereOrNull((w) => w.currency == hintedCurrency);
+            if (wallet != null) {
+              Log.d('Using currency-hinted wallet from name "$aiWalletName": "${wallet.name}" (${wallet.currency})', label: 'CREATE_RECURRING');
+            }
+          }
+
+          if (wallet == null) {
+            Log.w('AI specified wallet "$aiWalletName" not found (no exact match), falling back to currency matching', label: 'CREATE_RECURRING');
+          }
+        }
       }
 
-      // If still no wallet, try to get default wallet, then first available wallet
+      // Priority 2: Match wallet by currency from AI action
+      if (wallet == null) {
+        wallet = allWallets.firstWhereOrNull((w) => w.currency == aiCurrency);
+        if (wallet != null) {
+          Log.d('Using currency-matched wallet: "${wallet.name}" (${wallet.currency})', label: 'CREATE_RECURRING');
+        }
+      }
+
+      // Priority 3: Use active wallet
+      if (wallet == null) {
+        wallet = ref.read(activeWalletProvider).value;
+        if (wallet != null) {
+          Log.d('Using active wallet: "${wallet.name}" (${wallet.currency})', label: 'CREATE_RECURRING');
+        }
+      }
+
+      // Priority 4: Use default wallet, then first available wallet
       if (wallet == null) {
         final defaultWallet = _unwrapAsyncValue(ref.read(defaultWalletProvider));
         if (defaultWallet != null) {
           wallet = defaultWallet;
-          Log.d('No active wallet, using default wallet: ${wallet.name}', label: 'CREATE_RECURRING');
+          Log.d('Using default wallet: ${wallet.name}', label: 'CREATE_RECURRING');
         } else if (allWallets.isNotEmpty) {
           wallet = allWallets.first;
-          Log.d('No active wallet, using first available wallet: ${wallet.name}', label: 'CREATE_RECURRING');
+          Log.d('Using first available wallet: ${wallet.name}', label: 'CREATE_RECURRING');
         }
       }
 
@@ -2346,25 +3130,35 @@ Please create a transaction based on this receipt data.''';
       }
 
       // Find category with fallback logic
-      // CRITICAL: hierarchicalCategoriesProvider returns only PARENT categories!
-      // We need to FLATTEN to include ALL subcategories for matching
-      final categoriesAsync = ref.read(hierarchicalCategoriesProvider);
-      final hierarchicalCategories = _unwrapAsyncValue(categoriesAsync) ?? [];
+      // CRITICAL: Query directly from database to avoid StreamProvider timing issues
+      final categoryDao = ref.read(databaseProvider).categoryDao;
+      final categoryEntities = await categoryDao.watchAllCategories().first;
 
-      if (hierarchicalCategories.isEmpty) {
+      if (categoryEntities.isEmpty) {
         throw Exception('No categories available.');
       }
 
-      // Flatten hierarchy to include BOTH parent categories AND subcategories
+      // Convert to CategoryModel and flatten for matching
       // IMPORTANT: Add subcategories FIRST for higher matching priority
       final List<CategoryModel> allCategories = [];
-      for (final cat in hierarchicalCategories) {
-        // Add subcategories FIRST (higher priority for matching)
-        if (cat.subCategories != null && cat.subCategories!.isNotEmpty) {
-          allCategories.addAll(cat.subCategories!);
-        }
-        // Then add parent as fallback
-        allCategories.add(cat);
+      final Map<int?, List<CategoryModel>> childrenByParentIdMap = {};
+
+      // Convert all entities to models
+      final allModels = categoryEntities.map((e) => e.toModel()).toList();
+
+      // Group by parentId
+      for (final model in allModels) {
+        childrenByParentIdMap.putIfAbsent(model.parentId, () => []).add(model);
+      }
+
+      // Get top-level categories (parentId == null)
+      final topLevelCategories = childrenByParentIdMap[null] ?? [];
+
+      // Flatten: Add subcategories first, then parent
+      for (final parent in topLevelCategories) {
+        final children = childrenByParentIdMap[parent.id] ?? [];
+        allCategories.addAll(children); // Subcategories first (higher priority)
+        allCategories.add(parent); // Then parent as fallback
       }
 
       Log.d('Flattened categories for matching: ${allCategories.map((c) => c.title).join(", ")}', label: 'CREATE_RECURRING');
@@ -2535,12 +3329,29 @@ Please create a transaction based on this receipt data.''';
       final db = ref.read(databaseProvider);
       final recurringId = await db.recurringDao.addRecurring(recurring);
 
+      // Upload to cloud immediately after creation
+      try {
+        final recurringWithId = recurring.copyWith(id: recurringId);
+        final syncService = ref.read(supabaseSyncServiceProvider);
+        await syncService.uploadRecurring(recurringWithId);
+        Log.d('Recurring uploaded to cloud: ${recurringWithId.cloudId}', label: 'CREATE_RECURRING');
+      } catch (e) {
+        Log.w('Failed to upload recurring to cloud: $e', label: 'CREATE_RECURRING');
+        // Don't fail the entire operation if cloud sync fails
+      }
+
       if (shouldChargeNow) {
         Log.d('shouldChargeNow = true, will create initial transaction', label: 'CREATE_RECURRING');
         Log.d('Transaction details: amount=$recurringAmount, currency=${wallet.currency}, date=${nextDueDate.toIso8601String()}', label: 'CREATE_RECURRING');
 
-        // Build descriptive title based on frequency
+        // Determine transaction type from category or action hint
+        final isIncome = (action['isIncome'] == true) ||
+            category.transactionType == 'income';
+        final txnType = isIncome ? TransactionType.income : TransactionType.expense;
+
+        // Build descriptive title based on frequency and type
         String transactionTitle = name;
+        final prefix = isIncome ? 'Monthly Income' : 'Subscription';
         switch (frequency) {
           case RecurringFrequency.daily:
             transactionTitle = 'Daily: $name';
@@ -2549,7 +3360,7 @@ Please create a transaction based on this receipt data.''';
             transactionTitle = 'Weekly: $name';
             break;
           case RecurringFrequency.monthly:
-            transactionTitle = 'Subscription: $name';
+            transactionTitle = '$prefix: $name';
             break;
           case RecurringFrequency.yearly:
             transactionTitle = 'Yearly: $name';
@@ -2569,7 +3380,7 @@ Please create a transaction based on this receipt data.''';
         // IMPORTANT: Use nextDueDate as transaction date (not current date)
         // This ensures transaction appears on correct date even if created later
         final transaction = TransactionModel(
-          transactionType: TransactionType.expense,
+          transactionType: txnType,
           amount: recurringAmount,
           date: nextDueDate, // Use due date, not DateTime.now()!
           title: transactionTitle,
@@ -2650,20 +3461,20 @@ Please create a transaction based on this receipt data.''';
   }
 
   /// Update AI service with recent transactions context
+  /// Aggregates across ALL user wallets so the coach has the full picture
+  /// (matches dashboard behavior which also shows cross-wallet totals).
   Future<void> _updateRecentTransactionsContext() async {
     try {
-      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
-      if (wallet == null || wallet.id == null) {
-        Log.d('No active wallet or wallet ID is null, skipping transaction context update', label: 'Chat Provider');
-        return;
-      }
-
-      // Get recent 10 transactions
+      print('[AI_CONTEXT] _updateRecentTransactionsContext START');
       final db = ref.read(databaseProvider);
-      final transactions = await db.transactionDao.watchFilteredTransactionsWithDetails(
-        walletId: wallet.id!,
-        filter: null,
-      ).first;
+      final transactions = await db.transactionDao
+          .watchAllTransactionsWithDetails()
+          .first
+          .timeout(const Duration(seconds: 5), onTimeout: () {
+        print('[AI_CONTEXT] Transaction fetch TIMEOUT');
+        return [];
+      });
+      print('[AI_CONTEXT] Got ${transactions.length} transactions across all wallets');
 
       // Take only the 10 most recent
       final recentTransactions = transactions.take(10).toList();
@@ -2674,12 +3485,12 @@ Please create a transaction based on this receipt data.''';
         return;
       }
 
-      // Format transactions as context string
+      // Format transactions as context string (include wallet name so AI knows source)
       final context = StringBuffer();
       for (final tx in recentTransactions) {
-        final amountText = _formatAmount(tx.amount, currency: wallet.currency);
+        final amountText = _formatAmount(tx.amount, currency: tx.wallet.currency);
         final typeIcon = tx.transactionType == TransactionType.income ? '📈' : '📉';
-        context.writeln('#${tx.id} - $typeIcon $amountText - ${tx.title} (${tx.category.title})');
+        context.writeln('#${tx.id} - $typeIcon $amountText - ${tx.title} (${tx.category.title}) [${tx.wallet.name}]');
       }
 
       final contextString = context.toString().trim();
@@ -2694,7 +3505,9 @@ Please create a transaction based on this receipt data.''';
   /// Get list of budgets for AI context
   Future<String> _getBudgetsListText(Map<String, dynamic> action) async {
     try {
-      final budgets = await ref.read(budgetListProvider.future);
+      // Use DAO directly instead of provider to avoid autoDispose issues
+      final budgetDao = ref.read(budgetDaoProvider);
+      final budgets = await budgetDao.watchAllBudgets().first;
       final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       final currency = wallet?.currency ?? 'VND';
 
@@ -2734,6 +3547,84 @@ Please create a transaction based on this receipt data.''';
     }
   }
 
+  /// Get list of goals for AI
+  Future<String> _getGoalsListText() async {
+    final lang = _detectUserLanguage();
+    try {
+      final db = ref.read(databaseProvider);
+      final goals = await db.goalDao.getAllGoals();
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      final currency = wallet?.currency ?? 'VND';
+
+      if (goals.isEmpty) {
+        return lang == 'vi' ? '🎯 Không có mục tiêu nào.' : '🎯 No goals found.';
+      }
+
+      String fmt(num v) => v.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+
+      final header = lang == 'vi' ? '🎯 Danh sách mục tiêu:' : '🎯 Goals list:';
+      final buffer = StringBuffer('$header\n');
+      for (final goal in goals) {
+        final progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount * 100).toInt() : 0;
+        final currentText = fmt(goal.currentAmount);
+        final targetText = fmt(goal.targetAmount);
+        final deadlineText = ' (${goal.endDate.toIso8601String().substring(0, 10)})';
+        buffer.writeln('• ${goal.title}: $currentText / $targetText $currency ($progress%)$deadlineText');
+      }
+
+      return buffer.toString().trim();
+    } catch (e) {
+      Log.e('Failed to get goals list: $e', label: 'GOALS_LIST');
+      return lang == 'vi' ? '❌ Lỗi khi lấy danh sách mục tiêu.' : '❌ Failed to get goals list.';
+    }
+  }
+
+  /// Get list of recurring payments for AI
+  Future<String> _getRecurringListText(Map<String, dynamic> action) async {
+    final lang = _detectUserLanguage();
+    try {
+      final db = ref.read(databaseProvider);
+      final allRecurring = await db.recurringDao.watchAllRecurrings().first;
+      final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      final currency = wallet?.currency ?? 'VND';
+
+      final status = action['status'] ?? 'active';
+      final recurring = status == 'active'
+          ? allRecurring.where((r) => r.isActive).toList()
+          : allRecurring;
+
+      if (recurring.isEmpty) {
+        return lang == 'vi'
+            ? '🔄 Không có thanh toán định kỳ nào${status == 'active' ? ' đang hoạt động' : ''}.'
+            : '🔄 No ${status == 'active' ? 'active ' : ''}recurring payments found.';
+      }
+
+      String fmt(num v) => v.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+
+      final frequencyLabels = {
+        'vi': {'daily': 'hàng ngày', 'weekly': 'hàng tuần', 'monthly': 'hàng tháng', 'yearly': 'hàng năm'},
+        'en': {'daily': 'daily', 'weekly': 'weekly', 'monthly': 'monthly', 'yearly': 'yearly'},
+      };
+
+      final header = lang == 'vi' ? '🔄 Danh sách thanh toán định kỳ:' : '🔄 Recurring payments:';
+      final buffer = StringBuffer('$header\n');
+      for (final r in recurring) {
+        final amountText = fmt(r.amount);
+        final freqText = frequencyLabels[lang]?[r.frequency.name] ?? r.frequency.name;
+        final nextDue = r.nextDueDate.toIso8601String().substring(0, 10);
+        final statusText = r.isActive
+            ? ''
+            : (lang == 'vi' ? ' [Tạm dừng]' : ' [Paused]');
+        buffer.writeln('• ${r.name}: $amountText $currency ($freqText) - ${lang == 'vi' ? 'Kỳ tiếp' : 'Next'}: $nextDue$statusText');
+      }
+
+      return buffer.toString().trim();
+    } catch (e) {
+      Log.e('Failed to get recurring list: $e', label: 'RECURRING_LIST');
+      return lang == 'vi' ? '❌ Lỗi khi lấy danh sách thanh toán định kỳ.' : '❌ Failed to get recurring payments list.';
+    }
+  }
+
   /// Delete a single budget
   Future<String> _deleteBudgetFromAction(Map<String, dynamic> action) async {
     try {
@@ -2759,7 +3650,9 @@ Please create a transaction based on this receipt data.''';
     try {
       print('🗑️ [DELETE_ALL] Starting delete all budgets...');
       final period = action['period'] ?? 'all'; // Default to 'all' to delete everything
-      final budgets = await ref.read(budgetListProvider.future);
+      // Use DAO directly instead of provider to avoid autoDispose issues
+      final budgetDao = ref.read(budgetDaoProvider);
+      final budgets = await budgetDao.watchAllBudgets().first;
 
       print('🗑️ [DELETE_ALL] period=$period, total budgets=${budgets.length}');
       Log.d('Delete all budgets: period=$period, total budgets=${budgets.length}', label: 'DELETE_ALL_BUDGETS');
@@ -2768,7 +3661,6 @@ Please create a transaction based on this receipt data.''';
         return '📋 Không có budget nào để xoá.';
       }
 
-      final budgetDao = ref.read(budgetDaoProvider);
       final now = DateTime.now();
       final currentMonthStart = DateTime(now.year, now.month, 1);
       final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
@@ -2811,8 +3703,9 @@ Please create a transaction based on this receipt data.''';
       final budgetId = (action['budgetId'] as num).toInt();
       Log.d('Updating budget ID: $budgetId', label: 'UPDATE_BUDGET');
 
-      final budgets = await ref.read(budgetListProvider.future);
-      final budget = budgets.firstWhereOrNull((b) => b.id == budgetId);
+      // Use DAO directly instead of provider to avoid autoDispose issues
+      final budgetDao = ref.read(budgetDaoProvider);
+      final budget = await budgetDao.getBudgetById(budgetId);
 
       if (budget == null) {
         return '❌ Không tìm thấy budget #$budgetId.';
@@ -2829,7 +3722,6 @@ Please create a transaction based on this receipt data.''';
         updatedAt: DateTime.now(),
       );
 
-      final budgetDao = ref.read(budgetDaoProvider);
       await budgetDao.updateBudget(updatedBudget);
 
       // Invalidate providers to refresh UI
@@ -2856,7 +3748,11 @@ Please create a transaction based on this receipt data.''';
 
       String resultMessage = '';
 
-      if (actionType == 'confirm') {
+      if (actionType == 'screenshot_bulk_create') {
+        resultMessage = await _handleScreenshotBulkCreate();
+      } else if (actionType == 'screenshot_to_pending') {
+        resultMessage = await _handleScreenshotToPending();
+      } else if (actionType == 'confirm') {
         // Execute the action
         switch (message.pendingAction!.actionType) {
           case 'delete_budget':
@@ -2868,7 +3764,21 @@ Please create a transaction based on this receipt data.''';
           case 'update_budget':
             resultMessage = await _updateBudgetFromAction(message.pendingAction!.actionData);
             break;
+          case 'open_savings_account':
+            resultMessage = _mockOpenSavingsAccount(message.pendingAction!.actionData);
+            break;
+          case 'transfer_to_savings':
+            resultMessage = _mockTransferToSavings(message.pendingAction!.actionData);
+            break;
+          case 'apply_credit_card':
+            resultMessage = _mockApplyCreditCard(message.pendingAction!.actionData);
+            break;
+          case 'apply_loan':
+            resultMessage = _mockApplyLoan(message.pendingAction!.actionData);
+            break;
         }
+      } else if (actionType == 'cancel') {
+        resultMessage = '❌ Đã huỷ thao tác.';
       } else {
         resultMessage = '❌ Đã huỷ thao tác.';
       }
@@ -2893,6 +3803,112 @@ Please create a transaction based on this receipt data.''';
     }
   }
 
+  /// Bulk create all pending screenshot transactions
+  Future<String> _handleScreenshotBulkCreate() async {
+    final transactions = _pendingScreenshotTransactions;
+    if (transactions == null || transactions.isEmpty) {
+      return '❌ Không có giao dịch nào để thêm.';
+    }
+
+    try {
+      var wallet = ref.read(activeWalletProvider).value;
+      if (wallet == null) {
+        final defaultWalletAsync = ref.read(defaultWalletProvider);
+        wallet = defaultWalletAsync.value;
+      }
+      if (wallet == null) {
+        final walletsAsync = ref.read(allWalletsStreamProvider);
+        final allWallets = _unwrapAsyncValue(walletsAsync) ?? [];
+        wallet = allWallets.isNotEmpty ? allWallets.first : null;
+      }
+      if (wallet == null) return '❌ Không tìm thấy ví.';
+
+      int created = 0;
+      for (final result in transactions) {
+        try {
+          final action = _receiptToActionMap(result);
+          await _createTransactionFromAction(action, wallet: wallet);
+          created++;
+        } catch (e) {
+          Log.e('Failed to create transaction: ${result.merchant}: $e',
+              label: 'SCREENSHOT_BULK');
+        }
+      }
+
+      _pendingScreenshotTransactions = null;
+      ref.invalidate(transactionListProvider);
+
+      return '✅ Đã thêm **$created giao dịch** vào ví **${wallet.name}**.';
+    } catch (e) {
+      Log.e('Bulk create failed: $e', label: 'SCREENSHOT_BULK');
+      return '❌ Lỗi khi tạo giao dịch: $e';
+    }
+  }
+
+  /// Add all pending screenshot transactions to pending queue
+  Future<String> _handleScreenshotToPending() async {
+    final transactions = _pendingScreenshotTransactions;
+    if (transactions == null || transactions.isEmpty) {
+      return '❌ Không có giao dịch nào để thêm.';
+    }
+
+    try {
+      final database = ref.read(databaseProvider);
+      int added = 0;
+
+      for (final result in transactions) {
+        try {
+          DateTime txDate;
+          try {
+            txDate = DateTime.parse(result.date);
+          } catch (_) {
+            txDate = DateTime.now();
+          }
+
+          await database.pendingTransactionDao.insertPending(
+            db.PendingTransactionsCompanion.insert(
+              source: PendingSource.bank,
+              sourceId: 'screenshot_${DateTime.now().millisecondsSinceEpoch}_$added',
+              amount: result.amount,
+              currency: drift.Value(result.currency ?? 'VND'),
+              transactionType: 'expense',
+              title: result.merchant,
+              merchant: drift.Value(result.merchant),
+              transactionDate: txDate,
+              confidence: drift.Value(0.85),
+              categoryHint: drift.Value(result.category),
+              sourceDisplayName: 'Screenshot',
+              status: drift.Value(PendingStatus.pendingReview),
+            ),
+          );
+          added++;
+        } catch (e) {
+          Log.e('Failed to add pending: ${result.merchant}: $e',
+              label: 'SCREENSHOT_PENDING');
+        }
+      }
+
+      _pendingScreenshotTransactions = null;
+
+      return '📋 Đã đưa **$added giao dịch** vào danh sách chờ duyệt.';
+    } catch (e) {
+      Log.e('Add to pending failed: $e', label: 'SCREENSHOT_PENDING');
+      return '❌ Lỗi: $e';
+    }
+  }
+
+  /// Convert ReceiptScanResult to action map for _createTransactionFromAction
+  Map<String, dynamic> _receiptToActionMap(ReceiptScanResult result) {
+    return {
+      'action': 'create_expense',
+      'amount': result.amount,
+      'currency': result.currency ?? 'VND',
+      'description': result.merchant,
+      'category': result.category,
+      'date': result.date,
+    };
+  }
+
   /// Update existing message in database
   Future<void> _updateMessageInDatabase(ChatMessage message) async {
     try {
@@ -2911,12 +3927,34 @@ Please create a transaction based on this receipt data.''';
   /// Update AI with current budgets context
   Future<void> _updateBudgetsContext() async {
     try {
-      final budgets = await ref.read(budgetListProvider.future);
+      print('[AI_CONTEXT] _updateBudgetsContext START');
+      // Use DAO directly instead of provider to avoid autoDispose issues
+      final budgetDao = ref.read(budgetDaoProvider);
+      final allBudgets = await budgetDao.watchAllBudgets().first.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          print('[AI_CONTEXT] Budget fetch TIMEOUT');
+          return <BudgetModel>[];
+        },
+      );
+      print('[AI_CONTEXT] Got ${allBudgets.length} budgets total');
+
+      // Filter to current month only (same logic as _getBudgetsListText)
+      final now = DateTime.now();
+      final currentMonthStart = DateTime(now.year, now.month, 1);
+      final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
+      final budgets = allBudgets.where((b) {
+        return (b.startDate.isBefore(currentMonthEnd) || b.startDate.isAtSameMomentAs(currentMonthEnd)) &&
+            (b.endDate.isAfter(currentMonthStart) || b.endDate.isAtSameMomentAs(currentMonthStart));
+      }).toList();
+      print('[AI_CONTEXT] Got ${budgets.length} budgets for current month');
+
       final wallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
       final currency = wallet?.currency ?? 'VND';
 
       if (budgets.isEmpty) {
         _aiService.updateBudgetsContext('');
+        print('[AI_CONTEXT] _updateBudgetsContext END (empty)');
         return;
       }
 
@@ -2932,6 +3970,279 @@ Please create a transaction based on this receipt data.''';
     } catch (e) {
       Log.e('Failed to update budgets context: $e', label: 'Chat Provider');
     }
+  }
+
+  /// Build spending insights context for AI financial coaching
+  /// Aggregates across ALL user wallets (matches dashboard behavior).
+  Future<void> _updateSpendingInsightsContext() async {
+    try {
+      final dbInstance = ref.read(databaseProvider);
+      final allWalletsAsync = ref.read(allWalletsStreamProvider);
+      final allWallets = _unwrapAsyncValue(allWalletsAsync) ?? [];
+      if (allWallets.isEmpty) {
+        _aiService.updateSpendingInsights('');
+        return;
+      }
+
+      // Use active wallet's currency if available, else first wallet's currency.
+      // When wallets have mixed currencies we still aggregate amounts as-is
+      // (same approximation the dashboard uses).
+      final activeWallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      final primaryWallet = activeWallet ?? allWallets.first;
+      final currency = primaryWallet.currency;
+      final walletLabel = allWallets.length == 1
+          ? allWallets.first.name
+          : 'All wallets (${allWallets.length})';
+      final totalBalance = allWallets.fold<double>(0, (s, w) => s + w.balance);
+
+      final now = DateTime.now();
+
+      // Current month range
+      final currentMonthStart = DateTime(now.year, now.month, 1);
+      final currentMonthEnd = DateTime(now.year, now.month + 1, 1).subtract(const Duration(seconds: 1));
+
+      // Previous month range
+      final prevMonthStart = DateTime(now.year, now.month - 1, 1);
+      final prevMonthEnd = DateTime(now.year, now.month, 1).subtract(const Duration(seconds: 1));
+
+      // Fetch all transactions across all wallets
+      final allTransactions = await dbInstance.transactionDao
+          .watchAllTransactionsWithDetails()
+          .first
+          .timeout(const Duration(seconds: 5), onTimeout: () => []);
+
+      // Filter by month
+      final currentMonthTx = allTransactions.where((t) =>
+          !t.date.isBefore(currentMonthStart) && !t.date.isAfter(currentMonthEnd)).toList();
+      final prevMonthTx = allTransactions.where((t) =>
+          !t.date.isBefore(prevMonthStart) && !t.date.isAfter(prevMonthEnd)).toList();
+
+      // Current month totals
+      final currentIncome = currentMonthTx
+          .where((t) => t.transactionType == TransactionType.income)
+          .fold<double>(0, (s, t) => s + t.amount);
+      final currentExpense = currentMonthTx
+          .where((t) => t.transactionType == TransactionType.expense)
+          .fold<double>(0, (s, t) => s + t.amount);
+
+      // Previous month totals
+      final prevExpense = prevMonthTx
+          .where((t) => t.transactionType == TransactionType.expense)
+          .fold<double>(0, (s, t) => s + t.amount);
+
+      // Category breakdown (current month expenses, top 5)
+      final categorySpending = <String, double>{};
+      for (final tx in currentMonthTx.where((t) => t.transactionType == TransactionType.expense)) {
+        final catName = tx.category.title;
+        categorySpending[catName] = (categorySpending[catName] ?? 0) + tx.amount;
+      }
+      final sortedCategories = categorySpending.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      final topCategories = sortedCategories.take(5);
+
+      // Budget usage
+      final budgetDao = ref.read(budgetDaoProvider);
+      final allBudgets = await budgetDao.watchAllBudgets().first.timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => <BudgetModel>[],
+      );
+      final currentBudgets = allBudgets.where((b) =>
+          b.startDate.isBefore(currentMonthEnd) && b.endDate.isAfter(currentMonthStart)).toList();
+
+      // Build context string
+      String fmt(num v) => v.toInt().toString().replaceAllMapped(
+          RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+      final buffer = StringBuffer();
+
+      // Monthly overview
+      final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+      final daysElapsed = now.day;
+      buffer.writeln('This month ($daysElapsed/$daysInMonth days): Income ${fmt(currentIncome)} $currency, Expense ${fmt(currentExpense)} $currency, Net ${fmt(currentIncome - currentExpense)} $currency');
+
+      // Month-over-month comparison
+      if (prevExpense > 0) {
+        final changePercent = ((currentExpense - prevExpense) / prevExpense * 100).round();
+        final direction = changePercent > 0 ? 'UP' : (changePercent < 0 ? 'DOWN' : 'SAME');
+        buffer.writeln('vs last month: Spending $direction ${changePercent.abs()}% (was ${fmt(prevExpense)} $currency)');
+      }
+
+      // Top spending categories
+      if (topCategories.isNotEmpty) {
+        buffer.write('Top categories: ');
+        buffer.writeln(topCategories.map((e) => '${e.key} ${fmt(e.value)} $currency').join(', '));
+      }
+
+      // Budget status
+      for (final budget in currentBudgets) {
+        final catName = budget.category?.title ?? 'Unknown';
+        final spent = categorySpending[catName] ?? 0;
+        final pct = budget.amount > 0 ? (spent / budget.amount * 100).round() : 0;
+        if (pct >= 50) {
+          buffer.writeln('Budget "$catName": ${fmt(spent)}/${fmt(budget.amount)} $currency ($pct% used)');
+        }
+      }
+
+      // Savings potential and wallet balance (for CASA coaching)
+      final savingsPotential = currentIncome - currentExpense;
+      if (savingsPotential > 0) {
+        final interestEarnings6mo = (savingsPotential * 0.055 * 6 / 12);
+        buffer.writeln('Savings potential: ${fmt(savingsPotential)} $currency idle this month → ${fmt(interestEarnings6mo)} $currency interest if saved 6 months at 5.5%');
+      }
+      buffer.writeln('$walletLabel total balance: ${fmt(totalBalance)} $currency');
+
+      // Financial Health Score
+      try {
+        final savingsRate = currentIncome > 0
+            ? ((currentIncome - currentExpense) / currentIncome).clamp(-1.0, 1.0)
+            : 0.0;
+        final healthScore = _computeQuickHealthScore(
+          savingsRate: savingsRate,
+          budgetAdherence: currentBudgets.isEmpty
+              ? 1.0
+              : currentBudgets.where((b) =>
+                  (categorySpending[b.category?.title ?? ''] ?? 0) <= b.amount
+                ).length / currentBudgets.length,
+          expenseTrend: prevExpense > 0
+              ? ((currentExpense - prevExpense) / prevExpense).clamp(-1.0, 1.0)
+              : 0.0,
+        );
+        buffer.writeln('Financial Health Score: $healthScore/100 (savings rate ${(savingsRate * 100).round()}%)');
+      } catch (_) {}
+
+      // Active recurring payments (for subscription optimization coaching)
+      try {
+        final allRecurring = await dbInstance.recurringDao.watchAllRecurrings().first
+            .timeout(const Duration(seconds: 3), onTimeout: () => []);
+        final activeRecurring = allRecurring.where((r) => r.isActive).toList();
+        if (activeRecurring.isNotEmpty) {
+          final monthlyTotal = activeRecurring.fold<double>(0, (sum, r) {
+            switch (r.frequency) {
+              case RecurringFrequency.daily: return sum + r.amount * 30;
+              case RecurringFrequency.weekly: return sum + r.amount * 4;
+              case RecurringFrequency.monthly: return sum + r.amount;
+              case RecurringFrequency.yearly: return sum + r.amount / 12;
+              default: return sum + r.amount;
+            }
+          });
+          buffer.writeln('Active recurring (${activeRecurring.length}): ${activeRecurring.map((r) => '${r.name} ${fmt(r.amount)} $currency/${r.frequency.name}').join(', ')} → Total ~${fmt(monthlyTotal)} $currency/month');
+        }
+      } catch (_) {}
+
+      // Spending forecast (end-of-month projection)
+      try {
+        final dailyBurnRate = daysElapsed > 0 ? currentExpense / daysElapsed : 0.0;
+        final projectedExpense = currentExpense + dailyBurnRate * (daysInMonth - daysElapsed);
+        final dailyEarnRate = daysElapsed > 0 ? currentIncome / daysElapsed : 0.0;
+        final projectedIncome = currentIncome + dailyEarnRate * (daysInMonth - daysElapsed);
+        if (projectedExpense > 0 || projectedIncome > 0) {
+          buffer.writeln('End-of-month forecast: projected expense ${fmt(projectedExpense)} $currency, projected income ${fmt(projectedIncome)} $currency, daily burn rate ${fmt(dailyBurnRate)} $currency/day (${daysInMonth - daysElapsed} days remaining)');
+        }
+      } catch (_) {}
+
+      final contextString = buffer.toString().trim();
+      if (contextString.isNotEmpty) {
+        Log.d('Updating AI with spending insights:\n$contextString', label: 'Chat Provider');
+        _aiService.updateSpendingInsights(contextString);
+      } else {
+        _aiService.updateSpendingInsights('');
+      }
+    } catch (e) {
+      Log.e('Failed to update spending insights: $e', label: 'Chat Provider');
+      _aiService.updateSpendingInsights('');
+    }
+  }
+
+  /// Mock: Open Shinhan savings account (hackathon demo)
+  String _mockOpenSavingsAccount(Map<String, dynamic> action) {
+    final amount = (action['amount'] as num?)?.toDouble() ?? 0;
+    final currency = action['currency'] ?? 'VND';
+    final termMonths = (action['termMonths'] as num?)?.toInt() ?? 6;
+    final rate = (action['interestRate'] as num?)?.toDouble() ?? 5.5;
+    final interest = (amount * rate / 100 * termMonths / 12);
+    String fmt(num v) => v.toInt().toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return '✅ **Shinhan Savings Account opened!**\n'
+        '• Amount: ${fmt(amount)} $currency\n'
+        '• Term: $termMonths months at ${rate}% annual\n'
+        '• Estimated interest: ${fmt(interest)} $currency\n'
+        '• Account: SOL-SAV-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
+  }
+
+  /// Mock: Apply for Shinhan credit card (hackathon demo)
+  String _mockApplyCreditCard(Map<String, dynamic> action) {
+    final cardType = action['cardType'] ?? 'cashback';
+    final cardNames = {
+      'cashback': 'Shinhan Cashback Credit Card',
+      'fx': 'Shinhan FX Multi-Currency Card',
+      'premium': 'Shinhan Premium Card',
+    };
+    final cardBenefits = {
+      'cashback': '5% cashback on dining, 3% on shopping',
+      'fx': '0% FX markup, free international ATM',
+      'premium': 'Airport lounge access, travel insurance',
+    };
+    return '✅ **Credit card application submitted!**\n'
+        '• Card: ${cardNames[cardType] ?? cardNames['cashback']}\n'
+        '• Benefits: ${cardBenefits[cardType] ?? cardBenefits['cashback']}\n'
+        '• Status: Under review (1-3 business days)\n'
+        '• Ref: CC-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
+  }
+
+  /// Mock: Apply for Shinhan loan (hackathon demo)
+  String _mockApplyLoan(Map<String, dynamic> action) {
+    final amount = (action['amount'] as num?)?.toDouble() ?? 0;
+    final currency = action['currency'] ?? 'VND';
+    final termMonths = (action['termMonths'] as num?)?.toInt() ?? 24;
+    final purpose = action['purpose'] ?? 'Personal';
+    String fmt(num v) => v.toInt().toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    final monthlyPayment = amount > 0 ? (amount * (1 + 0.079 * termMonths / 12) / termMonths) : 0;
+    return '✅ **Loan application submitted!**\n'
+        '• Amount: ${fmt(amount)} $currency\n'
+        '• Term: $termMonths months at 7.9% annual\n'
+        '• Purpose: $purpose\n'
+        '• Est. monthly payment: ~${fmt(monthlyPayment)} $currency\n'
+        '• Status: Under review (3-5 business days)\n'
+        '• Ref: LN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
+  }
+
+  /// Quick health score computation for AI context (simplified version)
+  int _computeQuickHealthScore({
+    required double savingsRate,
+    required double budgetAdherence,
+    required double expenseTrend,
+  }) {
+    // Savings (30 pts)
+    final savingsScore = savingsRate >= 0.2 ? 30.0
+        : savingsRate >= 0 ? 10.0 + (savingsRate / 0.2) * 20.0
+        : 0.0;
+    // Budget (25 pts)
+    final budgetScore = budgetAdherence * 25.0;
+    // Trend (20 pts)
+    final trendScore = expenseTrend <= -0.1 ? 20.0
+        : expenseTrend <= 0 ? 10.0 + (expenseTrend.abs() / 0.1) * 10.0
+        : (10.0 - (expenseTrend / 0.2) * 10.0).clamp(0.0, 10.0);
+    // Base activity (25 pts assumed for simplicity in AI context)
+    return (savingsScore + budgetScore + trendScore + 15).round().clamp(0, 100);
+  }
+
+  /// Mock: Transfer to Shinhan savings (hackathon demo)
+  String _mockTransferToSavings(Map<String, dynamic> action) {
+    final amount = (action['amount'] as num?)?.toDouble() ?? 0;
+    final currency = action['currency'] ?? 'VND';
+    final fromWallet = action['fromWallet'] ?? 'Current Account';
+    String fmt(num v) => v.toInt().toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return '✅ **Transfer to savings completed!**\n'
+        '• From: $fromWallet\n'
+        '• To: Shinhan Savings Account\n'
+        '• Amount: ${fmt(amount)} $currency\n'
+        '• Ref: TRF-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}\n'
+        '_(Demo mode — in production, this connects to Shinhan Banking API)_';
   }
 
 }

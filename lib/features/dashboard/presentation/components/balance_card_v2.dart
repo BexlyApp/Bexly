@@ -106,7 +106,7 @@ class BalanceCard extends ConsumerWidget {
                       children: [
                         const Flexible(child: WalletSwitcherDropdown()),
                         const Gap(AppSpacing.spacing8),
-                        _buildPercentageIndicator(context, balancePercentChange),
+                        Flexible(child: _buildPercentageIndicator(context, balancePercentChange)),
                       ],
                     ),
                   ),
@@ -129,50 +129,62 @@ class BalanceCard extends ConsumerWidget {
                       if (selectedWallet != null) {
                         // Show individual wallet balance
                         final currency = selectedWallet.currencyByIsoCode(ref);
+                        final symbolWidget = Text(
+                          currency.symbol,
+                          style: AppTextStyles.body3,
+                        );
+                        final amountWidget = Expanded(
+                          child: AutoSizeText(
+                            selectedWallet.balance.toPriceFormat(
+                              decimalDigits: currency.decimalDigits,
+                            ),
+                            style: AppTextStyles.numericHeading.copyWith(
+                              height: 1,
+                            ),
+                            maxLines: 1,
+                            minFontSize: 18,
+                            stepGranularity: 0.5,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
 
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
                           spacing: AppSpacing.spacing2,
-                          children: [
-                            Text(
-                              currency.symbol,
-                              style: AppTextStyles.body3,
-                            ),
-                            Text(
-                              selectedWallet.balance.toPriceFormat(
-                                decimalDigits: currency.decimalDigits,
-                              ),
-                              style: AppTextStyles.numericHeading.copyWith(
-                                height: 1,
-                              ),
-                            ),
-                          ],
+                          children: isSymbolAfterAmount(currency.isoCode)
+                              ? [amountWidget, symbolWidget]
+                              : [symbolWidget, amountWidget],
                         );
                       } else {
                         // Show total balance in base currency
                         final currencies = ref.read(currenciesStaticProvider);
                         final currency = currencies.fromIsoCode(baseCurrency);
                         final symbol = currency?.symbol ?? baseCurrency;
+                        final symbolWidget = Text(
+                          symbol,
+                          style: AppTextStyles.body3,
+                        );
+                        final amountWidget = Expanded(
+                          child: AutoSizeText(
+                            totalBalance.toPriceFormat(
+                              decimalDigits: currency?.decimalDigits,
+                            ),
+                            style: AppTextStyles.numericHeading.copyWith(
+                              height: 1,
+                            ),
+                            maxLines: 1,
+                            minFontSize: 18,
+                            stepGranularity: 0.5,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
 
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
                           spacing: AppSpacing.spacing2,
-                          children: [
-                            Text(
-                              symbol,
-                              style: AppTextStyles.body3,
-                            ),
-                            Text(
-                              totalBalance.toPriceFormat(
-                                decimalDigits: currency?.decimalDigits,
-                              ),
-                              style: AppTextStyles.numericHeading.copyWith(
-                                height: 1,
-                              ),
-                            ),
-                          ],
+                          children: isSymbolAfterAmount(baseCurrency)
+                              ? [amountWidget, symbolWidget]
+                              : [symbolWidget, amountWidget],
                         );
                       }
                     },
@@ -270,14 +282,25 @@ class BalanceCard extends ConsumerWidget {
             color: iconColor,
           ),
           const Gap(AppSpacing.spacing2),
-          Text(
-            '${percentChange.abs().toStringAsFixed(1)}%',
-            style: AppTextStyles.body5.copyWith(
-              color: foregroundColor,
+          Flexible(
+            child: Text(
+              _formatPercent(percentChange),
+              style: AppTextStyles.body5.copyWith(
+                color: foregroundColor,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Format percent value, capping display at 999.9% to prevent overflow
+  String _formatPercent(double value) {
+    final abs = value.abs();
+    if (abs >= 1000) return '999.9%+';
+    return '${abs.toStringAsFixed(1)}%';
   }
 }

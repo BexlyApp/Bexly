@@ -5,18 +5,73 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:gap/gap.dart';
+
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/core/components/bottom_sheets/custom_bottom_sheet.dart';
+import 'package:bexly/core/components/buttons/primary_button.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/extensions/localization_extension.dart';
+import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/services/auto_transaction/auto_transaction_service.dart';
 import 'package:bexly/features/settings/presentation/widgets/sms_scan_results_dialog.dart';
 import 'package:bexly/features/settings/presentation/widgets/sms_permission_dialog.dart';
-import 'package:bexly/features/settings/presentation/widgets/sms_date_range_bottom_sheet.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
-import 'package:bexly/features/wallet/data/model/wallet_model.dart';
+import 'package:bexly/features/email_sync/presentation/screens/email_sync_settings_screen.dart';
+import 'package:bexly/features/bank_connections/presentation/screens/bank_connections_screen.dart';
+import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/core/utils/desktop_dialog_helper.dart';
+import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
+import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+/// Date range options for SMS scanning
+enum SmsDateRange {
+  last30Days,
+  last90Days,
+  allTime,
+}
+
+extension SmsDateRangeExtension on SmsDateRange {
+  String getTitle(BuildContext context) {
+    switch (this) {
+      case SmsDateRange.last30Days:
+        return 'Last 30 days';
+      case SmsDateRange.last90Days:
+        return 'Last 90 days';
+      case SmsDateRange.allTime:
+        return 'All time';
+    }
+  }
+
+  String getDescription(BuildContext context) {
+    switch (this) {
+      case SmsDateRange.last30Days:
+        return 'Faster scan, recent transactions only';
+      case SmsDateRange.last90Days:
+        return 'Balanced scan with recent history';
+      case SmsDateRange.allTime:
+        return 'Complete history, may take longer';
+    }
+  }
+
+  /// Get the start date for this range
+  DateTime? get startDate {
+    final now = DateTime.now();
+    switch (this) {
+      case SmsDateRange.last30Days:
+        return now.subtract(const Duration(days: 30));
+      case SmsDateRange.last90Days:
+        return now.subtract(const Duration(days: 90));
+      case SmsDateRange.allTime:
+        return null; // No limit
+    }
+  }
+}
 
 /// Auto Transaction settings notifiers
 class AutoTransactionSmsEnabledNotifier extends Notifier<bool> {
@@ -67,8 +122,6 @@ class _AutoTransactionSettingsScreenState
     with WidgetsBindingObserver {
   bool _isLoading = true;
   bool _isScanning = false;
-  int _scanProgress = 0;
-  int _scanTotal = 0;
   bool _awaitingNotificationPermission = false;
 
   @override
@@ -104,11 +157,18 @@ class _AutoTransactionSettingsScreenState
       // Clear the flag first
       await prefs.remove('pending_notification_permission_request');
 
+      // Check if widget is still mounted before accessing ref
+      if (!mounted) return;
+
       // Check if permission was granted while we were away
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.initialize();
 
       final granted = await autoService.hasNotificationPermission();
+
+      // Check mounted again after async operation
+      if (!mounted) return;
+
       if (granted) {
         await autoService.setNotificationEnabled(true);
         ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(true);
@@ -125,13 +185,20 @@ class _AutoTransactionSettingsScreenState
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('pending_notification_permission_request');
 
+    // Check if widget is still mounted before accessing ref
+    if (!mounted) return;
+
     final autoService = ref.read(autoTransactionServiceProvider);
     await autoService.initialize();
 
     final granted = await autoService.hasNotificationPermission();
+
+    // Check mounted again after async operation
+    if (!mounted) return;
+
     if (granted) {
       await autoService.setNotificationEnabled(true);
-      ref.read(autoTransactionNotificationEnabledProvider.notifier).state = true;
+      ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(true);
       await _saveSetting('auto_transaction_notification_enabled', true);
       Log.d('Notification permission granted after resume', label: 'AutoTransaction');
     } else {
@@ -185,7 +252,7 @@ class _AutoTransactionSettingsScreenState
         Log.w('SMS permission denied', label: 'AutoTransaction');
         // Show dialog explaining why permission is needed
         if (mounted) {
-          _showPermissionDeniedDialog(context.l10n.autoTransactionSmsTitle);
+          _showPermissionDeniedBottomSheet(context.l10n.autoTransactionSmsTitle);
         }
         return;
       }
@@ -203,82 +270,48 @@ class _AutoTransactionSettingsScreenState
     await _saveSetting('auto_transaction_sms_enabled', value);
   }
 
-  void _showPermissionDeniedDialog(String feature) {
-    showDialog(
+  Future<void> _showPermissionDeniedBottomSheet(String feature) async {
+    final shouldOpenSettings = await PermissionDeniedBottomSheet.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.autoTransaction),
-        content: Text('Permission required for $feature. Please enable it in Settings.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              openAppSettings();
-            },
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
+      feature: feature,
     );
+    if (shouldOpenSettings == true) {
+      openAppSettings();
+    }
   }
 
   Future<void> _toggleNotificationSetting(bool value) async {
     if (value) {
       // Show permission explanation bottom sheet first
       final shouldProceed = await NotificationPermissionBottomSheet.show(context);
-      if (!shouldProceed) {
-        return;
-      }
+      if (!shouldProceed) return;
 
-      // Initialize auto transaction service and request notification permission
+      // Initialize auto transaction service
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.initialize();
 
-      // Check if permission is granted
+      // Check if permission is already granted
       final hasPermission = await autoService.hasNotificationPermission();
-      if (!hasPermission) {
-        // Set flag before opening system settings
-        // This allows us to check permission when app resumes
-        _awaitingNotificationPermission = true;
-
-        // Save to SharedPreferences in case app gets killed while in settings
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('pending_notification_permission_request', true);
-
-        // Open system settings - app may be killed while in settings
-        await autoService.requestNotificationPermission();
-
-        // If we get here, app wasn't killed - check permission directly
-        // Wait a bit for settings to apply
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        if (!mounted) return;
-
-        final granted = await autoService.hasNotificationPermission();
-        if (granted) {
-          _awaitingNotificationPermission = false;
-          // Clear the persistent flag
-          await prefs.remove('pending_notification_permission_request');
-          await autoService.setNotificationEnabled(true);
-          ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(true);
-          await _saveSetting('auto_transaction_notification_enabled', true);
-        } else {
-          _awaitingNotificationPermission = false;
-          // Clear the persistent flag
-          await prefs.remove('pending_notification_permission_request');
-          Log.w('Notification permission not granted', label: 'AutoTransaction');
-        }
+      if (hasPermission) {
+        // Already granted - just enable
+        await autoService.setNotificationEnabled(true);
+        ref.read(autoTransactionNotificationEnabledProvider.notifier).setEnabled(true);
+        await _saveSetting('auto_transaction_notification_enabled', true);
         return;
       }
 
-      // Permission already granted
-      await autoService.setNotificationEnabled(true);
-      ref.read(autoTransactionNotificationEnabledProvider.notifier).state = true;
-      await _saveSetting('auto_transaction_notification_enabled', true);
+      // Set flags BEFORE opening system settings.
+      // Android may kill the app when notification listener permission is toggled,
+      // so we persist this flag to handle the restart case.
+      _awaitingNotificationPermission = true;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('pending_notification_permission_request', true);
+
+      // Open system settings — app may be killed after this point.
+      // DO NOT check permission or clear flags here.
+      // didChangeAppLifecycleState(resumed) handles the "app survived" case.
+      // main.dart startup handles the "app was killed" case.
+      await autoService.requestNotificationPermission();
     } else {
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.setNotificationEnabled(false);
@@ -288,198 +321,158 @@ class _AutoTransactionSettingsScreenState
   }
 
   Future<void> _scanSmsForBanks() async {
-    // Show date range selection bottom sheet first
-    final dateRange = await SmsDateRangeBottomSheet.show(context);
-    if (dateRange == null) {
-      return; // User cancelled
-    }
+    Log.d('_scanSmsForBanks called', label: 'AutoTransaction');
 
-    // Request SMS permission
-    final status = await Permission.sms.request();
-    if (!status.isGranted) {
-      if (mounted) {
-        _showPermissionDeniedDialog(context.l10n.autoTransactionSmsTitle);
-      }
+    // Show date range selection bottom sheet
+    final dateRange = await context.openBottomSheet<SmsDateRange>(
+      child: const _SmsDateRangeBottomSheet(),
+    );
+    if (dateRange == null) {
+      Log.d('User cancelled date range selection', label: 'AutoTransaction');
       return;
     }
 
-    setState(() {
-      _isScanning = true;
-      _scanProgress = 0;
-      _scanTotal = 0;
-    });
+    // Check if SMS permission is already granted
+    final currentStatus = await Permission.sms.status;
+    Log.d('SMS permission status: $currentStatus', label: 'AutoTransaction');
+    if (!currentStatus.isGranted) {
+      // Show rationale bottom sheet before requesting permission
+      if (!mounted) return;
+      final shouldProceed = await SmsPermissionBottomSheet.show(context);
+      if (!shouldProceed) return;
 
-    // Show scanning dialog
+      // Request SMS permission after user consents
+      final status = await Permission.sms.request();
+      Log.d('SMS permission after request: $status', label: 'AutoTransaction');
+      if (!status.isGranted) {
+        if (mounted) {
+          _showPermissionDeniedBottomSheet(context.l10n.autoTransactionSmsTitle);
+        }
+        return;
+      }
+    }
+
+    setState(() => _isScanning = true);
+
+    // Use ValueNotifiers so the bottom sheet can rebuild independently
+    final progressNotifier = ValueNotifier<int>(0);
+    final totalNotifier = ValueNotifier<int>(0);
+    final scanStartTime = DateTime.now();
+
+    // Show scanning bottom sheet with live progress
     if (mounted) {
-      showDialog(
+      showModalBottomSheet(
         context: context,
-        barrierDismissible: false,
-        builder: (ctx) => StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return SmsScanningDialog(
-              current: _scanProgress,
-              total: _scanTotal,
-              status: context.l10n.autoTransactionScanning,
-            );
-          },
+        isDismissible: false,
+        enableDrag: false,
+        builder: (ctx) => _LiveScanningBottomSheet(
+          progress: progressNotifier,
+          total: totalNotifier,
+          statusText: context.l10n.autoTransactionScanning,
         ),
       );
     }
 
     try {
+      Log.d('Starting SMS scan, dateRange: ${dateRange.name}, startDate: ${dateRange.startDate}', label: 'AutoTransaction');
       final autoService = ref.read(autoTransactionServiceProvider);
       await autoService.initialize();
+      Log.d('AutoService initialized, smsService=${autoService.smsService != null}', label: 'AutoTransaction');
+
+      if (autoService.smsService == null) {
+        Log.e('SmsService is null — AI provider may be unavailable', label: 'AutoTransaction');
+        // Ensure scanning bottom sheet is visible for at least 1s
+        final elapsed = DateTime.now().difference(scanStartTime);
+        if (elapsed < const Duration(seconds: 1)) {
+          await Future.delayed(const Duration(seconds: 1) - elapsed);
+        }
+        if (mounted) Navigator.of(context).pop();
+        progressNotifier.dispose();
+        totalNotifier.dispose();
+        setState(() => _isScanning = false);
+        if (mounted) await NoResultsBottomSheet.show(context);
+        return;
+      }
 
       final results = await autoService.scanSmsForBankSenders(
         startDate: dateRange.startDate,
         onProgress: (current, total) {
-          setState(() {
-            _scanProgress = current;
-            _scanTotal = total;
-          });
+          progressNotifier.value = current;
+          totalNotifier.value = total;
         },
       );
 
-      // Close scanning dialog
-      if (mounted) {
-        Navigator.of(context).pop();
+      Log.d('Scan complete: ${results.length} banks found', label: 'AutoTransaction');
+
+      // Ensure scanning bottom sheet is visible for at least 1.5s
+      final elapsed = DateTime.now().difference(scanStartTime);
+      if (elapsed < const Duration(milliseconds: 1500)) {
+        await Future.delayed(const Duration(milliseconds: 1500) - elapsed);
       }
+
+      // Close scanning bottom sheet
+      if (mounted) Navigator.of(context).pop();
+      progressNotifier.dispose();
+      totalNotifier.dispose();
 
       setState(() => _isScanning = false);
 
       if (results.isEmpty) {
-        // Show no results dialog
-        if (mounted) {
-          _showNoResultsDialog();
-        }
+        Log.d('No results, showing NoResultsBottomSheet', label: 'AutoTransaction');
+        if (mounted) await NoResultsBottomSheet.show(context);
         return;
       }
 
-      // Get existing wallets
-      final wallets = ref.read(allWalletsStreamProvider).value ?? [];
+      // Import all banks directly to pending tab
+      int totalImported = 0;
+      int totalDuplicates = 0;
 
-      // Show results dialog
-      if (mounted) {
-        final selection = await SmsScanResultsDialog.show(
-          context: context,
-          scanResults: results,
-          existingWallets: wallets,
+      // Use same date range for import as scan
+      final importMaxAge = dateRange.startDate != null
+          ? DateTime.now().difference(dateRange.startDate!)
+          : null;
+
+      for (final sender in results) {
+        Log.d('Importing bank: ${sender.bankName} (${sender.messageCount} msgs)', label: 'AutoTransaction');
+        final result = await autoService.importTransactionsForBank(
+          bankCode: sender.bankCode,
+          maxAge: importMaxAge,
         );
-
-        if (selection != null && selection.selectedSenders.isNotEmpty) {
-          await _processSelectedSenders(selection, autoService);
-        }
+        totalImported += result.imported;
+        totalDuplicates += result.duplicates;
       }
-    } catch (e) {
-      Log.e('Error scanning SMS: $e', label: 'AutoTransaction');
+
+      Log.d('Import complete: $totalImported imported, $totalDuplicates duplicates', label: 'AutoTransaction');
+
+      // Show import summary with option to view pending
       if (mounted) {
-        Navigator.of(context).pop(); // Close scanning dialog
+        await ImportResultsBottomSheet.show(
+          context: context,
+          walletsCreated: 0,
+          transactionsImported: totalImported,
+          duplicatesSkipped: totalDuplicates,
+          onViewPending: () {
+            ref.read(requestedTransactionTabProvider.notifier).request(2);
+            ref.read(pageControllerProvider.notifier).setPage(2);
+            context.go(Routes.main);
+          },
+        );
+      }
+    } catch (e, stack) {
+      Log.e('Error scanning SMS: $e\n$stack', label: 'AutoTransaction');
+      progressNotifier.dispose();
+      totalNotifier.dispose();
+      if (mounted) {
+        Navigator.of(context).pop(); // Close scanning bottom sheet
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error scanning SMS: $e')),
+          SnackBar(
+            content: Text('Error scanning SMS: $e'),
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
       setState(() => _isScanning = false);
     }
-  }
-
-  Future<void> _processSelectedSenders(
-    ScanSelectionResult selection,
-    AutoTransactionService autoService,
-  ) async {
-    int walletsCreated = 0;
-    int totalImported = 0;
-    int totalDuplicates = 0;
-
-    for (final sender in selection.selectedSenders) {
-      int walletId;
-
-      // Check if user wants to merge into existing wallet
-      final mergeWalletId = selection.mergeWalletMap[sender.bankCode];
-
-      if (mergeWalletId != null) {
-        // Use existing wallet
-        walletId = mergeWalletId;
-        // Add mapping for existing wallet
-        await autoService.addMappingForExistingWallet(
-          senderId: sender.senderId,
-          bankName: sender.bankName,
-          bankCode: sender.bankCode,
-          walletId: walletId,
-        );
-      } else {
-        // Create new wallet
-        final wallet = await autoService.createWalletForBank(
-          bankName: sender.bankName,
-          bankCode: sender.bankCode,
-          senderId: sender.senderId,
-          currency: sender.detectedCurrency ?? 'VND',
-        );
-
-        if (wallet == null || wallet.id == null) {
-          Log.e('Failed to create wallet for ${sender.bankName}', label: 'AutoTransaction');
-          continue;
-        }
-
-        walletId = wallet.id!;
-        walletsCreated++;
-      }
-
-      // Show importing dialog
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => TransactionImportDialog(
-            current: 0,
-            total: sender.messageCount,
-            bankName: sender.bankName,
-          ),
-        );
-      }
-
-      // Import transactions
-      final result = await autoService.importTransactionsForBank(
-        bankCode: sender.bankCode,
-        walletId: walletId,
-        onProgress: (current, total) {
-          // Progress is shown in dialog
-        },
-      );
-
-      totalImported += result.imported;
-      totalDuplicates += result.duplicates;
-
-      // Close importing dialog
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-    }
-
-    // Show final results
-    if (mounted) {
-      await ImportResultsDialog.show(
-        context: context,
-        walletsCreated: walletsCreated,
-        transactionsImported: totalImported,
-        duplicatesSkipped: totalDuplicates,
-      );
-    }
-  }
-
-  void _showNoResultsDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.autoTransactionNoResults),
-        content: Text(context.l10n.autoTransactionNoResultsDescription),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(context.l10n.ok),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -495,9 +488,6 @@ class _AutoTransactionSettingsScreenState
       );
     }
 
-    final smsEnabled = ref.watch(autoTransactionSmsEnabledProvider);
-    final notificationEnabled = ref.watch(autoTransactionNotificationEnabledProvider);
-
     return CustomScaffold(
       context: context,
       title: context.l10n.autoTransaction,
@@ -510,48 +500,53 @@ class _AutoTransactionSettingsScreenState
 
           const SizedBox(height: AppSpacing.spacing24),
 
-          // SMS Parsing Section (Android only)
-          if (isAndroid) ...[
-            _buildSectionTitle(context.l10n.autoTransactionSms),
-            const SizedBox(height: AppSpacing.spacing12),
+          // 4 Sub-menu cards
+          _buildSubMenuCard(
+            title: 'SMS Parsing',
+            subtitle: 'Auto-detect transactions from bank SMS',
+            icon: HugeIcons.strokeRoundedMessage01,
+            isEnabled: isAndroid,
+            disabledReason: 'Android only',
+            onTap: isAndroid ? _showSmsSettingsBottomSheet : null,
+          ),
+          const SizedBox(height: AppSpacing.spacing12),
 
-            _buildSettingCard(
-              title: context.l10n.autoTransactionSmsTitle,
-              subtitle: context.l10n.autoTransactionSmsDescription,
-              icon: HugeIcons.strokeRoundedMessage01,
-              value: smsEnabled,
-              onChanged: _toggleSmsSetting,
+          _buildSubMenuCard(
+            title: 'Notification Listener',
+            subtitle: 'Capture transactions from banking app notifications',
+            icon: HugeIcons.strokeRoundedNotification01,
+            isEnabled: isAndroid,
+            disabledReason: 'Android only',
+            onTap: isAndroid ? _showNotificationSettingsBottomSheet : null,
+          ),
+          const SizedBox(height: AppSpacing.spacing12),
+
+          _buildSubMenuCard(
+            title: 'Email Sync',
+            subtitle: 'Import transactions from bank emails',
+            icon: HugeIcons.strokeRoundedMail01,
+            isEnabled: true,
+            onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+              context,
+              route: Routes.emailSyncSettings,
+              desktopWidget: const EmailSyncSettingsScreen(),
             ),
+          ),
+          const SizedBox(height: AppSpacing.spacing12),
 
-            const SizedBox(height: AppSpacing.spacing12),
-
-            // Scan SMS Button
-            _buildScanSmsButton(),
-
-            const SizedBox(height: AppSpacing.spacing24),
-          ],
-
-          // Notification Listener Section (Android only)
-          if (isAndroid) ...[
-            _buildSectionTitle(context.l10n.autoTransactionNotification),
-            const SizedBox(height: AppSpacing.spacing12),
-
-            _buildSettingCard(
-              title: context.l10n.autoTransactionNotificationTitle,
-              subtitle: context.l10n.autoTransactionNotificationDescription,
-              icon: HugeIcons.strokeRoundedNotification01,
-              value: notificationEnabled,
-              onChanged: _toggleNotificationSetting,
+          _buildSubMenuCard(
+            title: 'Bank Connection',
+            subtitle: 'Connect directly to your bank account',
+            icon: HugeIcons.strokeRoundedBank,
+            isEnabled: true,
+            onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+              context,
+              route: Routes.bankConnections,
+              desktopWidget: const BankConnectionsScreen(),
             ),
+          ),
 
-            // Pending Notifications Section (only show if notification is enabled)
-            if (notificationEnabled) ...[
-              const SizedBox(height: AppSpacing.spacing12),
-              _buildPendingNotificationsSection(),
-            ],
-          ],
-
-          // Platform notice for iOS
+          // Platform notice for iOS (show only if no Android features)
           if (!isAndroid) ...[
             const SizedBox(height: AppSpacing.spacing24),
             _buildPlatformNotice(),
@@ -561,7 +556,121 @@ class _AutoTransactionSettingsScreenState
     );
   }
 
-  Widget _buildScanSmsButton() {
+  void _showSmsSettingsBottomSheet() {
+    final smsEnabled = ref.read(autoTransactionSmsEnabledProvider);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => CustomBottomSheet(
+        title: context.l10n.autoTransactionSmsTitle,
+        subtitle: context.l10n.autoTransactionSmsDescription,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildSettingCard(
+              title: 'Enable SMS Parsing',
+              subtitle: 'Automatically detect transactions from bank SMS',
+              icon: HugeIcons.strokeRoundedMessage01,
+              value: smsEnabled,
+              onChanged: (value) {
+                Navigator.pop(ctx);
+                _toggleSmsSetting(value);
+              },
+            ),
+            const SizedBox(height: AppSpacing.spacing12),
+            _buildScanSmsButton(onTap: () {
+              Navigator.pop(ctx); // Close settings bottom sheet first
+              _scanSmsForBanks();
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showNotificationSettingsBottomSheet() {
+    final notificationEnabled = ref.read(autoTransactionNotificationEnabledProvider);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => CustomBottomSheet(
+        title: context.l10n.autoTransactionNotificationTitle,
+        subtitle: context.l10n.autoTransactionNotificationDescription,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildSettingCard(
+              title: 'Enable Notification Listener',
+              subtitle: 'Capture transactions from banking app notifications',
+              icon: HugeIcons.strokeRoundedNotification01,
+              value: notificationEnabled,
+              onChanged: (value) {
+                Navigator.pop(ctx);
+                _toggleNotificationSetting(value);
+              },
+            ),
+            // Show pending notifications if enabled
+            if (notificationEnabled) ...[
+              const SizedBox(height: AppSpacing.spacing12),
+              _buildPendingNotificationsSection(),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubMenuCard({
+    required String title,
+    required String subtitle,
+    required List<List> icon,
+    required bool isEnabled,
+    String? disabledReason,
+    VoidCallback? onTap,
+  }) {
+    // Use MenuTileButton-like style
+    return ListTile(
+      onTap: isEnabled ? onTap : null,
+      tileColor: isEnabled ? context.purpleBackground : context.purpleBackground.withValues(alpha: 0.5),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: context.purpleBorderLighter),
+      ),
+      leading: HugeIcon(
+        icon: icon,
+        color: isEnabled ? context.purpleIcon : AppColors.neutral400,
+      ),
+      title: Text(
+        title,
+        style: AppTextStyles.body3.copyWith(
+          color: isEnabled ? Theme.of(context).colorScheme.onSurface : AppColors.neutral500,
+        ),
+      ),
+      subtitle: Text(
+        isEnabled ? subtitle : disabledReason ?? subtitle,
+        style: AppTextStyles.body4.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: HugeIcon(
+        icon: HugeIcons.strokeRoundedArrowRight01,
+        color: isEnabled
+            ? (context.isDarkMode ? Theme.of(context).colorScheme.onSurfaceVariant : AppColors.purpleAlpha50)
+            : AppColors.neutral300,
+        size: 20,
+      ),
+      contentPadding: const EdgeInsets.fromLTRB(
+        AppSpacing.spacing16,
+        AppSpacing.spacing4,
+        AppSpacing.spacing12,
+        AppSpacing.spacing4,
+      ),
+    );
+  }
+
+  Widget _buildScanSmsButton({VoidCallback? onTap}) {
     return Card(
       child: ListTile(
         leading: HugeIcon(
@@ -590,7 +699,7 @@ class _AutoTransactionSettingsScreenState
                 icon: HugeIcons.strokeRoundedArrowRight01,
                 color: AppColors.neutral400,
               ),
-        onTap: _isScanning ? null : _scanSmsForBanks,
+        onTap: _isScanning ? null : (onTap ?? _scanSmsForBanks),
       ),
     );
   }
@@ -618,15 +727,6 @@ class _AutoTransactionSettingsScreenState
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: AppTextStyles.heading5.copyWith(
-        color: Theme.of(context).colorScheme.primary,
       ),
     );
   }
@@ -702,7 +802,7 @@ class _AutoTransactionSettingsScreenState
                   icon: HugeIcons.strokeRoundedArrowRight01,
                   color: AppColors.neutral400,
                 ),
-                onTap: () => _showPendingNotificationsDialog(summary),
+                onTap: () => _showPendingNotificationsBottomSheet(summary),
               ),
               // Show preview of groups
               if (summary.groups.isNotEmpty)
@@ -742,15 +842,13 @@ class _AutoTransactionSettingsScreenState
     );
   }
 
-  Future<void> _showPendingNotificationsDialog(PendingNotificationSummary summary) async {
+  Future<void> _showPendingNotificationsBottomSheet(PendingNotificationSummary summary) async {
     final wallets = ref.read(allWalletsStreamProvider).value ?? [];
 
-    final result = await showDialog<Map<String, int?>>(
+    final result = await PendingNotificationsBottomSheet.show(
       context: context,
-      builder: (context) => _PendingNotificationsDialog(
-        summary: summary,
-        existingWallets: wallets,
-      ),
+      summary: summary,
+      existingWallets: wallets,
     );
 
     if (result != null && result.isNotEmpty) {
@@ -794,21 +892,11 @@ class _AutoTransactionSettingsScreenState
       return;
     }
 
-    // Show processing dialog
+    // Show processing bottom sheet
     if (mounted) {
-      showDialog(
+      ProcessingBottomSheet.show(
         context: context,
-        barrierDismissible: false,
-        builder: (ctx) => const AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: AppSpacing.spacing16),
-              Text('Processing pending notifications...'),
-            ],
-          ),
-        ),
+        message: 'Processing pending notifications...',
       );
     }
 
@@ -866,187 +954,168 @@ class _AutoTransactionSettingsScreenState
   }
 }
 
-/// Dialog to manage pending notifications
-class _PendingNotificationsDialog extends StatefulWidget {
-  final PendingNotificationSummary summary;
-  final List<WalletModel> existingWallets;
-
-  const _PendingNotificationsDialog({
-    required this.summary,
-    required this.existingWallets,
-  });
+/// Bottom sheet for selecting SMS scan date range
+class _SmsDateRangeBottomSheet extends StatefulWidget {
+  const _SmsDateRangeBottomSheet();
 
   @override
-  State<_PendingNotificationsDialog> createState() => _PendingNotificationsDialogState();
+  State<_SmsDateRangeBottomSheet> createState() => _SmsDateRangeBottomSheetState();
 }
 
-class _PendingNotificationsDialogState extends State<_PendingNotificationsDialog> {
-  // mappingKey -> walletId (null = create new, 0 = ignore)
-  late Map<String, int?> _decisions;
-
-  @override
-  void initState() {
-    super.initState();
-    _decisions = {};
-    // Default: create new wallet for each group
-    for (final group in widget.summary.groups) {
-      _decisions[group.mappingKey] = group.existingWalletId; // Use existing if already mapped
-    }
-  }
+class _SmsDateRangeBottomSheetState extends State<_SmsDateRangeBottomSheet> {
+  SmsDateRange _selectedRange = SmsDateRange.last30Days;
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Row(
+    return CustomBottomSheet(
+      title: context.l10n.autoTransactionScanSms,
+      subtitle: 'Select how far back to scan for transactions',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          HugeIcon(
-            icon: HugeIcons.strokeRoundedNotificationBubble,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: AppSpacing.spacing12),
-          Expanded(
-            child: Text(
-              'Pending Notifications',
-              style: AppTextStyles.heading5,
-            ),
+          // Date range options
+          ...SmsDateRange.values.map((range) => _buildRangeOption(range)),
+
+          const Gap(AppSpacing.spacing16),
+
+          // Scan button
+          PrimaryButton(
+            label: context.l10n.autoTransactionScanSms,
+            onPressed: () => Navigator.pop(context, _selectedRange),
           ),
         ],
       ),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${widget.summary.totalNotifications} transaction(s) from ${widget.summary.groups.length} source(s) are waiting to be processed.',
-              style: AppTextStyles.body4.copyWith(
-                color: AppColors.neutral500,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.spacing16),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: widget.summary.groups.length,
-                itemBuilder: (context, index) {
-                  final group = widget.summary.groups[index];
-                  return _buildGroupItem(group);
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.l10n.cancel),
-        ),
-        FilledButton(
-          onPressed: _decisions.values.any((v) => v != 0)
-              ? () => Navigator.of(context).pop(_decisions)
-              : null,
-          child: const Text('Process'),
-        ),
-      ],
     );
   }
 
-  Widget _buildGroupItem(PendingNotificationGroup group) {
-    final decision = _decisions[group.mappingKey];
+  Widget _buildRangeOption(SmsDateRange range) {
+    final isSelected = _selectedRange == range;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.spacing8),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.spacing12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedBank,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.spacing12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        group.displayName,
-                        style: AppTextStyles.body3.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.spacing12),
+      child: InkWell(
+        onTap: () => setState(() => _selectedRange = range),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.spacing16),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
+                : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      range.getTitle(context),
+                      style: AppTextStyles.body2.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
                       ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      range.getDescription(context),
+                      style: AppTextStyles.body4.copyWith(
+                        color: AppColors.neutral500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet that listens to ValueNotifiers for live progress updates
+class _LiveScanningBottomSheet extends StatelessWidget {
+  final ValueNotifier<int> progress;
+  final ValueNotifier<int> total;
+  final String statusText;
+
+  const _LiveScanningBottomSheet({
+    required this.progress,
+    required this.total,
+    required this.statusText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.spacing24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.radius20),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: ValueListenableBuilder<int>(
+          valueListenable: total,
+          builder: (context, totalVal, _) {
+            return ValueListenableBuilder<int>(
+              valueListenable: progress,
+              builder: (context, currentVal, _) {
+                final progressFraction = totalVal > 0 ? currentVal / totalVal : 0.0;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle bar
+                    Container(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.spacing20),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.neutral300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    CircularProgressIndicator(
+                      value: progressFraction > 0 ? progressFraction : null,
+                    ),
+                    const SizedBox(height: AppSpacing.spacing16),
+                    Text(
+                      statusText,
+                      style: AppTextStyles.body3,
+                      textAlign: TextAlign.center,
+                    ),
+                    if (totalVal > 0) ...[
+                      const SizedBox(height: AppSpacing.spacing8),
                       Text(
-                        '${group.notificationCount} transaction(s)',
+                        '$currentVal / $totalVal',
                         style: AppTextStyles.body4.copyWith(
                           color: AppColors.neutral500,
                         ),
                       ),
                     ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.spacing12),
-            // Action selector
-            DropdownButtonFormField<int?>(
-              initialValue: decision,
-              decoration: InputDecoration(
-                labelText: 'Action',
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.spacing12,
-                  vertical: AppSpacing.spacing8,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              items: [
-                const DropdownMenuItem<int?>(
-                  value: null,
-                  child: Row(
-                    children: [
-                      Icon(Icons.add, size: 18),
-                      SizedBox(width: AppSpacing.spacing8),
-                      Text('Create new wallet'),
-                    ],
-                  ),
-                ),
-                const DropdownMenuItem<int?>(
-                  value: 0,
-                  child: Row(
-                    children: [
-                      Icon(Icons.close, size: 18),
-                      SizedBox(width: AppSpacing.spacing8),
-                      Text('Ignore'),
-                    ],
-                  ),
-                ),
-                ...widget.existingWallets
-                    .where((wallet) => wallet.id != null)
-                    .map((wallet) => DropdownMenuItem<int?>(
-                          value: wallet.id!,
-                          child: Text(
-                            '${wallet.name} (${wallet.currency})',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        )),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _decisions[group.mappingKey] = value;
-                });
+                  ],
+                );
               },
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

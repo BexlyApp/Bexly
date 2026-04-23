@@ -12,10 +12,11 @@ class BudgetCardHolder extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final budgetsAsync = ref.watch(budgetListProvider);
+    final selectedPeriod = ref.watch(selectedBudgetPeriodProvider);
 
     return budgetsAsync.when(
-      data: (budgets) {
-        if (budgets.isEmpty) {
+      data: (allBudgets) {
+        if (allBudgets.isEmpty) {
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.spacing20),
@@ -26,11 +27,27 @@ class BudgetCardHolder extends ConsumerWidget {
             ),
           );
         }
+
+        // Filter budgets for the selected period
+        final periodStart = DateTime(selectedPeriod.year, selectedPeriod.month, 1);
+        final periodEnd = DateTime(selectedPeriod.year, selectedPeriod.month + 1, 0);
+
+        final budgets = allBudgets.where((budget) {
+          return (budget.startDate.isBefore(periodEnd) ||
+                  budget.startDate.isAtSameMomentAs(periodEnd)) &&
+              (budget.endDate.isAfter(periodStart) ||
+                  budget.endDate.isAtSameMomentAs(periodStart));
+        }).toList();
+
+        if (budgets.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
         return ListView.separated(
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.spacing20,
-          ), // Padding moved from BudgetScreen
+          ),
           shrinkWrap: true,
           itemBuilder: (context, index) => BudgetCard(budget: budgets[index]),
           separatorBuilder: (context, index) => const Gap(AppSpacing.spacing12),

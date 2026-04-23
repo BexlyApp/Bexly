@@ -32,10 +32,9 @@ class GoalFormDialog extends HookConsumerWidget {
     final noteController = useTextEditingController();
     final targetAmountController = useTextEditingController();
 
-    bool isEditing = false;
+    final isEditing = goal != null;
 
     useEffect(() {
-      isEditing = goal != null;
       if (isEditing) {
         titleController.text = goal!.title;
         noteController.text = goal!.description ?? '';
@@ -86,30 +85,37 @@ class GoalFormDialog extends HookConsumerWidget {
               label: 'Save',
               state: ButtonState.active,
               themeMode: context.themeMode,
-              onPressed: () {
-                final selectedDate = ref.watch(datePickerProvider);
+              onPressed: () async {
+                final currentDateRange = ref.read(datePickerProvider);
                 Log.d(titleController.text, label: 'title');
-                Log.d(selectedDate, label: 'selected date');
+                Log.d(currentDateRange, label: 'selected date');
                 Log.d(noteController.text, label: 'note');
                 Log.d(targetAmountController.text, label: 'target');
 
                 final newGoal = GoalModel(
                   id: goal?.id,
+                  cloudId: goal?.cloudId,
                   title: titleController.text.trim(),
                   description: noteController.text.trim(),
                   targetAmount: targetAmountController.text
                       .takeNumericAsDouble(),
-                  createdAt: DateTime.now(),
-                  startDate: dateRange.first,
-                  endDate: dateRange.length > 1 && dateRange[1] != null
-                      ? dateRange[1]!
-                      : dateRange.first!,
+                  currentAmount: goal?.currentAmount ?? 0.0,
+                  createdAt: goal?.createdAt ?? DateTime.now(),
+                  startDate: currentDateRange.first,
+                  endDate: currentDateRange.length > 1 &&
+                          currentDateRange[1] != null
+                      ? currentDateRange[1]!
+                      : currentDateRange.first!,
+                  iconName: goal?.iconName,
+                  associatedAccountId: goal?.associatedAccountId,
+                  pinned: goal?.pinned ?? false,
+                  isDeleted: goal?.isDeleted ?? false,
+                  deletedAt: goal?.deletedAt,
                 );
 
                 Log.d(newGoal.toJson(), label: 'new goal');
-                // return;
 
-                GoalFormService().save(context, ref, goal: newGoal);
+                await GoalFormService().save(context, ref, goal: newGoal);
               },
             ),
           ],

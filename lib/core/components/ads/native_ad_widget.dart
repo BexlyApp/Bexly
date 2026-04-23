@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -27,6 +28,12 @@ class _NativeAdWidgetState extends ConsumerState<NativeAdWidget> {
   }
 
   void _loadAd() {
+    // Google Mobile Ads SDK is not supported on web
+    if (kIsWeb) {
+      Log.w('Ads not supported on web platform', label: 'NativeAdWidget');
+      return;
+    }
+
     final adService = ref.read(adServiceProvider);
 
     if (!adService.isInitialized) {
@@ -55,7 +62,7 @@ class _NativeAdWidgetState extends ConsumerState<NativeAdWidget> {
       ),
       request: const AdRequest(),
       nativeTemplateStyle: NativeTemplateStyle(
-        templateType: TemplateType.small,
+        templateType: TemplateType.medium,
         mainBackgroundColor: Colors.transparent,
         cornerRadius: 12,
         callToActionTextStyle: NativeTemplateTextStyle(
@@ -93,6 +100,11 @@ class _NativeAdWidgetState extends ConsumerState<NativeAdWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Ads not supported on web
+    if (kIsWeb) {
+      return const SizedBox.shrink();
+    }
+
     final shouldShowAds = ref.watch(shouldShowAdsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -104,7 +116,7 @@ class _NativeAdWidgetState extends ConsumerState<NativeAdWidget> {
     // Show placeholder while loading
     if (!_isAdLoaded || _nativeAd == null) {
       return Container(
-        height: 100,
+        height: 300,
         margin: const EdgeInsets.only(bottom: AppSpacing.spacing16),
         decoration: BoxDecoration(
           color: isDark ? AppColors.neutral900 : AppColors.neutral100,
@@ -131,7 +143,7 @@ class _NativeAdWidgetState extends ConsumerState<NativeAdWidget> {
     }
 
     return Container(
-      height: 100,
+      height: 300,
       margin: const EdgeInsets.only(bottom: AppSpacing.spacing16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.neutral900 : AppColors.neutral50,

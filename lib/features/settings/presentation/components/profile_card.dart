@@ -5,13 +5,12 @@ class ProfileCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, ref) {
-    // Watch Firebase Auth state changes to auto-rebuild when user profile updates
-    final firebaseAuthState = ref.watch(firebase_auth.authStateProvider);
-    final firebaseUser = firebaseAuthState.value;
     final colorScheme = Theme.of(context).colorScheme;
 
-    // Fallback to local auth for profile picture (not stored in Firebase Auth)
+    // Use local auth state (with offline support)
     final auth = ref.watch(authStateProvider);
+    final displayName = auth.name;
+    final profilePicture = auth.profilePicture;
 
     // Use base currency for text display
     final baseCurrency = ref.watch(baseCurrencyProvider);
@@ -22,33 +21,9 @@ class ProfileCard extends ConsumerWidget {
     final currentLanguage = ref.watch(languageProvider);
     final countryCode = _getCountryCodeFromLanguage(currentLanguage.code);
 
-    // Get display name from Firebase Auth (synced from onboarding)
-    final displayName = firebaseUser?.displayName ?? auth.name;
-    final profilePicture = firebaseUser?.photoURL ?? auth.profilePicture;
-
     return Row(
       children: [
-        CircleAvatar(
-          backgroundColor: colorScheme
-              .surfaceContainerHighest, // Use a surface color that adapts
-          radius: 50,
-          child: profilePicture == null
-              ? const CircleIconButton(
-                  icon: HugeIcons.strokeRoundedUser,
-                  radius: 49,
-                  iconSize: 40,
-                  backgroundColor: AppColors.secondary100,
-                  foregroundColor: AppColors.secondary800,
-                )
-              : CircleAvatar(
-                  backgroundColor:
-                      colorScheme.surface, // Use a surface color that adapts
-                  backgroundImage: profilePicture.startsWith('http')
-                      ? NetworkImage(profilePicture) as ImageProvider
-                      : FileImage(File(profilePicture)),
-                  radius: 49,
-                ),
-        ),
+        _ProfileAvatar(profilePicture: profilePicture, colorScheme: colorScheme),
         const Gap(AppSpacing.spacing12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,4 +70,54 @@ class ProfileCard extends ConsumerWidget {
         return 'US'; // Default to US
     }
   }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.profilePicture, required this.colorScheme});
+
+  final String? profilePicture;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      backgroundColor: colorScheme.surfaceContainerHighest,
+      radius: 50,
+      child: ClipOval(
+        child: _buildInner(),
+      ),
+    );
+  }
+
+  Widget _buildInner() {
+    if (profilePicture == null) return _fallback();
+
+    if (!profilePicture!.startsWith('http')) {
+      return CircleAvatar(
+        backgroundImage: FileImage(File(profilePicture!)),
+        radius: 49,
+      );
+    }
+
+    // Network image with error fallback for 404/broken URLs
+    return Image.network(
+      profilePicture!,
+      width: 98,
+      height: 98,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stack) => _fallback(),
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return _fallback();
+      },
+    );
+  }
+
+  Widget _fallback() => const CircleIconButton(
+        icon: HugeIcons.strokeRoundedUser,
+        radius: 49,
+        iconSize: 40,
+        backgroundColor: AppColors.secondary100,
+        foregroundColor: AppColors.secondary800,
+      );
 }

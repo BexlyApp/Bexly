@@ -66,6 +66,7 @@ class ChatMessage {
   final Uint8List? imageBytes;
   final PendingAction? pendingAction; // Action awaiting confirmation
   final bool isActionHandled; // Whether pending action has been handled
+  final String? modelName; // AI model name (e.g., "gemini-2.5-flash", "gpt-4o-mini")
 
   ChatMessage({
     required this.id,
@@ -77,6 +78,7 @@ class ChatMessage {
     this.imageBytes,
     this.pendingAction,
     this.isActionHandled = false,
+    this.modelName,
   });
 
   ChatMessage copyWith({
@@ -89,6 +91,7 @@ class ChatMessage {
     Uint8List? imageBytes,
     PendingAction? pendingAction,
     bool? isActionHandled,
+    String? modelName,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -100,6 +103,7 @@ class ChatMessage {
       imageBytes: imageBytes ?? this.imageBytes,
       pendingAction: pendingAction ?? this.pendingAction,
       isActionHandled: isActionHandled ?? this.isActionHandled,
+      modelName: modelName ?? this.modelName,
     );
   }
 
@@ -112,12 +116,16 @@ class ChatState {
   final bool isLoading;
   final bool isTyping;
   final String? error;
+  final String draftMessage; // Draft message being typed
+  final bool showNpsSurvey; // Trigger NPS survey bottom sheet
 
   const ChatState({
     this.messages = const [],
     this.isLoading = false,
     this.isTyping = false,
     this.error,
+    this.draftMessage = '',
+    this.showNpsSurvey = false,
   });
 
   ChatState copyWith({
@@ -125,12 +133,16 @@ class ChatState {
     bool? isLoading,
     bool? isTyping,
     String? error,
+    String? draftMessage,
+    bool? showNpsSurvey,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
       isLoading: isLoading ?? this.isLoading,
       isTyping: isTyping ?? this.isTyping,
       error: error ?? this.error,
+      draftMessage: draftMessage ?? this.draftMessage,
+      showNpsSurvey: showNpsSurvey ?? this.showNpsSurvey,
     );
   }
 }

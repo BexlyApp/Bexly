@@ -50,10 +50,14 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/app/google-services.json
+*.backup
+ios/Runner/GoogleService-Info.plist
 keystore.properties
 
-*.freezed.dart
-*.g.dart
+# Temporary files
+temp_db.db
+test_webhook.json
+.playwright-mcp/
 
 # Note: firebase_options.dart is intentionally committed
 # Firebase API keys are designed to be public and protected by:
@@ -76,6 +80,14 @@ input.txt
 reload.txt
 docs/REF_ANALYSIS.md
 
+# Flutter web build artifacts (regenerated on every build)
+web/drift_worker.js
+web/drift_worker.js.deps
+web/drift_worker.js.map
+
+# Claude Code local workspace
+.claude/
+
 # Firebase
 .firebase/
 firestore.rules
@@ -97,3 +109,30 @@ upload_cert.ps1
 
 # Windows temp
 nul
+.claude/settings.local.json
+
+# Claude Code temp directories
+tmpclaude-*-cwd
+
+.vercel
+.env*.local
+mcp-server/dist/
+mcp-server/.env
+supabase/.temp
+.github/instructions/pockaw-instruction.instructions.md
+
+# Secrets - NEVER commit these
+/secrets/
+*.jks
+dos-id.*.private-key.pem
+github-app-private-key.pem
+
+# Debug/log output
+firepit-log.txt
+flutter_output.log
+flutter_google_signin_debug.log
+flutter_supabase_debug.log
+final_test.log
+custom_lint.log
+
+# Note: llm_config.dart is safe to commit — it reads from .env at runtime, no hardcoded secrets

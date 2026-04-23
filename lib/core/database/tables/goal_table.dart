@@ -21,6 +21,10 @@ class Goals extends Table {
   TextColumn get iconName => text().nullable()();
   IntColumn get associatedAccountId => integer().nullable()();
   BoolColumn get pinned => boolean().nullable()();
+
+  // Soft delete fields (Tombstone pattern)
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
 }
 
 extension GoalExtension on Goal {
@@ -44,6 +48,10 @@ extension GoalExtension on Goal {
       iconName: json['iconName'] as String?,
       associatedAccountId: json['associatedAccountId'] as int?,
       pinned: json['pinned'] as bool? ?? false,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+      deletedAt: json['deletedAt'] != null
+          ? DateTime.parse(json['deletedAt'] as String)
+          : null,
     );
   }
 }
@@ -65,6 +73,8 @@ extension GoalTableExtensions on Goal {
       updatedAt: updatedAt,
       associatedAccountId: associatedAccountId,
       pinned: pinned ?? false,
+      isDeleted: isDeleted,
+      deletedAt: deletedAt,
     );
   }
 }
@@ -88,6 +98,8 @@ extension GoalModelExtensions on GoalModel {
       iconName: Value(iconName),
       associatedAccountId: Value(associatedAccountId),
       pinned: Value(pinned),
+      isDeleted: Value(isDeleted),
+      deletedAt: Value(deletedAt),
     );
   }
 }

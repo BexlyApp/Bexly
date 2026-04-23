@@ -1,0 +1,13 @@
+flutter_native_splash:
+  # Dark background with full Bexly icon (square with purple background)
+  color: "#1A1A2E"
+  image: assets/icon/Bexly-Logo-no-text-1024.png
+
+  android_12:
+    color: "#1A1A2E"
+    image: assets/icon/Bexly-Logo-no-text-1024.png
+    icon_background_color: "#1A1A2E"
+
+  android: true
+  ios: true
+  web: true

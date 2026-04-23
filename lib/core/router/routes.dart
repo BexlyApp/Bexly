@@ -3,6 +3,7 @@ class Routes {
   static const String splash = '/splash';
   static const String comingSoon = '/coming-soon';
   static const String onboarding = '/onboarding';
+  static const String login = '/login';
   static const String getStarted = '/get-started';
   static const String currencyListTile = '/currency';
   static const String main = index;
@@ -23,6 +24,9 @@ class Routes {
   static const String personalDetails = '/personal-details';
   static const String notificationSettings = '/notification-settings';
   static const String autoTransactionSettings = '/auto-transaction-settings';
+  static const String emailSyncSettings = '/email-sync-settings';
+  static const String emailReview = '/email-review';
+  static const String bankConnections = '/bank-connections';
   static const String languageSettings = '/language-settings';
   static const String aiModelSettings = '/ai-model-settings';
   static const String notifications = '/notifications';
@@ -35,4 +39,17 @@ class Routes {
 
   /// Subscription
   static const String subscription = '/subscription';
+
+  /// Family
+  static const String familySettings = '/family-settings';
+  static const String inviteMember = '/family-invite';
+  static const String shareWallet = '/family-share-wallet';
+
+  /// Gamification
+  static const String gamificationProfile = '/gamification-profile';
+
+  /// Bot Integration
+  static const String botIntegration = '/bot-integration';
+  static const String telegramLinked = '/telegram/linked'; // Deep link from id.dos.me (deprecated)
+  static const String telegramLink = '/telegram/link'; // Deep link from Telegram bot with token
 }

@@ -9,6 +9,7 @@ import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/extensions/router_extension.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/utils/logger.dart';
@@ -24,8 +25,10 @@ class BudgetCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final wallet = ref.read(activeWalletProvider);
-    final currency = wallet.value?.currencyByIsoCode(ref).symbol;
+    final wallet = ref.watch(activeWalletProvider).value;
+    final walletCurrency = wallet?.currencyByIsoCode(ref);
+    final currency = walletCurrency?.symbol ?? 'đ';
+    final isoCode = wallet?.currency ?? 'VND';
 
     Log.d(budget.toJson(), label: 'budget');
     final spentAmountAsync = ref.watch(budgetSpentAmountProvider(budget));
@@ -67,7 +70,7 @@ class BudgetCard extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '$currency ${remainingAmount.toPriceFormat()} left',
+                  '${formatCurrency(remainingAmount.toPriceFormat(), currency, isoCode)} left',
                   style: AppTextStyles.body4.copyWith(
                     color: remainingAmount < 0
                         ? AppColors.red
@@ -75,7 +78,7 @@ class BudgetCard extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '$currency ${spentAmount.toPriceFormat()} of ${budget.amount.toPriceFormat()}',
+                  '${formatCurrency(spentAmount.toPriceFormat(), currency, isoCode)} of ${budget.amount.toPriceFormat()}',
                   textAlign: TextAlign.right,
                   style: AppTextStyles.body4,
                 ),

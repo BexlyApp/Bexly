@@ -50,11 +50,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         ref.read(pageControllerProvider.notifier).setPage(value);
       },
       children: const [
-        DashboardScreen(),
-        AIChatScreen(),
-        TransactionScreen(),
-        RecurringScreen(),
-        PlanningScreen(),
+        DashboardScreen(),    // Page 0: Home
+        AIChatScreen(),       // Page 1: AI Chat
+        TransactionScreen(),  // Page 2: History (Transactions)
+        RecurringScreen(),    // Page 3: Recurring
+        PlanningScreen(),     // Page 4: Planning (Goals & Budgets)
       ],
     );
 

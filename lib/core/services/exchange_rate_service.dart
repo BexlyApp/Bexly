@@ -1,15 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:bexly/core/utils/logger.dart';
+import 'package:bexly/core/config/llm_config.dart';
 
 /// Service to fetch and cache exchange rates
-/// Priority: Free API (cached 24h) → Gemini AI → Emergency fallback
+/// Priority: Free API (cached 24h) → Gemini AI (via proxy) → Emergency fallback
 class ExchangeRateService {
-  final String geminiApiKey;
-  late final GenerativeModel _model;
-
   // Cache keys
   static const String _cachePrefix = 'exchange_rate_';
   static const String _cacheTimestampPrefix = 'exchange_rate_ts_';
@@ -18,16 +15,7 @@ class ExchangeRateService {
   // Free exchange rate API (no API key required, 1500 requests/month free)
   static const String _apiBaseUrl = 'https://api.exchangerate-api.com/v4/latest';
 
-  ExchangeRateService({required this.geminiApiKey}) {
-    _model = GenerativeModel(
-      model: 'gemini-2.5-flash',
-      apiKey: geminiApiKey,
-      generationConfig: GenerationConfig(
-        temperature: 0.0,
-        maxOutputTokens: 200,
-      ),
-    );
-  }
+  ExchangeRateService();
 
   /// Get exchange rate with 24h caching
   /// Priority: Cache → Free API → Gemini AI → Emergency fallback
@@ -141,8 +129,13 @@ class ExchangeRateService {
     return rate;
   }
 
-  /// Fetch from Gemini AI (fallback)
+  /// Fetch from Gemini AI via proxy (fallback)
   Future<double> _fetchFromGemini(String fromCurrency, String toCurrency) async {
+    final headers = LLMDefaultConfig.proxyHeaders;
+    if (headers == null) {
+      throw Exception('Not authenticated — cannot use Gemini proxy for exchange rates.');
+    }
+
     final prompt = '''What is the current exchange rate from $fromCurrency to $toCurrency?
 
 IMPORTANT INSTRUCTIONS:
@@ -154,16 +147,35 @@ IMPORTANT INSTRUCTIONS:
 
 Give me ONLY the number:''';
 
-    final response = await _model.generateContent([
-      Content.text(prompt),
-    ]).timeout(
-      const Duration(seconds: 15),
-      onTimeout: () {
-        throw Exception('Gemini request timed out');
-      },
-    );
+    final response = await http
+        .post(
+          Uri.parse(LLMDefaultConfig.proxyUrl),
+          headers: headers,
+          body: jsonEncode({
+            'provider': 'gemini',
+            'action': 'chat',
+            'model': LLMDefaultConfig.geminiModel,
+            'messages': [
+              {'role': 'user', 'content': prompt},
+            ],
+            'temperature': 0.0,
+            'max_tokens': 200,
+          }),
+        )
+        .timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            throw Exception('Gemini proxy request timed out');
+          },
+        );
 
-    final rateText = response.text?.trim() ?? '';
+    if (response.statusCode != 200) {
+      throw Exception('Gemini proxy returned ${response.statusCode}');
+    }
+
+    final data = jsonDecode(response.body);
+    if (data['error'] != null) throw Exception(data['error']);
+    final rateText = (data['content'] as String?)?.trim() ?? '';
 
     // Extract numeric value
     final cleanText = rateText

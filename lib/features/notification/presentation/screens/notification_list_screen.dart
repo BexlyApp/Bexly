@@ -6,7 +6,7 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/constants/app_colors.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/notification/presentation/riverpod/notification_providers.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -17,7 +17,7 @@ class NotificationListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = context.l10n;
     final notificationsAsync = ref.watch(allNotificationsProvider);
 
     return CustomScaffold(
@@ -100,7 +100,7 @@ class NotificationListScreen extends ConsumerWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = context.l10n;
 
     return Center(
       child: Padding(

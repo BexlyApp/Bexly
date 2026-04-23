@@ -49,6 +49,22 @@ abstract class CategoryModel with _$CategoryModel {
     /// These are the initial categories created on first app launch
     @Default(false) bool isSystemDefault,
 
+    /// Category source: 'built-in' (from templates) or 'custom' (user-created)
+    /// Built-in categories stay local unless modified, custom categories always sync
+    @Default('built-in') String? source,
+
+    /// Stable ID for built-in templates (e.g., 'food', 'transport')
+    /// Used to match categories across devices and app versions
+    String? builtInId,
+
+    /// Track if user modified built-in category (triggers cloud sync)
+    /// When true, this built-in category must sync to prevent duplication
+    @Default(false) bool? hasBeenModified,
+
+    /// Soft delete flag for cross-device sync
+    /// Deleted categories are hidden but synced to ensure consistency
+    @Default(false) bool? isDeleted,
+
     /// Transaction type: 'income' or 'expense'
     /// Required field to separate Income and Expense categories
     @Default('expense') String transactionType,

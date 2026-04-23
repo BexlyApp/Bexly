@@ -1,65 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<key>CFBundleDisplayName</key>
-	<string>Bexly</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>Bexly</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<!-- Privacy Usage Descriptions -->
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Bexly needs access to your photo library to let you select profile pictures and attach receipt images to transactions.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Bexly needs camera access to scan receipts and capture images for transactions.</string>
-	<!-- AdMob App ID -->
-	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-7528798617302619~2461324992</string>
-	<!-- Enable SKAdNetwork for iOS 14+ -->
-	<key>SKAdNetworkItems</key>
-	<array>
-		<dict>
-			<key>SKAdNetworkIdentifier</key>
-			<string>cstr6suwn9.skadnetwork</string>
-		</dict>
-	</array>
-</dict>
+	<dict>
+		<key>CFBundleDevelopmentRegion</key>
+		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<key>CFBundleDisplayName</key>
+		<string>Bexly</string>
+		<key>CFBundleExecutable</key>
+		<string>$(EXECUTABLE_NAME)</string>
+		<key>CFBundleIdentifier</key>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+		<key>CFBundleName</key>
+		<string>Bexly</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>CFBundleShortVersionString</key>
+		<string>$(FLUTTER_BUILD_NAME)</string>
+		<key>CFBundleSignature</key>
+		<string>????</string>
+		<key>CFBundleVersion</key>
+		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<key>LSRequiresIPhoneOS</key>
+		<true/>
+		<key>UILaunchStoryboardName</key>
+		<string>LaunchScreen</string>
+		<key>UIMainStoryboardFile</key>
+		<string>Main</string>
+		<key>UISupportedInterfaceOrientations</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+			<string>UIInterfaceOrientationLandscapeLeft</string>
+			<string>UIInterfaceOrientationLandscapeRight</string>
+		</array>
+		<key>UISupportedInterfaceOrientations~ipad</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+			<string>UIInterfaceOrientationPortraitUpsideDown</string>
+			<string>UIInterfaceOrientationLandscapeLeft</string>
+			<string>UIInterfaceOrientationLandscapeRight</string>
+		</array>
+		<key>CADisableMinimumFrameDurationOnPhone</key>
+		<true/>
+		<key>UIApplicationSupportsIndirectInputEvents</key>
+		<true/>
+		<!-- Export Compliance - App uses standard HTTPS/TLS only -->
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
+		<!-- Privacy Usage Descriptions -->
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Bexly needs access to your photo library to let you select profile pictures and attach receipt images to transactions.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Bexly needs camera access to scan receipts and capture images for transactions.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Bexly needs microphone access to enable voice-to-text input for the AI assistant.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>Bexly uses speech recognition to convert your voice into text for the AI assistant.</string>
+		<!-- AdMob App ID for iOS -->
+		<key>GADApplicationIdentifier</key>
+		<string>ca-app-pub-7528798617302619~5756089592</string>
+		<!-- Enable SKAdNetwork for iOS 14+ -->
+		<key>SKAdNetworkItems</key>
+		<array>
+			<dict>
+				<key>SKAdNetworkIdentifier</key>
+				<string>cstr6suwn9.skadnetwork</string>
+			</dict>
+		</array>
+		<key>UIStatusBarHidden</key>
+		<false/>
+		<!-- Google Sign In: required by google_sign_in v7+ on iOS -->
+		<key>GIDClientID</key>
+		<string>368090586626-jp6s7eerkn9v7279dvgrluaf6jep8kku.apps.googleusercontent.com</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<!-- Reversed client ID for Google Sign In OAuth callback -->
+					<string>com.googleusercontent.apps.368090586626-jp6s7eerkn9v7279dvgrluaf6jep8kku</string>
+					<!-- Deep link scheme for Supabase OAuth callbacks -->
+					<string>bexly</string>
+					<!-- Facebook SDK URL scheme (DOS app - shared across all DOS products) -->
+					<string>fb1348391745185182</string>
+				</array>
+			</dict>
+		</array>
+		<!-- Facebook SDK Configuration (DOS app) -->
+		<key>FacebookAppID</key>
+		<string>1348391745185182</string>
+		<key>FacebookClientToken</key>
+		<string>6ef80c862ae5f0de192793ce98dae7b3</string>
+		<key>FacebookDisplayName</key>
+		<string>DOS</string>
+		<!-- Facebook SDK required query schemes -->
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>fbapi</string>
+			<string>fbapi20130214</string>
+			<string>fbapi20130410</string>
+			<string>fbapi20130702</string>
+			<string>fbapi20131010</string>
+			<string>fbapi20131219</string>
+			<string>fbapi20140410</string>
+			<string>fbapi20140116</string>
+			<string>fbapi20150313</string>
+			<string>fbapi20150629</string>
+			<string>fbapi20160328</string>
+			<string>fbauth</string>
+			<string>fb-messenger-share-api</string>
+			<string>fbauth2</string>
+			<string>fbshareextension</string>
+		</array>
+	</dict>
 </plist>

@@ -127,15 +127,22 @@ class SmsPermissionBottomSheet extends StatelessWidget {
                   ),
                   const SizedBox(width: AppSpacing.spacing12),
                   Expanded(
+                    flex: 2,
                     child: FilledButton(
                       onPressed: () => Navigator.of(context).pop(true),
                       style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.spacing16),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.spacing16,
+                          horizontal: AppSpacing.spacing12,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text(context.l10n.ok),
+                      child: Text(
+                        context.l10n.autoTransactionAllowSmsAccess,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                 ],

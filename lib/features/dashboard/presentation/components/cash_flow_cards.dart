@@ -29,7 +29,7 @@ class CashFlowCards extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: TransactionCard(
-                            title: AppLocalizations.of(context)!.income,
+                            title: context.l10n.income,
                             amount: currentIncome,
                             amountLastMonth: lastIncome,
                             percentDifference: incomePercentDifference,
@@ -45,7 +45,7 @@ class CashFlowCards extends ConsumerWidget {
                         const Gap(AppSpacing.spacing12),
                         Expanded(
                           child: TransactionCard(
-                            title: AppLocalizations.of(context)!.expense,
+                            title: context.l10n.expense,
                             amount: currentExpense,
                             amountLastMonth: lastExpense,
                             percentDifference: expensePercentDifference,
@@ -62,19 +62,35 @@ class CashFlowCards extends ConsumerWidget {
                     );
                   },
                   loading: () => _buildLoadingRow(),
-                  error: (error, stack) => _buildErrorRow(context),
+                  error: (error, stack) {
+                    debugPrint('❌ [CashFlow] lastMonthExpense error: $error');
+                    debugPrint('❌ [CashFlow] Stack: $stack');
+                    return _buildErrorRow(context);
+                  },
                 );
               },
               loading: () => _buildLoadingRow(),
-              error: (error, stack) => _buildErrorRow(context),
+              error: (error, stack) {
+                debugPrint('❌ [CashFlow] lastMonthIncome error: $error');
+                debugPrint('❌ [CashFlow] Stack: $stack');
+                return _buildErrorRow(context);
+              },
             );
           },
           loading: () => _buildLoadingRow(),
-          error: (error, stack) => _buildErrorRow(context),
+          error: (error, stack) {
+            debugPrint('❌ [CashFlow] currentExpense error: $error');
+            debugPrint('❌ [CashFlow] Stack: $stack');
+            return _buildErrorRow(context);
+          },
         );
       },
       loading: () => _buildLoadingRow(),
-      error: (error, stack) => _buildErrorRow(context),
+      error: (error, stack) {
+        debugPrint('❌ [CashFlow] currentIncome error: $error');
+        debugPrint('❌ [CashFlow] Stack: $stack');
+        return _buildErrorRow(context);
+      },
     );
   }
 
@@ -94,7 +110,7 @@ class CashFlowCards extends ConsumerWidget {
         Expanded(
           child: Center(
             child: Text(
-              AppLocalizations.of(context)!.errorLoadingIncomeData,
+              context.l10n.errorLoadingIncomeData,
             ),
           ),
         ),
@@ -102,7 +118,7 @@ class CashFlowCards extends ConsumerWidget {
         Expanded(
           child: Center(
             child: Text(
-              AppLocalizations.of(context)!.errorLoadingExpenseData,
+              context.l10n.errorLoadingExpenseData,
             ),
           ),
         ),

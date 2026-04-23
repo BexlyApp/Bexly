@@ -1,8 +1,12 @@
 name: iOS Build
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Auto Version Bump"]
+    types:
+      - completed
     branches: [main]
+  push:
     tags:
       - 'v*'
   workflow_dispatch:
@@ -10,7 +14,9 @@ on:
 jobs:
   # Signed build using manual certificate (.p12)
   build-ios-signed:
-    runs-on: macos-15
+    runs-on: macos-26
+    # Only run if triggered by workflow_dispatch, tag push, or if version-bump succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -93,11 +99,43 @@ jobs:
           # Set up Xcode project signing
           xcode-project use-profiles || true
 
-      - name: Create .env file
+      - name: Setup GoogleService-Info.plist
+        env:
+          IOS_GOOGLE_SERVICE_INFO_BASE64: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_BASE64 }}
         run: |
-          # Create empty .env file for CI build
-          # The app handles missing values gracefully
-          touch .env
+          if [ -z "$IOS_GOOGLE_SERVICE_INFO_BASE64" ]; then
+            echo "⚠️ IOS_GOOGLE_SERVICE_INFO_BASE64 secret is not set — Firebase Crashlytics dSYM upload will be skipped."
+          else
+            echo "$IOS_GOOGLE_SERVICE_INFO_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+            echo "✅ GoogleService-Info.plist written to ios/Runner/"
+          fi
+
+      - name: Create .env file
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          BEXLY_FREE_AI_KEY: ${{ secrets.BEXLY_FREE_AI_KEY }}
+        run: |
+          cat > .env << EOF
+          SUPABASE_URL=${SUPABASE_URL}
+          SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
+          BEXLY_FREE_AI_URL=https://api.dos.ai/v1
+          BEXLY_FREE_AI_KEY=${BEXLY_FREE_AI_KEY}
+          BEXLY_FREE_AI_MODEL=dos-ai
+          DOS_AI_TIMEOUT=5
+          DOS_AI_VISION_TIMEOUT=30
+          EOF
+
+      - name: Get version info
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          BUILD_NUMBER=$(echo $VERSION | cut -d'+' -f2)
+          VERSION_NAME=$(echo $VERSION | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Building version: $VERSION_NAME (build $BUILD_NUMBER)"
 
       - name: Install dependencies
         run: flutter pub get
@@ -110,7 +148,7 @@ jobs:
           cd ios
           pod install --repo-update
 
-      - name: Build IPA
+      - name: Build IPA (${{ steps.version.outputs.build_number }})
         run: |
           xcode-project use-profiles --export-options-plist=ios/ExportOptions.plist
           flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
@@ -118,9 +156,42 @@ jobs:
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build-signed
+          name: ios-build-${{ steps.version.outputs.build_number }}
           path: build/ios/ipa/*.ipa
           retention-days: 30
+
+      - name: Upload dSYMs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-dsyms-${{ steps.version.outputs.build_number }}
+          path: build/ios/archive/Runner.xcarchive/dSYMs/
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Upload dSYMs to Firebase Crashlytics
+        run: |
+          DSYM_DIR="build/ios/archive/Runner.xcarchive/dSYMs"
+          GSP_PATH="ios/Runner/GoogleService-Info.plist"
+          UPLOAD_SCRIPT="ios/Pods/FirebaseCrashlytics/upload-symbols"
+
+          if [ ! -f "$GSP_PATH" ]; then
+            echo "⚠️ GoogleService-Info.plist missing — skipping Crashlytics dSYM upload."
+            echo "   Set IOS_GOOGLE_SERVICE_INFO_BASE64 secret to enable automatic symbolication."
+            exit 0
+          fi
+          if [ ! -f "$UPLOAD_SCRIPT" ]; then
+            echo "⚠️ FirebaseCrashlytics pod not found at $UPLOAD_SCRIPT — skipping."
+            exit 0
+          fi
+          if [ ! -d "$DSYM_DIR" ] || [ -z "$(ls -A "$DSYM_DIR" 2>/dev/null)" ]; then
+            echo "⚠️ No dSYMs found at $DSYM_DIR — skipping."
+            exit 0
+          fi
+
+          chmod +x "$UPLOAD_SCRIPT"
+          echo "📤 Uploading dSYMs from $DSYM_DIR to Firebase Crashlytics..."
+          "$UPLOAD_SCRIPT" -gsp "$GSP_PATH" -p ios "$DSYM_DIR"
+          echo "✅ dSYMs uploaded to Firebase Crashlytics."
 
       - name: Upload to TestFlight
         env:

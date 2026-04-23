@@ -58,32 +58,49 @@ class SubscriptionNotifier extends Notifier<SubscriptionState> {
   @override
   SubscriptionState build() {
     _service = ref.watch(subscriptionServiceProvider);
-    _initialize();
-    return const SubscriptionState();
+    // Use Future.microtask to avoid accessing state before build() returns
+    Future.microtask(() => _initialize());
+    return const SubscriptionState(isLoading: true);
   }
 
   Future<void> _initialize() async {
-    state = state.copyWith(isLoading: true);
+    try {
+      // Set callback for subscription changes
+      _service.onSubscriptionChanged = (tier) {
+        state = state.copyWith(tier: tier);
+      };
 
-    // Set callback for subscription changes
-    _service.onSubscriptionChanged = (tier) {
-      state = state.copyWith(tier: tier);
-    };
+      await _service.initialize();
 
-    await _service.initialize();
-
-    state = state.copyWith(
-      isLoading: false,
-      tier: _service.currentTier,
-      products: _service.products,
-    );
+      state = state.copyWith(
+        isLoading: false,
+        tier: _service.currentTier,
+        products: _service.products,
+      );
+    } catch (e) {
+      // If initialization fails, still show the screen with free tier
+      state = state.copyWith(
+        isLoading: false,
+        tier: SubscriptionTier.free,
+        error: 'Failed to load subscription info',
+      );
+    }
   }
 
   /// Purchase a subscription
   Future<bool> purchase(String productId) async {
-    final product = _service.getProduct(productId);
+    var product = _service.getProduct(productId);
+
+    // If product not found, try reloading products
     if (product == null) {
-      state = state.copyWith(error: 'Product not found');
+      state = state.copyWith(isLoading: true, error: null);
+      await _service.loadProducts();
+      state = state.copyWith(products: _service.products);
+      product = _service.getProduct(productId);
+    }
+
+    if (product == null) {
+      state = state.copyWith(isLoading: false, error: 'Product not found. Please check your internet connection and try again.');
       return false;
     }
 

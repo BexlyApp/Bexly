@@ -34,7 +34,7 @@ class GoalChecklistFormDialog extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, ref) {
     final wallet = ref.watch(activeWalletProvider);
-    final defaultCurrency = wallet.value?.currencyByIsoCode(ref).symbol;
+    final defaultCurrency = wallet.value?.currencyByIsoCode(ref).symbol ?? '';
     final titleController = useTextEditingController();
     final amountController = useTextEditingController();
     final linkController = useTextEditingController();
@@ -44,8 +44,11 @@ class GoalChecklistFormDialog extends HookConsumerWidget {
     useEffect(() {
       if (isEditing) {
         titleController.text = checklistItemModel!.title;
-        amountController.text =
-            '$defaultCurrency ${checklistItemModel!.amount.toPriceFormat()}';
+        final amount = checklistItemModel!.amount;
+        if (amount > 0) {
+          amountController.text =
+              '$defaultCurrency ${amount.toPriceFormat()}'.trim();
+        }
         linkController.text = checklistItemModel!.link;
         completed = checklistItemModel!.completed;
       }
@@ -75,6 +78,7 @@ class GoalChecklistFormDialog extends HookConsumerWidget {
               label: 'Price amount',
               hint: '1,000.00',
               icon: HugeIcons.strokeRoundedMoney03 as dynamic,
+              defaultCurreny: defaultCurrency,
               appendCurrencySymbolToHint: true,
               isRequired: true,
             ),

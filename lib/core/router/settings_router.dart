@@ -6,11 +6,17 @@ import 'package:bexly/features/settings/presentation/screens/account_deletion_sc
 import 'package:bexly/features/settings/presentation/screens/backup_restore_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/language_settings_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/auto_transaction_settings_screen.dart';
+import 'package:bexly/features/email_sync/presentation/screens/email_sync_settings_screen.dart';
+import 'package:bexly/features/email_sync/presentation/screens/email_review_screen.dart';
+import 'package:bexly/features/bank_connections/presentation/screens/bank_connections_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/notification_settings_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/personal_details_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/settings_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/ai_model_settings_screen.dart';
 import 'package:bexly/features/subscription/presentation/screens/subscription_screen.dart';
+import 'package:bexly/features/settings/presentation/screens/bot_integration_screen.dart';
+import 'package:bexly/features/settings/presentation/screens/bot_integration_screen_wrapper.dart';
+import 'package:bexly/features/gamification/presentation/screens/gamification_profile_screen.dart';
 
 class SettingsRouter {
   static final routes = <GoRoute>[
@@ -29,6 +35,18 @@ class SettingsRouter {
     GoRoute(
       path: Routes.autoTransactionSettings,
       builder: (context, state) => const AutoTransactionSettingsScreen(),
+    ),
+    GoRoute(
+      path: Routes.emailSyncSettings,
+      builder: (context, state) => const EmailSyncSettingsScreen(),
+    ),
+    GoRoute(
+      path: Routes.emailReview,
+      builder: (context, state) => const EmailReviewScreen(),
+    ),
+    GoRoute(
+      path: Routes.bankConnections,
+      builder: (context, state) => const BankConnectionsScreen(),
     ),
     GoRoute(
       path: Routes.languageSettings,
@@ -50,10 +68,33 @@ class SettingsRouter {
       path: Routes.subscription,
       builder: (context, state) => const SubscriptionScreen(),
     ),
-    if (kDebugMode)
-      GoRoute(
-        path: Routes.developerPortal,
-        builder: (context, state) => const DeveloperPortalScreen(),
-      ),
+    GoRoute(
+      path: Routes.developerPortal,
+      builder: (context, state) => const DeveloperPortalScreen(),
+    ),
+    GoRoute(
+      path: Routes.gamificationProfile,
+      builder: (context, state) => const GamificationProfileScreen(),
+    ),
+    GoRoute(
+      path: Routes.botIntegration,
+      builder: (context, state) => const BotIntegrationScreen(),
+    ),
+    GoRoute(
+      path: Routes.telegramLinked,
+      redirect: (context, state) {
+        // Deep link from id.dos.me after successful Telegram account linking
+        // Show success message and navigate to bot integration screen
+        return Routes.botIntegration;
+      },
+    ),
+    GoRoute(
+      path: Routes.telegramLink,
+      builder: (context, state) {
+        // Deep link from Telegram bot: bexly://telegram/link?token=xxx
+        final token = state.uri.queryParameters['token'];
+        return BotIntegrationScreenWrapper(telegramLinkToken: token);
+      },
+    ),
   ];
 }

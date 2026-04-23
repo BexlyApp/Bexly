@@ -1,0 +1,280 @@
+name: macOS Build
+
+on:
+  workflow_run:
+    workflows: ["Auto Version Bump"]
+    types:
+      - completed
+    branches: [main]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-15
+    # Only run if triggered by workflow_dispatch, tag push, or if version-bump succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Setup Ruby (for CocoaPods)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Install Codemagic CLI Tools
+        run: |
+          brew install pipx
+          pipx ensurepath
+          pipx install codemagic-cli-tools
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Setup keychain and certificates
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.IOS_DIST_CERTIFICATE_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DIST_CERTIFICATE_PASSWORD }}
+          MACOS_INSTALLER_CERT_BASE64: ${{ secrets.MACOS_INSTALLER_CERT_BASE64 }}
+          MACOS_INSTALLER_CERT_PASSWORD: ${{ secrets.MACOS_INSTALLER_CERT_PASSWORD }}
+        run: |
+          # Decode certificates
+          echo "$MACOS_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          echo "$MACOS_INSTALLER_CERT_BASE64" | base64 --decode > installer_cert.p12
+
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import Apple Distribution certificate (for signing app)
+          security import certificate.p12 -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+
+          # Import Mac Installer Distribution certificate (for signing PKG)
+          security import installer_cert.p12 -P "$MACOS_INSTALLER_CERT_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # List available signing identities
+          echo "Available signing identities:"
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
+
+          # Save keychain path for later cleanup
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
+          echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> $GITHUB_ENV
+
+          # Cleanup certificate files
+          rm certificate.p12 installer_cert.p12
+
+      - name: Setup App Store Connect API Key
+        env:
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+
+      - name: Install provisioning profile
+        env:
+          MACOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.MACOS_PROVISION_PROFILE_BASE64 }}
+        run: |
+          # Decode provisioning profile
+          echo "$MACOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > profile.provisionprofile
+
+          # Extract UUID and install profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< $(security cms -D -i profile.provisionprofile))
+          cp profile.provisionprofile ~/Library/MobileDevice/Provisioning\ Profiles/${UUID}.provisionprofile
+          echo "Installed provisioning profile with UUID: $UUID"
+          echo "PROFILE_UUID=$UUID" >> $GITHUB_ENV
+
+          # Clean up
+          rm profile.provisionprofile
+
+      - name: Create .env file
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          BEXLY_FREE_AI_KEY: ${{ secrets.BEXLY_FREE_AI_KEY }}
+        run: |
+          cat > .env << EOF
+          SUPABASE_URL=${SUPABASE_URL}
+          SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
+          BEXLY_FREE_AI_URL=https://api.dos.ai/v1
+          BEXLY_FREE_AI_KEY=${BEXLY_FREE_AI_KEY}
+          BEXLY_FREE_AI_MODEL=dos-ai
+          DOS_AI_TIMEOUT=5
+          DOS_AI_VISION_TIMEOUT=30
+          EOF
+
+      - name: Get version info
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          BUILD_NUMBER=$(echo $VERSION | cut -d'+' -f2)
+          VERSION_NAME=$(echo $VERSION | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Building version: $VERSION_NAME (build $BUILD_NUMBER)"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd macos
+          pod install --repo-update
+
+      - name: Configure code signing
+        run: |
+          # Update Xcode project to use manual signing
+          cd macos
+          /usr/libexec/PlistBuddy -c "Set :objects:33CC10F92044A3C60003C045:buildSettings:CODE_SIGN_STYLE Manual" Runner.xcodeproj/project.pbxproj 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Set :objects:33CC10FA2044A3C60003C045:buildSettings:CODE_SIGN_STYLE Manual" Runner.xcodeproj/project.pbxproj 2>/dev/null || true
+
+      - name: Build macOS app (${{ steps.version.outputs.build_number }})
+        run: |
+          flutter build macos --release
+
+      - name: Sign and create PKG for App Store
+        env:
+          TEAM_ID: "U8XAV4YC8V"
+          APP_BUNDLE_ID: "com.joy.bexly"
+          MACOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.MACOS_PROVISION_PROFILE_BASE64 }}
+        run: |
+          APP_PATH="build/macos/Build/Products/Release/Bexly.app"
+
+          # Find the app signing identity (Apple Distribution or 3rd Party Mac Developer Application)
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep -E "(Apple Distribution|3rd Party Mac Developer Application)" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "Using app signing identity: $SIGNING_IDENTITY"
+
+          # Find the installer signing identity (3rd Party Mac Developer Installer)
+          INSTALLER_IDENTITY=$(security find-identity -v $KEYCHAIN_PATH | grep "3rd Party Mac Developer Installer" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "Using installer signing identity: $INSTALLER_IDENTITY"
+
+          # Embed provisioning profile into app bundle (required for TestFlight)
+          echo "Embedding provisioning profile into app bundle..."
+          echo "$MACOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$APP_PATH/Contents/embedded.provisionprofile"
+          echo "✅ Provisioning profile embedded"
+
+          # Sign the app bundle (must be done AFTER embedding profile)
+          codesign --deep --force --options runtime \
+            --sign "$SIGNING_IDENTITY" \
+            --entitlements macos/Runner/Release.entitlements \
+            "$APP_PATH"
+
+          # Verify signature
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
+          # Verify provisioning profile is embedded
+          if [ -f "$APP_PATH/Contents/embedded.provisionprofile" ]; then
+            echo "✅ embedded.provisionprofile exists in app bundle"
+          else
+            echo "❌ embedded.provisionprofile is missing!"
+            exit 1
+          fi
+
+          # Create PKG for App Store submission
+          if [ -n "$INSTALLER_IDENTITY" ]; then
+            echo "Creating signed PKG..."
+            productbuild \
+              --component "$APP_PATH" /Applications \
+              --sign "$INSTALLER_IDENTITY" \
+              "build/macos/Bexly-${{ steps.version.outputs.version_name }}.pkg"
+          else
+            echo "⚠️ No installer certificate found, creating unsigned PKG..."
+            productbuild \
+              --component "$APP_PATH" /Applications \
+              "build/macos/Bexly-${{ steps.version.outputs.version_name }}.pkg"
+          fi
+
+      - name: Create DMG for direct distribution
+        run: |
+          # Install create-dmg
+          brew install create-dmg
+
+          # Create DMG from the app bundle
+          create-dmg \
+            --volname "Bexly" \
+            --volicon "macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "Bexly.app" 150 190 \
+            --hide-extension "Bexly.app" \
+            --app-drop-link 450 185 \
+            "build/macos/Bexly-${{ steps.version.outputs.version_name }}.dmg" \
+            "build/macos/Build/Products/Release/Bexly.app" || true
+
+          # If create-dmg fails, just zip the app
+          if [ ! -f "build/macos/Bexly-${{ steps.version.outputs.version_name }}.dmg" ]; then
+            cd build/macos/Build/Products/Release
+            zip -r "../../../Bexly-${{ steps.version.outputs.version_name }}-macos.zip" Bexly.app
+          fi
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build-${{ steps.version.outputs.build_number }}
+          path: |
+            build/macos/Bexly-*.pkg
+            build/macos/Bexly-*.dmg
+            build/macos/Bexly-*-macos.zip
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload to App Store Connect
+        env:
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_USERNAME: ${{ secrets.APP_STORE_CONNECT_USERNAME }}
+          APP_STORE_CONNECT_PASSWORD: ${{ secrets.APP_STORE_CONNECT_PASSWORD }}
+        run: |
+          PKG_PATH=$(ls build/macos/Bexly-*.pkg 2>/dev/null | head -1)
+
+          if [ -z "$PKG_PATH" ]; then
+            echo "⚠️ No PKG file found, skipping App Store upload"
+            exit 0
+          fi
+
+          echo "📦 Uploading $PKG_PATH to App Store Connect..."
+
+          # Try App Store Connect API first
+          if app-store-connect publish \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_ID" \
+            --private-key @file:~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
+            --path "$PKG_PATH"; then
+            echo "✅ Upload successful via App Store Connect API"
+          else
+            echo "⚠️ API upload failed, trying App Password fallback..."
+            xcrun altool --upload-app \
+              --type macos \
+              --file "$PKG_PATH" \
+              --username "$APP_STORE_CONNECT_USERNAME" \
+              --password "$APP_STORE_CONNECT_PASSWORD" || {
+                echo "⚠️ App Store upload failed. PKG is available as artifact."
+              }
+          fi
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $KEYCHAIN_PATH || true

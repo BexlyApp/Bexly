@@ -1,6 +1,11 @@
 import 'package:drift/drift.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart';
+import 'package:bexly/core/database/app_database.dart';
+import 'package:bexly/features/recurring/data/model/recurring_model.dart';
+import 'package:bexly/features/recurring/data/model/recurring_enums.dart';
+import 'package:bexly/features/category/data/model/category_model.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 
 /// Represents the `recurrings` table in the database
 @DataClassName('Recurring')
@@ -89,4 +94,42 @@ class Recurrings extends Table {
 
   /// Timestamp of when the recurring payment was last updated in the database
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Extension to convert Recurring entity to RecurringModel
+extension RecurringTableExtensions on Recurring {
+  RecurringModel toModel({
+    required CategoryModel category,
+    required WalletModel wallet,
+  }) {
+    return RecurringModel(
+      id: id,
+      cloudId: cloudId,
+      name: name,
+      description: description,
+      wallet: wallet,
+      category: category,
+      amount: amount,
+      currency: currency,
+      startDate: startDate,
+      nextDueDate: nextDueDate,
+      frequency: RecurringFrequency.values[frequency],
+      customInterval: customInterval,
+      customUnit: customUnit,
+      billingDay: billingDay,
+      endDate: endDate,
+      status: RecurringStatus.values[status],
+      autoCreate: autoCreate,
+      enableReminder: enableReminder,
+      reminderDaysBefore: reminderDaysBefore,
+      notes: notes,
+      vendorName: vendorName,
+      iconName: iconName,
+      colorHex: colorHex,
+      lastChargedDate: lastChargedDate,
+      totalPayments: totalPayments,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 }

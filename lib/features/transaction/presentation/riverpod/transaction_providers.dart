@@ -59,6 +59,34 @@ final transactionDetailsProvider = StreamProvider.autoDispose.family<Transaction
   );
 });
 
+/// Notifier to request switching to a specific tab in TransactionScreen.
+class RequestedTransactionTabNotifier extends Notifier<int?> {
+  @override
+  int? build() => null;
+
+  void request(int tab) => state = tab;
+  void clear() => state = null;
+}
+
+/// Tracks the currently active tab in TransactionScreen (0=ThisMonth, 1=LastMonth, 2=Pending)
+class ActiveTransactionTabNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void set(int tab) => state = tab;
+}
+
+final activeTransactionTabProvider = NotifierProvider<ActiveTransactionTabNotifier, int>(
+  ActiveTransactionTabNotifier.new,
+);
+
+/// Provider to request switching to a specific tab in TransactionScreen.
+/// Set to tab index (e.g., 2 for Pending), null means no request.
+final requestedTransactionTabProvider =
+    NotifierProvider<RequestedTransactionTabNotifier, int?>(
+  RequestedTransactionTabNotifier.new,
+);
+
 class TransactionFilterNotifier extends Notifier<TransactionFilter?> {
   @override
   TransactionFilter? build() => null;

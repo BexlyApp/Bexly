@@ -1,5 +1,345 @@
 # AI Chat Transaction Debug Log
 
+---
+
+## SESSION: GOOGLE SIGN-IN WITH SUPABASE AUTH (v475)
+
+### Ngày: 2026-01-13
+### Developer: Claude Code
+
+---
+
+### Vấn đề
+
+**Issue:** Google Sign-In với Supabase Auth bị lỗi `[28444] Developer console is not set up correctly` sau khi migrate từ Firebase Auth sang Supabase Auth.
+
+**Triệu chứng:**
+1. User tap "Continue with Google" → Account picker xuất hiện
+2. User chọn account → Error `[28444] Developer console is not set up correctly`
+3. Login failed, không thể authenticate
+
+**Timeline:**
+- Session bắt đầu từ session trước (context đã summarize)
+- Multiple errors xảy ra liên tiếp khi trying different fixes
+- Cuối cùng phát hiện ra ROOT CAUSE: API changes trong google_sign_in v7.0
+
+---
+
+### Root Cause Analysis (Multi-Layer)
+
+#### Layer 1: API Breaking Changes in google_sign_in v7.0
+
+**Old API (v6.x - Firebase Auth):**
+```dart
+// v6.x - Used with Firebase Auth
+final googleUser = await googleSignIn.signIn();  // ❌ Method removed in v7.0
+final googleAuth = googleUser.authentication;
+final credential = GoogleAuthProvider.credential(
+  idToken: googleAuth.idToken,  // Only idToken needed for Firebase
+);
+await FirebaseAuth.instance.signInWithCredential(credential);
+```
+
+**New API (v7.0 - Supabase Auth):**
+```dart
+// v7.0 - Must use with Supabase Auth
+final googleUser = await googleSignIn.authenticate();  // ✅ New method
+final googleAuth = googleUser.authentication;  // Only has idToken
+final clientAuth = await googleUser.authorizationClient.authorizationForScopes(['email']);
+await supabase.auth.signInWithIdToken(
+  idToken: googleAuth.idToken,
+  accessToken: clientAuth.accessToken,  // ✅ Both tokens required!
+);
+```
+
+**Key Changes:**
+1. `signIn()` → `authenticate()` (method renamed)
+2. `accessToken` separated from `authentication` object
+3. Need to call `authorizationClient.authorizationForScopes()` to get accessToken
+4. Supabase requires BOTH `idToken` AND `accessToken` (Firebase only needed idToken)
+
+#### Layer 2: Missing accessToken
+
+**Supabase vs Firebase Token Requirements:**
+
+| Provider | idToken | accessToken |
+|----------|---------|-------------|
+| **Firebase Auth** | ✅ Required | ❌ Not used |
+| **Supabase Auth** | ✅ Required | ✅ Required |
+
+**Why Supabase needs accessToken:**
+- Firebase trusts Google's idToken (same ecosystem)
+- Supabase is 3rd party → Google requires BOTH tokens for verification
+- Without accessToken → Google OAuth rejects with [28444]
+
+#### Layer 3: Web Client ID Required
+
+**Confusion:** Why native Android app needs Web Client ID?
+
+**Answer:** Google OAuth 2.0 Architecture for Mobile + Backend:
+1. **Android Client IDs** → Only for SHA-1 validation (local authentication)
+2. **Web Client ID** → For token generation (server-side verification)
+3. Backend (Supabase) can only verify tokens from Web Client
+4. `serverClientId` parameter in `initialize()` MUST be Web Client ID
+
+**Evidence from google-services.json:**
+```json
+{
+  "client_type": 1,  // Android Client - for SHA-1 validation
+  "android_info": {
+    "package_name": "com.joy.bexly",
+    "certificate_hash": "79cf106c1d4ce7b17d6ccffc25e5e1de18c159c7"
+  }
+},
+{
+  "client_type": 3,  // Web Client - for token generation
+  "client_id": "368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com"
+}
+```
+
+#### Layer 4: Empty Scopes Not Allowed
+
+**Initial Code:**
+```dart
+final clientAuth = await googleUser.authorizationClient.authorizeScopes([]);  // ❌ Error
+```
+
+**Error:** `requestedScopes cannot be null or empty`
+
+**Fix:**
+```dart
+const scopes = ['email'];  // ✅ Must specify at least one scope
+final clientAuth = await googleUser.authorizationClient.authorizationForScopes(scopes);
+```
+
+---
+
+### Solution Implementation
+
+#### Step 1: Update Google Sign-In Initialization (main.dart)
+
+**OLD (WRONG):**
+```dart
+final clientId = SupabaseConfig.googleWebClientId;  // Using Android Client ID
+await GoogleSignIn.instance.initialize(
+  serverClientId: clientId,  // ❌ Wrong client type
+);
+```
+
+**NEW (CORRECT):**
+```dart
+// Auto-detect Web Client ID from google-services.json
+await GoogleSignIn.instance.initialize();  // ✅ No serverClientId needed
+```
+
+#### Step 2: Fix Authentication Flow (login_screen.dart)
+
+**Complete Flow:**
+```dart
+// 1. Authenticate user (shows account picker)
+final googleUser = await googleSignIn.authenticate();
+
+// 2. Get ID token
+final googleAuth = googleUser.authentication;
+final idToken = googleAuth.idToken;
+
+// 3. Get access token (requires scope)
+const scopes = ['email'];
+var clientAuth = await googleUser.authorizationClient.authorizationForScopes(scopes);
+
+if (clientAuth == null) {
+  // Fallback: Request authorization (may show consent on first use)
+  clientAuth = await googleUser.authorizationClient.authorizeScopes(scopes);
+}
+
+final accessToken = clientAuth.accessToken;
+
+// 4. Sign in with Supabase
+await supabase.auth.signInWithIdToken(
+  provider: OAuthProvider.google,
+  idToken: idToken,
+  accessToken: accessToken,  // Both tokens required!
+);
+```
+
+#### Step 3: Environment Configuration (.env)
+
+```env
+# Web client ID - Used as serverClientId for google_sign_in SDK
+GOOGLE_WEB_CLIENT_ID=368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com
+
+# Android Client IDs - For SHA-1 validation
+GOOGLE_ANDROID_CLIENT_ID_DEBUG=368090586626-2i3h1mmsrmjn30865q883lioaruhpbqu.apps.googleusercontent.com
+GOOGLE_ANDROID_CLIENT_ID_RELEASE=368090586626-lu2v4fapus52k6sjcs0edneglm3spuu4.apps.googleusercontent.com
+```
+
+#### Step 4: OAuth Clients in Google Cloud Console (dos-me project)
+
+**Required Clients:**
+1. **Web Application** (client_type: 3)
+   - Used for: Token generation, server-side verification
+   - Client ID: `368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6`
+   - No restrictions needed
+
+2. **Android (Debug)** (client_type: 1)
+   - Used for: SHA-1 validation in debug builds
+   - Client ID: `368090586626-2i3h1mmsrmjn30865q883lioaruhpbqu`
+   - SHA-1: `79:CF:10:6C:1D:4C:E7:B1:7D:6C:CF:FC:25:E5:E1:DE:18:C1:59:C7`
+   - Package: `com.joy.bexly`
+
+3. **Android (Release)** (client_type: 1)
+   - Used for: SHA-1 validation in release builds
+   - Client ID: `368090586626-lu2v4fapus52k6sjcs0edneglm3spuu4`
+   - SHA-1: `B8:B5:58:78:A4:1E:59:70:69:C6:0E:97:0F:B6:33:E2:A6:4A:6A:39`
+   - Package: `com.joy.bexly`
+
+#### Step 5: Supabase Google Provider Configuration
+
+**Authorized Client IDs (comma-separated):**
+```
+368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com,368090586626-2i3h1mmsrmjn30865q883lioaruhpbqu.apps.googleusercontent.com,368090586626-lu2v4fapus52k6sjcs0edneglm3spuu4.apps.googleusercontent.com
+```
+
+All 3 client IDs (Web + Android Debug + Android Release) must be added to Supabase.
+
+---
+
+### Code Changes Summary
+
+**Files Modified:**
+1. `lib/main.dart` - Removed explicit serverClientId, use auto-detect
+2. `lib/features/auth/presentation/login_screen.dart` - Fixed authentication flow with accessToken
+3. `.env` - Added Web Client ID
+4. `.env.example` - Updated documentation
+
+**Key Changes:**
+- Removed `SupabaseConfig.googleWebClientId` usage in main.dart
+- Added `authorizationClient.authorizationForScopes(['email'])` to get accessToken
+- Added fallback to `authorizeScopes()` if cached token not available
+- Auto-detect Web Client from google-services.json
+
+---
+
+### Testing Results (v475)
+
+**Test:** User tap "Continue with Google" → Select account
+
+**Results:**
+- ✅ Account picker displays correctly
+- ✅ User can select Google account
+- ✅ Authentication successful
+- ✅ Both idToken and accessToken obtained
+- ✅ Supabase authentication successful
+- ✅ User profile synced from Google
+- ✅ Redirected to onboarding/dashboard
+
+**Logs:**
+```
+[info_auth] 📱 Starting native Google Sign In flow
+[info_auth] ✅ User authenticated: joy@joy.vn
+[info_auth] ✅ Got ID token (length: 1090)
+[info_auth] ✅ Got access token (length: 324)
+[info_auth] ✅ Supabase authentication successful: joy@joy.vn
+```
+
+---
+
+### Architecture Deep Dive
+
+#### Why Native App Uses Web Client ID?
+
+**Google OAuth 2.0 Architecture:**
+
+```
+Mobile App (Android/iOS)
+    ↓
+Google Sign-In SDK
+    ↓
+[Authenticate with Android Client] ← SHA-1 validation
+    ↓
+[Generate tokens with Web Client] ← Server verification
+    ↓
+Backend (Supabase/Firebase)
+    ↓
+[Verify tokens with Google]
+```
+
+**Key Points:**
+1. **Android Clients**: Local authentication only
+   - Validate app signature (SHA-1)
+   - Ensure app is legitimate
+   - Cannot be used for server-side verification
+
+2. **Web Clients**: Server-side verification
+   - Generate OAuth tokens
+   - Tokens can be verified by backend servers
+   - Required for 3rd party backends (Supabase, custom servers)
+
+3. **Firebase vs Supabase**:
+   - Firebase: Part of Google ecosystem, accepts Android tokens
+   - Supabase: 3rd party, requires Web tokens for verification
+
+#### Token Flow Comparison
+
+**Firebase Auth (Old):**
+```
+authenticate() → idToken (from Android Client)
+                    ↓
+            Firebase Auth.signInWithCredential()
+                    ↓
+              [Google verifies internally]
+                    ↓
+                  Success!
+```
+
+**Supabase Auth (New):**
+```
+authenticate() → idToken (from Web Client via google-services.json)
+                    ↓
+authorizationClient.authorizationForScopes(['email'])
+                    ↓
+              accessToken (OAuth 2.0)
+                    ↓
+    Supabase.auth.signInWithIdToken(idToken, accessToken)
+                    ↓
+       [Google verifies both tokens]
+                    ↓
+                  Success!
+```
+
+---
+
+### Lessons Learned
+
+1. **Major Version Changes Break Everything** - google_sign_in v7.0 completely changed API
+2. **Read Migration Guides Carefully** - v6→v7 removed `signIn()`, added `authenticate()`
+3. **Backend Requirements Differ** - Firebase needs 1 token, Supabase needs 2 tokens
+4. **Client Types Matter** - Android vs Web clients serve different purposes
+5. **Auto-Detection Works Better** - Let google_sign_in parse google-services.json instead of manual config
+6. **Empty Scopes Not Allowed** - Must specify at least ['email'] scope
+7. **Docs Can Be Outdated** - Supabase docs still showed v6.x examples
+
+---
+
+### Version History
+
+- **v475**: ✅ Google Sign-In working with Supabase Auth
+
+---
+
+### References
+
+- [google_sign_in v7.0 Migration Guide](https://github.com/flutter/packages/blob/main/packages/google_sign_in/google_sign_in/MIGRATION.md)
+- [google_sign_in_android Package](https://pub.dev/packages/google_sign_in_android)
+- [Supabase signInWithIdToken API](https://supabase.com/docs/reference/dart/auth-signinwithidtoken)
+- [Google OAuth 2.0 for Mobile Apps](https://developers.google.com/identity/protocols/oauth2/native-app)
+
+---
+
+**STATUS: ✅ RESOLVED**
+
+---
+
 ## Ngày: 2025-11-24
 ## Developer: Claude Code
 

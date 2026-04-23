@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.0.10+373
+version: 0.0.10+585
 
 environment:
   sdk: ^3.8.1
@@ -29,6 +29,8 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
 
   auto_size_text: ^3.0.0
@@ -79,8 +81,9 @@ dependencies:
   riverpod_annotation: ^3.0.3
   share_plus: ^12.0.0
   shared_preferences: ^2.5.3
-  syncfusion_flutter_datepicker: ^31.1.20
-  syncfusion_flutter_charts: ^31.1.20
+  speech_to_text: ^7.0.0
+  syncfusion_flutter_datepicker: ^32.1.19
+  syncfusion_flutter_charts: ^32.1.19
   toastification: ^3.0.3
   uuid: ^4.5.1
   url_launcher: ^6.3.1
@@ -88,15 +91,20 @@ dependencies:
   google_sign_in: ^7.2.0
   sign_in_with_apple: ^7.0.1
   font_awesome_flutter: ^10.8.0
-  flutter_facebook_auth: ^7.1.2
+  flutter_facebook_auth: ^7.1.5
   http: ^1.5.0
   flutter_dotenv: ^6.0.0
+  supabase_flutter: ^2.8.0
+  dio: ^5.9.0
   workmanager: ^0.9.0
   in_app_purchase: ^3.2.0
-  google_mobile_ads: ^6.0.0
-  another_telephony: ^0.4.1
+  google_mobile_ads: ^7.0.0
   crypto: ^3.0.6
   notification_listener_service: ^0.3.1
+  flutter_stripe: ^12.1.1
+  cloud_functions: ^6.0.5
+  flutter_native_splash: ^2.4.7
+  pdfx: ^2.9.2
 
 dev_dependencies:
   flutter_test:
@@ -119,6 +127,7 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

@@ -1,12 +1,13 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/tables/budgets_table.dart';
 import 'package:bexly/core/database/tables/category_table.dart';
 import 'package:bexly/core/database/tables/wallet_table.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/budget/data/model/budget_model.dart';
-import 'package:bexly/core/services/sync/realtime_sync_provider.dart';
+import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
 
 part 'budget_dao.g.dart';
 
@@ -30,12 +31,16 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
 
     return BudgetModel(
       id: budgetData.id,
+      cloudId: budgetData.cloudId,
       wallet: wallet.toModel(),
       category: category.toModel(),
       amount: budgetData.amount,
       startDate: budgetData.startDate,
       endDate: budgetData.endDate,
       isRoutine: budgetData.isRoutine,
+      routinePeriod: budgetData.routinePeriod,
+      createdAt: budgetData.createdAt,
+      updatedAt: budgetData.updatedAt,
     );
   }
 
@@ -60,9 +65,10 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
       final wallet = walletsMap[budgetData.walletId];
       final category = categoriesMap[budgetData.categoryId];
       if (wallet == null || category == null) {
-        // Log this issue or handle it more gracefully
         Log.e(
-          'Warning: Could not find wallet or category for budget ${budgetData.id}',
+          'Could not find wallet or category for budget ${budgetData.id}: '
+          'walletId=${budgetData.walletId} (found=${wallet != null}), '
+          'categoryId=${budgetData.categoryId} (found=${category != null})',
           label: 'budget',
         );
         continue; // Skip this budget if essential data is missing
@@ -70,12 +76,16 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
       result.add(
         BudgetModel(
           id: budgetData.id,
+          cloudId: budgetData.cloudId,
           wallet: wallet.toModel(),
           category: category.toModel(),
           amount: budgetData.amount,
           startDate: budgetData.startDate,
           endDate: budgetData.endDate,
           isRoutine: budgetData.isRoutine,
+          routinePeriod: budgetData.routinePeriod,
+          createdAt: budgetData.createdAt,
+          updatedAt: budgetData.updatedAt,
         ),
       );
     }
@@ -118,39 +128,128 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
   Future<int> addBudget(BudgetModel budgetModel) async {
     Log.d('Adding new budget', label: 'budget');
 
-    // 1. Save to local database
+    // CRITICAL FIX: Generate UUID v7 for cloud sync BEFORE inserting to database
+    final cloudId = const Uuid().v7();
+    Log.d('Generated cloudId for new budget: $cloudId', label: 'budget');
+
+    // 1. Save to local database with cloudId
     final id = await into(budgets).insert(
       BudgetsCompanion.insert(
+        cloudId: Value(cloudId),
         walletId: budgetModel.wallet.id!,
         categoryId: budgetModel.category.id!,
         amount: budgetModel.amount,
         startDate: budgetModel.startDate,
         endDate: budgetModel.endDate,
         isRoutine: budgetModel.isRoutine,
+        routinePeriod: Value(budgetModel.routinePeriod),
       ),
     );
 
     // 2. Upload to cloud (if sync available)
     if (_ref != null) {
-      try {
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-        final savedBudget = await getBudgetById(id);
-        if (savedBudget != null) {
-          await syncService.uploadBudget(savedBudget);
+      final syncService = _ref?.read(supabaseSyncServiceProvider);
+      if (syncService != null && syncService.isAuthenticated) {
+        try {
+          final savedBudget = await getBudgetById(id);
+          if (savedBudget != null) {
+            // CRITICAL FIX: Sync category dependency BEFORE uploading budget to prevent foreign key errors!
+            Log.d('🔍 [BUDGET SYNC] Ensuring category exists on cloud before uploading budget...', label: 'sync');
+
+            // Sync category first if it has a cloudId
+            // IMPORTANT: Use forceUpload=true to ensure category exists even if it's unmodified built-in
+            if (savedBudget.category.cloudId != null) {
+              try {
+                Log.d('📤 [CATEGORY SYNC] Force uploading category: ${savedBudget.category.title} (${savedBudget.category.cloudId})', label: 'sync');
+                await syncService.uploadCategory(savedBudget.category, forceUpload: true);
+                Log.d('✅ [CATEGORY SYNC] Category synced successfully', label: 'sync');
+              } catch (e) {
+                Log.w('⚠️ [CATEGORY SYNC] Failed to sync category (may already exist): $e', label: 'sync');
+                // Continue - category might already exist on cloud
+              }
+            } else {
+              Log.w('⚠️ [CATEGORY SYNC] Category has no cloudId, skipping sync', label: 'sync');
+            }
+
+            // Now upload budget (category dependency is guaranteed to exist)
+            Log.d('🚀 [BUDGET SYNC] Uploading budget...', label: 'sync');
+            await syncService.uploadBudget(savedBudget);
+            Log.d('✅ [BUDGET SYNC] Budget uploaded successfully', label: 'sync');
+          }
+        } catch (e, stack) {
+          Log.e('Failed to upload budget to cloud: $e', label: 'sync');
+          Log.e('Stack: $stack', label: 'sync');
+          // Don't rethrow - local save succeeded
         }
-      } catch (e, stack) {
-        Log.e('Failed to upload budget to cloud: $e', label: 'sync');
-        Log.e('Stack: $stack', label: 'sync');
-        // Don't rethrow - local save succeeded
       }
     }
 
     return id;
   }
 
+  /// Insert a budget from cloud data (for sync pull operations)
+  /// This method preserves the cloudId and does NOT re-upload to cloud
+  Future<int> insertFromCloud(BudgetModel budgetModel) async {
+    Log.d('Inserting budget from cloud: ${budgetModel.cloudId}', label: 'budget');
+
+    // Insert directly without generating new cloudId or re-uploading
+    return into(budgets).insert(
+      BudgetsCompanion.insert(
+        cloudId: Value(budgetModel.cloudId),
+        walletId: budgetModel.wallet.id!,
+        categoryId: budgetModel.category.id!,
+        amount: budgetModel.amount,
+        startDate: budgetModel.startDate,
+        endDate: budgetModel.endDate,
+        isRoutine: budgetModel.isRoutine,
+        routinePeriod: Value(budgetModel.routinePeriod),
+        createdAt: Value(budgetModel.createdAt ?? DateTime.now()),
+        updatedAt: Value(budgetModel.updatedAt ?? DateTime.now()),
+      ),
+    );
+  }
+
+  /// Update a budget from cloud data (for sync pull operations)
+  /// This method does NOT re-upload to cloud
+  Future<bool> updateFromCloud(BudgetModel budgetModel) async {
+    if (budgetModel.cloudId == null) return false;
+    Log.d('Updating budget from cloud: ${budgetModel.cloudId}', label: 'budget');
+
+    // Find local budget by cloudId
+    final existingBudget = await getBudgetByCloudId(budgetModel.cloudId!);
+    if (existingBudget == null) return false;
+
+    final count = await (update(budgets)..where((b) => b.cloudId.equals(budgetModel.cloudId!)))
+        .write(
+          BudgetsCompanion(
+            walletId: Value(budgetModel.wallet.id!),
+            categoryId: Value(budgetModel.category.id!),
+            amount: Value(budgetModel.amount),
+            startDate: Value(budgetModel.startDate),
+            endDate: Value(budgetModel.endDate),
+            isRoutine: Value(budgetModel.isRoutine),
+            routinePeriod: Value(budgetModel.routinePeriod),
+            updatedAt: Value(budgetModel.updatedAt ?? DateTime.now()),
+          ),
+        );
+    return count > 0;
+  }
+
   // Get all budgets (for backup)
   Future<List<Budget>> getAllBudgets() {
     return select(budgets).get();
+  }
+
+  /// Repair stale wallet/category IDs on a budget record
+  /// Used when categories or wallets are re-created with new local IDs
+  Future<bool> repairBudgetIds(int budgetId, {int? walletId, int? categoryId}) async {
+    final updates = BudgetsCompanion(
+      walletId: walletId != null ? Value(walletId) : const Value.absent(),
+      categoryId: categoryId != null ? Value(categoryId) : const Value.absent(),
+    );
+    final count = await (update(budgets)..where((b) => b.id.equals(budgetId)))
+        .write(updates);
+    return count > 0;
   }
 
   // Update an existing budget
@@ -168,6 +267,7 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
             startDate: Value(budgetModel.startDate),
             endDate: Value(budgetModel.endDate),
             isRoutine: Value(budgetModel.isRoutine),
+            routinePeriod: Value(budgetModel.routinePeriod),
             updatedAt: Value(DateTime.now()),
           ),
         );
@@ -175,13 +275,35 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
 
     // 2. Upload to cloud (if sync available)
     if (success && _ref != null) {
-      try {
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-        await syncService.uploadBudget(budgetModel);
-      } catch (e, stack) {
-        Log.e('Failed to upload budget update to cloud: $e', label: 'sync');
-        Log.e('Stack: $stack', label: 'sync');
-        // Don't rethrow - local update succeeded
+      final syncService = _ref?.read(supabaseSyncServiceProvider);
+      if (syncService != null && syncService.isAuthenticated) {
+        try {
+          // CRITICAL FIX: Sync category dependency BEFORE uploading budget to prevent foreign key errors!
+          Log.d('🔍 [BUDGET UPDATE] Ensuring category exists on cloud before uploading budget...', label: 'sync');
+
+          // Sync category first if it has a cloudId
+          if (budgetModel.category.cloudId != null) {
+            try {
+              Log.d('📤 [CATEGORY SYNC] Force uploading category: ${budgetModel.category.title} (${budgetModel.category.cloudId})', label: 'sync');
+              await syncService.uploadCategory(budgetModel.category, forceUpload: true);
+              Log.d('✅ [CATEGORY SYNC] Category synced successfully', label: 'sync');
+            } catch (e) {
+              Log.w('⚠️ [CATEGORY SYNC] Failed to sync category (may already exist): $e', label: 'sync');
+              // Continue - category might already exist on cloud
+            }
+          } else {
+            Log.w('⚠️ [CATEGORY SYNC] Category has no cloudId, skipping sync', label: 'sync');
+          }
+
+          // Now upload budget update
+          Log.d('🚀 [BUDGET UPDATE] Uploading budget update...', label: 'sync');
+          await syncService.uploadBudget(budgetModel);
+          Log.d('✅ [BUDGET UPDATE] Budget update uploaded successfully', label: 'sync');
+        } catch (e, stack) {
+          Log.e('Failed to upload budget update to cloud: $e', label: 'sync');
+          Log.e('Stack: $stack', label: 'sync');
+          // Don't rethrow - local update succeeded
+        }
       }
     }
 
@@ -203,44 +325,88 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
 
     // 3. Delete from cloud
     if (count > 0 && _ref != null && budget != null) {
-      try {
-        final syncService = _ref.read(realtimeSyncServiceProvider);
-
-        if (budget.cloudId != null) {
-          // Method 1: Delete by cloudId (preferred)
-          Log.d('Deleting from cloud with cloudId: ${budget.cloudId}', label: 'budget');
-          await syncService.deleteBudgetFromCloud(budget.cloudId!);
-          Log.d('Successfully deleted from cloud by cloudId', label: 'budget');
-        } else if (budgetModel != null &&
-                   budgetModel.category.cloudId != null &&
-                   budgetModel.wallet.cloudId != null) {
-          // Method 2: Delete by matching fields (for budgets without cloudId)
-          Log.d('No cloudId, trying to delete from cloud by matching fields', label: 'budget');
-          final deleted = await syncService.deleteBudgetFromCloudByMatch(
-            categoryCloudId: budgetModel.category.cloudId!,
-            walletCloudId: budgetModel.wallet.cloudId!,
-            amount: budgetModel.amount,
-            startDate: budgetModel.startDate,
-            endDate: budgetModel.endDate,
-          );
-          if (deleted) {
-            Log.d('Successfully deleted from cloud by matching', label: 'budget');
+      final syncService = _ref?.read(supabaseSyncServiceProvider);
+      if (syncService != null && syncService.isAuthenticated) {
+        try {
+          if (budget.cloudId != null) {
+            // Method 1: Delete by cloudId (preferred)
+            Log.d('Deleting from cloud with cloudId: ${budget.cloudId}', label: 'budget');
+            await syncService.deleteBudgetFromCloud(budget.cloudId!);
+            Log.d('Successfully deleted from cloud by cloudId', label: 'budget');
+          } else if (budgetModel != null &&
+                     budgetModel.category.cloudId != null &&
+                     budgetModel.wallet.cloudId != null) {
+            // Method 2: Delete by matching fields (for budgets without cloudId)
+            Log.d('No cloudId, trying to delete from cloud by matching fields', label: 'budget');
+            final deleted = await syncService.deleteBudgetFromCloudByMatch(
+              categoryCloudId: budgetModel.category.cloudId!,
+              walletCloudId: budgetModel.wallet.cloudId!,
+              amount: budgetModel.amount,
+              startDate: budgetModel.startDate,
+              endDate: budgetModel.endDate,
+            );
+            if (deleted) {
+              Log.d('Successfully deleted from cloud by matching', label: 'budget');
+            } else {
+              Log.w('Could not find matching budget in cloud to delete', label: 'budget');
+            }
           } else {
-            Log.w('Could not find matching budget in cloud to delete', label: 'budget');
+            Log.w('Cannot delete from cloud: missing cloudId and category/wallet cloudIds', label: 'budget');
           }
-        } else {
-          Log.w('Cannot delete from cloud: missing cloudId and category/wallet cloudIds', label: 'budget');
+        } catch (e, stack) {
+          Log.e('Failed to delete budget from cloud: $e', label: 'sync');
+          Log.e('Stack: $stack', label: 'sync');
+          // Don't rethrow - local delete succeeded
         }
-      } catch (e, stack) {
-        Log.e('Failed to delete budget from cloud: $e', label: 'sync');
-        Log.e('Stack: $stack', label: 'sync');
-        // Don't rethrow - local delete succeeded
+      } else {
+        Log.w('Sync service not available or not authenticated', label: 'budget');
       }
-    } else {
-      Log.w('Skipping cloud delete: count=$count, ref=${_ref != null}, budget=${budget != null}', label: 'budget');
     }
 
     return count;
+  }
+
+  /// Check if a routine budget already exists for a given category+wallet in a specific month.
+  /// Used by BudgetRenewalService to prevent duplicate auto-creation.
+  Future<Budget?> getRoutineBudgetForMonth(
+    int walletId,
+    int categoryId,
+    int year,
+    int month,
+  ) {
+    final monthStart = DateTime(year, month, 1);
+    final monthEnd = DateTime(year, month + 1, 0); // last day of month
+    return (select(budgets)
+          ..where((b) =>
+              b.walletId.equals(walletId) &
+              b.categoryId.equals(categoryId) &
+              b.isRoutine.equals(true) &
+              b.startDate.isBiggerOrEqualValue(monthStart) &
+              b.endDate.isSmallerOrEqualValue(monthEnd)))
+        .getSingleOrNull();
+  }
+
+  /// Check if a routine budget already exists for a given category+wallet in a specific week.
+  /// Used by BudgetRenewalService to prevent duplicate auto-creation.
+  Future<Budget?> getRoutineBudgetForWeek(
+    int walletId,
+    int categoryId,
+    DateTime weekStart,
+    DateTime weekEnd,
+  ) {
+    return (select(budgets)
+          ..where((b) =>
+              b.walletId.equals(walletId) &
+              b.categoryId.equals(categoryId) &
+              b.isRoutine.equals(true) &
+              b.startDate.isBiggerOrEqualValue(weekStart) &
+              b.endDate.isSmallerOrEqualValue(weekEnd)))
+        .getSingleOrNull();
+  }
+
+  /// Get all routine budgets (for renewal service)
+  Future<List<Budget>> getRoutineBudgets() {
+    return (select(budgets)..where((b) => b.isRoutine.equals(true))).get();
   }
 
   // Helper method to get spent amount for a budget

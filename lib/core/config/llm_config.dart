@@ -1,8 +1,9 @@
 // LLM Configuration
-// Uses environment variables for API keys
+// Uses environment variables for API keys — NO hardcoded secrets
 // Supports: OpenAI, Gemini, and self-hosted vLLM/Ollama (OpenAI-compatible)
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Supported AI providers
 enum AIProvider {
@@ -70,22 +71,16 @@ class LLMDefaultConfig {
   }
 
   // Custom/Self-hosted LLM Configuration (vLLM, Ollama, etc.)
-  // These use OpenAI-compatible API format
-  // IMPORTANT: For mobile apps, user MUST set CUSTOM_LLM_ENDPOINT in .env
-  // to a publicly accessible URL (not localhost!)
   static String get customEndpoint {
     try {
-      // Try CUSTOM_LLM_ENDPOINT first, then fall back to BEXLY_FREE_AI_URL
       final envEndpoint = dotenv.env['CUSTOM_LLM_ENDPOINT'];
       if (envEndpoint != null && envEndpoint.isNotEmpty) {
         return envEndpoint;
       }
-      // Fallback to Bexly Free AI URL
       final bexlyFreeUrl = dotenv.env['BEXLY_FREE_AI_URL'];
       if (bexlyFreeUrl != null && bexlyFreeUrl.isNotEmpty) {
         return bexlyFreeUrl;
       }
-      // No default - user must configure their own endpoint
       return '';
     } catch (e) {
       return '';
@@ -94,7 +89,6 @@ class LLMDefaultConfig {
 
   static String get customApiKey {
     try {
-      // Try CUSTOM_LLM_API_KEY first, then fall back to BEXLY_FREE_AI_KEY
       final customKey = dotenv.env['CUSTOM_LLM_API_KEY'];
       if (customKey != null && customKey.isNotEmpty) {
         return customKey;
@@ -111,7 +105,6 @@ class LLMDefaultConfig {
 
   static String get customModel {
     try {
-      // Try CUSTOM_LLM_MODEL first, then fall back to BEXLY_FREE_AI_MODEL
       final customModel = dotenv.env['CUSTOM_LLM_MODEL'];
       if (customModel != null && customModel.isNotEmpty) {
         return customModel;
@@ -126,7 +119,33 @@ class LLMDefaultConfig {
     }
   }
 
-  /// Check if custom endpoint is configured (from env variable)
+  /// Timeout for custom LLM (DOS AI) in seconds
+  static int get customTimeoutSeconds {
+    try {
+      final timeout = dotenv.env['DOS_AI_TIMEOUT'];
+      if (timeout != null && timeout.isNotEmpty) {
+        return int.tryParse(timeout) ?? 5;
+      }
+      return 5;
+    } catch (e) {
+      return 5;
+    }
+  }
+
+  /// Timeout for custom LLM vision/OCR requests (longer than text)
+  static int get customVisionTimeoutSeconds {
+    try {
+      final timeout = dotenv.env['DOS_AI_VISION_TIMEOUT'];
+      if (timeout != null && timeout.isNotEmpty) {
+        return int.tryParse(timeout) ?? 30;
+      }
+      return 30;
+    } catch (e) {
+      return 30;
+    }
+  }
+
+  /// Check if custom endpoint is configured
   static bool get hasCustomEndpoint {
     try {
       final envEndpoint = dotenv.env['CUSTOM_LLM_ENDPOINT'];
@@ -138,5 +157,38 @@ class LLMDefaultConfig {
     } catch (e) {
       return false;
     }
+  }
+
+  // ==========================================================================
+  // Supabase Edge Function Proxy (for OpenAI/Gemini — keeps keys server-side)
+  // ==========================================================================
+
+  /// Proxy URL: Supabase Edge Function endpoint for AI requests
+  static String get proxyUrl {
+    try {
+      final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? 'https://dos.supabase.co';
+      return '$supabaseUrl/functions/v1/ai-proxy';
+    } catch (e) {
+      return 'https://dos.supabase.co/functions/v1/ai-proxy';
+    }
+  }
+
+  /// Current user's Supabase access token for proxy auth
+  static String? get proxyAccessToken {
+    try {
+      return Supabase.instance.client.auth.currentSession?.accessToken;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Proxy headers with JWT auth
+  static Map<String, String>? get proxyHeaders {
+    final token = proxyAccessToken;
+    if (token == null) return null;
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
   }
 }

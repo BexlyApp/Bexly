@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:bexly/core/services/notification_service.dart';
+import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:drift/drift.dart';
@@ -85,8 +87,10 @@ class FirebaseMessagingService {
       // Get FCM token
       _fcmToken = await _messaging.getToken();
       if (_fcmToken != null) {
-        print('✅ [FCM] Token received: $_fcmToken');
-        Log.i('FCM Token: $_fcmToken', label: 'FCM');
+        print('✅ [FCM] Token received');
+        if (kDebugMode) {
+          Log.i('FCM Token: $_fcmToken', label: 'FCM');
+        }
       } else {
         print('❌ [FCM] Token is NULL!');
       }
@@ -94,7 +98,9 @@ class FirebaseMessagingService {
       // Listen for token refresh
       _messaging.onTokenRefresh.listen((newToken) {
         _fcmToken = newToken;
-        Log.i('FCM Token refreshed: $newToken', label: 'FCM');
+        if (kDebugMode) {
+          Log.i('FCM Token refreshed: $newToken', label: 'FCM');
+        }
         // Update token in Firestore
         _updateTokenInFirestore(newToken);
       });
@@ -192,7 +198,11 @@ class FirebaseMessagingService {
     }
 
     try {
-      await FirebaseFirestore.instance
+      final firestore = FirebaseFirestore.instanceFor(
+        app: FirebaseInitService.bexlyApp,
+        databaseId: 'bexly',
+      );
+      await firestore
           .collection('users')
           .doc(userId)
           .set({
@@ -223,7 +233,11 @@ class FirebaseMessagingService {
   /// Delete FCM token from Firestore (for logout)
   static Future<void> deleteTokenFromFirestore(String userId) async {
     try {
-      await FirebaseFirestore.instance
+      final firestore = FirebaseFirestore.instanceFor(
+        app: FirebaseInitService.bexlyApp,
+        databaseId: 'bexly',
+      );
+      await firestore
           .collection('users')
           .doc(userId)
           .update({

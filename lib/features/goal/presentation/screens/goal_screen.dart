@@ -6,7 +6,8 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
-import 'package:bexly/core/localization/app_localizations.dart';
+import 'package:bexly/core/extensions/screen_utils_extensions.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/features/goal/presentation/components/goal_card.dart';
 import 'package:bexly/features/goal/presentation/riverpod/goals_list_provider.dart';
 import 'package:bexly/features/goal/presentation/screens/goal_form_dialog.dart';
@@ -16,16 +17,19 @@ class GoalScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = context.l10n;
     final asyncGoals = ref.watch(goalsListProvider);
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          context.openBottomSheet(child: GoalFormDialog());
-        },
-        child: HugeIcon(icon: HugeIcons.strokeRoundedPlusSign),
-      ),
+      // Hide FAB on desktop - use sidebar button instead
+      floatingActionButton: context.isDesktopLayout
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                context.openBottomSheet(child: GoalFormDialog());
+              },
+              child: HugeIcon(icon: HugeIcons.strokeRoundedPlusSign),
+            ),
       body: asyncGoals.when(
         data: (goals) {
           if (goals.isEmpty) {

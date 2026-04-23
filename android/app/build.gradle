@@ -22,7 +22,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.joy.bexly"
     compileSdk = 36
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         coreLibraryDesugaringEnabled true
@@ -51,13 +51,9 @@ android {
     }
 
     signingConfigs {
+        // Debug uses default debug keystore (SHA-1: 79:CF:10:6C:1D:4C:E7:B1:7D:6C:CF:FC:25:E5:E1:DE:18:C1:59:C7)
+        // which is registered in dos-me Firebase project
         if (keystorePropertiesFile.exists()) {
-            debug {
-                storeFile file(keystoreProperties['storeFile'])
-                storePassword keystoreProperties['storePassword']
-                keyAlias keystoreProperties['keyAlias']
-                keyPassword keystoreProperties['keyPassword']
-            }
             release {
                 storeFile file(keystoreProperties['storeFile'])
                 storePassword keystoreProperties['storePassword']
@@ -69,9 +65,7 @@ android {
 
     buildTypes {
         debug {
-            if (keystorePropertiesFile.exists()) {
-                signingConfig = signingConfigs.debug
-            }
+            // Uses default debug keystore automatically
         }
         release {
             // TODO: Add your own signing config for the release build.
@@ -79,12 +73,13 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.release
             }
-            // Disable code shrinking/minification to prevent HugeIcons crash
-            minifyEnabled false
-            shrinkResources false
-            // Disable native debug symbol stripping for bundle builds
+            // Enable R8 code shrinking for smaller APK and obfuscation
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Include native debug symbols for Play Console crash reporting
             ndk {
-                debugSymbolLevel = 'NONE'
+                debugSymbolLevel = 'SYMBOL_TABLE'
             }
         }
     }
@@ -105,6 +100,8 @@ flutter {
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
     implementation 'androidx.compose.material:material:1.8.2'
+    // Material Components for Stripe SDK
+    implementation 'com.google.android.material:material:1.12.0'
     // Import the Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:34.2.0"))
 

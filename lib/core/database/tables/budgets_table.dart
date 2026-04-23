@@ -21,6 +21,9 @@ class Budgets extends Table {
   DateTimeColumn get endDate => dateTime()();
   BoolColumn get isRoutine => boolean()();
 
+  /// Routine period: 'weekly', 'monthly', or null (one-time)
+  TextColumn get routinePeriod => text().nullable()();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -37,6 +40,7 @@ extension BudgetExtension on Budget {
       startDate: DateTime.parse(json['startDate'] as String),
       endDate: DateTime.parse(json['endDate'] as String),
       isRoutine: json['isRoutine'] as bool,
+      routinePeriod: json['routinePeriod'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -58,6 +62,7 @@ extension BudgetTableExtensions on Budget {
       startDate: startDate,
       endDate: endDate,
       isRoutine: isRoutine,
+      routinePeriod: routinePeriod,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -78,6 +83,7 @@ extension BudgetModelExtensions on BudgetModel {
       startDate: Value(startDate),
       endDate: Value(endDate),
       isRoutine: Value(isRoutine),
+      routinePeriod: routinePeriod != null ? Value(routinePeriod) : const Value(null),
       createdAt: createdAt != null
           ? Value(createdAt!)
           : (isInsert ? Value(DateTime.now()) : const Value.absent()),

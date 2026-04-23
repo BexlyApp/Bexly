@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:bexly/core/components/form_fields/custom_text_field.dart';
+import 'package:bexly/core/config/number_format_config.dart';
 import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/features/currency_picker/data/sources/currency_local_source.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
@@ -23,6 +24,7 @@ class CustomNumericField extends ConsumerWidget {
   final bool isRequired;
   final bool autofocus;
   final bool enabled;
+  final bool allowNegative; // Allow negative numbers (for credit card debt)
   final ValueChanged<String>? onChanged;
 
   const CustomNumericField({
@@ -40,6 +42,7 @@ class CustomNumericField extends ConsumerWidget {
     this.isRequired = false,
     this.autofocus = false,
     this.enabled = true,
+    this.allowNegative = false, // Default to not allowing negative
     this.onChanged,
   });
 
@@ -59,6 +62,11 @@ class CustomNumericField extends ConsumerWidget {
         '${appendCurrencySymbolToHint ? defaultCurrency : ''} ${this.hint ?? ''}'
             .trim();
 
+    // Get locale-aware separators
+    final thousandSep = NumberFormatConfig.thousandSeparator;
+    final decimalSep = NumberFormatConfig.decimalSeparator;
+    final locale = NumberFormatConfig.locale;
+
     var lastFormattedValue = '';
 
     void handleTextChanged(String value) {
@@ -70,8 +78,19 @@ class CustomNumericField extends ConsumerWidget {
           .replaceAll(' ', '')
           .trim();
 
-      // Replace commas (thousand separator) with empty for parsing
-      sanitizedValue = sanitizedValue.replaceAll(',', '');
+      // Check for negative sign
+      bool isNegative = sanitizedValue.startsWith('-');
+      if (isNegative) {
+        sanitizedValue = sanitizedValue.substring(1); // Remove - for processing
+      }
+
+      // Remove thousand separators for parsing
+      sanitizedValue = sanitizedValue.replaceAll(thousandSep, '');
+
+      // Normalize decimal separator to '.' for parsing
+      if (decimalSep != '.') {
+        sanitizedValue = sanitizedValue.replaceAll(decimalSep, '.');
+      }
 
       // Split into integer and decimal parts
       List<String> parts = sanitizedValue.split('.');
@@ -83,28 +102,34 @@ class CustomNumericField extends ConsumerWidget {
         decimalPart = decimalPart.substring(0, 2);
       }
 
-      // Format the integer part with thousand separator
-      final formatter = NumberFormat("#,##0", "en_US");
-      String formattedInteger = integerPart.isNotEmpty
-          ? formatter.format(int.parse(integerPart))
-          : '';
-
-      // Combine integer and decimal parts
-      // Only add decimal point if user explicitly typed it or there are decimal digits
-      String formattedValue;
-      if (decimalPart.isNotEmpty) {
-        // User has decimal digits
-        formattedValue = "$defaultCurrency $formattedInteger.$decimalPart";
-      } else if (parts.length == 2 && sanitizedValue.endsWith('.')) {
-        // User typed a dot but no decimal digits yet
-        formattedValue = "$defaultCurrency $formattedInteger.";
-      } else {
-        // No decimal point
-        formattedValue = "$defaultCurrency $formattedInteger";
+      // Format the integer part with locale-aware thousand separator
+      final formatter = NumberFormat("#,##0", locale);
+      String formattedInteger = '';
+      if (integerPart.isNotEmpty) {
+        final parsed = int.tryParse(integerPart);
+        if (parsed != null) {
+          formattedInteger = formatter.format(parsed);
+        }
       }
 
-      if (formattedInteger.isEmpty) {
-        formattedValue = '';
+      // Add negative sign back if needed
+      String negativePrefix = isNegative && allowNegative ? '-' : '';
+
+      // Combine integer and decimal parts
+      // Always show currency symbol when there's any input
+      String formattedValue;
+      if (formattedInteger.isEmpty && decimalPart.isEmpty) {
+        // Completely empty — show nothing (or just negative prefix)
+        formattedValue = negativePrefix.isNotEmpty ? '$defaultCurrency $negativePrefix' : '';
+      } else if (decimalPart.isNotEmpty) {
+        // User has decimal digits
+        formattedValue = "$defaultCurrency $negativePrefix$formattedInteger$decimalSep$decimalPart";
+      } else if (parts.length == 2 && sanitizedValue.endsWith('.')) {
+        // User typed a decimal separator but no decimal digits yet
+        formattedValue = "$defaultCurrency $negativePrefix$formattedInteger$decimalSep";
+      } else {
+        // Integer only
+        formattedValue = "$defaultCurrency $negativePrefix$formattedInteger";
       }
 
       // Avoid infinite loop
@@ -117,24 +142,33 @@ class CustomNumericField extends ConsumerWidget {
           selection: TextSelection.collapsed(offset: formattedValue.length),
         );
 
-        // Notify parent widget with the raw numeric value
-        onChanged?.call(sanitizedValue);
+        // Notify parent widget with the raw numeric value (including negative sign)
+        // Raw value uses '.' as decimal separator for consistent parsing
+        final rawNumeric = decimalPart.isNotEmpty ? '$integerPart.$decimalPart' : integerPart;
+        final rawValue = isNegative && allowNegative ? '-$rawNumeric' : rawNumeric;
+        onChanged?.call(rawValue);
       }
     }
+
+    // Use currency symbol as prefix icon when useSelectedCurrency is true
+    final effectiveIcon = useSelectedCurrency
+        ? Text(
+            defaultCurrency,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+          )
+        : icon;
 
     return CustomTextField(
       controller: controller,
       label: label,
-      prefixIcon: icon,
+      prefixIcon: effectiveIcon,
       hint: hint,
       textInputAction: TextInputAction.done,
       suffixIcon: suffixIcon,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: TextInputType.numberWithOptions(decimal: true, signed: allowNegative),
       inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
-        SingleDotInputFormatter(),
-        DecimalInputFormatter(),
-        LengthLimitingTextInputFormatter(12),
+        // Only limit length — handleTextChanged does all formatting/validation
+        LengthLimitingTextInputFormatter(20),
       ],
       onChanged: handleTextChanged,
       isRequired: isRequired,
@@ -144,14 +178,17 @@ class CustomNumericField extends ConsumerWidget {
   }
 }
 
-class SingleDotInputFormatter extends TextInputFormatter {
+class SingleSeparatorInputFormatter extends TextInputFormatter {
+  final String decimalSeparator;
+  const SingleSeparatorInputFormatter(this.decimalSeparator);
+
   @override
   TextEditingValue formatEditUpdate(
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Check if the new input contains more than one dot
-    if (newValue.text.split('.').length > 2) {
+    // Check if the new input contains more than one decimal separator
+    if (newValue.text.split(decimalSeparator).length > 2) {
       return oldValue; // Reject the new input
     }
     return newValue;
@@ -159,6 +196,9 @@ class SingleDotInputFormatter extends TextInputFormatter {
 }
 
 class DecimalInputFormatter extends TextInputFormatter {
+  final String decimalSeparator;
+  const DecimalInputFormatter(this.decimalSeparator);
+
   @override
   TextEditingValue formatEditUpdate(
     TextEditingValue oldValue,
@@ -166,11 +206,38 @@ class DecimalInputFormatter extends TextInputFormatter {
   ) {
     final text = newValue.text;
 
-    // Allow only numbers, a single dot, and two digits after the dot
-    final regex = RegExp(r'^\d*\.?\d{0,2}$');
+    // Strip any non-numeric prefix (currency symbol + spaces) for validation
+    final stripped = text.replaceAll(RegExp(r'[^\d.,\-]'), '');
+    if (stripped.isEmpty) return newValue;
 
-    if (!regex.hasMatch(text)) {
+    final escapedSep = RegExp.escape(decimalSeparator);
+
+    // Allow only numbers, thousand separators, a single decimal separator, and two digits after it
+    // Also allow optional leading minus sign
+    final regex = RegExp('^-?[\\d${RegExp.escape(',')}]*$escapedSep?\\d{0,2}\$');
+
+    if (!regex.hasMatch(stripped)) {
       return oldValue; // Reject invalid input
+    }
+
+    return newValue;
+  }
+}
+
+class LeadingMinusInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+
+    // Count minus signs in the text
+    final minusCount = text.split('').where((c) => c == '-').length;
+
+    // Reject if more than one minus, or minus is not at the start
+    if (minusCount > 1 || (minusCount == 1 && !text.startsWith('-'))) {
+      return oldValue;
     }
 
     return newValue;

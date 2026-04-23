@@ -3,10 +3,10 @@ import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/daos/chat_message_dao.dart';
 
-// Provider for ChatMessageDao
+// Provider for ChatMessageDao with Supabase sync support
 final chatMessageDaoProvider = Provider<ChatMessageDao>((ref) {
   final db = ref.watch(databaseProvider);
-  return db.chatMessageDao;
+  return ChatMessageDao(db, ref); // Pass Ref for Supabase sync
 });
 
 // Stream provider for all chat messages from database

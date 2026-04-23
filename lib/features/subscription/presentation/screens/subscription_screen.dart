@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
@@ -15,80 +14,115 @@ class SubscriptionScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final subscriptionState = ref.watch(subscriptionProvider);
-    final notifier = ref.read(subscriptionProvider.notifier);
     final l10n = context.l10n;
+    final currentTier = subscriptionState.tier;
+    final notifier = ref.read(subscriptionProvider.notifier);
+
+    // Build plan data list
+    final plans = [
+      _PlanData(
+        tier: SubscriptionTier.free,
+        title: 'Free',
+        subtitle: 'Get started for free',
+        monthlyPrice: '\$0',
+        yearlyPrice: '\$0',
+        features: const [
+          '2 wallets, 2 budgets, 2 goals',
+          '20 AI messages/month',
+          '30 days analytics',
+          'Basic reports',
+          'Contains ads',
+        ],
+        accentColor: AppColors.neutral500,
+        monthlyProductId: '',
+        yearlyProductId: '',
+      ),
+      _PlanData(
+        tier: SubscriptionTier.plus,
+        title: 'Plus',
+        subtitle: 'Best for couples',
+        monthlyPrice: notifier.getPrice(SubscriptionProducts.plusMonthly) ?? '\$1.99',
+        yearlyPrice: notifier.getPrice(SubscriptionProducts.plusYearly) ?? '\$19.99',
+        features: const [
+          '✨ All Free features, plus:',
+          'Unlimited wallets, budgets & goals',
+          '240 AI messages/month',
+          '6 months analytics',
+          'Receipt scanning (1 year storage)',
+          'Email sync (1 account)',
+          'Family sharing (2 members)',
+          'Ad-free',
+        ],
+        accentColor: AppColors.primary500,
+        monthlyProductId: SubscriptionProducts.plusMonthly,
+        yearlyProductId: SubscriptionProducts.plusYearly,
+      ),
+      _PlanData(
+        tier: SubscriptionTier.pro,
+        title: 'Pro',
+        subtitle: 'Best for power users',
+        monthlyPrice: notifier.getPrice(SubscriptionProducts.proMonthly) ?? '\$3.99',
+        yearlyPrice: notifier.getPrice(SubscriptionProducts.proYearly) ?? '\$39.99',
+        features: const [
+          '✨ All Plus features, plus:',
+          'Unlimited AI messages',
+          'Full analytics history',
+          'Receipt scanning (3 years storage)',
+          'Email sync (3 accounts)',
+          'Family sharing (5 members, Editor role)',
+          'AI insights & predictions',
+          'Priority support',
+        ],
+        accentColor: AppColors.purple,
+        isRecommended: true,
+        monthlyProductId: SubscriptionProducts.proMonthly,
+        yearlyProductId: SubscriptionProducts.proYearly,
+      ),
+    ];
+
+    // Sort plans: current plan first, then by tier index
+    plans.sort((a, b) {
+      if (a.tier == currentTier) return -1;
+      if (b.tier == currentTier) return 1;
+      return a.tier.index.compareTo(b.tier.index);
+    });
 
     return CustomScaffold(
       context: context,
       title: l10n.subscription,
       showBackButton: true,
       showBalance: false,
-      body: subscriptionState.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.spacing20),
+      body: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.spacing16),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Current plan banner
-                  _CurrentPlanBanner(tier: subscriptionState.tier),
-                  const Gap(AppSpacing.spacing24),
+                  // Plans
+                  ...plans.map((plan) {
+                    final isCurrentPlan = plan.tier == currentTier;
+                    final isUpgrade = plan.tier.index > currentTier.index;
 
-                  // Free tier info (always show)
-                  _FreeTierCard(
-                    isCurrentPlan: subscriptionState.tier == SubscriptionTier.free,
-                  ),
-                  const Gap(AppSpacing.spacing16),
-
-                  // Plan cards
-                  _PlanCard(
-                    title: 'Plus',
-                    monthlyPrice: notifier.getPrice(SubscriptionProducts.plusMonthly) ?? '\$2.99',
-                    yearlyPrice: notifier.getPrice(SubscriptionProducts.plusYearly) ?? '\$29.99',
-                    features: [
-                      l10n.unlimitedWallets,
-                      l10n.unlimitedBudgetsGoals,
-                      l10n.unlimitedRecurring,
-                      l10n.aiMessagesPerMonth,
-                      l10n.sixMonthsAnalytics,
-                      l10n.multiCurrencySupport,
-                      l10n.cloudSync,
-                      l10n.receiptPhotos1GB,
-                    ],
-                    isCurrentPlan: subscriptionState.tier == SubscriptionTier.plus,
-                    accentColor: AppColors.primary500,
-                    onMonthlyTap: subscriptionState.tier.index < SubscriptionTier.plus.index
-                        ? () => _purchase(context, ref, SubscriptionProducts.plusMonthly)
-                        : null,
-                    onYearlyTap: subscriptionState.tier.index < SubscriptionTier.plus.index
-                        ? () => _purchase(context, ref, SubscriptionProducts.plusYearly)
-                        : null,
-                  ),
-                  const Gap(AppSpacing.spacing16),
-
-                  _PlanCard(
-                    title: 'Pro',
-                    monthlyPrice: notifier.getPrice(SubscriptionProducts.proMonthly) ?? '\$5.99',
-                    yearlyPrice: notifier.getPrice(SubscriptionProducts.proYearly) ?? '\$59.99',
-                    features: [
-                      l10n.everythingInPlus,
-                      l10n.unlimitedAiMessages,
-                      l10n.fullAnalyticsHistory,
-                      l10n.unlimitedReceiptStorage,
-                      l10n.ocrReceiptScanning,
-                      l10n.prioritySupport,
-                    ],
-                    isCurrentPlan: subscriptionState.tier == SubscriptionTier.pro,
-                    accentColor: AppColors.purple,
-                    isRecommended: true,
-                    onMonthlyTap: subscriptionState.tier.index < SubscriptionTier.pro.index
-                        ? () => _purchase(context, ref, SubscriptionProducts.proMonthly)
-                        : null,
-                    onYearlyTap: subscriptionState.tier.index < SubscriptionTier.pro.index
-                        ? () => _purchase(context, ref, SubscriptionProducts.proYearly)
-                        : null,
-                  ),
-                  const Gap(AppSpacing.spacing24),
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.spacing16),
+                      child: _PlanCard(
+                        title: plan.title,
+                        subtitle: plan.subtitle,
+                        monthlyPrice: plan.monthlyPrice,
+                        yearlyPrice: plan.yearlyPrice,
+                        features: plan.features,
+                        isCurrentPlan: isCurrentPlan,
+                        isUpgrade: isUpgrade,
+                        accentColor: plan.accentColor,
+                        isRecommended: plan.isRecommended && !isCurrentPlan,
+                        monthlyProductId: plan.monthlyProductId,
+                        yearlyProductId: plan.yearlyProductId,
+                        onPurchase: !isCurrentPlan
+                            ? (productId) => _purchase(context, ref, productId)
+                            : null,
+                      ),
+                    );
+                  }),
 
                   // Restore purchases button
                   Center(
@@ -97,10 +131,10 @@ class SubscriptionScreen extends ConsumerWidget {
                       child: Text(l10n.restorePurchases),
                     ),
                   ),
-                  const Gap(AppSpacing.spacing16),
 
                   // Error message
-                  if (subscriptionState.error != null)
+                  if (subscriptionState.error != null) ...[
+                    const Gap(AppSpacing.spacing12),
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.spacing12),
                       decoration: BoxDecoration(
@@ -109,17 +143,19 @@ class SubscriptionScreen extends ConsumerWidget {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: AppColors.red),
+                          const Icon(Icons.error_outline, color: AppColors.red, size: 18),
                           const Gap(AppSpacing.spacing8),
                           Expanded(
                             child: Text(
                               subscriptionState.error!,
-                              style: AppTextStyles.body3.copyWith(color: AppColors.red),
+                              style: AppTextStyles.body4.copyWith(color: AppColors.red),
                             ),
                           ),
                         ],
                       ),
                     ),
+                  ],
+                  const Gap(AppSpacing.spacing16),
                 ],
               ),
             ),
@@ -127,12 +163,7 @@ class SubscriptionScreen extends ConsumerWidget {
   }
 
   Future<void> _purchase(BuildContext context, WidgetRef ref, String productId) async {
-    final success = await ref.read(subscriptionProvider.notifier).purchase(productId);
-    if (success && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.purchaseSuccessful)),
-      );
-    }
+    await ref.read(subscriptionProvider.notifier).purchase(productId);
   }
 
   Future<void> _restorePurchases(BuildContext context, WidgetRef ref) async {
@@ -145,170 +176,186 @@ class SubscriptionScreen extends ConsumerWidget {
   }
 }
 
-class _CurrentPlanBanner extends StatelessWidget {
+/// Data class for plan information
+class _PlanData {
   final SubscriptionTier tier;
-
-  const _CurrentPlanBanner({required this.tier});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = _getTierColors(tier);
-    final l10n = context.l10n;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.spacing16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [colors.$1, colors.$2],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              HugeIcon(
-                icon: _getTierIcon(tier),
-                color: Colors.white,
-                size: 20,
-              ),
-              const Gap(AppSpacing.spacing8),
-              Text(
-                l10n.currentPlan,
-                style: AppTextStyles.body4.copyWith(
-                  color: Colors.white70,
-                ),
-              ),
-            ],
-          ),
-          const Gap(AppSpacing.spacing4),
-          Text(
-            'Bexly ${tier.displayName}',
-            style: AppTextStyles.heading5.copyWith(
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  (Color, Color) _getTierColors(SubscriptionTier tier) {
-    switch (tier) {
-      case SubscriptionTier.free:
-        return (AppColors.neutral600, AppColors.neutral800);
-      case SubscriptionTier.plus:
-        return (AppColors.primary400, AppColors.primary700);
-      case SubscriptionTier.pro:
-        return (AppColors.purple400, AppColors.purple700);
-    }
-  }
-
-  dynamic _getTierIcon(SubscriptionTier tier) {
-    switch (tier) {
-      case SubscriptionTier.free:
-        return HugeIcons.strokeRoundedUser as dynamic;
-      case SubscriptionTier.plus:
-        return HugeIcons.strokeRoundedCrown as dynamic;
-      case SubscriptionTier.pro:
-        return HugeIcons.strokeRoundedDiamond01 as dynamic;
-    }
-  }
-}
-
-class _PlanCard extends StatelessWidget {
   final String title;
+  final String subtitle;
   final String monthlyPrice;
   final String yearlyPrice;
   final List<String> features;
-  final bool isCurrentPlan;
-  final bool isRecommended;
   final Color accentColor;
-  final VoidCallback? onMonthlyTap;
-  final VoidCallback? onYearlyTap;
+  final bool isRecommended;
+  final String monthlyProductId;
+  final String yearlyProductId;
 
-  const _PlanCard({
+  _PlanData({
+    required this.tier,
     required this.title,
+    required this.subtitle,
     required this.monthlyPrice,
     required this.yearlyPrice,
     required this.features,
     required this.accentColor,
-    this.isCurrentPlan = false,
     this.isRecommended = false,
-    this.onMonthlyTap,
-    this.onYearlyTap,
+    required this.monthlyProductId,
+    required this.yearlyProductId,
   });
+}
+
+class _PlanCard extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final String monthlyPrice;
+  final String yearlyPrice;
+  final List<String> features;
+  final bool isCurrentPlan;
+  final bool isUpgrade;
+  final bool isRecommended;
+  final Color accentColor;
+  final String monthlyProductId;
+  final String yearlyProductId;
+  final void Function(String productId)? onPurchase;
+
+  const _PlanCard({
+    required this.title,
+    required this.subtitle,
+    required this.monthlyPrice,
+    required this.yearlyPrice,
+    required this.features,
+    required this.accentColor,
+    required this.monthlyProductId,
+    required this.yearlyProductId,
+    this.isCurrentPlan = false,
+    this.isUpgrade = true,
+    this.isRecommended = false,
+    this.onPurchase,
+  });
+
+  @override
+  State<_PlanCard> createState() => _PlanCardState();
+}
+
+class _PlanCardState extends State<_PlanCard> {
+  bool _isYearly = true;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = context.l10n;
 
+    // Determine price to show in header
+    final displayPrice = _isYearly ? widget.yearlyPrice : widget.monthlyPrice;
+    final priceSuffix = _isYearly ? l10n.perYear : l10n.perMonth;
+
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.neutral950 : Colors.white,
+        color: isDark ? AppColors.neutral900 : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isCurrentPlan ? accentColor : (isDark ? AppColors.neutral800 : AppColors.neutral200),
-          width: isCurrentPlan ? 2 : 1,
+          color: isDark ? AppColors.neutral800 : AppColors.neutral200,
         ),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withAlpha(10),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header with title, subtitle, and price
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(AppSpacing.spacing16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.spacing16,
+              vertical: AppSpacing.spacing12,
+            ),
             decoration: BoxDecoration(
-              color: accentColor.withAlpha(isDark ? 40 : 20),
+              color: widget.accentColor.withAlpha(isDark ? 30 : 15),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: AppTextStyles.heading6.copyWith(
-                    color: accentColor,
+                // Left: Title and subtitle
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            widget.title,
+                            style: AppTextStyles.heading6.copyWith(color: widget.accentColor),
+                          ),
+                          if (widget.isRecommended) ...[
+                            const Gap(8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: widget.accentColor,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                l10n.bestValue,
+                                style: AppTextStyles.body5.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      Text(
+                        widget.subtitle,
+                        style: AppTextStyles.body5.copyWith(
+                          color: isDark ? AppColors.neutral400 : AppColors.neutral600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                if (isRecommended)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.spacing8,
-                      vertical: AppSpacing.spacing4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: accentColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      l10n.bestValue,
-                      style: AppTextStyles.body5.copyWith(
-                        color: Colors.white,
+
+                // Right: Price (for non-free plans)
+                if (widget.title != 'Free')
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        displayPrice,
+                        style: AppTextStyles.heading5.copyWith(
+                          color: widget.accentColor,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                  ),
-                if (isCurrentPlan)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.spacing8,
-                      vertical: AppSpacing.spacing4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: accentColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      l10n.current,
-                      style: AppTextStyles.body5.copyWith(
-                        color: Colors.white,
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Text(
+                          priceSuffix,
+                          style: AppTextStyles.body3.copyWith(
+                            color: isDark ? AppColors.neutral400 : AppColors.neutral500,
+                          ),
+                        ),
                       ),
+                    ],
+                  )
+                else
+                  Text(
+                    '\$0',
+                    style: AppTextStyles.heading5.copyWith(
+                      color: widget.accentColor,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
               ],
@@ -321,242 +368,138 @@ class _PlanCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ...features.map((feature) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.spacing8),
+                ...widget.features.map((feature) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          HugeIcon(
-                            icon: HugeIcons.strokeRoundedCheckmarkCircle02 as dynamic,
-                            color: accentColor,
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: widget.accentColor,
                             size: 18,
                           ),
                           const Gap(AppSpacing.spacing8),
                           Expanded(
                             child: Text(
                               feature,
-                              style: AppTextStyles.body3,
+                              style: AppTextStyles.body3.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     )),
+
                 const Gap(AppSpacing.spacing12),
 
-                // Price buttons
-                if (!isCurrentPlan) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _PriceButton(
-                          price: monthlyPrice,
-                          period: l10n.perMonth,
-                          onTap: onMonthlyTap,
-                          accentColor: accentColor,
-                        ),
-                      ),
-                      const Gap(AppSpacing.spacing12),
-                      Expanded(
-                        child: _PriceButton(
-                          price: yearlyPrice,
-                          period: l10n.perYear,
-                          onTap: onYearlyTap,
-                          accentColor: accentColor,
-                          isPrimary: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PriceButton extends StatelessWidget {
-  final String price;
-  final String period;
-  final VoidCallback? onTap;
-  final Color accentColor;
-  final bool isPrimary;
-
-  const _PriceButton({
-    required this.price,
-    required this.period,
-    required this.accentColor,
-    this.onTap,
-    this.isPrimary = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Material(
-      color: isPrimary ? accentColor : (isDark ? accentColor.withAlpha(30) : accentColor.withAlpha(20)),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            vertical: AppSpacing.spacing12,
-            horizontal: AppSpacing.spacing8,
-          ),
-          child: Column(
-            children: [
-              Text(
-                price,
-                style: AppTextStyles.body2.copyWith(
-                  color: isPrimary ? Colors.white : accentColor,
-                ),
-              ),
-              Text(
-                period,
-                style: AppTextStyles.body5.copyWith(
-                  color: isPrimary ? Colors.white70 : accentColor.withAlpha(180),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FreeTierCard extends StatelessWidget {
-  final bool isCurrentPlan;
-
-  const _FreeTierCard({required this.isCurrentPlan});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final l10n = context.l10n;
-    const accentColor = AppColors.neutral500;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.neutral950 : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isCurrentPlan ? accentColor : (isDark ? AppColors.neutral800 : AppColors.neutral200),
-          width: isCurrentPlan ? 2 : 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(AppSpacing.spacing16),
-            decoration: BoxDecoration(
-              color: accentColor.withAlpha(isDark ? 40 : 20),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    HugeIcon(
-                      icon: HugeIcons.strokeRoundedUser as dynamic,
-                      color: accentColor,
-                      size: 20,
-                    ),
-                    const Gap(AppSpacing.spacing8),
-                    Text(
-                      'Free',
-                      style: AppTextStyles.heading6.copyWith(
-                        color: accentColor,
-                      ),
-                    ),
-                  ],
-                ),
-                if (isCurrentPlan)
+                // Monthly/Yearly toggle (only for non-current, non-free plans)
+                if (!widget.isCurrentPlan && widget.title != 'Free') ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.spacing8,
-                      vertical: AppSpacing.spacing4,
-                    ),
+                    padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: accentColor,
-                      borderRadius: BorderRadius.circular(8),
+                      color: isDark ? AppColors.neutral800 : AppColors.neutral100,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text(
-                      l10n.current,
-                      style: AppTextStyles.body5.copyWith(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // Features
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.spacing16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedWallet01 as dynamic,
-                  text: '3 wallets',
-                ),
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedChartRose as dynamic,
-                  text: '2 budgets & 2 goals',
-                ),
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedRepeat as dynamic,
-                  text: '5 recurring transactions',
-                ),
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedAiBrain01 as dynamic,
-                  text: '20 AI messages/month (Standard)',
-                ),
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedAnalytics01 as dynamic,
-                  text: '3 months analytics history',
-                ),
-                _FreeTierFeatureRow(
-                  icon: HugeIcons.strokeRoundedCloud as dynamic,
-                  text: 'Basic cloud sync',
-                ),
-                const Gap(AppSpacing.spacing8),
-                // Ads notice
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.spacing12),
-                  decoration: BoxDecoration(
-                    color: AppColors.tertiaryAlpha10,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      HugeIcon(
-                        icon: HugeIcons.strokeRoundedNotification03 as dynamic,
-                        color: AppColors.tertiary700,
-                        size: 18,
-                      ),
-                      const Gap(AppSpacing.spacing8),
-                      Expanded(
-                        child: Text(
-                          'Contains ads',
-                          style: AppTextStyles.body4.copyWith(
-                            color: AppColors.tertiary700,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isYearly = false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: !_isYearly
+                                    ? (isDark ? AppColors.neutral700 : Colors.white)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: !_isYearly
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(10),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Monthly',
+                                  style: AppTextStyles.body4.copyWith(
+                                    fontWeight: !_isYearly ? FontWeight.w600 : FontWeight.w400,
+                                    color: !_isYearly
+                                        ? (isDark ? Colors.white : AppColors.neutral900)
+                                        : AppColors.neutral500,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isYearly = true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: _isYearly
+                                    ? (isDark ? AppColors.neutral700 : Colors.white)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: _isYearly
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(10),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Yearly',
+                                      style: AppTextStyles.body4.copyWith(
+                                        fontWeight: _isYearly ? FontWeight.w600 : FontWeight.w400,
+                                        color: _isYearly
+                                            ? (isDark ? Colors.white : AppColors.neutral900)
+                                            : AppColors.neutral500,
+                                      ),
+                                    ),
+                                    const Gap(4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.tertiary500,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '-17%',
+                                        style: AppTextStyles.body5.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 9,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const Gap(AppSpacing.spacing12),
+                ],
+
+                // Action button
+                _buildActionButton(context, isDark, l10n),
               ],
             ),
           ),
@@ -564,37 +507,76 @@ class _FreeTierCard extends StatelessWidget {
       ),
     );
   }
-}
 
-class _FreeTierFeatureRow extends StatelessWidget {
-  final dynamic icon;
-  final String text;
-
-  const _FreeTierFeatureRow({
-    required this.icon,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.spacing8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          HugeIcon(
-            icon: icon,
-            color: AppColors.neutral500,
-            size: 18,
-          ),
-          const Gap(AppSpacing.spacing8),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTextStyles.body3,
+  Widget _buildActionButton(BuildContext context, bool isDark, dynamic l10n) {
+    if (widget.isCurrentPlan) {
+      // Current plan - show disabled "Your Current Plan" button
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.neutral700 : AppColors.neutral200,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            'Your Current Plan',
+            style: AppTextStyles.body2.copyWith(
+              color: isDark ? AppColors.neutral400 : AppColors.neutral500,
+              fontWeight: FontWeight.w600,
             ),
           ),
-        ],
+        ),
+      );
+    }
+
+    // Free plan - no purchase button needed (downgrade happens automatically)
+    if (widget.title == 'Free') {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.neutral700 : AppColors.neutral200,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            'Cancel subscription to switch',
+            style: AppTextStyles.body3.copyWith(
+              color: isDark ? AppColors.neutral400 : AppColors.neutral500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Other plans - show upgrade/switch button
+    final buttonText = widget.isUpgrade
+        ? 'Upgrade to ${widget.title}'
+        : 'Switch to ${widget.title}';
+
+    return Material(
+      color: widget.accentColor,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: widget.onPurchase != null
+            ? () => widget.onPurchase!(
+                _isYearly ? widget.yearlyProductId : widget.monthlyProductId)
+            : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Center(
+            child: Text(
+              buttonText,
+              style: AppTextStyles.body2.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -11,9 +11,9 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/features/wallet/data/model/wallet_type.dart';
-import 'package:bexly/core/riverpod/auth_providers.dart';
 import 'package:bexly/core/services/device_location_service.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
@@ -21,13 +21,18 @@ import 'package:bexly/features/wallet/screens/wallet_form_bottom_sheet.dart';
 import 'package:bexly/features/onboarding/presentation/components/avatar_picker.dart';
 import 'package:bexly/features/currency_picker/presentation/riverpod/currency_picker_provider.dart';
 import 'package:bexly/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/core/services/auth/supabase_auth_service.dart';
 
-/// Notifier to hold display name (pre-filled with Firebase display name if available)
+/// Notifier to hold display name (pre-filled with Supabase display name if available)
 class DisplayNameNotifier extends Notifier<String> {
   @override
   String build() {
-    final firebaseDisplayName = ref.watch(userDisplayNameProvider);
-    return firebaseDisplayName ?? '';
+    // Try to get display name from Supabase auth
+    final authState = ref.watch(supabaseAuthServiceProvider);
+    if (authState.isAuthenticated) {
+      return authState.fullName ?? '';
+    }
+    return '';
   }
 
   void setDisplayName(String name) => state = name;
@@ -85,10 +90,6 @@ class OnboardingSlide3 extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch for Firebase user info
-    final firebaseDisplayName = ref.watch(userDisplayNameProvider);
-    final firebasePhotoUrl = ref.watch(userPhotoUrlProvider);
-
     final displayName = ref.watch(displayNameProvider);
     final wallet = ref.watch(activeWalletProvider).value;
 
@@ -108,29 +109,20 @@ class OnboardingSlide3 extends HookConsumerWidget {
       return null;
     }, []);
 
-    // Pre-fill name controller with Firebase display name
+    // Pre-fill name controller with display name from Supabase
     final nameController = useTextEditingController(
-      text: firebaseDisplayName ?? displayName,
+      text: displayName,
     );
 
-    // Update name controller if Firebase name changes
-    useEffect(() {
-      if (firebaseDisplayName != null && nameController.text.isEmpty) {
-        nameController.text = firebaseDisplayName;
-        ref.read(displayNameProvider.notifier).setDisplayName(firebaseDisplayName);
-      }
-      return null;
-    }, [firebaseDisplayName]);
-
     final walletText = wallet != null
-        ? '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}'
+        ? formatCurrency(wallet.balance.toPriceFormat(), wallet.currencyByIsoCode(ref).symbol, wallet.currency)
         : 'Tap to setup your first wallet';
 
     final walletTextController = useTextEditingController(text: walletText);
 
     useEffect(() {
       final newText = wallet != null
-          ? '${wallet.currencyByIsoCode(ref).symbol} ${wallet.balance.toPriceFormat()}'
+          ? formatCurrency(wallet.balance.toPriceFormat(), wallet.currencyByIsoCode(ref).symbol, wallet.currency)
           : 'Tap to setup your first wallet';
       if (walletTextController.text != newText) {
         walletTextController.text = newText;
@@ -153,9 +145,9 @@ class OnboardingSlide3 extends HookConsumerWidget {
           ),
           const Gap(AppSpacing.spacing12),
 
-          // Avatar Picker (will use Firebase photo URL if available)
+          // Avatar Picker (will use Supabase avatar URL if available)
           AvatarPicker(
-            initialImageUrl: firebasePhotoUrl,
+            initialImageUrl: ref.watch(supabaseAuthServiceProvider).avatarUrl,
           ),
           const Gap(AppSpacing.spacing12),
 
@@ -218,7 +210,7 @@ class OnboardingSlide3 extends HookConsumerWidget {
                     child: MenuTileButton(
                       label: w.name,
                       subtitle: Text(
-                        '${w.currencyByIsoCode(ref).symbol} ${w.balance.toPriceFormat()}',
+                        formatCurrency(w.balance.toPriceFormat(), w.currencyByIsoCode(ref).symbol, w.currency),
                         style: AppTextStyles.body3,
                       ),
                       icon: _getWalletIcon(w.walletType),

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_radius.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
-import 'package:bexly/core/router/routes.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
+import 'package:bexly/core/utils/desktop_dialog_helper.dart';
+import 'package:bexly/features/main/presentation/components/transaction_options_menu.dart';
 import 'package:bexly/features/main/presentation/riverpod/main_page_view_riverpod.dart';
+import 'package:bexly/features/planning/presentation/riverpod/planning_tab_provider.dart';
+import 'package:bexly/features/settings/presentation/screens/settings_screen.dart';
 
 class DesktopSidebar extends ConsumerWidget {
   static const double desktopSidebarWidth = 220.0; // Increased width for text
@@ -16,22 +19,20 @@ class DesktopSidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+
     return Container(
       width: desktopSidebarWidth, // Uses the updated width
       padding: const EdgeInsets.symmetric(
         vertical: AppSpacing.spacing16,
-        // horizontal: AppSpacing.spacing8, // ListTile will handle its own padding
       ),
       decoration: const BoxDecoration(color: AppColors.dark),
       child: Column(
-        // Using ListView for scrollability if items exceed height
-        // mainAxisAlignment: MainAxisAlignment.start, // Align items to the top
-        // crossAxisAlignment: CrossAxisAlignment.stretch, // Make ListTiles fill width
         children: <Widget>[
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'Home',
+            title: l10n.home,
             icon: HugeIcons.strokeRoundedHome01,
             pageIndex: 0,
             onTap: () => pageController.jumpToPage(0),
@@ -39,39 +40,112 @@ class DesktopSidebar extends ConsumerWidget {
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'Transactions',
-            icon: HugeIcons.strokeRoundedReceiptDollar,
+            title: l10n.aiChat,
+            icon: HugeIcons.strokeRoundedAiChat01,
             pageIndex: 1,
             onTap: () => pageController.jumpToPage(1),
           ),
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'Goals',
-            icon: HugeIcons.strokeRoundedTarget01,
+            title: l10n.history,
+            icon: HugeIcons.strokeRoundedReceiptDollar,
             pageIndex: 2,
             onTap: () => pageController.jumpToPage(2),
           ),
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'Budgets',
-            icon: HugeIcons.strokeRoundedDatabase,
+            title: l10n.recurring,
+            icon: Icons.repeat,
             pageIndex: 3,
             onTap: () => pageController.jumpToPage(3),
           ),
-          Spacer(),
           _buildSidebarItem(
             context: context,
             ref: ref,
-            title: 'New Transaction',
-            icon: HugeIcons.strokeRoundedAdd01,
+            title: l10n.goals,
+            icon: HugeIcons.strokeRoundedTarget01,
+            pageIndex: 4,
             onTap: () {
-              context.push(Routes.transactionForm);
+              // Set planning tab to Goals (index 1) before navigating
+              ref.read(planningTabProvider.notifier).setTab(1);
+              pageController.jumpToPage(4);
             },
+          ),
+          _buildSidebarItem(
+            context: context,
+            ref: ref,
+            title: l10n.budget,
+            icon: HugeIcons.strokeRoundedDatabase,
+            pageIndex: 4,
+            onTap: () {
+              // Set planning tab to Budgets (index 0) before navigating
+              ref.read(planningTabProvider.notifier).setTab(0);
+              pageController.jumpToPage(4);
+            },
+          ),
+          const Spacer(),
+          // Settings button at bottom - shows as dialog on desktop
+          _buildSidebarItem(
+            context: context,
+            ref: ref,
+            title: l10n.settings,
+            icon: HugeIcons.strokeRoundedSettings02,
+            onTap: () => _showSettingsDialog(context),
+          ),
+          const SizedBox(height: AppSpacing.spacing8),
+          // FAB-style button - opens action menu popup
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.spacing16,
+              vertical: AppSpacing.spacing8,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => const TransactionOptionsMenu(),
+                  );
+                },
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedAdd01,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                label: Text(
+                  l10n.addTransaction,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.spacing12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.radius12),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Show Settings screen as a dialog on desktop
+  void _showSettingsDialog(BuildContext context) {
+    DesktopDialogHelper.showDialogOnly(
+      context,
+      child: const SettingsScreen(),
     );
   }
 

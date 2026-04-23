@@ -1,0 +1,214 @@
+name: Android Build
+
+on:
+  workflow_run:
+    workflows: ["Auto Version Bump"]
+    types:
+      - completed
+    branches: [main]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Only run if triggered by workflow_dispatch, tag push, or if version-bump succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
+      - name: Setup swap space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 10
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Setup keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          # Decode keystore to android/app folder
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+
+          # Create keystore.properties (NOT key.properties) - this is what build.gradle reads
+          # storeFile path is relative to where build.gradle reads it (android folder)
+          echo "storePassword=$ANDROID_STORE_PASSWORD" > android/keystore.properties
+          echo "keyPassword=$ANDROID_KEY_PASSWORD" >> android/keystore.properties
+          echo "keyAlias=$ANDROID_KEY_ALIAS" >> android/keystore.properties
+          echo "storeFile=upload-keystore.jks" >> android/keystore.properties
+
+          # Debug: verify files exist
+          echo "Keystore file:"
+          ls -la android/app/upload-keystore.jks
+          echo "Properties file:"
+          cat android/keystore.properties
+
+      - name: Setup google-services.json
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
+
+      - name: Create .env file
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          BEXLY_FREE_AI_KEY: ${{ secrets.BEXLY_FREE_AI_KEY }}
+        run: |
+          cat > .env << EOF
+          SUPABASE_URL=${SUPABASE_URL}
+          SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
+          BEXLY_FREE_AI_URL=https://api.dos.ai/v1
+          BEXLY_FREE_AI_KEY=${BEXLY_FREE_AI_KEY}
+          BEXLY_FREE_AI_MODEL=dos-ai
+          DOS_AI_TIMEOUT=5
+          DOS_AI_VISION_TIMEOUT=30
+          EOF
+
+      - name: Setup Android NDK
+        run: |
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.0.12077973" >> $GITHUB_ENV
+
+      - name: Get version info
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          BUILD_NUMBER=$(echo $VERSION | cut -d'+' -f2)
+          VERSION_NAME=$(echo $VERSION | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Building version: $VERSION_NAME (build $BUILD_NUMBER)"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build App Bundle (${{ steps.version.outputs.build_number }})
+        run: |
+          flutter build appbundle --release \
+            --obfuscate \
+            --split-debug-info=build/app/outputs/symbols \
+            2>&1 | tee build.log
+          # Check if AAB was created (ignore strip debug symbols warning)
+          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+            echo "✅ AAB built successfully!"
+            ls -la build/app/outputs/symbols/ || true
+            exit 0
+          else
+            echo "❌ AAB not found"
+            cat build.log
+            exit 1
+          fi
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-${{ steps.version.outputs.build_number }}
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: Verify Service Account JSON
+        env:
+          SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          # Check if secret exists and is valid JSON
+          if [ -z "$SERVICE_ACCOUNT_JSON" ]; then
+            echo "❌ GOOGLE_PLAY_SERVICE_ACCOUNT_JSON secret is empty!"
+            exit 1
+          fi
+
+          # Try to parse as JSON and check required fields
+          echo "$SERVICE_ACCOUNT_JSON" | python3 -c "
+          import json, sys
+          try:
+              data = json.load(sys.stdin)
+              required = ['type', 'project_id', 'private_key', 'client_email']
+              missing = [f for f in required if f not in data]
+              if missing:
+                  print(f'❌ Missing fields: {missing}')
+                  sys.exit(1)
+              print(f'✅ Service account: {data.get(\"client_email\")}')
+              print(f'✅ Project: {data.get(\"project_id\")}')
+              print(f'✅ Type: {data.get(\"type\")}')
+          except json.JSONDecodeError as e:
+              print(f'❌ Invalid JSON: {e}')
+              sys.exit(1)
+          "
+
+      - name: Prepare debug symbols for Play Console
+        run: |
+          # Create native debug symbols zip (required format for Play Console)
+          NATIVE_LIBS_DIR="build/app/intermediates/merged_native_libs/release/mergeReleaseNativeLibs/out/lib"
+          SYMBOLS_ZIP="build/app/outputs/native-debug-symbols.zip"
+
+          if [ -d "$NATIVE_LIBS_DIR" ]; then
+            cd "$NATIVE_LIBS_DIR"
+            zip -r "$OLDPWD/$SYMBOLS_ZIP" .
+            cd -
+            echo "✅ Native debug symbols prepared: $SYMBOLS_ZIP"
+            ls -la "$SYMBOLS_ZIP"
+          else
+            echo "⚠️ Native libs directory not found at: $NATIVE_LIBS_DIR"
+            # Try alternative path
+            ALT_DIR="build/app/intermediates/stripped_native_libs/release/stripReleaseDebugSymbols/out/lib"
+            if [ -d "$ALT_DIR" ]; then
+              cd "$ALT_DIR"
+              zip -r "$OLDPWD/$SYMBOLS_ZIP" .
+              cd -
+              echo "✅ Native debug symbols prepared from alt path"
+            else
+              echo "⚠️ No native libs found, skipping symbols upload"
+            fi
+          fi
+
+          # List Dart debug symbols from --split-debug-info
+          echo "📦 Dart debug symbols:"
+          ls -la build/app/outputs/symbols/ 2>/dev/null || echo "No Dart symbols found"
+
+      - name: Upload to Google Play Internal
+        uses: r0adkll/upload-google-play@v1.1.3
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.joy.bexly
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+
+      - name: Upload debug symbols artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-symbols-${{ steps.version.outputs.build_number }}
+          path: |
+            build/app/outputs/symbols/
+            build/app/outputs/native-debug-symbols.zip
+          retention-days: 90
+          if-no-files-found: warn

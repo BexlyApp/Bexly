@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart'; // Import hooks_riverpod
 import 'package:hugeicons/hugeicons.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/components/buttons/button_state.dart';
 import 'package:bexly/core/components/buttons/custom_icon_button.dart';
 import 'package:bexly/core/components/buttons/primary_button.dart';
@@ -24,12 +25,19 @@ import 'package:bexly/features/transaction/presentation/riverpod/transaction_pro
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
+import 'package:bexly/features/pending_transactions/data/models/pending_transaction_model.dart';
 
 class TransactionForm extends HookConsumerWidget {
   // Change to HookConsumerWidget
   final int? transactionId;
   final ReceiptScanResult? receiptData;
-  const TransactionForm({super.key, this.transactionId, this.receiptData});
+  final PendingTransactionModel? pendingTransaction;
+  const TransactionForm({
+    super.key,
+    this.transactionId,
+    this.receiptData,
+    this.pendingTransaction,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,7 +46,8 @@ class TransactionForm extends HookConsumerWidget {
     final wallet = ref.watch(activeWalletProvider);
     final defaultCurrency = wallet.value
         ?.currencyByIsoCode(ref)
-        .symbol; // Determine if we are in "edit" mode
+        .symbol;
+    final defaultIsoCode = wallet.value?.currency ?? 'VND';
     final isEditing = transactionId != null;
 
     // Fetch transaction details if in edit mode
@@ -48,17 +57,20 @@ class TransactionForm extends HookConsumerWidget {
 
     // Instantiate the hook. It will get the transaction data when it's ready.
     final formState = useTransactionFormState(
+      context: context,
       ref: ref,
       defaultCurrency: defaultCurrency ?? CurrencyLocalDataSource.dummy.symbol,
+      defaultIsoCode: defaultIsoCode,
       isEditing: isEditing,
       transaction:
           asyncTransaction?.value, // Pass current data, hook handles null
       receiptData: receiptData,
+      pendingTransaction: pendingTransaction,
     );
 
     return CustomScaffold(
       context: context,
-      title: !isEditing ? 'Add Transaction' : 'Edit Transaction',
+      title: !isEditing ? context.l10n.addTransaction : context.l10n.editTransaction,
       showBalance: false,
       actions: [
         if (isEditing)
@@ -91,7 +103,7 @@ class TransactionForm extends HookConsumerWidget {
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
                       error: (err, stack) => Center(
-                        child: Text('Error loading transaction: $err'),
+                        child: Text('${context.l10n.error}: $err'),
                       ),
                     )
                   // For new transactions, asyncTransaction is null, formState is initialized for 'new'.
@@ -99,7 +111,7 @@ class TransactionForm extends HookConsumerWidget {
             ),
           ),
           PrimaryButton(
-            label: 'Save',
+            label: context.l10n.save,
             state: ButtonState.active,
             // Now formState is available in this scope
             onPressed: () => formState.saveTransaction(ref, context),
@@ -151,6 +163,7 @@ class TransactionForm extends HookConsumerWidget {
             formState.selectedCategory.value = category;
             formState.categoryController.text = formState.getCategoryText(
               parentCategory: parentCategory,
+              context: context,
             );
           },
         ),

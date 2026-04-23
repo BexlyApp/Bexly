@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
+<!DOCTYPE html><html lang="en"><head>
   <!--
     If you are serving your web app in a path other than the root, change the
     href value below to reflect the base path you are serving from.
@@ -18,7 +16,26 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Bexly helps you track spending, plan budgets, and manage your personal finance in one place.">
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+  <meta name="theme-color" content="#00B4AB">
+  <link rel="canonical" href="https://bexly.app/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Bexly">
+  <meta property="og:title" content="Bexly - Personal Finance &amp; Budget Tracker">
+  <meta property="og:description" content="Track spending, plan budgets, and manage your personal finance with Bexly.">
+  <meta property="og:url" content="https://bexly.app/">
+  <meta property="og:image" content="https://bexly.app/icons/Icon-maskable-512.png">
+  <meta property="og:locale" content="en_US">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Bexly - Personal Finance &amp; Budget Tracker">
+  <meta name="twitter:description" content="Track spending, plan budgets, and manage your personal finance with Bexly.">
+  <meta name="twitter:image" content="https://bexly.app/icons/Icon-maskable-512.png">
+
+  <!-- Google Sign-In (dos-me project) -->
+  <meta name="google-signin-client_id" content="368090586626-ch5cd0afri6pilfipeersbtqkpf6huj6.apps.googleusercontent.com">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -27,10 +44,11 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png">
 
-  <title>Bexly</title>
+  <title>Bexly - Personal Finance &amp; Budget Tracker</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="alternate" type="text/plain" href="/llms.txt" title="LLMs.txt">
 
   <!-- Load sql.js for Drift Web support -->
   <script>
@@ -39,8 +57,137 @@
     }
   </script>
   <script src="sql-wasm.js"></script>
+  
+  
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Bexly",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Android, iOS, Web",
+      "description": "Bexly helps you track spending, plan budgets, and manage your personal finance in one place.",
+      "url": "https://bexly.app/"
+    }
+  </script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <style id="splash-screen-style">
+    html {
+      height: 100%
+    }
+
+    body {
+      margin: 0;
+      min-height: 100%;
+      background-color: #1A1A2E;
+          background-size: 100% 100%;
+    }
+
+    .center {
+      margin: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -ms-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+    }
+
+    .contain {
+      display:block;
+      width:100%; height:100%;
+      object-fit: contain;
+    }
+
+    .stretch {
+      display:block;
+      width:100%; height:100%;
+    }
+
+    .cover {
+      display:block;
+      width:100%; height:100%;
+      object-fit: cover;
+    }
+
+    .bottom {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      -ms-transform: translate(-50%, 0);
+      transform: translate(-50%, 0);
+    }
+
+    .bottomLeft {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+    }
+
+    .bottomRight {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+    }
+  </style>
+  <script id="splash-screen-script">
+    function removeSplashFromWeb() {
+      document.getElementById("splash")?.remove();
+      document.getElementById("splash-branding")?.remove();
+      document.body.style.background = "transparent";
+    }
+  </script>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
-</body>
-</html>
+  <picture id="splash">
+      <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
+      <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
+      <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
+  </picture>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <!-- Facebook SDK -->
+  <script async="" defer="" crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=parse&amp;version=v18.0&amp;appId=1583820202985076&amp;autoLogAppEvents=true">
+  </script>
+  <div id="fb-root"></div>
+
+  <script src="flutter_bootstrap.js" async=""></script>
+
+
+
+</body></html>

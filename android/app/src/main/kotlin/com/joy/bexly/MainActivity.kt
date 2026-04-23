@@ -1,13 +1,26 @@
 package com.joy.bexly
 
 import android.content.Context
+import android.content.Intent
 import android.telephony.TelephonyManager
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity: FlutterActivity() {
+class MainActivity: FlutterFragmentActivity() {
     private val CHANNEL = "com.joy.bexly/device_location"
+
+    // Fix crash bug in notification_listener_service plugin:
+    // When user navigates back from Notification Access settings, the plugin
+    // calls reply() twice causing IllegalStateException crash.
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        try {
+            super.onActivityResult(requestCode, resultCode, data)
+        } catch (e: IllegalStateException) {
+            // Suppress "Reply already submitted" from notification_listener_service plugin
+        }
+    }
+
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

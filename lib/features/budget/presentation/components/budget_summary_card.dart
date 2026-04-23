@@ -11,6 +11,8 @@ import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/budget/presentation/components/budget_spent_card.dart';
 import 'package:bexly/features/budget/presentation/components/budget_total_card.dart';
 import 'package:bexly/features/budget/presentation/riverpod/budget_providers.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 
 class BudgetSummaryCard extends ConsumerWidget {
@@ -21,7 +23,9 @@ class BudgetSummaryCard extends ConsumerWidget {
     final budgetsAsync = ref.watch(budgetListProvider);
     final selectedPeriod = ref.watch(selectedBudgetPeriodProvider);
     final activeWallet = ref.watch(activeWalletProvider).value;
-    final currencySymbol = activeWallet?.currency == 'USD' ? '\$' : 'đ';
+    final walletCurrency = activeWallet?.currencyByIsoCode(ref);
+    final currencySymbol = walletCurrency?.symbol ?? 'đ';
+    final isoCode = activeWallet?.currency ?? 'VND';
 
     return budgetsAsync.when(
       data: (allBudgets) {
@@ -86,21 +90,11 @@ class BudgetSummaryCard extends ConsumerWidget {
                     'Total Remaining Budgets',
                     style: AppTextStyles.body4,
                   ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    spacing: AppSpacing.spacing2,
-                    children: [
-                      Text(
-                        currencySymbol,
-                        style: AppTextStyles.body3.copyWith(color: context.primaryText),
-                      ),
-                      Text(
-                        totalRemainingAmount.toPriceFormat(),
-                        style: AppTextStyles.numericTitle.copyWith(
-                          color: context.primaryText,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    formatCurrency(totalRemainingAmount.toPriceFormat(), currencySymbol, isoCode),
+                    style: AppTextStyles.numericTitle.copyWith(
+                      color: context.primaryText,
+                    ),
                   ),
                 ],
               ),
@@ -115,11 +109,11 @@ class BudgetSummaryCard extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: BudgetTotalCard(totalAmount: totalBudgetAmount, currencySymbol: currencySymbol),
+                    child: BudgetTotalCard(totalAmount: totalBudgetAmount, currencySymbol: currencySymbol, isoCode: isoCode),
                   ),
                   const Gap(AppSpacing.spacing12),
                   Expanded(
-                    child: BudgetSpentCard(spentAmount: totalSpentAmount, currencySymbol: currencySymbol),
+                    child: BudgetSpentCard(spentAmount: totalSpentAmount, currencySymbol: currencySymbol, isoCode: isoCode),
                   ),
                 ],
               ),

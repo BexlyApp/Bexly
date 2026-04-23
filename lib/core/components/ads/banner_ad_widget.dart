@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -24,6 +25,9 @@ class _BannerAdWidgetState extends ConsumerState<BannerAdWidget> {
   }
 
   void _loadAd() {
+    // Google Mobile Ads SDK is not supported on web
+    if (kIsWeb) return;
+
     final adService = ref.read(adServiceProvider);
 
     if (!adService.isInitialized) {
@@ -58,6 +62,9 @@ class _BannerAdWidgetState extends ConsumerState<BannerAdWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Ads not supported on web
+    if (kIsWeb) return const SizedBox.shrink();
+
     final shouldShowAds = ref.watch(shouldShowAdsProvider);
 
     // Don't show ads for paid users
@@ -99,6 +106,9 @@ class BannerAdContainer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Ads not supported on web
+    if (kIsWeb) return child;
+
     final shouldShowAds = ref.watch(shouldShowAdsProvider);
 
     return Column(

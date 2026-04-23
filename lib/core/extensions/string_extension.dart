@@ -13,12 +13,30 @@ extension StringExtension on String {
 
       bool hasPeriod = numericStr.contains('.');
       bool hasComma = numericStr.contains(',');
+      final numPeriods = '.'.allMatches(numericStr).length;
 
-      if (hasPeriod) {
-        // If a period exists, assume it's the decimal separator.
-        // All commas must be thousand separators.
-        // e.g., "35,343.92" -> "35343.92"
-        // e.g., "250.6" -> "250.6" (no change from replaceAll)
+      if (hasPeriod && numPeriods > 1) {
+        // Multiple periods = periods are thousand separators (e.g., "10.000.000")
+        numericStr = numericStr.replaceAll('.', '');
+        // If there's also a comma, it's the decimal separator
+        if (hasComma) {
+          numericStr = numericStr.replaceFirst(',', '.');
+        }
+      } else if (hasPeriod && hasComma) {
+        // One period + commas: determine which is decimal
+        final lastPeriod = numericStr.lastIndexOf('.');
+        final lastComma = numericStr.lastIndexOf(',');
+        if (lastPeriod > lastComma) {
+          // Period after comma = period is decimal (e.g., "1,234.56")
+          numericStr = numericStr.replaceAll(',', '');
+        } else {
+          // Comma after period = comma is decimal (e.g., "1.234,56")
+          numericStr = numericStr.replaceAll('.', '');
+          numericStr = numericStr.replaceFirst(',', '.');
+        }
+      } else if (hasPeriod) {
+        // Single period, no comma: period is decimal separator
+        // e.g., "250.6" -> "250.6"
         numericStr = numericStr.replaceAll(',', '');
       } else if (hasComma) {
         // No period, but has comma(s).
@@ -72,6 +90,7 @@ extension CustomDateParsing on String {
   DateTime toDateTimeFromDayMonthYearTime12Hour() {
     final standardFormat = DateFormat("d MMMM yyyy, hh.mm a");
     final timeOnlyFormat = DateFormat("hh.mm a");
+    final timeOnlyFormatColon = DateFormat("hh:mm a"); // Support colon format
 
     // Split by comma to separate date and time parts
     final parts = trim().split(',').map((e) => e.trim()).toList();
@@ -124,26 +143,38 @@ extension CustomDateParsing on String {
           time.minute,
         );
       } catch (e) {
-        // If time parsing fails (e.g., "00.00" without AM/PM), try to parse as 24-hour format
-        // This handles cases where time is displayed without AM/PM
-        final timeParts = timeStr.split('.');
-        if (timeParts.length == 2) {
-          final hour = int.tryParse(timeParts[0]);
-          final minute = int.tryParse(timeParts[1]);
-          if (hour != null && minute != null && hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
-            return DateTime(
-              baseDate.year,
-              baseDate.month,
-              baseDate.day,
-              hour,
-              minute,
-            );
+        // Try colon format (e.g., "7:36 PM")
+        try {
+          final time = timeOnlyFormatColon.parse(timeStr);
+          return DateTime(
+            baseDate.year,
+            baseDate.month,
+            baseDate.day,
+            time.hour,
+            time.minute,
+          );
+        } catch (e2) {
+          // If time parsing fails (e.g., "00.00" without AM/PM), try to parse as 24-hour format
+          // This handles cases where time is displayed without AM/PM
+          final timeParts = timeStr.split(RegExp(r'[.:]')); // Support both . and :
+          if (timeParts.length == 2) {
+            final hour = int.tryParse(timeParts[0]);
+            final minute = int.tryParse(timeParts[1]);
+            if (hour != null && minute != null && hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
+              return DateTime(
+                baseDate.year,
+                baseDate.month,
+                baseDate.day,
+                hour,
+                minute,
+              );
+            }
           }
+          throw FormatException(
+            'Invalid time format. Expected "hh.mm AM", "hh:mm AM", or "HH.mm"',
+            timeStr,
+          );
         }
-        throw FormatException(
-          'Invalid time format. Expected "hh.mm AM" or "HH.mm"',
-          timeStr,
-        );
       }
     }
 

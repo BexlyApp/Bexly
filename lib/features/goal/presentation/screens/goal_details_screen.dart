@@ -18,6 +18,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/features/goal/data/model/goal_model.dart';
 import 'package:bexly/features/goal/presentation/components/goal_checklist_holder.dart';
@@ -51,12 +52,12 @@ class GoalDetailsScreen extends ConsumerWidget {
           CustomIconButton(
             context,
             onPressed: () async {
-              final db = ref.read(databaseProvider);
+              final goalDao = ref.read(goalDaoProvider);
               final goal = goalAsync.value!;
               if (goal.pinned) {
-                await db.goalDao.unpinGoal(goalId);
+                await goalDao.unpinGoal(goalId);
               } else {
-                await db.goalDao.pinGoal(goalId);
+                await goalDao.pinGoal(goalId);
               }
               Toast.show(
                 'Goal ${goal.pinned ? 'unpinned' : 'pinned'}',
@@ -100,8 +101,7 @@ class GoalDetailsScreen extends ConsumerWidget {
                   ),
                   confirmText: context.l10n.delete,
                   onConfirm: () {
-                    final db = ref.read(databaseProvider);
-                    db.goalDao.deleteGoal(goalId);
+                    ref.read(goalDaoProvider).deleteGoal(goalId);
                     context.pop();
                     context.pop();
                   },
@@ -123,7 +123,19 @@ class GoalDetailsScreen extends ConsumerWidget {
               150,
             ),
             child: goalAsync.when(
-              data: (GoalModel goal) {
+              data: (GoalModel? goal) {
+                // Handle deleted goal - auto navigate back
+                if (goal == null) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (context.mounted) {
+                      context.pop();
+                    }
+                  });
+                  return const Center(
+                    child: Text('Goal not found or has been deleted'),
+                  );
+                }
+
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
@@ -166,8 +178,10 @@ class GoalDetailsScreen extends ConsumerWidget {
                         0.0,
                         (sum, item) => sum + item.amount,
                       );
+                      final currencySymbol = wallet.value?.currencyByIsoCode(ref).symbol ?? '';
+                      final isoCode = wallet.value?.currency ?? 'VND';
                       return Text(
-                        '${wallet.value?.currencyByIsoCode(ref).symbol} ${total.toPriceFormat()}',
+                        formatCurrency(total.toPriceFormat(), currencySymbol, isoCode),
                         style: AppTextStyles.numericLarge,
                       );
                     },

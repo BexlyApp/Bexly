@@ -34,6 +34,12 @@ final transactionsForBudgetProvider = FutureProvider.autoDispose
       Log.d(budget.toJson(), label: 'budget');
       final db = ref.watch(databaseProvider);
       final activeWallet = ref.watch(activeWalletProvider).value;
+
+      // Return empty list if no wallet is selected
+      if (activeWallet == null) {
+        return [];
+      }
+
       final categories = await db.categoryDao.getSubCategories(
         budget.category.id!,
       );
@@ -46,8 +52,8 @@ final transactionsForBudgetProvider = FutureProvider.autoDispose
         categoryIds: categoryIds,
         startDate: budget.startDate,
         endDate: budget.endDate,
-        walletId: activeWallet!.id ?? 0,
-      ); // Convert Future to Stream for StreamProvider
+        walletId: activeWallet.id ?? 0,
+      );
     });
 
 // Provider that defines the list of budget periods (months) to display as tabs

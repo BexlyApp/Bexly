@@ -11,7 +11,10 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/database/database_provider.dart';
 import 'package:bexly/core/database/tables/category_table.dart'; // For Category.toModel() extension
 import 'package:bexly/core/extensions/date_time_extension.dart';
+import 'package:bexly/core/extensions/currency_extension.dart';
 import 'package:bexly/core/extensions/double_extension.dart';
+import 'package:bexly/features/currency_picker/data/models/currency.dart';
+import 'package:bexly/core/extensions/localization_extension.dart';
 import 'package:bexly/core/extensions/popup_extension.dart';
 import 'package:bexly/core/extensions/string_extension.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
@@ -20,6 +23,7 @@ import 'package:bexly/features/category/data/model/category_model.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/data/model/wallet_model.dart';
 import 'package:bexly/features/receipt_scanner/data/models/receipt_scan_result.dart';
+import 'package:bexly/features/pending_transactions/data/models/pending_transaction_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/services/receipt_storage/receipt_storage_service_provider.dart';
@@ -37,6 +41,7 @@ class TransactionFormState {
   final ValueNotifier<CategoryModel?> selectedCategory;
   final ValueNotifier<WalletModel?> selectedWallet;
   final String defaultCurrency;
+  final String defaultIsoCode;
   final bool isEditing;
   final TransactionModel? initialTransaction;
 
@@ -51,20 +56,29 @@ class TransactionFormState {
     required this.selectedWallet,
     required this.dateFieldController,
     required this.defaultCurrency,
+    required this.defaultIsoCode,
     required this.isEditing,
     this.initialTransaction,
   });
 
-  String getCategoryText({CategoryModel? parentCategory}) {
+  String getCategoryText({CategoryModel? parentCategory, BuildContext? context}) {
     final category = selectedCategory.value;
     if (category == null) return '';
 
+    String _localizedName(CategoryModel cat) {
+      if (context != null && cat.id != null && cat.id! <= 1005) {
+        final localized = context.l10n.getCategoryName(cat.id);
+        if (localized != 'Unknown Category') return localized;
+      }
+      return cat.title;
+    }
+
     if (parentCategory != null) {
       // It's a subcategory, find its parent to display "Parent • Sub"
-      return '${parentCategory.title} • ${category.title}';
+      return '${_localizedName(parentCategory)} • ${_localizedName(category)}';
     } else {
       // It's a parent category
-      return category.title;
+      return _localizedName(category);
     }
   }
 
@@ -157,7 +171,10 @@ class TransactionFormState {
       int? savedTransactionId;
       if (!isEditing) {
         Log.d('💾 Adding new transaction to database...', label: 'TransactionForm');
-        savedTransactionId = await db.transactionDao.addTransaction(
+        // Use transactionDaoProvider with ref for sync support
+        final transactionDao = ref.read(transactionDaoProvider);
+        print('🎯 [TransactionForm] Using transactionDaoProvider - this should have _ref for sync!');
+        savedTransactionId = await transactionDao.addTransaction(
           transactionToSave,
         );
         Log.d('💾 Transaction saved with ID: $savedTransactionId', label: 'TransactionForm');
@@ -177,7 +194,9 @@ class TransactionFormState {
           );
           return;
         }
-        await db.transactionDao.updateTransaction(transactionToSave);
+        // Use transactionDaoProvider with ref for sync support
+        final transactionDao = ref.read(transactionDaoProvider);
+        await transactionDao.updateTransaction(transactionToSave);
         savedTransactionId = transactionToSave.id;
         await _adjustWalletBalance(ref, initialTransaction, transactionToSave);
       }
@@ -331,9 +350,12 @@ class TransactionFormState {
     await db.walletDao.updateWallet(updatedWallet);
 
     // Update activeWallet provider if the adjusted wallet is the active one
+    // Use Future.microtask to avoid modifying provider during build
     final activeWallet = ref.read(activeWalletProvider).value;
     if (activeWallet?.id == targetWallet.id) {
-      ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
+      Future.microtask(() {
+        ref.read(activeWalletProvider.notifier).setActiveWallet(updatedWallet);
+      });
     }
 
     Log.d(
@@ -353,39 +375,59 @@ class TransactionFormState {
 }
 
 TransactionFormState useTransactionFormState({
+  required BuildContext context,
   required WidgetRef ref,
   required String defaultCurrency,
+  required String defaultIsoCode,
   required bool isEditing,
   TransactionModel? transaction,
   ReceiptScanResult? receiptData,
+  PendingTransactionModel? pendingTransaction,
 }) {
+  // Initialize title from transaction, receipt, or pending (cleaned up)
+  final pendingTitle = pendingTransaction?.merchant ?? pendingTransaction?.title;
   final titleController = useTextEditingController(
     text: isEditing
         ? transaction?.title
-        : receiptData?.merchant ?? '',
+        : receiptData?.merchant ?? (pendingTitle != null ? _cleanMerchantTitle(pendingTitle) : ''),
   );
+
+  // Initialize amount from transaction, receipt, or pending
   final amountController = useTextEditingController(
     text: isEditing && transaction != null
-        ? '$defaultCurrency ${transaction.amount.toPriceFormat()}'
+        ? formatCurrency(transaction.amount.toPriceFormat(), defaultCurrency, defaultIsoCode)
         : receiptData != null
-            ? '${receiptData.currency ?? defaultCurrency} ${receiptData.amount.toPriceFormat()}'
-            : '',
+            ? formatCurrency(receiptData.amount.toPriceFormat(), (receiptData.currency ?? defaultIsoCode).currencySymbol, receiptData.currency ?? defaultIsoCode)
+            : pendingTransaction != null
+                ? formatCurrency(pendingTransaction.amount.toPriceFormat(), pendingTransaction.currency.currencySymbol, pendingTransaction.currency)
+                : '',
   );
+
+  // Initialize notes from transaction, receipt, or pending transaction
   final notesController = useTextEditingController(
     text: isEditing
         ? transaction?.notes ?? ''
         : receiptData != null && receiptData.items.isNotEmpty
             ? receiptData.items.join(', ')
-            : '',
+            : pendingTransaction?.userNotes ?? '',
   );
   final categoryController = useTextEditingController();
   final walletController = useTextEditingController();
-  final dateFieldController = useTextEditingController();
 
+  // Initialize date from pending transaction if available
+  final dateFieldController = useTextEditingController(
+    text: pendingTransaction != null
+        ? pendingTransaction.transactionDate.toRelativeDayFormatted(showTime: true)
+        : '',
+  );
+
+  // Initialize transaction type from transaction or pending
   final selectedTransactionType = useState<TransactionType>(
     isEditing && transaction != null
         ? transaction.transactionType
-        : TransactionType.expense,
+        : pendingTransaction != null
+            ? (pendingTransaction.isIncome ? TransactionType.income : TransactionType.expense)
+            : TransactionType.expense,
   );
   final selectedCategory = useState<CategoryModel?>(
     isEditing ? transaction?.category : null,
@@ -409,6 +451,7 @@ TransactionFormState useTransactionFormState({
       selectedWallet: selectedWallet,
       dateFieldController: dateFieldController,
       defaultCurrency: defaultCurrency,
+      defaultIsoCode: defaultIsoCode,
       isEditing: isEditing,
       initialTransaction: transaction,
     ),
@@ -458,8 +501,8 @@ TransactionFormState useTransactionFormState({
               () => ref.read(imageProvider.notifier).clearImage(),
             );
           }
-        } else if (!isEditing) {
-          // Only reset for new, not if transaction is just null during edit loading
+        } else if (!isEditing && pendingTransaction == null && receiptData == null) {
+          // Only reset for truly new transactions (not pending or receipt pre-fills)
           titleController.clear();
           amountController.clear();
           notesController.clear();
@@ -497,12 +540,17 @@ TransactionFormState useTransactionFormState({
     () {
       if (receiptData != null && !isEditing) {
         Future.microtask(() async {
+          Log.d('📸 Receipt data: amount=${receiptData.amount}, currency=${receiptData.currency}, merchant=${receiptData.merchant}, category=${receiptData.category}',
+              label: 'TransactionForm');
+
           // Populate title from merchant
           titleController.text = receiptData.merchant;
 
-          // Populate amount with currency prefix for UI display
+          // Populate amount with currency symbol for UI display
           final currency = receiptData.currency ?? 'VND';
-          amountController.text = '$currency ${receiptData.amount.toPriceFormat()}';
+          final formattedAmount = formatCurrency(receiptData.amount.toPriceFormat(), currency.currencySymbol, currency);
+          Log.d('📸 Formatted amount: "$formattedAmount"', label: 'TransactionForm');
+          amountController.text = formattedAmount;
 
           // Populate notes from items
           if (receiptData.items.isNotEmpty) {
@@ -572,9 +620,23 @@ TransactionFormState useTransactionFormState({
             if (matchedCategory != null) break;
           }
 
-          // Only set category if there's a match, don't auto-fill if no match
           if (matchedCategory != null) {
             selectedCategory.value = matchedCategory;
+          } else {
+            // Fallback: try to find "Other" category in DB
+            for (final dbCat in allCategories) {
+              if (dbCat.title.toLowerCase() == 'other' ||
+                  dbCat.title.toLowerCase() == 'khác') {
+                selectedCategory.value = dbCat.toModel();
+                break;
+              }
+            }
+            // Last resort: use the first available category
+            if (selectedCategory.value == null && allCategories.isNotEmpty) {
+              selectedCategory.value = allCategories.first.toModel();
+            }
+            Log.w('No category match for "${receiptData.category}", using fallback: ${selectedCategory.value?.title}',
+                label: 'TransactionForm');
           }
 
           // Set receipt image if available
@@ -591,12 +653,81 @@ TransactionFormState useTransactionFormState({
     [receiptData],
   );
 
+  // Handle pending transaction pre-fill (from email sync or bank connection)
+  useEffect(
+    () {
+      if (pendingTransaction != null && !isEditing) {
+        Future.microtask(() async {
+          // Populate title from merchant or email subject, cleaned up
+          final rawTitle = pendingTransaction.merchant ?? pendingTransaction.title;
+          titleController.text = _cleanMerchantTitle(rawTitle);
+
+          // Populate amount with currency symbol
+          final currency = pendingTransaction.currency;
+          amountController.text = formatCurrency(pendingTransaction.amount.toPriceFormat(), currency.currencySymbol, currency);
+
+          // Set transaction type based on pending
+          selectedTransactionType.value = pendingTransaction.isIncome
+              ? TransactionType.income
+              : TransactionType.expense;
+
+          // Set date
+          dateFieldController.text = pendingTransaction.transactionDate.toRelativeDayFormatted(showTime: true);
+
+          // Auto-select wallet matching currency
+          final db = ref.read(databaseProvider);
+          final wallets = await db.walletDao.watchAllWallets().first;
+
+          // Find wallet with matching currency
+          WalletModel? matchingWallet;
+          try {
+            matchingWallet = wallets.firstWhere(
+              (w) => w.currency.toUpperCase() == currency.toUpperCase(),
+            );
+          } catch (e) {
+            // No matching wallet found, use first available
+            matchingWallet = wallets.firstOrNull;
+          }
+
+          if (matchingWallet != null && matchingWallet.id != null) {
+            selectedWallet.value = matchingWallet;
+          }
+
+          // Auto-select category from categoryHint
+          if (pendingTransaction.categoryHint != null) {
+            final allCategories = await db.categoryDao.watchAllCategories().first;
+            final hintLower = pendingTransaction.categoryHint!.toLowerCase();
+            final transactionType = pendingTransaction.isIncome ? 'income' : 'expense';
+
+            CategoryModel? matchedCategory;
+            for (final dbCat in allCategories) {
+              if (dbCat.transactionType == transactionType) {
+                if (dbCat.title.toLowerCase().contains(hintLower) ||
+                    hintLower.contains(dbCat.title.toLowerCase())) {
+                  matchedCategory = dbCat.toModel();
+                  break;
+                }
+              }
+            }
+
+            if (matchedCategory != null) {
+              selectedCategory.value = matchedCategory;
+            }
+          }
+        });
+      }
+      return null;
+    },
+    [pendingTransaction],
+  );
+
   useEffect(
     () {
       Future.microtask(() {
         selectedCategory.value?.getParentCategory(ref).then((parentCategory) {
           categoryController.text = formState.getCategoryText(
             parentCategory: parentCategory,
+            context: context,
           );
         });
       });
@@ -621,4 +752,37 @@ TransactionFormState useTransactionFormState({
   // For now, assuming standard hook cleanup is sufficient.
 
   return formState;
+}
+
+/// Clean up raw merchant/title from email/SMS/notification
+/// - Remove payment gateway prefixes (.OP*, TT*, VNP*, etc.)
+/// - Convert ALL CAPS to Title Case
+String _cleanMerchantTitle(String name) {
+  var cleaned = name.trim();
+
+  // Remove common payment gateway prefixes
+  final prefixPattern = RegExp(r'^[.\s]*(OP\*|TT\*|VNP\*|VNPAY\*|PP\*|SQ\*|SP\*|GG\*|MOMO\*)', caseSensitive: false);
+  cleaned = cleaned.replaceFirst(prefixPattern, '');
+  cleaned = cleaned.trim();
+
+  // Convert ALL CAPS to Title Case (if most chars are uppercase)
+  final upperCount = cleaned.runes.where((r) {
+    final c = String.fromCharCode(r);
+    return c.toUpperCase() == c && c.toLowerCase() != c;
+  }).length;
+  final letterCount = cleaned.runes.where((r) {
+    final c = String.fromCharCode(r);
+    return c.toUpperCase() != c || c.toLowerCase() != c;
+  }).length;
+
+  if (letterCount > 0 && upperCount / letterCount > 0.7) {
+    cleaned = cleaned.split(RegExp(r'[\s\-_.]+')).map((word) {
+      if (word.isEmpty) return word;
+      // Keep short acronyms (AI, SM, etc.) uppercase
+      if (word.length <= 3 && word == word.toUpperCase()) return word;
+      return '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}';
+    }).join(' ');
+  }
+
+  return cleaned;
 }

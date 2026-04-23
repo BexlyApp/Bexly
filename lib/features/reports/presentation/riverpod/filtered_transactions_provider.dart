@@ -1,5 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bexly/core/constants/app_colors.dart';
+import 'package:bexly/core/database/app_database.dart';
 import 'package:bexly/core/database/database_provider.dart';
+import 'package:bexly/core/services/riverpod/exchange_rate_providers.dart';
+import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/reports/presentation/screens/basic_monthly_report_screen.dart';
 
@@ -23,4 +28,180 @@ final monthlyTransactionsProvider =
 
         return filtered.toList();
       });
+    });
+
+/// Data class for chart segments
+class ChartSegmentData {
+  final String category;
+  final double amount;
+  final Color color;
+
+  const ChartSegmentData({
+    required this.category,
+    required this.amount,
+    required this.color,
+  });
+}
+
+/// Color palette for chart segments
+const _chartColorPalette = [
+  AppColors.primary600,
+  AppColors.secondary600,
+  AppColors.tertiary600,
+  AppColors.red600,
+  AppColors.purple600,
+  AppColors.green200,
+  AppColors.primary400,
+  AppColors.secondary400,
+  AppColors.tertiary400,
+  AppColors.red400,
+  AppColors.purple400,
+  AppColors.primary800,
+  AppColors.secondary800,
+  AppColors.tertiary800,
+  AppColors.red800,
+  AppColors.purple800,
+];
+
+/// Resolve parent category names for subcategories so charts group by parent
+Future<Map<int, String>> _resolveParentCategoryNames(
+  List<TransactionModel> transactions,
+  AppDatabase db,
+) async {
+  final parentIds = transactions
+      .where((t) => t.category.parentId != null)
+      .map((t) => t.category.parentId!)
+      .toSet()
+      .toList();
+
+  if (parentIds.isEmpty) return {};
+
+  final parents = await db.categoryDao.getCategoriesByIds(parentIds);
+  return {for (var p in parents) p.id: p.title};
+}
+
+/// Get the display name for grouping: use parent category name if subcategory
+String _getGroupCategoryName(
+  TransactionModel transaction,
+  Map<int, String> parentNames,
+) {
+  final category = transaction.category;
+  if (category.parentId != null && parentNames.containsKey(category.parentId)) {
+    return parentNames[category.parentId]!;
+  }
+  return category.title;
+}
+
+/// Provider for spending by category chart data (cached, no FutureBuilder jitter)
+final spendingByCategoryChartProvider =
+    FutureProvider.family.autoDispose<List<ChartSegmentData>, DateTime>((ref, date) async {
+      final transactionsAsync = ref.watch(monthlyTransactionsProvider(date));
+      final baseCurrency = ref.watch(baseCurrencyProvider);
+      final exchangeRateService = ref.watch(exchangeRateServiceProvider);
+      final db = ref.read(databaseProvider);
+
+      final transactions = transactionsAsync.value ?? [];
+      final expenseTransactions = transactions
+          .where((t) => t.transactionType == TransactionType.expense)
+          .toList();
+
+      // Resolve parent category names for subcategories
+      final parentNames = await _resolveParentCategoryNames(expenseTransactions, db);
+
+      final Map<String, double> categoryExpenses = {};
+
+      // Process ONLY expense transactions, grouped by parent category
+      for (var transaction in expenseTransactions) {
+        final groupName = _getGroupCategoryName(transaction, parentNames);
+        double amountInBaseCurrency;
+
+        if (transaction.wallet.currency == baseCurrency) {
+          amountInBaseCurrency = transaction.amount;
+        } else {
+          try {
+            amountInBaseCurrency = await exchangeRateService.convertAmount(
+              amount: transaction.amount,
+              fromCurrency: transaction.wallet.currency,
+              toCurrency: baseCurrency,
+            );
+          } catch (e) {
+            Log.e('Failed to convert: $e', label: 'SpendingChart');
+            amountInBaseCurrency = transaction.amount;
+          }
+        }
+
+        categoryExpenses.update(
+          groupName,
+          (value) => value + amountInBaseCurrency,
+          ifAbsent: () => amountInBaseCurrency,
+        );
+      }
+
+      var colorIndex = 0;
+      return categoryExpenses.entries
+          .map((entry) => ChartSegmentData(
+                category: entry.key,
+                amount: entry.value,
+                color: _chartColorPalette[colorIndex++ % _chartColorPalette.length],
+              ))
+          .toList();
+    });
+
+/// Provider for income by category chart data (cached, no FutureBuilder jitter)
+final incomeByCategoryChartProvider =
+    FutureProvider.family.autoDispose<List<ChartSegmentData>, DateTime>((ref, date) async {
+      final transactionsAsync = ref.watch(monthlyTransactionsProvider(date));
+      final baseCurrency = ref.watch(baseCurrencyProvider);
+      final exchangeRateService = ref.watch(exchangeRateServiceProvider);
+      final db = ref.read(databaseProvider);
+
+      final transactions = transactionsAsync.value ?? [];
+      final incomeTransactions = transactions
+          .where((t) => t.transactionType == TransactionType.income)
+          .toList();
+
+      // Resolve parent category names for subcategories
+      final parentNames = await _resolveParentCategoryNames(incomeTransactions, db);
+
+      final Map<String, double> categoryIncome = {};
+
+      // Process ONLY income transactions, grouped by parent category
+      for (var transaction in incomeTransactions) {
+        final groupName = _getGroupCategoryName(transaction, parentNames);
+        double amountInBaseCurrency;
+
+        if (transaction.wallet.currency == baseCurrency) {
+          amountInBaseCurrency = transaction.amount;
+        } else {
+          try {
+            amountInBaseCurrency = await exchangeRateService.convertAmount(
+              amount: transaction.amount,
+              fromCurrency: transaction.wallet.currency,
+              toCurrency: baseCurrency,
+            );
+          } catch (e) {
+            Log.e('Failed to convert: $e', label: 'IncomeChart');
+            amountInBaseCurrency = transaction.amount;
+          }
+        }
+
+        categoryIncome.update(
+          groupName,
+          (value) => value + amountInBaseCurrency,
+          ifAbsent: () => amountInBaseCurrency,
+        );
+      }
+
+      var colorIndex = 0;
+      final result = categoryIncome.entries
+          .map((entry) => ChartSegmentData(
+                category: entry.key,
+                amount: entry.value,
+                color: _chartColorPalette[colorIndex++ % _chartColorPalette.length],
+              ))
+          .toList();
+
+      // Sort by amount descending
+      result.sort((a, b) => b.amount.compareTo(a.amount));
+      return result;
     });
