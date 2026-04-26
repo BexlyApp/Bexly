@@ -1,5 +1,24 @@
 # Firebase Setup Guide for Bexly
 
+> ⚠️ **PARTIALLY OUTDATED (as of 2026-04-22).** Bexly migrated authentication
+> and app data to **Supabase** in early 2026. This guide still applies for
+> the parts of Firebase Bexly does use today:
+>
+> | What | Where |
+> |------|-------|
+> | ✅ Analytics, Crashlytics, Performance | Firebase (this guide) |
+> | ✅ Cloud Messaging (FCM push notifications) | Firebase (this guide) |
+> | ✅ Cloud Storage (file uploads) | Firebase (this guide) |
+> | ✅ Cloud Functions (Telegram bot only) | Firebase (`functions/`) |
+> | ❌ Authentication | **Supabase** (see `lib/core/services/auth/`) |
+> | ❌ App data (wallets, transactions, etc.) | **Supabase** (see `SUPABASE_MIGRATION_STATUS.md`) |
+> | ❌ Firestore for app data | **Supabase** (Firestore only stores FCM tokens server-side) |
+>
+> Sections below referencing "Firebase Auth", "Firestore for sync", or
+> "DOS ID Firebase project" are historical and no longer reflect the
+> production setup. See `ARCHITECTURE.md` and `SUPABASE_MIGRATION_STATUS.md`
+> for current state.
+
 ## Overview
 This guide documents the Firebase integration for Bexly app, including the migration from the original package ID to the JOY brand ecosystem.
 
