@@ -1,32 +1,23 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Script to apply category Modified Hybrid Sync migration to Supabase
 ///
 /// Usage:
-///   dart scripts/apply_category_migration.dart
+///   SUPABASE_URL=... SUPABASE_PUBLISHABLE_KEY=... dart scripts/apply_category_migration.dart
+///
+/// Or source .env first: `set -a && . ./.env && set +a`
 ///
 /// Prerequisites:
-///   1. .env file with SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY
-///   2. User must be authenticated as admin with database write access
+///   - SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in environment
+///   - User must be authenticated as admin with database write access
 
 Future<void> main() async {
   print('🚀 Category Modified Hybrid Sync Migration');
   print('═' * 60);
 
-  // Load environment variables
-  try {
-    await dotenv.load(fileName: '.env');
-    print('✅ Loaded .env file');
-  } catch (e) {
-    print('❌ Error loading .env: $e');
-    print('   Make sure .env file exists with SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY');
-    exit(1);
-  }
-
-  final supabaseUrl = dotenv.env['SUPABASE_URL'];
-  final supabaseKey = dotenv.env['SUPABASE_PUBLISHABLE_KEY'];
+  final supabaseUrl = Platform.environment['SUPABASE_URL'];
+  final supabaseKey = Platform.environment['SUPABASE_PUBLISHABLE_KEY'];
 
   if (supabaseUrl == null || supabaseKey == null) {
     print('❌ Missing Supabase credentials in .env');

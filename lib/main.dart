@@ -2,7 +2,6 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -109,12 +108,9 @@ Future<void> main() async {
   }
 
   // ── Phase 1: Fast critical setup (sequential, each <50ms) ──
-  try {
-    await dotenv.load(fileName: ".env");
-    print('✅ .env loaded successfully');
-  } catch (e) {
-    print('❌ Could not load .env file: $e');
-  }
+  // Config values come from compile-time --dart-define-from-file=.env
+  // (see SupabaseConfig, LLMDefaultConfig, StripeService).
+  // No runtime .env asset is bundled — secret keys live in ai-proxy edge function.
 
   await NumberFormatNotifier.initFromPrefs();
 
