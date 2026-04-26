@@ -60,7 +60,7 @@ jobs:
         run: dart compile js -O4 web/drift_worker.dart -o web/drift_worker.js
 
       - name: Build web (${{ steps.version.outputs.build_number }})
-        run: flutter build web --release
+        run: flutter build web --release --dart-define-from-file=.env
 
       - name: Copy SQLite WASM files to build output
         run: |

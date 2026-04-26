@@ -151,7 +151,9 @@ jobs:
       - name: Build IPA (${{ steps.version.outputs.build_number }})
         run: |
           xcode-project use-profiles --export-options-plist=ios/ExportOptions.plist
-          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+          flutter build ipa --release \
+            --dart-define-from-file=.env \
+            --export-options-plist=ios/ExportOptions.plist
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4

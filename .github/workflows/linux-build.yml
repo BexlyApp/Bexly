@@ -65,7 +65,7 @@ jobs:
         run: flutter config --enable-linux-desktop
 
       - name: Build Linux app (${{ steps.version.outputs.build_number }})
-        run: flutter build linux --release
+        run: flutter build linux --release --dart-define-from-file=.env
 
       - name: Create tarball
         run: |

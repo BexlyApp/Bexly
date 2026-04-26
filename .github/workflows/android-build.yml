@@ -115,6 +115,7 @@ jobs:
       - name: Build App Bundle (${{ steps.version.outputs.build_number }})
         run: |
           flutter build appbundle --release \
+            --dart-define-from-file=.env \
             --obfuscate \
             --split-debug-info=build/app/outputs/symbols \
             2>&1 | tee build.log

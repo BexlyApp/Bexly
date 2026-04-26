@@ -151,7 +151,7 @@ jobs:
 
       - name: Build macOS app (${{ steps.version.outputs.build_number }})
         run: |
-          flutter build macos --release
+          flutter build macos --release --dart-define-from-file=.env
 
       - name: Sign and create PKG for App Store
         env:
