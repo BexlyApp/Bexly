@@ -1,23 +1,16 @@
 import 'package:bexly/features/family/domain/enums/family_role.dart';
 
-/// Subscription tier levels for Bexly
+/// Subscription tier levels for Bexly. See docs/PREMIUM_PLAN.md for the
+/// canonical feature matrix and pricing.
 enum SubscriptionTier {
-  /// Free tier - limited features
+  /// Free tier - $0
   free,
 
-  /// Plus tier - $2.99/month or $29.99/year
-  plus,
+  /// Go tier - $1.99/month or $19.99/year. Maps to DOS.Me Go.
+  go,
 
-  /// Pro tier - $5.99/month or $59.99/year
-  pro,
-
-  /// Plus Family tier - $4.99/month or $49.99/year
-  /// Plus features + Family sharing (up to 5 members)
-  plusFamily,
-
-  /// Pro Family tier - $9.99/month or $99.99/year
-  /// Pro features + Family sharing (up to 5 members)
-  proFamily,
+  /// Premium tier - $5/month or $25/year. Maps to DOS.Me Plus.
+  premium,
 }
 
 /// Extension to add utility methods to SubscriptionTier
@@ -27,145 +20,85 @@ extension SubscriptionTierExtension on SubscriptionTier {
     switch (this) {
       case SubscriptionTier.free:
         return 'Free';
-      case SubscriptionTier.plus:
-        return 'Plus';
-      case SubscriptionTier.pro:
-        return 'Pro';
-      case SubscriptionTier.plusFamily:
-        return 'Plus Family';
-      case SubscriptionTier.proFamily:
-        return 'Pro Family';
+      case SubscriptionTier.go:
+        return 'Go';
+      case SubscriptionTier.premium:
+        return 'Premium';
     }
   }
 
-  /// Whether this tier includes the features of another tier
-  bool includes(SubscriptionTier other) {
-    // Family tiers include their base tier features
-    if (this == SubscriptionTier.plusFamily) {
-      return other == SubscriptionTier.free || other == SubscriptionTier.plus;
-    }
-    if (this == SubscriptionTier.proFamily) {
-      return other != SubscriptionTier.proFamily;
-    }
-    return index >= other.index;
-  }
+  /// Whether this tier includes the features of another tier (ordered: free < go < premium)
+  bool includes(SubscriptionTier other) => index >= other.index;
 
   /// Check if user has at least this tier level
-  bool hasAccess(SubscriptionTier requiredTier) {
-    return includes(requiredTier);
-  }
+  bool hasAccess(SubscriptionTier requiredTier) => includes(requiredTier);
 
-  /// Whether this tier has full family sharing (5 members, unlimited wallets)
-  bool get hasFullFamily {
-    return this == SubscriptionTier.plusFamily || this == SubscriptionTier.proFamily;
-  }
+  /// Check if this tier is Go or higher (any paid tier)
+  bool get isPaid => this != SubscriptionTier.free;
 
-  /// Get the base tier (without family)
-  SubscriptionTier get baseTier {
-    switch (this) {
-      case SubscriptionTier.plusFamily:
-        return SubscriptionTier.plus;
-      case SubscriptionTier.proFamily:
-        return SubscriptionTier.pro;
-      default:
-        return this;
-    }
-  }
-
-  /// Check if this tier has Pro-level features
-  bool get isProLevel {
-    return this == SubscriptionTier.pro || this == SubscriptionTier.proFamily;
-  }
-
-  /// Check if this tier has Plus-level features (or higher)
-  bool get isPlusLevel {
-    return this != SubscriptionTier.free;
-  }
+  /// Check if this tier has Premium-level features
+  bool get isPremiumLevel => this == SubscriptionTier.premium;
 }
 
-/// Feature limits based on subscription tier
+/// Feature limits based on subscription tier. See docs/PREMIUM_PLAN.md.
 class SubscriptionLimits {
   final SubscriptionTier tier;
 
   const SubscriptionLimits(this.tier);
 
-  /// Maximum number of wallets allowed
+  /// Maximum number of wallets allowed (-1 = unlimited)
   int get maxWallets {
     switch (tier) {
       case SubscriptionTier.free:
         return 3;
-      case SubscriptionTier.plus:
-      case SubscriptionTier.pro:
-      case SubscriptionTier.plusFamily:
-      case SubscriptionTier.proFamily:
-        return -1; // Unlimited
+      case SubscriptionTier.go:
+      case SubscriptionTier.premium:
+        return -1;
     }
   }
 
-  /// Maximum number of budgets allowed
+  /// Maximum number of budgets allowed (-1 = unlimited)
   int get maxBudgets {
     switch (tier) {
       case SubscriptionTier.free:
         return 2;
-      case SubscriptionTier.plus:
-      case SubscriptionTier.pro:
-      case SubscriptionTier.plusFamily:
-      case SubscriptionTier.proFamily:
-        return -1; // Unlimited
+      case SubscriptionTier.go:
+      case SubscriptionTier.premium:
+        return -1;
     }
   }
 
-  /// Maximum number of goals allowed
+  /// Maximum number of goals allowed (-1 = unlimited)
   int get maxGoals {
     switch (tier) {
       case SubscriptionTier.free:
         return 2;
-      case SubscriptionTier.plus:
-      case SubscriptionTier.pro:
-      case SubscriptionTier.plusFamily:
-      case SubscriptionTier.proFamily:
-        return -1; // Unlimited
+      case SubscriptionTier.go:
+      case SubscriptionTier.premium:
+        return -1;
     }
   }
 
-  /// Maximum number of recurring transactions allowed
+  /// Maximum number of recurring transactions (-1 = unlimited)
   int get maxRecurring {
     switch (tier) {
       case SubscriptionTier.free:
         return 5;
-      case SubscriptionTier.plus:
-      case SubscriptionTier.pro:
-      case SubscriptionTier.plusFamily:
-      case SubscriptionTier.proFamily:
-        return -1; // Unlimited
+      case SubscriptionTier.go:
+      case SubscriptionTier.premium:
+        return -1;
     }
   }
 
-  /// Maximum AI messages per month
+  /// AI messages per month
   int get maxAiMessagesPerMonth {
     switch (tier) {
       case SubscriptionTier.free:
         return 60;
-      case SubscriptionTier.plus:
-      case SubscriptionTier.plusFamily:
+      case SubscriptionTier.go:
         return 240;
-      case SubscriptionTier.pro:
-      case SubscriptionTier.proFamily:
-        return -1; // Unlimited
-    }
-  }
-
-  /// AI model tier name
-  String get aiModelTier {
-    switch (tier) {
-      case SubscriptionTier.free:
-        return 'standard';
-      case SubscriptionTier.plus:
-      case SubscriptionTier.plusFamily:
-        return 'premium';
-      case SubscriptionTier.pro:
-      case SubscriptionTier.proFamily:
-        return 'flagship';
+      case SubscriptionTier.premium:
+        return 600;
     }
   }
 
@@ -174,151 +107,94 @@ class SubscriptionLimits {
     switch (tier) {
       case SubscriptionTier.free:
         return 3;
-      case SubscriptionTier.plus:
-      case SubscriptionTier.plusFamily:
+      case SubscriptionTier.go:
         return 6;
-      case SubscriptionTier.pro:
-      case SubscriptionTier.proFamily:
-        return -1; // All history
+      case SubscriptionTier.premium:
+        return 24; // 2 years
     }
   }
 
-  /// Whether multi-currency is allowed
-  bool get allowMultiCurrency {
-    // All tiers can use multi-currency now
-    return true;
-  }
+  /// Multi-currency available on all tiers
+  bool get allowMultiCurrency => true;
 
-  /// Whether Firebase real-time sync is allowed
-  bool get allowFirebaseSync {
-    // All tiers have basic cloud sync
-    return true;
-  }
-
-  /// Whether receipt photos are allowed
-  bool get allowReceiptPhotos {
-    switch (tier) {
-      case SubscriptionTier.free:
-        return false;
-      case SubscriptionTier.plus:
-      case SubscriptionTier.pro:
-      case SubscriptionTier.plusFamily:
-      case SubscriptionTier.proFamily:
-        return true;
-    }
-  }
-
-  /// Receipt storage limit in MB (-1 = unlimited)
-  int get receiptStorageLimitMB {
-    switch (tier) {
-      case SubscriptionTier.free:
-        return 0;
-      case SubscriptionTier.plus:
-      case SubscriptionTier.plusFamily:
-        return 1024; // 1GB
-      case SubscriptionTier.pro:
-      case SubscriptionTier.proFamily:
-        return 5120; // 5GB
-    }
-  }
+  /// Cloud sync available on all tiers
+  bool get allowFirebaseSync => true;
 
   /// Whether OCR receipt scanning is available
-  bool get allowReceiptOCR {
-    return tier.isProLevel;
+  bool get allowReceiptOCR => tier.isPaid;
+
+  /// Whether receipt photo storage is available
+  bool get allowReceiptPhotos => tier.isPaid;
+
+  /// Receipt photo retention in months (-1 = no storage)
+  int get receiptRetentionMonths {
+    switch (tier) {
+      case SubscriptionTier.free:
+        return -1;
+      case SubscriptionTier.go:
+        return 12; // 1 year
+      case SubscriptionTier.premium:
+        return 36; // 3 years
+    }
   }
 
   /// Whether ads should be shown
-  bool get showAds {
-    return tier == SubscriptionTier.free;
-  }
+  bool get showAds => tier == SubscriptionTier.free;
 
   /// Whether AI insights/predictions are available
-  bool get allowAiInsights {
-    return tier.isProLevel;
-  }
+  bool get allowAiInsights => tier.isPremiumLevel;
 
   /// Whether priority support is available
-  bool get hasPrioritySupport {
-    return tier.isProLevel;
-  }
+  bool get hasPrioritySupport => tier.isPremiumLevel;
 
-  // ============== Family Sharing Limits ==============
+  // ============== Family Sharing ==============
 
-  /// Whether family sharing is enabled (all tiers have basic family)
-  bool get allowFamilySharing {
-    return true; // All tiers can use family sharing
-  }
+  /// Family sharing available on all tiers
+  bool get allowFamilySharing => true;
 
   /// Maximum number of family members (including owner)
-  /// Free: 2 (owner + 1 member)
-  /// Plus/Pro: 3 members
-  /// Family tiers: 5 members
   int get maxFamilyMembers {
     switch (tier) {
       case SubscriptionTier.free:
-        return 2; // Owner + 1 member
-      case SubscriptionTier.plus:
-      case SubscriptionTier.pro:
-        return 3; // Owner + 2 members
-      case SubscriptionTier.plusFamily:
-      case SubscriptionTier.proFamily:
-        return 5; // Owner + 4 members
+      case SubscriptionTier.go:
+        return 2;
+      case SubscriptionTier.premium:
+        return 5;
     }
   }
 
-  /// Maximum number of wallets that can be shared with family
-  /// Free: 1 wallet
-  /// Plus: 2 wallets
-  /// Pro: 3 wallets
-  /// Family tiers: Unlimited
+  /// Maximum number of wallets that can be shared with family (-1 = unlimited)
   int get maxSharedWallets {
     switch (tier) {
       case SubscriptionTier.free:
         return 1;
-      case SubscriptionTier.plus:
-        return 2;
-      case SubscriptionTier.pro:
-        return 3;
-      case SubscriptionTier.plusFamily:
-      case SubscriptionTier.proFamily:
-        return -1; // Unlimited
+      case SubscriptionTier.go:
+      case SubscriptionTier.premium:
+        return -1;
     }
   }
 
-  /// Available family roles for this tier
-  /// Free: Viewer only (cannot edit)
-  /// Plus: Owner, Viewer
-  /// Pro: Owner, Editor, Viewer
-  /// Family tiers: All roles
+  /// Available family roles. Free is viewer-only; Go and Premium include Editor.
   List<FamilyRole> get availableFamilyRoles {
     switch (tier) {
       case SubscriptionTier.free:
         return [FamilyRole.owner, FamilyRole.viewer];
-      case SubscriptionTier.plus:
-      case SubscriptionTier.plusFamily:
-        return [FamilyRole.owner, FamilyRole.viewer];
-      case SubscriptionTier.pro:
-      case SubscriptionTier.proFamily:
+      case SubscriptionTier.go:
+      case SubscriptionTier.premium:
         return [FamilyRole.owner, FamilyRole.editor, FamilyRole.viewer];
     }
   }
 
   /// Whether members can have Editor role
-  bool get allowEditorRole {
-    return tier.isProLevel;
-  }
+  bool get allowEditorRole => tier.isPaid;
 
   /// Whether user can create a family (all tiers can create)
-  bool get canCreateFamily {
-    return true;
-  }
+  bool get canCreateFamily => true;
 
   /// Whether user can invite members (all tiers can invite up to their limit)
-  bool get canInviteMembers {
-    return true;
-  }
+  bool get canInviteMembers => true;
 
-  /// Check if a count exceeds the limit (-1 means unlimited)
+  /// Check if a count is within the limit (-1 means unlimited)
   bool isWithinLimit(int count, int limit) {
     if (limit == -1) return true;
     return count < limit;

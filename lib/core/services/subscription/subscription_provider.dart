@@ -41,11 +41,14 @@ class SubscriptionState {
   /// Get limits for current tier
   SubscriptionLimits get limits => SubscriptionLimits(tier);
 
-  /// Check if user has plus or higher
-  bool get isPlusOrHigher => tier.hasAccess(SubscriptionTier.plus);
+  /// Check if user has any paid tier (Go or higher)
+  bool get isPaid => tier.isPaid;
 
-  /// Check if user has pro
-  bool get isPro => tier == SubscriptionTier.pro;
+  /// Check if user is on Premium tier
+  bool get isPremium => tier == SubscriptionTier.premium;
+
+  /// Check if user is on Go tier
+  bool get isGo => tier == SubscriptionTier.go;
 
   /// Check if user is on free tier
   bool get isFree => tier == SubscriptionTier.free;
