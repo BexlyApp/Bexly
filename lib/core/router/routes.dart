@@ -27,8 +27,8 @@ class Routes {
   static const String emailSyncSettings = '/email-sync-settings';
   static const String emailReview = '/email-review';
   static const String bankConnections = '/bank-connections';
+  static const String linkedBankAccounts = '/linked-bank-accounts';
   static const String languageSettings = '/language-settings';
-  static const String aiModelSettings = '/ai-model-settings';
   static const String notifications = '/notifications';
   static const String backupAndRestore = '/backup-restore';
   static const String accountDeletion = '/account-deletion';

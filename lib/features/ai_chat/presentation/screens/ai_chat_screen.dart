@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/features/ai_chat/presentation/components/ai_quota_indicator.dart';
 import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
@@ -81,6 +82,9 @@ class AIChatScreen extends HookConsumerWidget {
       title: context.l10nOrNull?.aiAssistantTitle ?? 'Bexly AI Assistant',
       body: Column(
         children: [
+          // AI quota indicator (X / 600 this period)
+          const AiQuotaIndicator(),
+
           // Error banner
           if (chatState.error != null)
             Container(

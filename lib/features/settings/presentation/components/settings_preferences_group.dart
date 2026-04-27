@@ -161,15 +161,6 @@ class SettingsPreferencesGroup extends ConsumerWidget {
             desktopWidget: const NotificationSettingsScreen(),
           ),
         ),
-        MenuTileButton(
-          label: 'AI Model',
-          icon: HugeIcons.strokeRoundedAiBrain01,
-          onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
-            context,
-            route: Routes.aiModelSettings,
-            desktopWidget: const AIModelSettingsScreen(),
-          ),
-        ),
         // Auto Transaction - hub for all auto import features
         // Available on all platforms, but some sub-features are platform-specific
         MenuTileButton(
@@ -180,6 +171,12 @@ class SettingsPreferencesGroup extends ConsumerWidget {
             route: Routes.autoTransactionSettings,
             desktopWidget: const AutoTransactionSettingsScreen(),
           ),
+        ),
+        // Linked bank accounts (Tingee Open Banking)
+        MenuTileButton(
+          label: 'Tài khoản ngân hàng',
+          icon: HugeIcons.strokeRoundedBank,
+          onTap: () => Navigator.of(context).pushNamed(Routes.linkedBankAccounts),
         ),
         // Bot Integration - Telegram & Messenger
         MenuTileButton(
