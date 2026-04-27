@@ -1,6 +1,6 @@
 # Bexly Development Roadmap
 
-> Last updated: 2026-03-15 | Current version: v0.0.10+545
+> Last updated: 2026-04-27 | Current version: v0.0.10+585
 
 ## Current State
 
@@ -130,13 +130,27 @@
 - Works cross-platform (iOS, Android, Web)
 - Supabase Edge Function for scheduled scanning
 
-### 3.3 Open Banking API
-**Priority: LOW | Platform: All**
+### 3.3 Open Banking via Tingee (Vietnam) 🔥
+**Priority: HIGH | Platform: All | Spec: [docs/plans/2026-04-27-tingee-open-banking.md](plans/2026-04-27-tingee-open-banking.md)**
 
-- Vietnam: Thông tư 64/2024 (effective 01/03/2025, banks must comply by 01/03/2027)
-- International: Plaid (US/CA/UK/EU), Salt Edge (50+ countries)
-- Transaction history sync, balance inquiries
-- Wait for VN banks to publish APIs
+Vietnam's Thông tư 64/2024 mandates Open Banking at all VN banks by
+2027-03-01, but rather than waiting, Bexly will integrate **[Tingee](https://developers.tingee.vn)**
+as an aggregator (the VN equivalent of Plaid). Partner credentials already
+secured.
+
+- **Phase A (MVP, ~3 weeks)** — read-only: link bank account, real-time
+  transaction notifications via webhook, surface in existing
+  `pending_transactions` queue for AI categorization + user confirm.
+- **Phase B (~2 weeks)** — Pay-by-Bank for recurring bills via VietQR / deep link.
+- **Phase C (~3 weeks)** — Direct Debit (highest trust tier; legal review required).
+
+Architecture: Tingee → Supabase Edge Function (`tingee-webhook`) → HMAC
+verify → `bexly.tingee_transactions` table → Realtime → client. Secret
+key stays server-side; client only reads via Supabase Realtime.
+
+Tier gating: Free 1 account, Go 3 accounts, Premium unlimited + Direct Debit.
+
+International (Plaid, Salt Edge) deferred — focus on VN market first.
 
 ### 3.4 Apple FinanceKit
 **Priority: LOW | Platform: iOS only (US)**
@@ -148,32 +162,23 @@
 
 ## Phase 4: Monetization (Q3 2026)
 
-### Pricing Strategy
-**Freemium model** — core features free, premium for power users
+**Canonical pricing**: see [`docs/PREMIUM_PLAN.md`](PREMIUM_PLAN.md) — 3 tiers
+(Free / Go $1.99 / Premium $5), billed centrally via DOS.Me with in-app
+IAP fallback. Per-product quota tracked through DOS.AI Gateway (see
+[`docs/plans/2026-04-22-bexly-quota-schema.md`](plans/2026-04-22-bexly-quota-schema.md)).
 
-| Feature | Free | Premium ($2.99/mo) | Pro ($5.99/mo) |
-|---------|------|---------------------|-----------------|
-| Wallets | 2 | Unlimited | Unlimited |
-| Budgets/Goals | 2 each | Unlimited | Unlimited |
-| Recurring | 2 | Unlimited | Unlimited |
-| Currency | 1 only | Multi-currency | Multi-currency |
-| AI Messages | 30/month | 50/month | Unlimited |
-| Analytics | 2 months | 6 months | All history |
-| Cloud Sync | ❌ | ✅ Supabase sync | ✅ Supabase sync |
-| Receipt OCR | ❌ | ✅ | ✅ |
-| Receipt Storage | ❌ | 1GB | Unlimited |
-| Support | Community | Email | Priority |
-
-### Implementation
-1. RevenueCat integration for subscription management
-2. Feature gating via `SubscriptionService`
-3. Google Drive backup for free tier (weekly auto-backup)
-4. AI message usage tracking (reset monthly)
-5. Soft paywall with 7-day free trial
+### Implementation status
+- ✅ Tier definitions in `lib/core/services/subscription/subscription_tier.dart`
+- ✅ Product IDs registered in `subscription_products.dart`
+- 📋 Google Play / App Store IAP products created (manual step in console)
+- 📋 IAP receipt verification via Supabase Edge Function
+- 📋 DOS.Me tier sync on auth + every app start
+- 📋 Quota counter wired to `bexly.usage_counters` (waiting on DOS.AI Gateway)
+- 📋 Soft paywall + 7-day Premium trial after 30 days active use
 
 ### Revenue Projections (Year 1)
-- Conservative: 10K users, 5% Premium, 10% Pro → MRR ~$1,800
-- Optimistic: 50K users, 10% Premium, 15% Pro → MRR ~$19,400
+- Conservative: 10K users, 5% Go, 2% Premium → MRR ~$1,500
+- Optimistic: 50K users, 8% Go, 4% Premium → MRR ~$17,950
 - Gross margin: ~85% (AI costs ~$0.03/free user/month)
 
 ---
@@ -235,6 +240,9 @@
 - ⏳ Security audits
 - ✅ L10n migration to flutter gen-l10n (14 languages)
 - ✅ Migrate from Firestore → Supabase (completed)
+- ✅ Firebase Functions removed (Telegram bot + all webhooks moved to Supabase Edge Functions)
+- ✅ `.env` no longer bundled into APK; switched to `--dart-define-from-file` (security: April 2026)
+- 📋 Force-update gate for old APKs that still ship leaked keys
 
 ### Known Issues
 - Health category icon mapping (Dental and Fitness share same icon)
@@ -249,11 +257,14 @@
 | Auth | Supabase (dos.me ID) | Google, Apple, Facebook Sign In |
 | Local DB | Drift/SQLite | Source of truth for offline |
 | Cloud Sync | Supabase PostgreSQL (schema `bexly`) | Bidirectional sync |
-| AI (primary) | DOS AI (`api.dos.ai`) | Qwen3.5-35B-A3B, vision built-in |
-| AI (fallback) | Gemini via Supabase Edge Function proxy | Server-side API keys |
-| AI (optional) | OpenAI, Claude via proxy | Same proxy architecture |
+| AI gateway | DOS.AI Gateway (in progress) | JWT auth, per-product quota, routes to Qwen / Gemini / Claude |
+| AI (primary model) | DOS AI Qwen3.5-35B-A3B | vision built-in, served via gateway |
+| AI (fallback) | Gemini, OpenAI, Claude via gateway | Keys stay server-side |
 | OAuth Tokens | dos.me ID API (`api.dos.me`) | Centralized token management |
-| Analytics | Firebase Analytics + Crashlytics | Crash reporting |
-| Push | Firebase Cloud Messaging | Recurring reminders |
+| Open Banking (VN) | Tingee aggregator (Q2-Q3 2026) | Webhook + HMAC signed, see Phase 3.3 |
+| Subscription billing | DOS.Me central + Google Play / App Store IAP | Tier sync via DOS.Me API |
+| Analytics | Firebase Analytics + Crashlytics + Performance | |
+| Push (receive only) | Firebase Cloud Messaging | Server-side delivery TBD; no fcm_tokens table yet |
+| Telegram + Stripe webhooks | Supabase Edge Functions | All migrated off Firebase Functions |
 | Storage | Firebase Storage | Avatar uploads |
 | CI/CD | GitHub Actions | Android, iOS, Web, macOS, Linux builds |
