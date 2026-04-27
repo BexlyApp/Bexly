@@ -6,6 +6,7 @@ enum PendingTransactionSource {
   bank,     // From bank connection (Stripe)
   sms,      // From SMS parsing
   notification, // From notification parsing
+  bankLink, // From Tingee Open Banking webhook
 }
 
 /// Status of the pending transaction

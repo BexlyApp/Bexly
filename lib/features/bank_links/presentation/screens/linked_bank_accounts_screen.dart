@@ -7,6 +7,7 @@ import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/features/bank_links/domain/models/linked_bank_account.dart';
+import 'package:bexly/features/bank_links/presentation/components/link_bank_bottom_sheet.dart';
 import 'package:bexly/features/bank_links/presentation/riverpod/linked_accounts_provider.dart';
 
 /// Lists the user's Tingee-linked virtual accounts. Phase A is read-only:
@@ -26,7 +27,7 @@ class LinkedBankAccountsScreen extends ConsumerWidget {
       showBalance: false,
       body: accountsAsync.when(
         data: (accounts) =>
-            accounts.isEmpty ? _EmptyState(onLink: () => _showComingSoon(context)) : _AccountsList(accounts: accounts),
+            accounts.isEmpty ? _EmptyState(onLink: () => showLinkBankBottomSheet(context)) : _AccountsList(accounts: accounts),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Padding(
@@ -42,13 +43,6 @@ class LinkedBankAccountsScreen extends ConsumerWidget {
     );
   }
 
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tính năng liên kết Tingee sắp ra mắt.'),
-      ),
-    );
-  }
 }
 
 class _EmptyState extends StatelessWidget {

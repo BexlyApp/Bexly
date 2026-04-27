@@ -10,6 +10,7 @@ import 'package:bexly/core/localization/generated/app_localizations.dart';
 import 'package:bexly/core/router/app_router.dart';
 import 'package:bexly/core/services/lifecycle_manager.dart';
 import 'package:bexly/core/services/version_check_service.dart';
+import 'package:bexly/features/bank_links/presentation/riverpod/tingee_realtime_provider.dart';
 import 'package:bexly/features/version_check/presentation/screens/force_update_screen.dart';
 import 'package:bexly/features/settings/presentation/riverpod/language_provider.dart';
 import 'package:bexly/features/theme_switcher/presentation/riverpod/theme_mode_provider.dart';
@@ -29,6 +30,9 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final currentLanguage = ref.watch(languageProvider);
+    // Keep the Tingee realtime listener alive for the whole app lifecycle —
+    // starts/stops as the user signs in/out.
+    ref.watch(tingeeRealtimeBootstrapProvider);
 
     final buttonShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(8.0),
