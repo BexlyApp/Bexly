@@ -1,9 +1,15 @@
 # Bexly Security + Performance Review & Plan (2026-02-25)
 
+> 📍 **Snapshot từ 2026-02-25.** Tài liệu này là điểm chụp tại thời
+> điểm review, không cập nhật theo state hiện tại. Sau ngày review:
+> Firebase Cloud Functions (`functions/`) đã bị xóa hoàn toàn vì không
+> còn deploy. `.env` không còn bundle vào APK (sửa 2026-04-22 sau khi
+> phát hiện key leak). Khi đọc tài liệu này hãy lưu ý các thay đổi đó.
+
 ## Scope
 
 - Flutter app (`lib/`, `web/`)
-- Firebase Cloud Functions (`functions/src/index.ts`)
+- Firebase Cloud Functions (`functions/src/index.ts`) — *(đã xóa)*
 - Supabase Edge Functions (`supabase/functions/*`)
 - Firebase/Supabase config and rules visible in repo
 

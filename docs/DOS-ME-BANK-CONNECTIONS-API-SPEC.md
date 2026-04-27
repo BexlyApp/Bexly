@@ -327,7 +327,7 @@ await stripe.financialConnections.accounts.disconnect(accountId);
 
 ## Flutter Client Changes
 
-After dos-me implements these endpoints, update `BankConnectionService` to call HTTP APIs instead of Firebase Functions:
+After dos-me implements these endpoints, update `BankConnectionService` to call HTTP APIs (replacing the legacy Firebase Cloud Functions path that was removed when bot/webhook infrastructure migrated to Supabase Edge Functions in early 2026):
 
 ```dart
 class BankConnectionService {

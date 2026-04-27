@@ -1,5 +1,13 @@
 # Bexly Multi-Platform Chatbot Integration Plan
 
+> ⚠️ **Plan này từ tháng 12/2025 — implementation đã đổi.**
+> Telegram + Facebook Messenger bot giờ chạy trên **Supabase Edge Functions**
+> (`supabase/functions/telegram-webhook`, etc.), không phải Firebase Cloud
+> Functions như trong plan gốc. Firestore không còn dùng cho bot data
+> (đã migrate sang Supabase). Architecture diagram + technology stack
+> bên dưới chỉ giữ làm tham khảo lịch sử — đọc `docs/plans/AUDIT_PLAN.md`
+> hoặc `supabase/functions/` cho trạng thái thực tế.
+
 ## Overview
 
 Cho phép user tương tác với Bexly qua các chatbot platforms để:

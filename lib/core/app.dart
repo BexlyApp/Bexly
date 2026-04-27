@@ -9,6 +9,8 @@ import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/core/localization/generated/app_localizations.dart';
 import 'package:bexly/core/router/app_router.dart';
 import 'package:bexly/core/services/lifecycle_manager.dart';
+import 'package:bexly/core/services/version_check_service.dart';
+import 'package:bexly/features/version_check/presentation/screens/force_update_screen.dart';
 import 'package:bexly/features/settings/presentation/riverpod/language_provider.dart';
 import 'package:bexly/features/theme_switcher/presentation/riverpod/theme_mode_provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
@@ -181,7 +183,7 @@ class MyApp extends ConsumerWidget {
                   context,
                 ).textScaler.clamp(minScaleFactor: 0.8, maxScaleFactor: 1.2),
               ),
-              child: child!,
+              child: _VersionGate(child: child!),
             ),
             breakpoints: [
               const Breakpoint(
@@ -209,6 +211,26 @@ class MyApp extends ConsumerWidget {
           routerConfig: router,
         ),
       ),
+    );
+  }
+}
+
+/// Blocks the UI behind ForceUpdateScreen when the installed build is older
+/// than `bexly.app_min_versions.min_build_number`. Treats network errors and
+/// the in-flight loading state as "let the user in" — the gate only fires on
+/// a confirmed positive answer from Supabase.
+class _VersionGate extends ConsumerWidget {
+  const _VersionGate({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncResult = ref.watch(versionCheckResultProvider);
+    return asyncResult.when(
+      data: (r) => r.updateRequired ? ForceUpdateScreen(result: r) : child,
+      loading: () => child,
+      error: (_, __) => child,
     );
   }
 }

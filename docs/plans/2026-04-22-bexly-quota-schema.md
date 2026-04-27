@@ -1,5 +1,10 @@
 # Bexly AI Quota Schema (DOS.AI Gateway)
 
+> **Updated 2026-04-27**: aligned with DOS.AI gateway-jwt-auth spec v2 —
+> anniversary-based reset (not calendar UTC), counter table keyed by
+> `period_start_date DATE`, atomic `try_consume_quota` function instead of
+> COUNT() race window. Migration: `supabase/migrations/20260427_add_bexly_quota_tables.sql`.
+
 Spec for Bexly's per-product AI usage tracking + plan quota config in the
 DOS.AI Gateway. Pairs with the Gateway's JWT-auth + product routing work
 on the DOS.AI side.
@@ -95,25 +100,27 @@ CREATE INDEX idx_bexly_usage_created_at
   ON bexly.usage_transactions (created_at DESC);
 ```
 
-## Gateway logic (DOS.AI side, for reference)
+## Gateway logic (v2 — anniversary reset, atomic counter)
 
 ```text
-POST /v1/chat/completions
+POST /v1/bexly/chat/completions      (URL path is product key, not header)
   Authorization: Bearer <supabase_jwt>
-  X-Product: bexly
 
 1. Verify JWT via Supabase JWKS → user_id
-2. Read X-Product header → 'bexly'
-3. plan = SELECT plan FROM public.billing_accounts WHERE user_id = ?
-4. limit = SELECT monthly_limit FROM bexly.plan_quotas
-           WHERE plan = ? AND model_tier = ?
-5. used = SELECT COUNT(*) FROM bexly.usage_transactions
-          WHERE user_id = ?
-            AND model_tier = ?
-            AND created_at >= date_trunc('month', NOW())
-6. IF used >= limit AND limit != -1 → 429 with X-RateLimit-* headers
-   ELSE → forward to upstream, then INSERT into bexly.usage_transactions
+2. Route by URL path → product = 'bexly'
+3. SELECT plan, current_period_start FROM public.billing_accounts WHERE user_id = ?
+   - period_start_date = DATE(current_period_start)
+   - if NULL (free user, no Stripe period): fall back to first-of-month UTC
+4. count = SELECT bexly.try_consume_quota(user_id, 'standard', plan, period_start_date)
+   - returns NULL if quota exceeded
+   - returns new count otherwise (atomic increment via INSERT ... ON CONFLICT)
+5. IF count IS NULL → 429 with X-RateLimit-* headers
+   ELSE → forward upstream, then INSERT into bexly.usage_transactions
+        (audit log; counter is the quota source of truth)
 ```
+
+The atomic function avoids the race window where two concurrent requests
+both observe `count = limit-1` and both pass.
 
 ## Response headers (gateway returns on every Bexly request)
 
