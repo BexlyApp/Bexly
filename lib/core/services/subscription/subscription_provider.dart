@@ -44,8 +44,8 @@ class SubscriptionState {
   /// Check if user has any paid tier (Go or higher)
   bool get isPaid => tier.isPaid;
 
-  /// Check if user is on Premium tier
-  bool get isPremium => tier == SubscriptionTier.premium;
+  /// Check if user is on Plus tier
+  bool get isPlus => tier == SubscriptionTier.plus;
 
   /// Check if user is on Go tier
   bool get isGo => tier == SubscriptionTier.go;

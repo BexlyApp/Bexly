@@ -8,28 +8,28 @@ class SubscriptionProducts {
   static const String goMonthly = 'bexly_go_monthly';
   static const String goYearly = 'bexly_go_yearly';
 
-  // Premium tier products ($5/mo, $25/yr) — maps to DOS.Me Plus
-  static const String premiumMonthly = 'bexly_premium_monthly';
-  static const String premiumYearly = 'bexly_premium_yearly';
+  // Plus tier products ($5/mo, $25/yr) — maps to DOS.Me Plus plan
+  static const String plusMonthly = 'bexly_plus_monthly';
+  static const String plusYearly = 'bexly_plus_yearly';
 
   /// All subscription product IDs
   static const Set<String> allProductIds = {
     goMonthly,
     goYearly,
-    premiumMonthly,
-    premiumYearly,
+    plusMonthly,
+    plusYearly,
   };
 
   /// Go tier product IDs
   static const Set<String> goProductIds = {goMonthly, goYearly};
 
-  /// Premium tier product IDs
-  static const Set<String> premiumProductIds = {premiumMonthly, premiumYearly};
+  /// Plus tier product IDs
+  static const Set<String> plusProductIds = {plusMonthly, plusYearly};
 
   static bool isGoProduct(String productId) => goProductIds.contains(productId);
 
-  static bool isPremiumProduct(String productId) =>
-      premiumProductIds.contains(productId);
+  static bool isPlusProduct(String productId) =>
+      plusProductIds.contains(productId);
 
   static bool isYearlyProduct(String productId) =>
       productId.endsWith('_yearly');

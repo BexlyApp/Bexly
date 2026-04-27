@@ -57,11 +57,11 @@ class SubscriptionScreen extends ConsumerWidget {
         yearlyProductId: SubscriptionProducts.goYearly,
       ),
       _PlanData(
-        tier: SubscriptionTier.premium,
-        title: 'Premium',
+        tier: SubscriptionTier.plus,
+        title: 'Plus',
         subtitle: 'Best for power users',
-        monthlyPrice: notifier.getPrice(SubscriptionProducts.premiumMonthly) ?? '\$5',
-        yearlyPrice: notifier.getPrice(SubscriptionProducts.premiumYearly) ?? '\$25',
+        monthlyPrice: notifier.getPrice(SubscriptionProducts.plusMonthly) ?? '\$5',
+        yearlyPrice: notifier.getPrice(SubscriptionProducts.plusYearly) ?? '\$25',
         features: const [
           '✨ All Go features, plus:',
           '600 AI messages/month',
@@ -73,8 +73,8 @@ class SubscriptionScreen extends ConsumerWidget {
         ],
         accentColor: AppColors.purple,
         isRecommended: true,
-        monthlyProductId: SubscriptionProducts.premiumMonthly,
-        yearlyProductId: SubscriptionProducts.premiumYearly,
+        monthlyProductId: SubscriptionProducts.plusMonthly,
+        yearlyProductId: SubscriptionProducts.plusYearly,
       ),
     ];
 

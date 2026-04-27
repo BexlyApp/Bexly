@@ -16,16 +16,16 @@ syncs back to the user's DOS.Me account.
 |------|-------------------|-------------|-------------|
 | **Free** | DOS.Me Free | $0 | 0đ |
 | **Go** | DOS.Me Go | $1.99/mo · $19.99/yr | 49,000đ/mo · 490,000đ/yr |
-| **Premium** | DOS.Me Plus | $5/mo · $25/yr | 125,000đ/mo · 625,000đ/yr |
+| **Plus** | DOS.Me Plus | $5/mo · $25/yr | 125,000đ/mo · 625,000đ/yr |
 
-Yearly Go saves ~17% (≈ 2 months free). Yearly Premium saves ~58% — the deep
+Yearly Go saves ~17% (≈ 2 months free). Yearly Plus saves ~58% — the deep
 discount is intentional to drive annual commitment on the flagship plan.
 
 ---
 
 ## Feature Matrix
 
-| Feature | Free | Go | Premium |
+| Feature | Free | Go | Plus |
 |---------|------|------|---------|
 | **Core** | | | |
 | Wallets | 3 | Unlimited | Unlimited |
@@ -52,17 +52,17 @@ discount is intentional to drive annual commitment on the flagship plan.
 - All tiers use the same default AI model. Bexly does not expose model
   selection to the user — keeps UX simple and lets us upgrade the underlying
   model without breaking expectations.
-- The 600/month cap on Premium is a soft anti-abuse cap, not a target. Most
+- The 600/month cap on Plus is a soft anti-abuse cap, not a target. Most
   users land at 50-150 messages/month. The cap stops "use AI to write poetry"
   scenarios that would burn provider quota disproportionately.
-- AI insights & predictions (Premium only) are proactive notifications:
+- AI insights & predictions (Plus only) are proactive notifications:
   spending anomalies, budget-burn forecasts, savings opportunities.
 
 ### Notes on receipt retention
 
 - Auto-delete runs as a background job. Users do not need a "manage storage"
   UI — old photos disappear quietly past the retention window.
-- 1 year for Go and 3 years for Premium align with typical personal
+- 1 year for Go and 3 years for Plus align with typical personal
   bookkeeping needs; users who must keep receipts longer (e.g. tax records
   in jurisdictions requiring 5+ years) should export to their own storage.
 
@@ -71,7 +71,7 @@ discount is intentional to drive annual commitment on the flagship plan.
 - Free and Go both support 2 members. The difference is role: Free is
   Viewer-only, Go unlocks Editor. This makes Go meaningful for couples who
   both want to log transactions.
-- Premium expands to 5 members for households or multi-generational families.
+- Plus expands to 5 members for households or multi-generational families.
 - All shared wallets sync via Supabase realtime; Family is gated by tier
   but uses the same sync stack.
 
@@ -86,7 +86,7 @@ DOS.Me tier and maps it to its own feature set:
 |--------------------|------------|----------------------|----------------------|
 | Free | Free | Basic | Free |
 | Go | Go | Pro | Plus |
-| Plus | Premium | Enterprise | Pro |
+| Plus | Plus | Enterprise | Pro |
 
 A single DOS.Me Go or Plus subscription covers every DOS product the user
 opens — they never see a "buy again" prompt in a sister app.
@@ -94,7 +94,7 @@ opens — they never see a "buy again" prompt in a sister app.
 ### Purchase paths
 
 1. **Bexly in-app (Google Play / App Store IAP)** — user buys
-   `bexly_go_monthly` / `bexly_premium_monthly` etc. The receipt is
+   `bexly_go_monthly` / `bexly_plus_monthly` etc. The receipt is
    verified server-side, then DOS.Me is updated to reflect the user's tier.
 2. **DOS.Me web (https://app.dos.ai/billing/plans)** — user buys directly
    from DOS.Me. Bexly receives the tier via DOS.Me API on next sync.
@@ -110,8 +110,8 @@ canonical subscription state, and Bexly reads from there.
 |------|------------|-------------|
 | Go Monthly | `bexly_go_monthly` | $1.99/month |
 | Go Yearly | `bexly_go_yearly` | $19.99/year |
-| Premium Monthly | `bexly_premium_monthly` | $5/month |
-| Premium Yearly | `bexly_premium_yearly` | $25/year |
+| Plus Monthly | `bexly_plus_monthly` | $5/month |
+| Plus Yearly | `bexly_plus_yearly` | $25/year |
 
 **Subscription Group:** `Bexly Subscriptions` (App Store)
 
@@ -154,14 +154,14 @@ if (limits.allowReceiptOCR) {
 
 - **Soft limits**: when a free user hits 3 wallets / 2 budgets / 60 AI
   messages, show inline upgrade prompt (not a modal blocker).
-- **Free trial**: 7-day Premium trial unlocked after first 30 days of
+- **Free trial**: 7-day Plus trial unlocked after first 30 days of
   active use, one trial per DOS.Me account.
-- **Yearly nudge**: when a user has been on monthly Go/Premium for 90 days,
+- **Yearly nudge**: when a user has been on monthly Go/Plus for 90 days,
   surface a "switch to yearly" banner highlighting savings.
 
 ### Target KPIs
 
 - Free → Go conversion: 5-8%
-- Go → Premium conversion: 10-15%
+- Go → Plus conversion: 10-15%
 - Monthly churn (any tier): <5%
 - Yearly mix of paid users: >40%

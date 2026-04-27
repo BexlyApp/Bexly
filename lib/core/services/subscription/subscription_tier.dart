@@ -9,8 +9,8 @@ enum SubscriptionTier {
   /// Go tier - $1.99/month or $19.99/year. Maps to DOS.Me Go.
   go,
 
-  /// Premium tier - $5/month or $25/year. Maps to DOS.Me Plus.
-  premium,
+  /// Plus tier - $5/month or $25/year. Maps to DOS.Me Plus plan.
+  plus,
 }
 
 /// Extension to add utility methods to SubscriptionTier
@@ -22,12 +22,12 @@ extension SubscriptionTierExtension on SubscriptionTier {
         return 'Free';
       case SubscriptionTier.go:
         return 'Go';
-      case SubscriptionTier.premium:
-        return 'Premium';
+      case SubscriptionTier.plus:
+        return 'Plus';
     }
   }
 
-  /// Whether this tier includes the features of another tier (ordered: free < go < premium)
+  /// Whether this tier includes the features of another tier (ordered: free < go < plus)
   bool includes(SubscriptionTier other) => index >= other.index;
 
   /// Check if user has at least this tier level
@@ -36,8 +36,8 @@ extension SubscriptionTierExtension on SubscriptionTier {
   /// Check if this tier is Go or higher (any paid tier)
   bool get isPaid => this != SubscriptionTier.free;
 
-  /// Check if this tier has Premium-level features
-  bool get isPremiumLevel => this == SubscriptionTier.premium;
+  /// Check if this tier has Plus-level features
+  bool get isPlusLevel => this == SubscriptionTier.plus;
 }
 
 /// Feature limits based on subscription tier. See docs/PREMIUM_PLAN.md.
@@ -52,7 +52,7 @@ class SubscriptionLimits {
       case SubscriptionTier.free:
         return 3;
       case SubscriptionTier.go:
-      case SubscriptionTier.premium:
+      case SubscriptionTier.plus:
         return -1;
     }
   }
@@ -63,7 +63,7 @@ class SubscriptionLimits {
       case SubscriptionTier.free:
         return 2;
       case SubscriptionTier.go:
-      case SubscriptionTier.premium:
+      case SubscriptionTier.plus:
         return -1;
     }
   }
@@ -74,7 +74,7 @@ class SubscriptionLimits {
       case SubscriptionTier.free:
         return 2;
       case SubscriptionTier.go:
-      case SubscriptionTier.premium:
+      case SubscriptionTier.plus:
         return -1;
     }
   }
@@ -85,7 +85,7 @@ class SubscriptionLimits {
       case SubscriptionTier.free:
         return 5;
       case SubscriptionTier.go:
-      case SubscriptionTier.premium:
+      case SubscriptionTier.plus:
         return -1;
     }
   }
@@ -97,7 +97,7 @@ class SubscriptionLimits {
         return 60;
       case SubscriptionTier.go:
         return 240;
-      case SubscriptionTier.premium:
+      case SubscriptionTier.plus:
         return 600;
     }
   }
@@ -109,7 +109,7 @@ class SubscriptionLimits {
         return 3;
       case SubscriptionTier.go:
         return 6;
-      case SubscriptionTier.premium:
+      case SubscriptionTier.plus:
         return 24; // 2 years
     }
   }
@@ -133,7 +133,7 @@ class SubscriptionLimits {
         return -1;
       case SubscriptionTier.go:
         return 12; // 1 year
-      case SubscriptionTier.premium:
+      case SubscriptionTier.plus:
         return 36; // 3 years
     }
   }
@@ -142,10 +142,10 @@ class SubscriptionLimits {
   bool get showAds => tier == SubscriptionTier.free;
 
   /// Whether AI insights/predictions are available
-  bool get allowAiInsights => tier.isPremiumLevel;
+  bool get allowAiInsights => tier.isPlusLevel;
 
   /// Whether priority support is available
-  bool get hasPrioritySupport => tier.isPremiumLevel;
+  bool get hasPrioritySupport => tier.isPlusLevel;
 
   // ============== Family Sharing ==============
 
@@ -158,7 +158,7 @@ class SubscriptionLimits {
       case SubscriptionTier.free:
       case SubscriptionTier.go:
         return 2;
-      case SubscriptionTier.premium:
+      case SubscriptionTier.plus:
         return 5;
     }
   }
@@ -169,18 +169,18 @@ class SubscriptionLimits {
       case SubscriptionTier.free:
         return 1;
       case SubscriptionTier.go:
-      case SubscriptionTier.premium:
+      case SubscriptionTier.plus:
         return -1;
     }
   }
 
-  /// Available family roles. Free is viewer-only; Go and Premium include Editor.
+  /// Available family roles. Free is viewer-only; Go and Plus include Editor.
   List<FamilyRole> get availableFamilyRoles {
     switch (tier) {
       case SubscriptionTier.free:
         return [FamilyRole.owner, FamilyRole.viewer];
       case SubscriptionTier.go:
-      case SubscriptionTier.premium:
+      case SubscriptionTier.plus:
         return [FamilyRole.owner, FamilyRole.editor, FamilyRole.viewer];
     }
   }
