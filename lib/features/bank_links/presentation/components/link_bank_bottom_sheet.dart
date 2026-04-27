@@ -6,6 +6,7 @@ import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
 import 'package:bexly/features/bank_links/data/services/tingee_link_service.dart';
 import 'package:bexly/features/bank_links/domain/models/tingee_bank.dart';
+import 'package:bexly/features/bank_links/presentation/components/link_account_form_sheet.dart';
 
 /// Bottom sheet that lets the user pick a bank from Tingee's supported list.
 /// Phase B stops here — selecting a bank shows a "Sắp ra mắt" snackbar
@@ -111,13 +112,7 @@ class _LinkBankSheetState extends State<_LinkBankSheet> {
 
   void _onPick(BuildContext context, TingeeBank bank) {
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Đã chọn ${bank.displayName}. Bước nhập số tài khoản đang phát triển.',
-        ),
-      ),
-    );
+    showLinkAccountFormSheet(context, bank: bank);
   }
 }
 

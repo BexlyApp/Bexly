@@ -6,6 +6,7 @@ import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
 import 'package:bexly/core/constants/app_colors.dart';
 import 'package:bexly/core/constants/app_spacing.dart';
 import 'package:bexly/core/constants/app_text_styles.dart';
+import 'package:bexly/features/bank_links/data/services/tingee_link_service.dart';
 import 'package:bexly/features/bank_links/domain/models/linked_bank_account.dart';
 import 'package:bexly/features/bank_links/presentation/components/link_bank_bottom_sheet.dart';
 import 'package:bexly/features/bank_links/presentation/riverpod/linked_accounts_provider.dart';
@@ -93,29 +94,59 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _AccountsList extends StatelessWidget {
+class _AccountsList extends ConsumerWidget {
   const _AccountsList({required this.accounts});
 
   final List<LinkedBankAccount> accounts;
 
   @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(AppSpacing.spacing16),
-      itemCount: accounts.length,
-      separatorBuilder: (_, _) => const Gap(AppSpacing.spacing12),
-      itemBuilder: (_, i) => _AccountCard(account: accounts[i]),
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(AppSpacing.spacing16),
+            itemCount: accounts.length,
+            separatorBuilder: (_, _) => const Gap(AppSpacing.spacing12),
+            itemBuilder: (_, i) => _AccountCard(account: accounts[i]),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.spacing16,
+            0,
+            AppSpacing.spacing16,
+            AppSpacing.spacing16,
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => showLinkBankBottomSheet(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Liên kết tài khoản khác'),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _AccountCard extends StatelessWidget {
+class _AccountCard extends ConsumerStatefulWidget {
   const _AccountCard({required this.account});
 
   final LinkedBankAccount account;
 
   @override
+  ConsumerState<_AccountCard> createState() => _AccountCardState();
+}
+
+class _AccountCardState extends ConsumerState<_AccountCard> {
+  bool _busy = false;
+
+  @override
   Widget build(BuildContext context) {
+    final account = widget.account;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.spacing16),
       decoration: BoxDecoration(
@@ -145,8 +176,99 @@ class _AccountCard extends StatelessWidget {
               ],
             ),
           ),
+          IconButton(
+            tooltip: 'Hủy liên kết',
+            onPressed: _busy ? null : _confirmUnlink,
+            icon: _busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(Icons.link_off, color: AppColors.red600),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmUnlink() async {
+    final confirm = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.spacing20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Hủy liên kết tài khoản?', style: AppTextStyles.heading4),
+            const Gap(AppSpacing.spacing8),
+            Text(
+              'Bexly sẽ ngưng nhận giao dịch tự động từ ${widget.account.displayLabel}.',
+              style: AppTextStyles.body4
+                  .copyWith(color: AppColors.neutral600),
+            ),
+            const Gap(AppSpacing.spacing20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Quay lại'),
+                  ),
+                ),
+                const Gap(AppSpacing.spacing12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.red600,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Hủy liên kết'),
+                  ),
+                ),
+              ],
+            ),
+            const Gap(AppSpacing.spacing8),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final svc = TingeeLinkService();
+      final delete = await svc.deleteVa(
+        bankBin: widget.account.bankCode,
+        vaAccountNumber: widget.account.tingeeAccountId,
+      );
+      if (!delete.isOk || delete.confirmId == null) {
+        throw Exception(delete.message ?? 'Yêu cầu hủy thất bại.');
+      }
+      // No OTP required for unlink in many flows — pass empty otp; if Tingee
+      // requires OTP it will return a non-00 code and we surface it.
+      final confirmRes = await svc.confirmDeleteVa(
+        bankBin: widget.account.bankCode,
+        confirmId: delete.confirmId!,
+        vaAccountNumber: widget.account.tingeeAccountId,
+      );
+      if (!confirmRes.isOk) {
+        throw Exception(confirmRes.message ?? 'Xác nhận hủy thất bại.');
+      }
+      ref.invalidate(linkedAccountsProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }
