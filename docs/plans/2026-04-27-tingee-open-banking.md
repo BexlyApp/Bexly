@@ -197,16 +197,40 @@ This phase requires legal review before launch.
 Adds two new fields to `SubscriptionLimits`: `maxLinkedBankAccounts`,
 `allowDirectDebit`. Update `subscription_tier.dart` accordingly.
 
+## Endpoint reference (from Tingee docs)
+
+| Path | Method | Purpose |
+|------|--------|---------|
+| `/v1/get-banks` | GET | List supported VN banks (used to populate link UI dropdown) |
+| `/v1/get-va-paging` | GET | List user's virtual accounts (paginated) |
+| `/v1/create-va` | POST | Create / link a virtual account |
+| `/v1/confirm-va` | POST | Confirm VA details |
+| `/v1/register-notify` | POST | Subscribe to webhook for an account |
+| `/v1/confirm-register-notify` | POST | Confirm webhook registration |
+| `/v1/delete-va` | DELETE | Unlink VA |
+| `/v1/confirm-delete-va` | POST | Confirm VA deletion |
+| `/v1/transaction/get-paging` | GET | Historical transactions (paginated) |
+| `/v1/refund` | POST | Refund a transaction |
+
+## Webhook reliability (from Tingee docs)
+
+- Retry: max 5 lần nếu server phản hồi lỗi hoặc timeout (interval/delay
+  không nói rõ trong doc; cần test thực tế hoặc hỏi Tingee).
+- Idempotency: dùng transaction code làm dedupe key. Bexly's
+  `tingee_transaction_id` UNIQUE constraint sẽ no-op các retry trùng.
+- Signature verification format: `HMAC_SHA512(timestamp + ':' + JSON.stringify(body), secretToken)`.
+
+Vì Tingee chỉ retry 5 lần, Edge Function phải đảm bảo respond 200 nhanh
+(tách validate → enqueue → return; xử lý nặng làm async). Nếu sau 5 lần
+vẫn fail, dùng `/v1/transaction/get-paging` để poll bù lúc client kết
+nối lại — backup mechanism này giải quyết edge case Tingee bỏ cuộc.
+
 ## Open questions
 
-1. Does Tingee's webhook retry until 200, or give up after N attempts?
-   Affects whether we need a separate poller as backup.
-2. Cost model: per-account/month? per-transaction? Need pricing from
-   Tingee's commercial contract before sizing for free tier.
-3. Banks supported: doc lists "all major VN banks" generally — need
-   explicit list to display "Supported banks" in the link UI.
-4. Sandbox availability: do we need separate Tingee credentials for dev
-   vs prod? Confirm flow before phase A start.
+1. **Cost model**: per-account/month? per-transaction? Cần pricing thực
+   tế từ commercial contract Tingee trước khi quyết quota tier Free.
+2. **Sandbox flow**: cần credentials riêng cho dev vs prod không? Xác
+   nhận trước khi bắt đầu Phase A để CI staging chạy được.
 
 ## Success metrics
 
