@@ -526,6 +526,11 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
   String? _resolvedModel;
   String get _activeModel => _resolvedModel ?? model;
 
+  /// Optional callback fired with the response headers of every gateway
+  /// request — used by the chat provider to push X-RateLimit-* values into
+  /// the AiQuotaNotifier so the UI can show "X / 600 messages this period".
+  final void Function(Map<String, String> headers)? onResponseHeaders;
+
   CustomLLMService({
     required this.baseUrl,
     this.apiKey = 'no-key-required',
@@ -536,6 +541,7 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
     this.walletName,
     this.exchangeRateVndToUsd,
     this.wallets,
+    this.onResponseHeaders,
   }) {
     Log.d('CustomLLMService initialized with endpoint: $baseUrl, model: $model, categories: ${categories.length}', label: 'AI Service');
   }
@@ -703,6 +709,9 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
         );
 
     Log.d('Custom LLM Response status: ${response.statusCode}', label: 'Custom LLM');
+
+    // Push quota headers into the app's AiQuotaNotifier (UI uses this).
+    onResponseHeaders?.call(response.headers);
 
     // Model not found — cascade: try alias 'dos-ai', then auto-detect from /v1/models
     if (response.statusCode == 404) {

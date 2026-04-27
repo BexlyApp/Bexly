@@ -114,14 +114,10 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-          BEXLY_FREE_AI_KEY: ${{ secrets.BEXLY_FREE_AI_KEY }}
         run: |
           cat > .env << EOF
           SUPABASE_URL=${SUPABASE_URL}
           SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
-          BEXLY_FREE_AI_URL=https://api.dos.ai/v1
-          BEXLY_FREE_AI_KEY=${BEXLY_FREE_AI_KEY}
-          BEXLY_FREE_AI_MODEL=dos-ai
           DOS_AI_TIMEOUT=5
           DOS_AI_VISION_TIMEOUT=30
           EOF

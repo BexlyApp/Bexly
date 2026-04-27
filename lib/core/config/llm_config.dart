@@ -54,45 +54,44 @@ class LLMDefaultConfig {
   );
 
   // ==========================================================================
-  // Custom / Self-hosted LLM (DOS AI via vLLM)
-  // Endpoint URL and model name are public. The API key, if any, must be
-  // delivered via the ai-proxy edge function — do NOT inline in the client.
+  // DOS AI via the DOS.AI Gateway
+  // Gateway is at https://api.dos.ai/v1/p/bexly. The path segment 'bexly' is
+  // the product key — gateway routes by URL, not header (security: client
+  // can't lie about which product's quota to charge). Auth is the user's
+  // Supabase JWT; no API key embedded in the client. Quota and tier come
+  // from public.billing_accounts via the gateway middleware.
   // ==========================================================================
 
   static const String _customEndpoint = String.fromEnvironment(
     'CUSTOM_LLM_ENDPOINT',
+    defaultValue: 'https://api.dos.ai/v1/p/bexly',
   );
-  static const String _bexlyFreeUrl = String.fromEnvironment('BEXLY_FREE_AI_URL');
 
-  static String get customEndpoint =>
-      _customEndpoint.isNotEmpty ? _customEndpoint : _bexlyFreeUrl;
+  static String get customEndpoint => _customEndpoint;
 
-  static const String _customModel = String.fromEnvironment('CUSTOM_LLM_MODEL');
-  static const String _bexlyFreeModel =
-      String.fromEnvironment('BEXLY_FREE_AI_MODEL', defaultValue: 'dos-ai');
+  static const String customModel = String.fromEnvironment(
+    'BEXLY_FREE_AI_MODEL',
+    defaultValue: 'dos-ai',
+  );
 
-  static String get customModel =>
-      _customModel.isNotEmpty ? _customModel : _bexlyFreeModel;
-
-  /// Timeout for custom LLM (DOS AI) in seconds
+  /// Timeout for DOS AI text requests in seconds
   static const int customTimeoutSeconds = int.fromEnvironment(
     'DOS_AI_TIMEOUT',
     defaultValue: 5,
   );
 
-  /// Timeout for custom LLM vision/OCR requests (longer than text)
+  /// Timeout for DOS AI vision/OCR requests (longer than text)
   static const int customVisionTimeoutSeconds = int.fromEnvironment(
     'DOS_AI_VISION_TIMEOUT',
     defaultValue: 30,
   );
 
-  /// Check if custom endpoint is configured
+  /// Check if a DOS AI endpoint is configured
   static bool get hasCustomEndpoint => customEndpoint.isNotEmpty;
 
-  /// DEPRECATED: returns the user's Supabase JWT for direct DOS AI calls.
-  /// Migration path: DOS AI server (api.dos.ai) should verify Supabase JWT,
-  /// or all DOS AI calls should be routed through ai-proxy edge function.
-  /// Until that migration completes, callers send JWT here as Bearer token.
+  /// Bearer token for DOS AI requests — always the current Supabase JWT.
+  /// Returns empty string when the user is not signed in; callers should
+  /// fall back to ai-proxy (Gemini) in that case.
   static String get customApiKey => proxyAccessToken ?? '';
 
   // ==========================================================================

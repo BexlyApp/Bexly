@@ -9,6 +9,7 @@ import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/data/services/ai_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/config/llm_config.dart';
+import 'package:bexly/core/services/ai/ai_quota_state.dart';
 import 'package:bexly/features/category/presentation/riverpod/category_providers.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
@@ -274,12 +275,13 @@ final aiServiceProvider = Provider<AIService>((ref) {
       );
 
     case AIModel.dosAI:
-      // DOS AI - Self-hosted vLLM (free tier)
+      // DOS AI via DOS.AI Gateway. Auth is the user's Supabase JWT;
+      // gateway reads tier from public.billing_accounts and enforces quota.
       final endpoint = LLMDefaultConfig.customEndpoint;
       final apiKey = LLMDefaultConfig.customApiKey;
       final model = LLMDefaultConfig.customModel;
 
-      Log.d('Using DOS AI (vLLM): endpoint=$endpoint, model=$model, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
+      Log.d('Using DOS AI Gateway: endpoint=$endpoint, model=$model, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
 
       return CustomLLMService(
         baseUrl: endpoint,
@@ -291,6 +293,8 @@ final aiServiceProvider = Provider<AIService>((ref) {
         walletName: walletName,
         exchangeRateVndToUsd: exchangeRateVndToUsd,
         wallets: walletNames,
+        onResponseHeaders: (headers) =>
+            ref.read(aiQuotaProvider.notifier).updateFromHeaders(headers),
       );
   }
 });
