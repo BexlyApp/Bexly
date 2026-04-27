@@ -227,10 +227,10 @@ nối lại — backup mechanism này giải quyết edge case Tingee bỏ cuộ
 
 ## Open questions
 
-1. **Cost model**: per-account/month? per-transaction? Cần pricing thực
-   tế từ commercial contract Tingee trước khi quyết quota tier Free.
-2. **Sandbox flow**: cần credentials riêng cho dev vs prod không? Xác
+1. **Sandbox flow**: cần credentials riêng cho dev vs prod không? Xác
    nhận trước khi bắt đầu Phase A để CI staging chạy được.
+
+(Pricing không phải vấn đề — Tingee là đối tác.)
 
 ## Success metrics
 
