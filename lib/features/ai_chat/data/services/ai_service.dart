@@ -623,6 +623,29 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
     }
   }
 
+  /// Decode and log the JWT payload for debugging gateway 401s. The
+  /// signature is intentionally not validated here — gateway will do that.
+  void _logJwtPayload(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length < 2) return;
+      String pad(String s) => s.padRight(s.length + (4 - s.length % 4) % 4, '=');
+      final payloadJson = String.fromCharCodes(
+        base64Url.decode(pad(parts[1])),
+      );
+      // Trim signature length info from token preview
+      final preview = token.length > 20
+          ? '${token.substring(0, 12)}…${token.substring(token.length - 8)}'
+          : token;
+      Log.d(
+        'JWT payload=$payloadJson token=$preview',
+        label: 'Custom LLM JWT',
+      );
+    } catch (e) {
+      Log.w('JWT decode failed: $e', label: 'Custom LLM JWT');
+    }
+  }
+
   /// Query /v1/models and return the first available model ID.
   /// Used as fallback when the configured model returns 404.
   Future<String?> _fetchFirstAvailableModel() async {
@@ -683,6 +706,10 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
     // Add Authorization header if API key is provided
     if (apiKey.isNotEmpty && apiKey != 'no-key-required') {
       headers['Authorization'] = 'Bearer $apiKey';
+      // Debug: print decoded JWT payload (no signature) so we can verify the
+      // issuer / audience the gateway should match. Safe to log: payload is
+      // public information once signed.
+      _logJwtPayload(apiKey);
     }
 
     final timeoutSeconds = LLMDefaultConfig.customTimeoutSeconds;
