@@ -1,5 +1,12 @@
 # Email Transaction Sync - Implementation Plan
 
+> ⚠️ **Plan này từ tháng 12/2025.** Implementation thực tế dùng
+> **Supabase + Drift local DB**, không phải Firestore + Firebase Cloud
+> Functions như viết trong plan. Edge Function tương ứng (nếu có) sẽ là
+> Supabase Edge Function. Phần kiến trúc bên dưới giữ làm tham khảo,
+> nhưng tech stack ("Cloud Functions", "Firestore") cần map về Supabase
+> khi tham chiếu.
+
 ## Overview
 Automatically sync banking transactions from user's email inbox using Gmail API and AI parsing.
 

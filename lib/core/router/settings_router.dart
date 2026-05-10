@@ -9,10 +9,10 @@ import 'package:bexly/features/settings/presentation/screens/auto_transaction_se
 import 'package:bexly/features/email_sync/presentation/screens/email_sync_settings_screen.dart';
 import 'package:bexly/features/email_sync/presentation/screens/email_review_screen.dart';
 import 'package:bexly/features/bank_connections/presentation/screens/bank_connections_screen.dart';
+import 'package:bexly/features/bank_links/presentation/screens/linked_bank_accounts_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/notification_settings_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/personal_details_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/settings_screen.dart';
-import 'package:bexly/features/settings/presentation/screens/ai_model_settings_screen.dart';
 import 'package:bexly/features/subscription/presentation/screens/subscription_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/bot_integration_screen.dart';
 import 'package:bexly/features/settings/presentation/screens/bot_integration_screen_wrapper.dart';
@@ -49,12 +49,12 @@ class SettingsRouter {
       builder: (context, state) => const BankConnectionsScreen(),
     ),
     GoRoute(
-      path: Routes.languageSettings,
-      builder: (context, state) => const LanguageSettingsScreen(),
+      path: Routes.linkedBankAccounts,
+      builder: (context, state) => const LinkedBankAccountsScreen(),
     ),
     GoRoute(
-      path: Routes.aiModelSettings,
-      builder: (context, state) => const AIModelSettingsScreen(),
+      path: Routes.languageSettings,
+      builder: (context, state) => const LanguageSettingsScreen(),
     ),
     GoRoute(
       path: Routes.backupAndRestore,

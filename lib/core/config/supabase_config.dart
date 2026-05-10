@@ -1,30 +1,34 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-/// Supabase configuration loaded from environment variables.
+/// Supabase configuration loaded from compile-time environment variables
+/// (--dart-define-from-file=.env at build time).
 ///
 /// NOTE: Supabase uses "publishable key" (NOT "anon key") for client-side auth.
 /// The publishable key is safe to expose in client apps.
 class SupabaseConfig {
   /// Supabase project URL (e.g., https://dos.supabase.co)
-  static String get url =>
-      dotenv.env['SUPABASE_URL'] ?? 'https://dos.supabase.co';
+  static const String url = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://dos.supabase.co',
+  );
 
   /// Supabase publishable key for client-side authentication.
-  /// Loaded from .env (SUPABASE_PUBLISHABLE_KEY). CI injects via GitHub Secrets.
-  static String get publishableKey {
-    final key = dotenv.env['SUPABASE_PUBLISHABLE_KEY'] ?? '';
-    assert(key.isNotEmpty, 'SUPABASE_PUBLISHABLE_KEY missing from .env');
-    return key;
-  }
+  /// CI injects via GitHub Secrets passed as --dart-define-from-file=.env.
+  static const String publishableKey = String.fromEnvironment(
+    'SUPABASE_PUBLISHABLE_KEY',
+  );
 
   /// DOS-Me API base URL
-  static String get dosMeApiUrl =>
-      dotenv.env['DOSME_API_URL'] ?? 'https://api.dos.me';
+  static const String dosMeApiUrl = String.fromEnvironment(
+    'DOSME_API_URL',
+    defaultValue: 'https://api.dos.me',
+  );
 
   /// Product ID for DOS-Me API
-  static String get productId =>
-      dotenv.env['DOSME_PRODUCT_ID'] ?? 'bexly';
+  static const String productId = String.fromEnvironment(
+    'DOSME_PRODUCT_ID',
+    defaultValue: 'bexly',
+  );
 
   /// Deep link scheme for OAuth callbacks
   static const String deepLinkScheme = 'bexly';
@@ -32,28 +36,32 @@ class SupabaseConfig {
   /// OAuth callback URL
   static String get oauthCallbackUrl => '$deepLinkScheme://callback';
 
-  /// Google OAuth Android Client ID for native Google Sign In
-  /// Required for Google Sign In SDK to work without Firebase
-  /// Returns debug or release client ID based on build mode
-  static String get googleWebClientId {
-    // Debug build uses debug client ID with debug SHA-1
-    if (kDebugMode) {
-      return dotenv.env['GOOGLE_ANDROID_CLIENT_ID_DEBUG'] ?? '';
-    }
-    // Release/profile builds use release client ID with release SHA-1
-    return dotenv.env['GOOGLE_ANDROID_CLIENT_ID_RELEASE'] ?? '';
-  }
+  static const String _googleClientIdDebug = String.fromEnvironment(
+    'GOOGLE_ANDROID_CLIENT_ID_DEBUG',
+  );
+  static const String _googleClientIdRelease = String.fromEnvironment(
+    'GOOGLE_ANDROID_CLIENT_ID_RELEASE',
+  );
+
+  /// Google OAuth Android Client ID for native Google Sign In.
+  /// Returns debug or release client ID based on build mode.
+  static String get googleWebClientId =>
+      kDebugMode ? _googleClientIdDebug : _googleClientIdRelease;
 
   /// Check if Supabase is properly configured
   static bool get isConfigured =>
       publishableKey.isNotEmpty &&
       publishableKey != 'your_supabase_publishable_key_here';
 
-  /// Use dos.me ID for OAuth token storage
-  /// When enabled, Gmail tokens are stored/retrieved from dos.me ID API
-  /// When disabled, tokens are stored locally (default, for backward compatibility)
+  static const String _useDosmeOAuth = String.fromEnvironment(
+    'USE_DOSME_OAUTH',
+  );
+
+  /// Use dos.me ID for OAuth token storage.
+  /// When enabled, Gmail tokens are stored/retrieved from dos.me ID API.
+  /// When disabled, tokens are stored locally (default, for backward compatibility).
   static bool get useDosmeOAuth {
-    final envValue = dotenv.env['USE_DOSME_OAUTH']?.toLowerCase();
-    return envValue == 'true' || envValue == '1';
+    final v = _useDosmeOAuth.toLowerCase();
+    return v == 'true' || v == '1';
   }
 }

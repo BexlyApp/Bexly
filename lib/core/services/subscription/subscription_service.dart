@@ -205,10 +205,10 @@ class SubscriptionService {
 
     // Determine the tier based on product ID
     SubscriptionTier newTier = SubscriptionTier.free;
-    if (SubscriptionProducts.isProProduct(productId)) {
-      newTier = SubscriptionTier.pro;
-    } else if (SubscriptionProducts.isPlusProduct(productId)) {
+    if (SubscriptionProducts.isPlusProduct(productId)) {
       newTier = SubscriptionTier.plus;
+    } else if (SubscriptionProducts.isGoProduct(productId)) {
+      newTier = SubscriptionTier.go;
     }
 
     // If restoring, track the highest tier found

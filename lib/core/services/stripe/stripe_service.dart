@@ -1,10 +1,13 @@
 import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:bexly/core/utils/logger.dart';
 
 /// Service for Stripe initialization and Financial Connections
 class StripeService {
   static bool _initialized = false;
+
+  /// Stripe publishable key — public-safe, injected via --dart-define-from-file=.env.
+  static const String _publishableKey =
+      String.fromEnvironment('STRIPE_PUBLISHABLE_KEY');
 
   /// Initialize Stripe SDK with publishable key
   static Future<void> initialize() async {
@@ -13,7 +16,7 @@ class StripeService {
       return;
     }
 
-    final publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';
+    final publishableKey = _publishableKey;
     Log.d('STRIPE_PUBLISHABLE_KEY length: ${publishableKey.length}, isEmpty: ${publishableKey.isEmpty}', label: 'Stripe');
 
     if (publishableKey.isEmpty || publishableKey.contains('your_')) {
@@ -47,7 +50,7 @@ class StripeService {
       await initialize();
     }
     if (!_initialized) {
-      throw Exception('Stripe not configured. Please add STRIPE_PUBLISHABLE_KEY to .env');
+      throw Exception('Stripe not configured. Pass STRIPE_PUBLISHABLE_KEY via --dart-define-from-file=.env at build time.');
     }
   }
 

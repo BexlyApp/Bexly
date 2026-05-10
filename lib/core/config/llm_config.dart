@@ -1,9 +1,11 @@
 // LLM Configuration
-// Uses environment variables for API keys — NO hardcoded secrets
-// Supports: OpenAI, Gemini, and self-hosted vLLM/Ollama (OpenAI-compatible)
+// Reads compile-time constants injected via --dart-define-from-file=.env at build time.
+// Secret API keys for 3rd-party providers (OpenAI/Gemini/Claude/Groq) live ONLY in
+// the ai-proxy Supabase Edge Function and are never embedded in the client.
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'supabase_config.dart';
 
 /// Supported AI providers
 enum AIProvider {
@@ -13,14 +15,14 @@ enum AIProvider {
 }
 
 class LLMDefaultConfig {
-  // Get AI provider from environment (openai, gemini, or custom)
-  static String get provider {
-    try {
-      return dotenv.env['AI_PROVIDER'] ?? 'openai';
-    } catch (e) {
-      return 'openai';
-    }
-  }
+  // ==========================================================================
+  // Provider selection
+  // ==========================================================================
+
+  static const String provider = String.fromEnvironment(
+    'AI_PROVIDER',
+    defaultValue: 'custom',
+  );
 
   /// Parse provider string to enum
   static AIProvider get providerEnum {
@@ -36,142 +38,71 @@ class LLMDefaultConfig {
     }
   }
 
-  // OpenAI Configuration
-  static String get apiKey {
-    try {
-      return dotenv.env['OPENAI_API_KEY'] ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
+  // ==========================================================================
+  // OpenAI / Gemini — keys live in ai-proxy edge function, NOT in client.
+  // Public model names can ship with the app.
+  // ==========================================================================
 
-  static String get model {
-    try {
-      return dotenv.env['OPENAI_MODEL'] ?? 'gpt-4o-mini';
-    } catch (e) {
-      return 'gpt-4o-mini';
-    }
-  }
+  static const String model = String.fromEnvironment(
+    'OPENAI_MODEL',
+    defaultValue: 'gpt-4o-mini',
+  );
 
-  // Gemini Configuration
-  static String get geminiApiKey {
-    try {
-      return dotenv.env['GEMINI_API_KEY'] ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  static String get geminiModel {
-    try {
-      return dotenv.env['GEMINI_MODEL'] ?? 'gemini-2.5-flash';
-    } catch (e) {
-      return 'gemini-2.5-flash';
-    }
-  }
-
-  // Custom/Self-hosted LLM Configuration (vLLM, Ollama, etc.)
-  static String get customEndpoint {
-    try {
-      final envEndpoint = dotenv.env['CUSTOM_LLM_ENDPOINT'];
-      if (envEndpoint != null && envEndpoint.isNotEmpty) {
-        return envEndpoint;
-      }
-      final bexlyFreeUrl = dotenv.env['BEXLY_FREE_AI_URL'];
-      if (bexlyFreeUrl != null && bexlyFreeUrl.isNotEmpty) {
-        return bexlyFreeUrl;
-      }
-      return '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  static String get customApiKey {
-    try {
-      final customKey = dotenv.env['CUSTOM_LLM_API_KEY'];
-      if (customKey != null && customKey.isNotEmpty) {
-        return customKey;
-      }
-      final bexlyFreeKey = dotenv.env['BEXLY_FREE_AI_KEY'];
-      if (bexlyFreeKey != null && bexlyFreeKey.isNotEmpty) {
-        return bexlyFreeKey;
-      }
-      return 'no-key-required';
-    } catch (e) {
-      return 'no-key-required';
-    }
-  }
-
-  static String get customModel {
-    try {
-      final customModel = dotenv.env['CUSTOM_LLM_MODEL'];
-      if (customModel != null && customModel.isNotEmpty) {
-        return customModel;
-      }
-      final bexlyFreeModel = dotenv.env['BEXLY_FREE_AI_MODEL'];
-      if (bexlyFreeModel != null && bexlyFreeModel.isNotEmpty) {
-        return bexlyFreeModel;
-      }
-      return 'default';
-    } catch (e) {
-      return 'default';
-    }
-  }
-
-  /// Timeout for custom LLM (DOS AI) in seconds
-  static int get customTimeoutSeconds {
-    try {
-      final timeout = dotenv.env['DOS_AI_TIMEOUT'];
-      if (timeout != null && timeout.isNotEmpty) {
-        return int.tryParse(timeout) ?? 5;
-      }
-      return 5;
-    } catch (e) {
-      return 5;
-    }
-  }
-
-  /// Timeout for custom LLM vision/OCR requests (longer than text)
-  static int get customVisionTimeoutSeconds {
-    try {
-      final timeout = dotenv.env['DOS_AI_VISION_TIMEOUT'];
-      if (timeout != null && timeout.isNotEmpty) {
-        return int.tryParse(timeout) ?? 30;
-      }
-      return 30;
-    } catch (e) {
-      return 30;
-    }
-  }
-
-  /// Check if custom endpoint is configured
-  static bool get hasCustomEndpoint {
-    try {
-      final envEndpoint = dotenv.env['CUSTOM_LLM_ENDPOINT'];
-      if (envEndpoint != null && envEndpoint.isNotEmpty) {
-        return true;
-      }
-      final bexlyFreeUrl = dotenv.env['BEXLY_FREE_AI_URL'];
-      return bexlyFreeUrl != null && bexlyFreeUrl.isNotEmpty;
-    } catch (e) {
-      return false;
-    }
-  }
+  static const String geminiModel = String.fromEnvironment(
+    'GEMINI_MODEL',
+    defaultValue: 'gemini-2.5-flash',
+  );
 
   // ==========================================================================
-  // Supabase Edge Function Proxy (for OpenAI/Gemini — keeps keys server-side)
+  // DOS AI via the DOS.AI Gateway
+  // Gateway is at https://api.dos.ai/v1/p/bexly. The path segment 'bexly' is
+  // the product key — gateway routes by URL, not header (security: client
+  // can't lie about which product's quota to charge). Auth is the user's
+  // Supabase JWT; no API key embedded in the client. Quota and tier come
+  // from public.billing_accounts via the gateway middleware.
+  // ==========================================================================
+
+  static const String _customEndpoint = String.fromEnvironment(
+    'CUSTOM_LLM_ENDPOINT',
+    defaultValue: 'https://api.dos.ai/v1/p/bexly',
+  );
+
+  static String get customEndpoint => _customEndpoint;
+
+  static const String customModel = String.fromEnvironment(
+    'BEXLY_FREE_AI_MODEL',
+    defaultValue: 'dos-ai',
+  );
+
+  /// Timeout for DOS AI text requests in seconds
+  static const int customTimeoutSeconds = int.fromEnvironment(
+    'DOS_AI_TIMEOUT',
+    defaultValue: 5,
+  );
+
+  /// Timeout for DOS AI vision/OCR requests (longer than text)
+  static const int customVisionTimeoutSeconds = int.fromEnvironment(
+    'DOS_AI_VISION_TIMEOUT',
+    defaultValue: 30,
+  );
+
+  /// Check if a DOS AI endpoint is configured
+  static bool get hasCustomEndpoint => customEndpoint.isNotEmpty;
+
+  /// Bearer token for DOS AI requests — always the current Supabase JWT.
+  /// Returns empty string when the user is not signed in; callers should
+  /// fall back to ai-proxy (Gemini) in that case.
+  static String get customApiKey => proxyAccessToken ?? '';
+
+  // ==========================================================================
+  // Supabase Edge Function Proxy
+  // All AI calls (OpenAI/Gemini/Claude/Custom) route through this proxy so
+  // secret keys stay server-side. The proxy authenticates each request with
+  // the user's Supabase JWT.
   // ==========================================================================
 
   /// Proxy URL: Supabase Edge Function endpoint for AI requests
-  static String get proxyUrl {
-    try {
-      final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? 'https://dos.supabase.co';
-      return '$supabaseUrl/functions/v1/ai-proxy';
-    } catch (e) {
-      return 'https://dos.supabase.co/functions/v1/ai-proxy';
-    }
-  }
+  static String get proxyUrl => '${SupabaseConfig.url}/functions/v1/ai-proxy';
 
   /// Current user's Supabase access token for proxy auth
   static String? get proxyAccessToken {

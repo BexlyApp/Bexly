@@ -526,6 +526,11 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
   String? _resolvedModel;
   String get _activeModel => _resolvedModel ?? model;
 
+  /// Optional callback fired with the response headers of every gateway
+  /// request — used by the chat provider to push X-RateLimit-* values into
+  /// the AiQuotaNotifier so the UI can show "X / 600 messages this period".
+  final void Function(Map<String, String> headers)? onResponseHeaders;
+
   CustomLLMService({
     required this.baseUrl,
     this.apiKey = 'no-key-required',
@@ -536,6 +541,7 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
     this.walletName,
     this.exchangeRateVndToUsd,
     this.wallets,
+    this.onResponseHeaders,
   }) {
     Log.d('CustomLLMService initialized with endpoint: $baseUrl, model: $model, categories: ${categories.length}', label: 'AI Service');
   }
@@ -617,6 +623,29 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
     }
   }
 
+  /// Decode and log the JWT payload for debugging gateway 401s. The
+  /// signature is intentionally not validated here — gateway will do that.
+  void _logJwtPayload(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length < 2) return;
+      String pad(String s) => s.padRight(s.length + (4 - s.length % 4) % 4, '=');
+      final payloadJson = String.fromCharCodes(
+        base64Url.decode(pad(parts[1])),
+      );
+      // Trim signature length info from token preview
+      final preview = token.length > 20
+          ? '${token.substring(0, 12)}…${token.substring(token.length - 8)}'
+          : token;
+      Log.d(
+        'JWT payload=$payloadJson token=$preview',
+        label: 'Custom LLM JWT',
+      );
+    } catch (e) {
+      Log.w('JWT decode failed: $e', label: 'Custom LLM JWT');
+    }
+  }
+
   /// Query /v1/models and return the first available model ID.
   /// Used as fallback when the configured model returns 404.
   Future<String?> _fetchFirstAvailableModel() async {
@@ -677,6 +706,10 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
     // Add Authorization header if API key is provided
     if (apiKey.isNotEmpty && apiKey != 'no-key-required') {
       headers['Authorization'] = 'Bearer $apiKey';
+      // Debug: print decoded JWT payload (no signature) so we can verify the
+      // issuer / audience the gateway should match. Safe to log: payload is
+      // public information once signed.
+      _logJwtPayload(apiKey);
     }
 
     final timeoutSeconds = LLMDefaultConfig.customTimeoutSeconds;
@@ -703,6 +736,9 @@ class CustomLLMService with AIServicePromptMixin implements AIService {
         );
 
     Log.d('Custom LLM Response status: ${response.statusCode}', label: 'Custom LLM');
+
+    // Push quota headers into the app's AiQuotaNotifier (UI uses this).
+    onResponseHeaders?.call(response.headers);
 
     // Model not found — cascade: try alias 'dos-ai', then auto-detect from /v1/models
     if (response.statusCode == 404) {

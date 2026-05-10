@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:bexly/core/services/notification_service.dart';
-import 'package:bexly/core/services/firebase_init_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/database/app_database.dart';
 import 'package:drift/drift.dart';
@@ -101,8 +99,6 @@ class FirebaseMessagingService {
         if (kDebugMode) {
           Log.i('FCM Token refreshed: $newToken', label: 'FCM');
         }
-        // Update token in Firestore
-        _updateTokenInFirestore(newToken);
       });
 
       // Handle foreground messages
@@ -190,68 +186,9 @@ class FirebaseMessagingService {
     // }
   }
 
-  /// Save FCM token to Firestore for the current user
-  static Future<void> saveTokenToFirestore(String userId) async {
-    if (_fcmToken == null) {
-      Log.w('No FCM token available to save', label: 'FCM');
-      return;
-    }
-
-    try {
-      final firestore = FirebaseFirestore.instanceFor(
-        app: FirebaseInitService.bexlyApp,
-        databaseId: 'bexly',
-      );
-      await firestore
-          .collection('users')
-          .doc(userId)
-          .set({
-        'fcmToken': _fcmToken,
-        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      Log.i('FCM token saved to Firestore for user: $userId', label: 'FCM');
-    } catch (e) {
-      Log.e('Failed to save FCM token to Firestore: $e', label: 'FCM');
-    }
-  }
-
-  /// Update token in Firestore when it refreshes
-  static Future<void> _updateTokenInFirestore(String token) async {
-    // Get current user ID from your auth service
-    // For now, we'll just log it
-    Log.d('Token refresh - should update in Firestore: $token', label: 'FCM');
-
-    // TODO: Get userId from AuthService and call saveTokenToFirestore
-    // Example:
-    // final userId = await AuthService.getCurrentUserId();
-    // if (userId != null) {
-    //   await saveTokenToFirestore(userId);
-    // }
-  }
-
-  /// Delete FCM token from Firestore (for logout)
-  static Future<void> deleteTokenFromFirestore(String userId) async {
-    try {
-      final firestore = FirebaseFirestore.instanceFor(
-        app: FirebaseInitService.bexlyApp,
-        databaseId: 'bexly',
-      );
-      await firestore
-          .collection('users')
-          .doc(userId)
-          .update({
-        'fcmToken': FieldValue.delete(),
-        'fcmTokenUpdatedAt': FieldValue.delete(),
-      });
-
-      Log.i('FCM token deleted from Firestore for user: $userId', label: 'FCM');
-    } catch (e) {
-      Log.e('Failed to delete FCM token from Firestore: $e', label: 'FCM');
-    }
-  }
-
-  /// Get current FCM token
+  /// Get current FCM token. Send this to the server when push delivery is wired up
+  /// (currently no consumer reads/sends pushes — the legacy Firestore pipeline was
+  /// removed when the bot moved to Supabase Edge Functions).
   static String? get fcmToken => _fcmToken;
 
   /// Check if FCM is initialized

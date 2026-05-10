@@ -28,7 +28,6 @@ import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:toastification/toastification.dart';
 import 'package:bexly/core/services/receipt_storage/receipt_storage_service_provider.dart';
 import 'package:bexly/features/authentication/presentation/riverpod/auth_provider.dart';
-import 'package:bexly/core/services/transaction_sync/transaction_sync_service_provider.dart';
 
 class TransactionFormState {
   final TextEditingController titleController;
@@ -229,22 +228,8 @@ class TransactionFormState {
         }
       }
 
-      // Sync to Firestore only for logged-in premium users
-      if (userId != null && user.isPremium == true && savedTransactionId != null) {
-        try {
-          final syncService = ref.read(transactionSyncServiceProvider);
-          await syncService.upsertTransaction(
-            userId: userId,
-            transactionId: savedTransactionId,
-            transaction: transactionToSave.copyWith(id: savedTransactionId),
-            receiptUrl: receiptUrl,
-            receiptStoragePath: receiptStoragePath,
-            isCreate: !isEditing,
-          );
-        } catch (e) {
-          Log.e('Firestore sync failed: $e', label: 'firestore');
-        }
-      }
+      // Cloud sync handled by SupabaseSyncService (background task / on auth).
+      // No per-save call needed — local DB write triggers sync via change detection.
 
       Log.d('💾 Transaction save completed successfully', label: 'TransactionForm');
       if (context.mounted) {

@@ -9,6 +9,7 @@ import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/data/services/ai_service.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/config/llm_config.dart';
+import 'package:bexly/core/services/ai/ai_quota_state.dart';
 import 'package:bexly/features/category/presentation/riverpod/category_providers.dart';
 import 'package:bexly/features/transaction/data/model/transaction_model.dart';
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
@@ -35,7 +36,6 @@ import 'package:bexly/features/pending_transactions/data/models/pending_transact
 import 'package:bexly/core/database/daos/pending_transaction_dao.dart';
 import 'package:bexly/core/services/image_service/riverpod/image_notifier.dart';
 import 'package:bexly/core/services/subscription/subscription.dart';
-import 'package:bexly/features/settings/presentation/riverpod/ai_model_provider.dart';
 import 'package:bexly/core/services/sync/supabase_sync_provider.dart';
 import 'package:bexly/core/services/spending_anomaly_service.dart';
 import 'package:bexly/features/ai_chat/presentation/widgets/nps_survey_bottom_sheet.dart';
@@ -240,59 +240,29 @@ final aiServiceProvider = Provider<AIService>((ref) {
     // Note: Cache will be populated on first transaction view, then AI will have rate on next init
   }
 
-  // Check which AI provider to use from user settings
-  final selectedModel = ref.read(aiModelProvider);
+  // All Bexly AI traffic goes through the DOS.AI Gateway. Auth is the user's
+  // Supabase JWT; the gateway reads tier from public.billing_accounts and
+  // enforces quota. Fallback to Gemini happens server-side inside the gateway,
+  // plus a client-side fallback in _sendMessageWithFallback below.
+  final endpoint = LLMDefaultConfig.customEndpoint;
+  final apiKey = LLMDefaultConfig.customApiKey;
+  final model = LLMDefaultConfig.customModel;
 
-  // Map AIModel setting to service
-  switch (selectedModel) {
-    case AIModel.gemini:
-      Log.d('Using Gemini Service via proxy, model: ${LLMDefaultConfig.geminiModel}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
+  Log.d('Using DOS AI Gateway: endpoint=$endpoint, model=$model, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
 
-      return GeminiService(
-        apiKey: '', // API key managed server-side via proxy
-        model: LLMDefaultConfig.geminiModel,
-        categories: categories,
-        categoryHierarchy: categoryHierarchy,
-        walletCurrency: walletCurrency,
-        walletName: walletName,
-        exchangeRateVndToUsd: exchangeRateVndToUsd,
-        wallets: walletNames,
-      );
-
-    case AIModel.openAI:
-      Log.d('Using OpenAI Service via proxy, model: ${LLMDefaultConfig.model}, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-
-      return OpenAIService(
-        apiKey: '', // API key managed server-side via proxy
-        model: LLMDefaultConfig.model,
-        categories: categories,
-        categoryHierarchy: categoryHierarchy,
-        walletCurrency: walletCurrency,
-        walletName: walletName,
-        exchangeRateVndToUsd: exchangeRateVndToUsd,
-        wallets: walletNames,
-      );
-
-    case AIModel.dosAI:
-      // DOS AI - Self-hosted vLLM (free tier)
-      final endpoint = LLMDefaultConfig.customEndpoint;
-      final apiKey = LLMDefaultConfig.customApiKey;
-      final model = LLMDefaultConfig.customModel;
-
-      Log.d('Using DOS AI (vLLM): endpoint=$endpoint, model=$model, wallet: "$walletName" ($walletCurrency)', label: 'Chat Provider');
-
-      return CustomLLMService(
-        baseUrl: endpoint,
-        apiKey: apiKey,
-        model: model,
-        categories: categories,
-        categoryHierarchy: categoryHierarchy,
-        walletCurrency: walletCurrency,
-        walletName: walletName,
-        exchangeRateVndToUsd: exchangeRateVndToUsd,
-        wallets: walletNames,
-      );
-  }
+  return CustomLLMService(
+    baseUrl: endpoint,
+    apiKey: apiKey,
+    model: model,
+    categories: categories,
+    categoryHierarchy: categoryHierarchy,
+    walletCurrency: walletCurrency,
+    walletName: walletName,
+    exchangeRateVndToUsd: exchangeRateVndToUsd,
+    wallets: walletNames,
+    onResponseHeaders: (headers) =>
+        ref.read(aiQuotaProvider.notifier).updateFromHeaders(headers),
+  );
 });
 
 // Chat State Provider - Using regular provider to prevent dispose
@@ -319,57 +289,49 @@ class ChatNotifier extends Notifier<ChatState> {
   // Cache fallback Gemini service to preserve conversation history
   GeminiService? _fallbackGeminiService;
 
-  /// Send message with fallback: DOS AI (api.dos.ai handles local→Qwen Cloud) → Gemini
+  /// Send message with fallback: DOS AI Gateway → Gemini (via ai-proxy).
+  /// The gateway already does its own server-side fallback to Gemini Cloud,
+  /// but if the gateway itself is down or returns 429/5xx, drop to Gemini
+  /// proxy directly so the user still gets an answer.
   Future<String> _sendMessageWithFallback(String message) async {
-    final selectedModel = ref.read(aiModelProvider);
+    try {
+      Log.d('🚀 Trying DOS AI Gateway first...', label: 'AI_FALLBACK');
+      _usingFallback = false;
+      _fallbackModelName = null;
+      return await _aiService.sendMessage(message);
+    } catch (e) {
+      Log.w('⚠️ DOS AI failed: $e, falling back to Gemini proxy...', label: 'AI_FALLBACK');
+      _usingFallback = true;
 
-    // If using DOS AI, try with Gemini fallback
-    if (selectedModel == AIModel.dosAI) {
-      try {
-        Log.d('🚀 Trying DOS AI first...', label: 'AI_FALLBACK');
-        _usingFallback = false;
-        _fallbackModelName = null;
-        return await _aiService.sendMessage(message);
-      } catch (e) {
-        // DOS AI failed (server handles its own Qwen Cloud fallback) — fall back to Gemini
-        Log.w('⚠️ DOS AI failed: $e, falling back to Gemini...', label: 'AI_FALLBACK');
-        _usingFallback = true;
+      final geminiService = _getOrCreateFallbackGeminiService();
+      _fallbackModelName = geminiService.modelName;
 
-        final geminiService = _getOrCreateFallbackGeminiService();
-        _fallbackModelName = geminiService.modelName;
+      // Update context for current wallet
+      final activeWallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
+      final allWalletsAsync = ref.read(allWalletsStreamProvider);
+      final allWallets = _unwrapAsyncValue(allWalletsAsync) ?? [];
+      final walletNames = allWallets.map((w) => '${w.name} (${w.currency}, ${w.walletType.displayName})').toList();
+      final exchangeRateCache = ref.read(exchangeRateCacheProvider);
+      final cachedRate = exchangeRateCache['VND_USD'];
 
-        // Update context for current wallet
-        final activeWallet = _unwrapAsyncValue(ref.read(activeWalletProvider));
-        final allWalletsAsync = ref.read(allWalletsStreamProvider);
-        final allWallets = _unwrapAsyncValue(allWalletsAsync) ?? [];
-        final walletNames = allWallets.map((w) => '${w.name} (${w.currency}, ${w.walletType.displayName})').toList();
-        final exchangeRateCache = ref.read(exchangeRateCacheProvider);
-        final cachedRate = exchangeRateCache['VND_USD'];
+      geminiService.updateContext(
+        walletName: activeWallet?.name,
+        walletCurrency: activeWallet?.currency,
+        wallets: walletNames,
+        exchangeRate: cachedRate?.rate,
+      );
 
-        geminiService.updateContext(
-          walletName: activeWallet?.name,
-          walletCurrency: activeWallet?.currency,
-          wallets: walletNames,
-          exchangeRate: cachedRate?.rate,
-        );
-
-        // Propagate spending insights and budgets to fallback service
-        if (_aiService is AIServicePromptMixin) {
-          final mixin = _aiService as AIServicePromptMixin;
-          geminiService.updateSpendingInsights(mixin.spendingInsightsContext);
-          geminiService.updateBudgetsContext(mixin.budgetsContext);
-          geminiService.updateRecentTransactions(mixin.recentTransactionsContext);
-        }
-
-        Log.d('✅ Using Gemini fallback: ${geminiService.modelName}', label: 'AI_FALLBACK');
-        return await geminiService.sendMessage(message);
+      // Propagate spending insights and budgets to fallback service
+      if (_aiService is AIServicePromptMixin) {
+        final mixin = _aiService as AIServicePromptMixin;
+        geminiService.updateSpendingInsights(mixin.spendingInsightsContext);
+        geminiService.updateBudgetsContext(mixin.budgetsContext);
+        geminiService.updateRecentTransactions(mixin.recentTransactionsContext);
       }
-    }
 
-    // Not DOS AI - use primary service directly
-    _usingFallback = false;
-    _fallbackModelName = null;
-    return await _aiService.sendMessage(message);
+      Log.d('✅ Using Gemini fallback: ${geminiService.modelName}', label: 'AI_FALLBACK');
+      return await geminiService.sendMessage(message);
+    }
   }
 
   /// Get or create cached fallback Gemini service (preserves conversation history)
