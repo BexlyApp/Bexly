@@ -46,17 +46,10 @@ class LinkedBankAccountsScreen extends ConsumerWidget {
 
 }
 
-class _EmptyState extends ConsumerStatefulWidget {
+class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onLink});
 
   final VoidCallback onLink;
-
-  @override
-  ConsumerState<_EmptyState> createState() => _EmptyStateState();
-}
-
-class _EmptyStateState extends ConsumerState<_EmptyState> {
-  bool _syncing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +75,7 @@ class _EmptyStateState extends ConsumerState<_EmptyState> {
             ),
             const Gap(AppSpacing.spacing24),
             ElevatedButton.icon(
-              onPressed: widget.onLink,
+              onPressed: onLink,
               icon: const Icon(Icons.add),
               label: const Text('Liên kết tài khoản'),
               style: ElevatedButton.styleFrom(
@@ -94,117 +87,10 @@ class _EmptyStateState extends ConsumerState<_EmptyState> {
                 ),
               ),
             ),
-            const Gap(AppSpacing.spacing12),
-            TextButton.icon(
-              onPressed: _syncing ? null : _openSyncSheet,
-              icon: _syncing
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.sync, size: 18),
-              label: Text(_syncing ? 'Đang đồng bộ...' : 'Đồng bộ với Tingee'),
-            ),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _openSyncSheet() async {
-    final accountCtrl = TextEditingController();
-    final identityCtrl = TextEditingController();
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetCtx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: AppSpacing.spacing20,
-            right: AppSpacing.spacing20,
-            top: AppSpacing.spacing8,
-            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom +
-                AppSpacing.spacing20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Đồng bộ với Tingee', style: AppTextStyles.heading4),
-              const Gap(AppSpacing.spacing4),
-              Text(
-                'Nhập số TK hoặc CCCD đã dùng khi liên kết để Bexly kéo lại tài khoản từ Tingee.',
-                style: AppTextStyles.body4
-                    .copyWith(color: AppColors.neutral600),
-              ),
-              const Gap(AppSpacing.spacing16),
-              TextField(
-                controller: accountCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Số tài khoản',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-              ),
-              const Gap(AppSpacing.spacing12),
-              TextField(
-                controller: identityCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'CCCD (tuỳ chọn)',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-              ),
-              const Gap(AppSpacing.spacing16),
-              ElevatedButton(
-                onPressed: () => Navigator.of(sheetCtx).pop(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary500,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.spacing12),
-                ),
-                child: const Text('Đồng bộ'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (result != true || !mounted) return;
-    final acc = accountCtrl.text.trim();
-    final ident = identityCtrl.text.trim();
-    if (acc.isEmpty && ident.isEmpty) return;
-
-    setState(() => _syncing = true);
-    try {
-      final svc = TingeeLinkService();
-      final res = await svc.syncVas(accountNumber: acc, identity: ident);
-      if (!mounted) return;
-      final data = (res['data'] as Map?) ?? const {};
-      final upserted = data['upserted'] ?? 0;
-      final matched = data['matched'] ?? 0;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Đồng bộ xong: matched=$matched, upserted=$upserted',
-          ),
-        ),
-      );
-      ref.invalidate(linkedAccountsProvider);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _syncing = false);
-    }
   }
 }
 
