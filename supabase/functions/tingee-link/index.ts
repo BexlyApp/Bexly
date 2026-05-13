@@ -21,7 +21,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const TINGEE_BASE_URL =
-  Deno.env.get('TINGEE_BASE_URL') ?? 'https://uat-open-api.tingee.vn';
+  Deno.env.get('TINGEE_BASE_URL') ?? 'https://open-api.tingee.vn';
 const TINGEE_CLIENT_ID = Deno.env.get('TINGEE_CLIENT_ID')!;
 const TINGEE_SECRET_TOKEN = Deno.env.get('TINGEE_SECRET_TOKEN')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -96,10 +96,13 @@ async function callTingee(
   body?: unknown,
 ): Promise<TingeeResult> {
   const ts = tingeeTimestamp();
-  const bodyStr = body ? JSON.stringify(body) : '';
+  // Tingee signs the body even when empty: `${ts}:${JSON.stringify(body ?? {})}`.
+  // For GET requests the request body itself stays empty, but the signed
+  // string uses '{}' to match the official NodeJS/PHP samples.
+  const signedBody = JSON.stringify(body ?? {});
   const signature = await hmacSha512Hex(
     TINGEE_SECRET_TOKEN,
-    `${ts}:${bodyStr}`,
+    `${ts}:${signedBody}`,
   );
 
   const res = await fetch(`${TINGEE_BASE_URL}${path}`, {
@@ -110,7 +113,7 @@ async function callTingee(
       'x-request-timestamp': ts,
       'x-signature': signature,
     },
-    body: body ? bodyStr : undefined,
+    body: body ? signedBody : undefined,
   });
 
   const text = await res.text();
