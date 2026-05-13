@@ -70,7 +70,7 @@ class _LinkAccountFormSheetState extends ConsumerState<_LinkAccountFormSheet> {
     });
     try {
       final r = await _service.createVa(
-        bankBin: widget.bank.code,
+        bankBin: widget.bank.bin,
         accountNumber: _accountNumber.text.trim(),
         accountName: _accountName.text.trim(),
         identity: _identity.text.trim(),
@@ -99,7 +99,7 @@ class _LinkAccountFormSheetState extends ConsumerState<_LinkAccountFormSheet> {
     });
     try {
       final r = await _service.confirmVa(
-        bankBin: widget.bank.code,
+        bankBin: widget.bank.bin,
         confirmId: _confirmId!,
         otpNumber: _otp.text.trim().isEmpty ? null : _otp.text.trim(),
       );
