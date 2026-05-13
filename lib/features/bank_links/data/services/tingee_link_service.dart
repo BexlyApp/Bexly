@@ -25,6 +25,26 @@ class TingeeLinkService {
     };
   }
 
+  /// Reconcile local linked_bank_accounts with Tingee's records. Edge
+  /// Function calls /v1/get-va-paging, filters by accountNumber or
+  /// identity, and upserts the matching VAs for the current user. Used as
+  /// a recovery path when confirm_va succeeded on Tingee but the local
+  /// upsert was skipped (e.g. response shape mismatch).
+  Future<Map<String, dynamic>> syncVas({
+    String? accountNumber,
+    String? identity,
+    String? label,
+  }) async {
+    final body = await _call({
+      'action': 'sync_vas',
+      if (accountNumber != null && accountNumber.isNotEmpty)
+        'accountNumber': accountNumber,
+      if (identity != null && identity.isNotEmpty) 'identity': identity,
+      if (label != null && label.isNotEmpty) 'label': label,
+    });
+    return (body is Map<String, dynamic>) ? body : <String, dynamic>{};
+  }
+
   /// Fetch the list of banks Tingee supports.
   Future<List<TingeeBank>> listBanks() async {
     final body = await _call({'action': 'list_banks'});
