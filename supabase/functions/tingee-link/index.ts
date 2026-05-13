@@ -12,11 +12,11 @@
 //   delete-va  → confirm-delete-va
 //
 // Webhook URL is configured ONCE in Tingee dashboard. register-notify only
-// turns ON notifications for a specific VA — it does not accept a URL field.
+// turns ON notifications for a specific VA - it does not accept a URL field.
 //
 // Deploy: supabase functions deploy tingee-link --no-verify-jwt --project-ref gulptwduchsjcsbndmua
 // Secrets: TINGEE_CLIENT_ID, TINGEE_SECRET_TOKEN
-// (Sandbox URL https://uat-open-api.tingee.vn — switch to prod when ready.)
+// (Sandbox URL https://uat-open-api.tingee.vn - switch to prod when ready.)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
 
           if (insertErr) {
             console.error('linked_bank_accounts upsert failed', insertErr);
-            // Don't fail the API call — the user still has the VA on Tingee
+            // Don't fail the API call - the user still has the VA on Tingee
             // side. Surface a warning so the client can retry register_notify.
             return corsJson(r.status, {
               ...r.body,

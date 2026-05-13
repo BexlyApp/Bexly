@@ -106,7 +106,7 @@ class _LinkAccountFormSheetState extends ConsumerState<_LinkAccountFormSheet> {
       if (!r.isOk) {
         throw Exception(r.message ?? 'Xác nhận thất bại (code ${r.code}).');
       }
-      // Refresh the linked accounts list — Edge Function persisted the row.
+      // Refresh the linked accounts list - Edge Function persisted the row.
       ref.invalidate(linkedAccountsProvider);
       setState(() => _step = _Step.done);
     } catch (e) {
@@ -186,7 +186,7 @@ class _LinkAccountFormSheetState extends ConsumerState<_LinkAccountFormSheet> {
                 _field(_accountName, 'Họ tên chủ tài khoản'),
                 _field(_identity, 'CMND/CCCD'),
                 _field(_mobile, 'Số điện thoại đăng ký', keyboard: TextInputType.phone),
-                _field(_label, 'Nhãn (tuỳ chọn) — vd "Lương"', required: false),
+                _field(_label, 'Nhãn (tuỳ chọn) - vd "Lương"', required: false),
               ],
             ),
           ),

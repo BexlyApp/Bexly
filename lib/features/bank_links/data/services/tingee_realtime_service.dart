@@ -13,7 +13,7 @@ import 'package:bexly/core/utils/logger.dart';
 /// SMS / notification / email sources).
 ///
 /// Lifecycle: call [start] when the user signs in, [stop] on sign-out or
-/// app dispose. Idempotent — calling [start] twice is a no-op.
+/// app dispose. Idempotent - calling [start] twice is a no-op.
 class TingeeRealtimeService {
   TingeeRealtimeService(this._db);
 
@@ -29,7 +29,7 @@ class TingeeRealtimeService {
     final session = Supabase.instance.client.auth.currentSession;
     final userId = session?.user.id;
     if (userId == null) {
-      Log.d('Skip — user not signed in', label: _label);
+      Log.d('Skip - user not signed in', label: _label);
       return;
     }
     if (isRunning && _subscribedUserId == userId) {
@@ -143,7 +143,7 @@ class TingeeRealtimeService {
   String? _extractMerchant(String description) {
     if (description.isEmpty) return null;
     // Take the first comma- or hyphen-separated chunk as a rough hint.
-    final parts = description.split(RegExp(r'[,\-—]'));
+    final parts = description.split(RegExp(r'[,\--]'));
     return parts.first.trim().isEmpty ? null : parts.first.trim();
   }
 }
