@@ -38,9 +38,17 @@ class BexlyAgentService {
     String? threadId,
     String locale = 'vi',
   }) async* {
-    final session = Supabase.instance.client.auth.currentSession;
+    // Wrap currentSession access defensively - Supabase.instance throws if
+    // not initialized (hot-restart edge case, cold-start race). Treat as
+    // "no session" rather than crashing the chat flow.
+    Session? session;
+    try {
+      session = Supabase.instance.client.auth.currentSession;
+    } catch (_) {
+      session = null;
+    }
     if (session == null) {
-      throw BexlyAgentAuthException('Can not chat: no active session.');
+      throw BexlyAgentAuthException('Cannot chat: no active session.');
     }
 
     final client = http.Client();
