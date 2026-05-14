@@ -23,6 +23,7 @@ import 'package:bexly/features/settings/presentation/widgets/sms_permission_dial
 import 'package:bexly/features/wallet/riverpod/wallet_providers.dart';
 import 'package:bexly/features/email_sync/presentation/screens/email_sync_settings_screen.dart';
 import 'package:bexly/features/bank_connections/presentation/screens/bank_connections_screen.dart';
+import 'package:bexly/features/bank_links/presentation/screens/linked_bank_accounts_screen.dart';
 import 'package:bexly/core/router/routes.dart';
 import 'package:bexly/core/utils/desktop_dialog_helper.dart';
 import 'package:bexly/features/transaction/presentation/riverpod/transaction_providers.dart';
@@ -307,7 +308,7 @@ class _AutoTransactionSettingsScreenState
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('pending_notification_permission_request', true);
 
-      // Open system settings — app may be killed after this point.
+      // Open system settings - app may be killed after this point.
       // DO NOT check permission or clear flags here.
       // didChangeAppLifecycleState(resumed) handles the "app survived" case.
       // main.dart startup handles the "app was killed" case.
@@ -380,7 +381,7 @@ class _AutoTransactionSettingsScreenState
       Log.d('AutoService initialized, smsService=${autoService.smsService != null}', label: 'AutoTransaction');
 
       if (autoService.smsService == null) {
-        Log.e('SmsService is null — AI provider may be unavailable', label: 'AutoTransaction');
+        Log.e('SmsService is null - AI provider may be unavailable', label: 'AutoTransaction');
         // Ensure scanning bottom sheet is visible for at least 1s
         final elapsed = DateTime.now().difference(scanStartTime);
         if (elapsed < const Duration(seconds: 1)) {
@@ -500,16 +501,17 @@ class _AutoTransactionSettingsScreenState
 
           const SizedBox(height: AppSpacing.spacing24),
 
-          // 4 Sub-menu cards
-          _buildSubMenuCard(
-            title: 'SMS Parsing',
-            subtitle: 'Auto-detect transactions from bank SMS',
-            icon: HugeIcons.strokeRoundedMessage01,
-            isEnabled: isAndroid,
-            disabledReason: 'Android only',
-            onTap: isAndroid ? _showSmsSettingsBottomSheet : null,
-          ),
-          const SizedBox(height: AppSpacing.spacing12),
+          // Sub-menu cards
+          // SMS Parsing - temporarily hidden (sensitive SMS permission, will revisit)
+          // _buildSubMenuCard(
+          //   title: 'SMS Parsing',
+          //   subtitle: 'Auto-detect transactions from bank SMS',
+          //   icon: HugeIcons.strokeRoundedMessage01,
+          //   isEnabled: isAndroid,
+          //   disabledReason: 'Android only',
+          //   onTap: isAndroid ? _showSmsSettingsBottomSheet : null,
+          // ),
+          // const SizedBox(height: AppSpacing.spacing12),
 
           _buildSubMenuCard(
             title: 'Notification Listener',
@@ -536,13 +538,27 @@ class _AutoTransactionSettingsScreenState
 
           _buildSubMenuCard(
             title: 'Bank Connection',
-            subtitle: 'Connect directly to your bank account',
+            subtitle: 'Connect directly to your bank account (Stripe)',
             icon: HugeIcons.strokeRoundedBank,
             isEnabled: true,
             onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
               context,
               route: Routes.bankConnections,
               desktopWidget: const BankConnectionsScreen(),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.spacing12),
+
+          // Tingee Open Banking - Vietnam aggregator (Phase A: read-only)
+          _buildSubMenuCard(
+            title: 'Tingee Open Banking',
+            subtitle: 'Liên kết tài khoản ngân hàng VN - auto-import giao dịch',
+            icon: HugeIcons.strokeRoundedLinkSquare02,
+            isEnabled: true,
+            onTap: () => DesktopDialogHelper.navigateToSettingsSubmenu(
+              context,
+              route: Routes.linkedBankAccounts,
+              desktopWidget: const LinkedBankAccountsScreen(),
             ),
           ),
 

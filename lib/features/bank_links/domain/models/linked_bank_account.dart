@@ -1,4 +1,4 @@
-/// One row in `bexly.linked_bank_accounts` — a virtual account a user has
+/// One row in `bexly.linked_bank_accounts` - a virtual account a user has
 /// authorised through Tingee.
 class LinkedBankAccount {
   final String id;

@@ -172,12 +172,6 @@ class SettingsPreferencesGroup extends ConsumerWidget {
             desktopWidget: const AutoTransactionSettingsScreen(),
           ),
         ),
-        // Linked bank accounts (Tingee Open Banking)
-        MenuTileButton(
-          label: 'Tài khoản ngân hàng',
-          icon: HugeIcons.strokeRoundedBank,
-          onTap: () => Navigator.of(context).pushNamed(Routes.linkedBankAccounts),
-        ),
         // Bot Integration - Telegram & Messenger
         MenuTileButton(
           label: 'Bot Integration',

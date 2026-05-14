@@ -9,7 +9,7 @@ import 'package:bexly/features/bank_links/domain/models/tingee_bank.dart';
 import 'package:bexly/features/bank_links/presentation/components/link_account_form_sheet.dart';
 
 /// Bottom sheet that lets the user pick a bank from Tingee's supported list.
-/// Phase B stops here — selecting a bank shows a "Sắp ra mắt" snackbar
+/// Phase B stops here - selecting a bank shows a "Sắp ra mắt" snackbar
 /// because Phase B.1 is where /v1/create-va wiring lands.
 Future<void> showLinkBankBottomSheet(BuildContext context) async {
   await showModalBottomSheet<void>(

@@ -12,16 +12,16 @@
 //   delete-va  → confirm-delete-va
 //
 // Webhook URL is configured ONCE in Tingee dashboard. register-notify only
-// turns ON notifications for a specific VA — it does not accept a URL field.
+// turns ON notifications for a specific VA - it does not accept a URL field.
 //
 // Deploy: supabase functions deploy tingee-link --no-verify-jwt --project-ref gulptwduchsjcsbndmua
 // Secrets: TINGEE_CLIENT_ID, TINGEE_SECRET_TOKEN
-// (Sandbox URL https://uat-open-api.tingee.vn — switch to prod when ready.)
+// (Sandbox URL https://uat-open-api.tingee.vn - switch to prod when ready.)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const TINGEE_BASE_URL =
-  Deno.env.get('TINGEE_BASE_URL') ?? 'https://uat-open-api.tingee.vn';
+  Deno.env.get('TINGEE_BASE_URL') ?? 'https://open-api.tingee.vn';
 const TINGEE_CLIENT_ID = Deno.env.get('TINGEE_CLIENT_ID')!;
 const TINGEE_SECRET_TOKEN = Deno.env.get('TINGEE_SECRET_TOKEN')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -34,6 +34,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 interface LinkRequest {
   action:
     | 'list_banks'
+    | 'list_vas'
+    | 'sync_vas'
+    | 'tingee_raw'
     | 'create_va'
     | 'confirm_va'
     | 'register_notify'
@@ -96,10 +99,13 @@ async function callTingee(
   body?: unknown,
 ): Promise<TingeeResult> {
   const ts = tingeeTimestamp();
-  const bodyStr = body ? JSON.stringify(body) : '';
+  // Tingee signs the body even when empty: `${ts}:${JSON.stringify(body ?? {})}`.
+  // For GET requests the request body itself stays empty, but the signed
+  // string uses '{}' to match the official NodeJS/PHP samples.
+  const signedBody = JSON.stringify(body ?? {});
   const signature = await hmacSha512Hex(
     TINGEE_SECRET_TOKEN,
-    `${ts}:${bodyStr}`,
+    `${ts}:${signedBody}`,
   );
 
   const res = await fetch(`${TINGEE_BASE_URL}${path}`, {
@@ -110,7 +116,7 @@ async function callTingee(
       'x-request-timestamp': ts,
       'x-signature': signature,
     },
-    body: body ? bodyStr : undefined,
+    body: body ? signedBody : undefined,
   });
 
   const text = await res.text();
@@ -154,6 +160,105 @@ Deno.serve(async (req) => {
       return corsJson(r.status, r.body);
     }
 
+    case 'list_vas': {
+      // Raw passthrough of /v1/get-va-paging - returns all VAs Tingee has
+      // for this client (the entire Bexly tenant, not just the calling user).
+      // Note: Tingee uses POST (not GET) for this endpoint, with optional
+      // {page, size} pagination body.
+      const r = await callTingee('/v1/get-va-paging', 'POST', { page: 1, size: 100 });
+      console.log('[tingee-link] list_vas response', JSON.stringify(r.body));
+      return corsJson(r.status, r.body);
+    }
+
+    case 'tingee_raw': {
+      // Debug-only: forward arbitrary path+method+body to Tingee. Useful
+      // for discovering the correct endpoint shape during integration.
+      const tPath = (payload.path as string | undefined) ?? '/v1/get-va-paging';
+      const tMethod = ((payload.method as string | undefined) ?? 'GET').toUpperCase() as 'GET' | 'POST' | 'DELETE';
+      const tBody = payload.body;
+      const r = await callTingee(tPath, tMethod, tBody);
+      console.log('[tingee-link] tingee_raw', tMethod, tPath, '->', JSON.stringify(r.body).slice(0, 500));
+      return corsJson(r.status, r.body);
+    }
+
+    case 'sync_vas': {
+      // Recover/reconcile: fetch VAs from Tingee, upsert any that match
+      // identifying info passed in payload. Client must supply at least
+      // accountNumber so we can match the right VA to the calling user
+      // (Tingee returns the entire tenant's VAs, not user-scoped).
+      const targetAccountNumber = (payload.accountNumber as string | undefined)?.trim();
+      const targetIdentity = (payload.identity as string | undefined)?.trim();
+      if (!targetAccountNumber && !targetIdentity) {
+        return corsJson(400, {
+          error: 'sync_vas needs accountNumber or identity to match the VA',
+        });
+      }
+      const r = await callTingee('/v1/get-va-paging', 'POST', { page: 1, size: 100 });
+      if (r.body.code !== '00') {
+        return corsJson(r.status, r.body);
+      }
+      const data = r.body.data as Record<string, unknown> | undefined;
+      const rawList = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.items)
+            ? (data!.items as unknown[])
+            : Array.isArray(data?.records)
+                ? (data!.records as unknown[])
+                : [];
+      const matched: Record<string, unknown>[] = [];
+      for (const item of rawList) {
+        const v = item as Record<string, unknown>;
+        const acc = (v.accountNumber as string | undefined)?.trim();
+        const ident = (v.identity as string | undefined)?.trim();
+        if (
+          (targetAccountNumber && acc === targetAccountNumber) ||
+          (targetIdentity && ident === targetIdentity)
+        ) {
+          matched.push(v);
+        }
+      }
+      console.log(
+        '[tingee-link] sync_vas matched',
+        matched.length,
+        'of',
+        rawList.length,
+        'VAs',
+      );
+      let inserted = 0;
+      for (const v of matched) {
+        const vaNumber =
+          (v.vaAccountNumber as string | undefined) ??
+          (v.vAccountNumber as string | undefined);
+        const bankBin = v.bankBin as string | undefined;
+        if (!vaNumber || !bankBin) continue;
+        const accountNumber = v.accountNumber as string | undefined;
+        const { error } = await supabase
+          .schema('bexly')
+          .from('linked_bank_accounts')
+          .upsert(
+            {
+              user_id: userId,
+              tingee_account_id: vaNumber,
+              bank_code: bankBin,
+              account_number_masked: maskAccount(accountNumber ?? vaNumber),
+              label: (payload.label as string | undefined) ?? (v.label as string | undefined) ?? null,
+              status: 'active',
+            },
+            { onConflict: 'user_id,tingee_account_id' },
+          );
+        if (error) {
+          console.error('[tingee-link] sync_vas upsert failed', error);
+          return corsJson(500, { error: error.message });
+        }
+        inserted++;
+      }
+      return corsJson(200, {
+        code: '00',
+        message: 'sync_vas done',
+        data: { matched: matched.length, upserted: inserted, total: rawList.length },
+      });
+    }
+
     case 'create_va': {
       const reqBody = {
         accountType: payload.accountType ?? 'personal-account',
@@ -182,15 +287,54 @@ Deno.serve(async (req) => {
         return corsJson(400, { error: 'missing_required_fields' });
       }
       const r = await callTingee('/v1/confirm-va', 'POST', reqBody);
+      console.log('[tingee-link] confirm_va response', JSON.stringify(r.body));
 
       // On success, persist the link locally + auto-chain to register-notify.
-      if (r.body.code === '00' && r.body.data) {
-        const data = r.body.data as Record<string, unknown>;
-        const vaNumber = data.vaAccountNumber as string | undefined;
-        const accountNumber = data.accountNumber as string | undefined;
-        const bankBin = data.bankBin as string | undefined;
+      // Tingee's confirm-va response shape is undocumented in our copy of the
+      // spec, so prefer fields from the response but fall back to payload
+      // values the client passed in (these were the same fields used at
+      // create-va time, so they identify the same VA).
+      if (r.body.code === '00') {
+        const data = (r.body.data ?? {}) as Record<string, unknown>;
+        const vaNumber =
+          (data.vaAccountNumber as string | undefined) ??
+          (data.vAccountNumber as string | undefined) ??
+          (payload.vaAccountNumber as string | undefined);
+        const accountNumber =
+          (data.accountNumber as string | undefined) ??
+          (payload.accountNumber as string | undefined);
+        const bankBin =
+          (data.bankBin as string | undefined) ??
+          (payload.bankBin as string | undefined);
 
-        if (vaNumber && bankBin) {
+        // If we still don't have a vaNumber from any source, fall back to
+        // fetching it from /v1/get-va-paging and matching by accountNumber.
+        let resolvedVaNumber = vaNumber;
+        if (!resolvedVaNumber && accountNumber) {
+          console.log('[tingee-link] confirm_va missing vaNumber, fetching from get-va-paging');
+          const list = await callTingee('/v1/get-va-paging', 'POST', { page: 1, size: 100 });
+          const listData = (list.body.data ?? {}) as Record<string, unknown>;
+          const items: unknown[] = Array.isArray(listData)
+            ? (listData as unknown[])
+            : Array.isArray(listData.items)
+                ? (listData.items as unknown[])
+                : Array.isArray(listData.records)
+                    ? (listData.records as unknown[])
+                    : [];
+          for (const it of items) {
+            const v = it as Record<string, unknown>;
+            if ((v.accountNumber as string | undefined) === accountNumber) {
+              resolvedVaNumber =
+                (v.vaAccountNumber as string | undefined) ??
+                (v.vAccountNumber as string | undefined);
+              if (resolvedVaNumber) break;
+            }
+          }
+          console.log('[tingee-link] confirm_va resolved vaNumber via paging:', resolvedVaNumber);
+        }
+
+        if (resolvedVaNumber && bankBin) {
+          const vaNumber = resolvedVaNumber;
           // Insert linked_bank_accounts row (idempotent on (user_id, tingee_account_id))
           const { error: insertErr } = await supabase
             .schema('bexly')
@@ -209,7 +353,7 @@ Deno.serve(async (req) => {
 
           if (insertErr) {
             console.error('linked_bank_accounts upsert failed', insertErr);
-            // Don't fail the API call — the user still has the VA on Tingee
+            // Don't fail the API call - the user still has the VA on Tingee
             // side. Surface a warning so the client can retry register_notify.
             return corsJson(r.status, {
               ...r.body,

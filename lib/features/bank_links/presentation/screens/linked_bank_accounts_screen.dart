@@ -248,7 +248,7 @@ class _AccountCardState extends ConsumerState<_AccountCard> {
       if (!delete.isOk || delete.confirmId == null) {
         throw Exception(delete.message ?? 'Yêu cầu hủy thất bại.');
       }
-      // No OTP required for unlink in many flows — pass empty otp; if Tingee
+      // No OTP required for unlink in many flows - pass empty otp; if Tingee
       // requires OTP it will return a non-00 code and we surface it.
       final confirmRes = await svc.confirmDeleteVa(
         bankBin: widget.account.bankCode,

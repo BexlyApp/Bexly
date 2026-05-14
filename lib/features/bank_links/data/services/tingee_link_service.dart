@@ -8,7 +8,7 @@ import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/features/bank_links/domain/models/tingee_bank.dart';
 
 /// Calls the `tingee-link` Edge Function. The function holds the Tingee
-/// secret and proxies HMAC-signed requests upstream — the client never
+/// secret and proxies HMAC-signed requests upstream - the client never
 /// touches the secret.
 class TingeeLinkService {
   static const _label = 'TingeeLink';
@@ -23,6 +23,26 @@ class TingeeLinkService {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${session.accessToken}',
     };
+  }
+
+  /// Reconcile local linked_bank_accounts with Tingee's records. Edge
+  /// Function calls /v1/get-va-paging, filters by accountNumber or
+  /// identity, and upserts the matching VAs for the current user. Used as
+  /// a recovery path when confirm_va succeeded on Tingee but the local
+  /// upsert was skipped (e.g. response shape mismatch).
+  Future<Map<String, dynamic>> syncVas({
+    String? accountNumber,
+    String? identity,
+    String? label,
+  }) async {
+    final body = await _call({
+      'action': 'sync_vas',
+      if (accountNumber != null && accountNumber.isNotEmpty)
+        'accountNumber': accountNumber,
+      if (identity != null && identity.isNotEmpty) 'identity': identity,
+      if (label != null && label.isNotEmpty) 'label': label,
+    });
+    return (body is Map<String, dynamic>) ? body : <String, dynamic>{};
   }
 
   /// Fetch the list of banks Tingee supports.
@@ -94,7 +114,7 @@ class TingeeLinkService {
     return TingeeStepResult.fromJson(body as Map<String, dynamic>);
   }
 
-  /// Begin unlinking — returns confirmId.
+  /// Begin unlinking - returns confirmId.
   Future<TingeeStepResult> deleteVa({
     required String bankBin,
     required String vaAccountNumber,
@@ -107,7 +127,7 @@ class TingeeLinkService {
     return TingeeStepResult.fromJson(body as Map<String, dynamic>);
   }
 
-  /// Confirm unlink — Edge Function flips linked_bank_accounts.status to 'unlinked'.
+  /// Confirm unlink - Edge Function flips linked_bank_accounts.status to 'unlinked'.
   Future<TingeeStepResult> confirmDeleteVa({
     required String bankBin,
     required String confirmId,
