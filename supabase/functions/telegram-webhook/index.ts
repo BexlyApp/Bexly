@@ -1,4 +1,5 @@
-// Telegram Webhook - Full Version with AI Transaction Processing + Financial Coach
+// Telegram Webhook - Phase 3.2: routes to Bexly Agent when BEXLY_TELEGRAM_USE_AGENT=true,
+// otherwise uses legacy AI Transaction Processing + Financial Coach path.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { parseTransactionWithAI } from "../_shared/ai-providers.ts";
@@ -10,11 +11,81 @@ import { buildCoachPrompt } from "../_shared/financial-coach-prompt.ts";
 const TELEGRAM_BOT_TOKEN = Deno.env.get("BEXLY_TELEGRAM_BOT_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const BEXLY_AGENT_URL = Deno.env.get("BEXLY_AGENT_URL") ?? "https://bexly-agent.dos.ai";
+const BEXLY_TELEGRAM_USE_AGENT = Deno.env.get("BEXLY_TELEGRAM_USE_AGENT") === "true";
+const SUPABASE_JWT_SECRET = Deno.env.get("SUPABASE_JWT_SECRET");
 
 function getSupabaseClient() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     db: { schema: "bexly" },
   });
+}
+
+// ── Bexly Agent helpers (Phase 3.2) ──────────────────────────────────────────
+
+// Sign a short-lived user JWT for server-to-server calls into Bexly Agent.
+// Mirrors the structure of Supabase access tokens so the agent's
+// /auth/v1/user check accepts it.
+async function signUserJwt(userId: string, email?: string): Promise<string> {
+  if (!SUPABASE_JWT_SECRET) throw new Error('SUPABASE_JWT_SECRET not configured');
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    sub: userId,
+    aud: 'authenticated',
+    role: 'authenticated',
+    iat: now,
+    exp: now + 300, // 5 min
+    iss: `${Deno.env.get('SUPABASE_URL')}/auth/v1`,
+    ...(email ? { email } : {}),
+  };
+  const encode = (obj: object) =>
+    btoa(JSON.stringify(obj))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const signingInput = `${encode(header)}.${encode(payload)}`;
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(SUPABASE_JWT_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signingInput));
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${signingInput}.${sigB64}`;
+}
+
+// POST a message to the Bexly Agent, accumulate streaming reply, return plain string.
+async function callBexlyAgent(userId: string, message: string, threadId?: string): Promise<string> {
+  const jwt = await signUserJwt(userId);
+  const res = await fetch(`${BEXLY_AGENT_URL}/api/agent/chat`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message,
+      ...(threadId ? { threadId } : {}),
+      locale: 'vi',
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`agent ${res.status}: ${body.slice(0, 200)}`);
+  }
+  // Plain-text streaming: accumulate
+  const decoder = new TextDecoder();
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('agent: no response body');
+  let full = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    full += decoder.decode(value, { stream: true });
+  }
+  return full.trim();
 }
 
 // ── Demo accounts for hackathon ──────────────────────────────────────────────
@@ -851,11 +922,29 @@ serve(async (req) => {
       return new Response("OK");
     }
 
+    // Phase 3.2: route to Bexly Agent when feature flag is on
+    if (BEXLY_TELEGRAM_USE_AGENT) {
+      try {
+        const reply = await callBexlyAgent(userId, text, `telegram-${chatId}`);
+        if (reply.length > 0) {
+          await sendMessage(chatId, mdToHtml(reply), { parse_mode: 'HTML' });
+          // Also save to chat_messages so Flutter app sees the conversation
+          await saveChatMessage(userId, text, true);
+          await saveChatMessage(userId, reply, false);
+          return new Response("OK", { status: 200 }); // agent handled this turn
+        }
+      } catch (err) {
+        console.error('[telegram-webhook] Bexly Agent call failed, falling through to legacy coach:', err);
+        // Fall through to existing logic below
+      }
+    }
+
     await handleTransactionMessage(chatId, userId, text, lang);
 
     return new Response("OK", { status: 200 });
   } catch (error) {
     console.error("Webhook error:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: msg }), { status: 500 });
   }
 });
