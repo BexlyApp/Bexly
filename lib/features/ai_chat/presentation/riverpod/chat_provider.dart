@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/data/services/ai_service.dart';
 import 'package:bexly/features/ai_chat/presentation/riverpod/bexly_agent_service_provider.dart';
+import 'package:bexly/features/ai_chat/data/services/bexly_agent_service.dart'
+    show AgentEvent, AgentTextDelta, AgentToolCall, AgentToolResult, AgentStreamError, AgentStreamDone;
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/core/services/ai/ai_quota_state.dart';
@@ -266,6 +268,29 @@ final aiServiceProvider = Provider<AIService>((ref) {
   );
 });
 
+// ---------------------------------------------------------------------------
+// Agent tool event (Phase 3.4B)
+// ---------------------------------------------------------------------------
+
+/// A completed server-side tool call from the Bexly Agent, collected during
+/// a single chat turn and exposed via [ChatNotifier.lastAgentTools] so the
+/// UI can render [AgentToolBadge] widgets under the last assistant message.
+class AgentToolEvent {
+  const AgentToolEvent({
+    required this.id,
+    required this.name,
+    required this.args,
+    this.result,
+    this.isError = false,
+  });
+
+  final String id;
+  final String name;
+  final Map<String, dynamic> args;
+  final Object? result;
+  final bool isError;
+}
+
 // Chat State Provider - Using regular provider to prevent dispose
 // IMPORTANT: Don't watch aiServiceProvider here to avoid rebuild/dispose!
 final chatProvider = NotifierProvider<ChatNotifier, ChatState>(ChatNotifier.new);
@@ -279,6 +304,14 @@ class ChatNotifier extends Notifier<ChatState> {
 
   // Store pending screenshot transactions for quick action handling
   List<ReceiptScanResult>? _pendingScreenshotTransactions;
+
+  // Agent tool events from the last Bexly Agent turn (Phase 3.4B).
+  // Cleared at the start of each new turn so stale badges don't persist.
+  final List<AgentToolEvent> _lastAgentTools = [];
+
+  /// Completed tool calls from the most recent Bexly Agent turn.
+  /// Empty when agent is not active or no tools were called.
+  List<AgentToolEvent> get lastAgentTools => List.unmodifiable(_lastAgentTools);
 
   // Get AI service when needed to avoid provider rebuilds
   AIService get _aiService => ref.read(aiServiceProvider);
@@ -298,14 +331,45 @@ class ChatNotifier extends Notifier<ChatState> {
   /// stays available. Default flag value is `false`, preserving current
   /// behavior in production until the agent path is exercised in dev.
   Future<String> _sendMessageWithFallback(String message) async {
+    // Clear previous turn's tool events so stale badges don't persist.
+    _lastAgentTools.clear();
+
     if (LLMDefaultConfig.useBexlyAgent) {
       try {
         Log.d('🤖 Trying Bexly Agent (BEXLY_USE_AGENT=true)...', label: 'AI_FALLBACK');
         final agentSvc = ref.read(bexlyAgentServiceProvider);
         final buffer = StringBuffer();
-        await for (final chunk in agentSvc.chat(message: message)) {
-          buffer.write(chunk);
+        // Map tool_call id -> AgentToolCall so we can pair with tool_result.
+        final pendingCalls = <String, AgentToolCall>{};
+        final collectedTools = <AgentToolEvent>[];
+
+        await for (final event in agentSvc.chat(message: message)) {
+          switch (event) {
+            case AgentTextDelta(:final text):
+              buffer.write(text);
+            case AgentToolCall(:final id, :final name, :final args):
+              Log.i('agent tool[$id]: $name(${jsonEncode(args)})', label: 'AI_FALLBACK');
+              pendingCalls[id] = AgentToolCall(id: id, name: name, args: args);
+            case AgentToolResult(:final id, :final result, :final isError):
+              final call = pendingCalls[id];
+              if (call != null) {
+                collectedTools.add(AgentToolEvent(
+                  id: id,
+                  name: call.name,
+                  args: call.args,
+                  result: result,
+                  isError: isError,
+                ));
+              }
+            case AgentStreamError(:final message):
+              throw Exception('agent stream error: $message');
+            case AgentStreamDone():
+              break;
+          }
         }
+        _lastAgentTools
+          ..clear()
+          ..addAll(collectedTools);
         _usingFallback = false;
         _fallbackModelName = 'bexly-agent';
         return buffer.toString();

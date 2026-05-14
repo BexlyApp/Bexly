@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:bexly/core/components/scaffolds/custom_scaffold.dart';
+import 'package:bexly/features/ai_chat/presentation/components/agent_tool_badge.dart';
 import 'package:bexly/features/ai_chat/presentation/components/ai_quota_indicator.dart';
 import 'package:bexly/core/extensions/screen_utils_extensions.dart';
 import 'package:bexly/core/constants/app_colors.dart';
@@ -423,6 +424,10 @@ class _MessageBubble extends ConsumerWidget {
     final isUser = message.isFromUser;
     final isTyping = message.isTyping;
     final hasPendingAction = message.hasPendingAction;
+    // Agent tool badges: only shown on the last AI message (Phase 3.4B).
+    final agentTools = (!isUser && isLast)
+        ? ref.read(chatProvider.notifier).lastAgentTools
+        : const <AgentToolEvent>[];
 
     return Container(
       margin: EdgeInsets.only(
@@ -602,6 +607,22 @@ class _MessageBubble extends ConsumerWidget {
                           ],
                         ),
                 ),
+
+          // Agent tool badges (Phase 3.4B): retrospective indicators for
+          // server-side tool calls completed during this agent turn.
+          if (agentTools.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.spacing4),
+            Wrap(
+              spacing: AppSpacing.spacing4,
+              runSpacing: AppSpacing.spacing4,
+              children: agentTools
+                  .map((tool) => AgentToolBadge(
+                        label: agentToolBadgeLabel(tool),
+                        isError: tool.isError,
+                      ))
+                  .toList(),
+            ),
+          ],
 
           const SizedBox(height: AppSpacing.spacing4),
 
