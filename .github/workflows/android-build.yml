@@ -88,6 +88,8 @@ jobs:
           SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
           DOS_AI_TIMEOUT=5
           DOS_AI_VISION_TIMEOUT=30
+          BEXLY_USE_AGENT=true
+          BEXLY_AGENT_URL=https://bexly-agent.vercel.app
           EOF
 
       - name: Setup Android NDK
