@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:bexly/features/ai_chat/domain/models/chat_message.dart';
 import 'package:bexly/features/ai_chat/data/services/ai_service.dart';
+import 'package:bexly/features/ai_chat/presentation/riverpod/bexly_agent_service_provider.dart';
 import 'package:bexly/core/utils/logger.dart';
 import 'package:bexly/core/config/llm_config.dart';
 import 'package:bexly/core/services/ai/ai_quota_state.dart';
@@ -289,11 +290,31 @@ class ChatNotifier extends Notifier<ChatState> {
   // Cache fallback Gemini service to preserve conversation history
   GeminiService? _fallbackGeminiService;
 
-  /// Send message with fallback: DOS AI Gateway → Gemini (via ai-proxy).
-  /// The gateway already does its own server-side fallback to Gemini Cloud,
-  /// but if the gateway itself is down or returns 429/5xx, drop to Gemini
-  /// proxy directly so the user still gets an answer.
+  /// Send message with fallback: Bexly Agent (when flag on) → DOS AI Gateway → Gemini.
+  ///
+  /// Phase 3.1.5: if `BEXLY_USE_AGENT=true` at build time, primary path is the
+  /// Mastra-based Bexly Agent (`/api/agent/chat` with 21 MCP tools server-side).
+  /// On agent error, fall through to the legacy DOS AI Gateway path so chat
+  /// stays available. Default flag value is `false`, preserving current
+  /// behavior in production until the agent path is exercised in dev.
   Future<String> _sendMessageWithFallback(String message) async {
+    if (LLMDefaultConfig.useBexlyAgent) {
+      try {
+        Log.d('🤖 Trying Bexly Agent (BEXLY_USE_AGENT=true)...', label: 'AI_FALLBACK');
+        final agentSvc = ref.read(bexlyAgentServiceProvider);
+        final buffer = StringBuffer();
+        await for (final chunk in agentSvc.chat(message: message)) {
+          buffer.write(chunk);
+        }
+        _usingFallback = false;
+        _fallbackModelName = 'bexly-agent';
+        return buffer.toString();
+      } catch (e) {
+        Log.w('⚠️ Bexly Agent failed: $e, falling through to DOS AI Gateway...', label: 'AI_FALLBACK');
+        // Fall through to existing DOS AI path below.
+      }
+    }
+
     try {
       Log.d('🚀 Trying DOS AI Gateway first...', label: 'AI_FALLBACK');
       _usingFallback = false;
