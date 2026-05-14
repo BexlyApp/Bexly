@@ -122,4 +122,18 @@ class LLMDefaultConfig {
       'Authorization': 'Bearer $token',
     };
   }
+
+  // ==========================================================================
+  // Bexly Agent (Phase 3.1+)
+  // Routes AI chat through the Bexly Agent server (Mastra + 21 MCP tools).
+  // When false (default), the legacy ai-proxy + client-side action parsing
+  // path in ChatNotifier stays active. Flip to true in .env to exercise the
+  // agent path in dev before promoting to prod.
+  // ==========================================================================
+
+  /// Feature flag: when true, AI chat routes through the Bexly Agent (Mastra
+  /// + 21 MCP tools). When false, falls back to ai-proxy + client-side action
+  /// parsing (legacy behavior).
+  static bool get useBexlyAgent =>
+      const bool.fromEnvironment('BEXLY_USE_AGENT', defaultValue: false);
 }
