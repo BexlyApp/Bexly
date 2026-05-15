@@ -167,7 +167,7 @@ class BexlyAgentService {
   static const _label = 'BexlyAgentService';
   static const _baseUrl = String.fromEnvironment(
     'BEXLY_AGENT_URL',
-    defaultValue: 'https://bexly-agent.dos.ai',
+    defaultValue: 'https://api.bexly.app',
   );
 
   /// Streams [AgentEvent]s from the Bexly Agent for [message].
