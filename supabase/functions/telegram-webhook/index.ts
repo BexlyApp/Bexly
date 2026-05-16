@@ -1,5 +1,15 @@
 // Telegram Webhook - Phase 3.2: routes to Bexly Agent when BEXLY_TELEGRAM_USE_AGENT=true,
 // otherwise uses legacy AI Transaction Processing + Financial Coach path.
+//
+// Required env (Supabase secrets):
+//   BEXLY_TELEGRAM_BOT_TOKEN  - Telegram bot token
+//   BEXLY_TELEGRAM_USE_AGENT  - "true" to route to the Bexly Agent
+//   BEXLY_AGENT_URL           - Bexly Agent base URL (default https://ai.bexly.app)
+//   BEXLY_CHANNEL_SECRET      - shared secret proving this is a trusted backend
+//                               caller into the agent (no forged user JWT);
+//                               must match BEXLY_CHANNEL_SECRET on Vercel
+//   SUPABASE_URL              - auto-injected
+//   SUPABASE_SERVICE_ROLE_KEY - auto-injected
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { parseTransactionWithAI } from "../_shared/ai-providers.ts";
@@ -11,9 +21,15 @@ import { buildCoachPrompt } from "../_shared/financial-coach-prompt.ts";
 const TELEGRAM_BOT_TOKEN = Deno.env.get("BEXLY_TELEGRAM_BOT_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const BEXLY_AGENT_URL = Deno.env.get("BEXLY_AGENT_URL") ?? "https://bexly-agent.dos.ai";
+const BEXLY_AGENT_URL = Deno.env.get("BEXLY_AGENT_URL") ?? "https://ai.bexly.app";
 const BEXLY_TELEGRAM_USE_AGENT = Deno.env.get("BEXLY_TELEGRAM_USE_AGENT") === "true";
-const SUPABASE_JWT_SECRET = Deno.env.get("SUPABASE_JWT_SECRET");
+// Shared secret for trusted server-to-server calls into the Bexly Agent.
+// The Supabase project signs user JWTs with asymmetric ES256 keys, so this
+// webhook cannot mint a matching user token. Instead it proves it is a
+// trusted backend caller with this secret and names the target user via the
+// X-Bexly-User-Id header; the agent uses its service key, scoping every
+// query by that userId.
+const BEXLY_CHANNEL_SECRET = Deno.env.get("BEXLY_CHANNEL_SECRET");
 
 function getSupabaseClient() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -21,49 +37,19 @@ function getSupabaseClient() {
   });
 }
 
-// ── Bexly Agent helpers (Phase 3.2) ──────────────────────────────────────────
+// ── Bexly Agent helpers (Phase 3.2; channel-auth as of channel-auth refactor) ─
 
-// Sign a short-lived user JWT for server-to-server calls into Bexly Agent.
-// Mirrors the structure of Supabase access tokens so the agent's
-// /auth/v1/user check accepts it.
-async function signUserJwt(userId: string, email?: string): Promise<string> {
-  if (!SUPABASE_JWT_SECRET) throw new Error('SUPABASE_JWT_SECRET not configured');
-  const header = { alg: 'HS256', typ: 'JWT' };
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    sub: userId,
-    aud: 'authenticated',
-    role: 'authenticated',
-    iat: now,
-    exp: now + 300, // 5 min
-    iss: `${Deno.env.get('SUPABASE_URL')}/auth/v1`,
-    ...(email ? { email } : {}),
-  };
-  const encode = (obj: object) =>
-    btoa(JSON.stringify(obj))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  const signingInput = `${encode(header)}.${encode(payload)}`;
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(SUPABASE_JWT_SECRET),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signingInput));
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  return `${signingInput}.${sigB64}`;
-}
-
-// POST a message to the Bexly Agent, accumulate streaming reply, return plain string.
+// POST a message to the Bexly Agent as a trusted channel caller and
+// accumulate the streamed reply into a plain string. Authenticates with the
+// shared channel secret + explicit user id (no forged JWT).
 async function callBexlyAgent(userId: string, message: string, threadId?: string): Promise<string> {
-  const jwt = await signUserJwt(userId);
+  if (!BEXLY_CHANNEL_SECRET) throw new Error('BEXLY_CHANNEL_SECRET not configured');
   const res = await fetch(`${BEXLY_AGENT_URL}/api/agent/chat`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
+      'X-Bexly-Channel-Secret': BEXLY_CHANNEL_SECRET,
+      'X-Bexly-User-Id': userId,
     },
     body: JSON.stringify({
       message,

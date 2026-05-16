@@ -135,8 +135,12 @@ Set via `supabase secrets set` before deploying:
 supabase secrets set BEXLY_ZALO_ACCESS_TOKEN=<oa_access_token>
 supabase secrets set BEXLY_ZALO_APP_SECRET=<oa_app_secret>
 supabase secrets set BEXLY_ZALO_USE_AGENT=true          # default false (maintenance mode)
-supabase secrets set BEXLY_AGENT_URL=https://bexly-agent.dos.ai
-# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET are auto-injected
+supabase secrets set BEXLY_AGENT_URL=https://ai.bexly.app
+# Shared secret proving telegram/zalo webhooks are trusted backend callers
+# into the agent (the agent uses its own service key + this userId; webhooks
+# no longer forge a user JWT). Must match BEXLY_CHANNEL_SECRET set on Vercel.
+supabase secrets set BEXLY_CHANNEL_SECRET=<32+_char_shared_secret>
+# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY are auto-injected
 ```
 
 ### OA Setup Flow

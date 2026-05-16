@@ -5,8 +5,9 @@
 //   BEXLY_ZALO_ACCESS_TOKEN  - OA access token from oa.zalo.me dashboard
 //   BEXLY_ZALO_APP_SECRET    - OA app secret (used for HMAC signature verify)
 //   BEXLY_ZALO_USE_AGENT     - "true" to route to agent; otherwise replies with maintenance notice
-//   BEXLY_AGENT_URL          - Bexly Agent base URL (default https://bexly-agent.dos.ai)
-//   SUPABASE_JWT_SECRET      - auto-injected; used to sign user JWT for /api/agent/chat
+//   BEXLY_AGENT_URL          - Bexly Agent base URL (default https://ai.bexly.app)
+//   BEXLY_CHANNEL_SECRET     - shared secret proving this is a trusted backend
+//                              caller into the agent (no forged user JWT)
 //   SUPABASE_URL             - auto-injected
 //   SUPABASE_SERVICE_ROLE_KEY - auto-injected
 //
@@ -20,10 +21,14 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const ZALO_ACCESS_TOKEN = Deno.env.get('BEXLY_ZALO_ACCESS_TOKEN')
 const ZALO_APP_SECRET = Deno.env.get('BEXLY_ZALO_APP_SECRET')
 const USE_AGENT = Deno.env.get('BEXLY_ZALO_USE_AGENT') === 'true'
-const BEXLY_AGENT_URL = Deno.env.get('BEXLY_AGENT_URL') ?? 'https://bexly-agent.dos.ai'
+const BEXLY_AGENT_URL = Deno.env.get('BEXLY_AGENT_URL') ?? 'https://ai.bexly.app'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const SUPABASE_JWT_SECRET = Deno.env.get('SUPABASE_JWT_SECRET')
+// Shared secret for trusted server-to-server calls into the Bexly Agent.
+// Supabase signs user JWTs with asymmetric ES256 keys, so this webhook
+// cannot mint a matching token; it authenticates as a trusted channel
+// caller instead and names the target user via X-Bexly-User-Id.
+const BEXLY_CHANNEL_SECRET = Deno.env.get('BEXLY_CHANNEL_SECRET')
 
 function getSupabaseClient() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -118,49 +123,18 @@ async function generateZaloLinkCode(zaloUserId: string): Promise<string> {
   return code
 }
 
-// Sign a short-lived user JWT for server-to-server calls into Bexly Agent.
-// Mirrors Supabase access token structure so the agent's auth check accepts it.
-async function signUserJwt(userId: string): Promise<string> {
-  if (!SUPABASE_JWT_SECRET) throw new Error('SUPABASE_JWT_SECRET not configured')
-  const header = { alg: 'HS256', typ: 'JWT' }
-  const now = Math.floor(Date.now() / 1000)
-  const payload = {
-    sub: userId,
-    aud: 'authenticated',
-    role: 'authenticated',
-    iat: now,
-    exp: now + 300, // 5 minutes
-    iss: `${SUPABASE_URL}/auth/v1`,
-  }
-  const encode = (obj: object) =>
-    btoa(JSON.stringify(obj))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '')
-  const signingInput = `${encode(header)}.${encode(payload)}`
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(SUPABASE_JWT_SECRET),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  )
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signingInput))
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-  return `${signingInput}.${sigB64}`
-}
-
-// POST message to Bexly Agent, accumulate SSE/streaming reply, return plain text.
+// POST message to the Bexly Agent as a trusted channel caller, accumulate the
+// streamed reply, return plain text. Authenticates with the shared channel
+// secret + explicit user id instead of forging a user JWT (Supabase signs
+// user tokens with asymmetric ES256 keys; no shared HS256 secret exists).
 async function callBexlyAgent(bexlyUserId: string, message: string, threadId: string): Promise<string> {
-  const jwt = await signUserJwt(bexlyUserId)
+  if (!BEXLY_CHANNEL_SECRET) throw new Error('BEXLY_CHANNEL_SECRET not configured')
   const res = await fetch(`${BEXLY_AGENT_URL}/api/agent/chat`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
+      'X-Bexly-Channel-Secret': BEXLY_CHANNEL_SECRET,
+      'X-Bexly-User-Id': bexlyUserId,
     },
     body: JSON.stringify({ message, threadId, locale: 'vi' }),
   })
