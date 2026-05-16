@@ -60,91 +60,52 @@ serve(async (req) => {
     // Now use Bexly Supabase client for database operations
     const supabase = createSupabaseClient();
 
-    // Get request body - expects { link_code: string }
-    const body = await req.json();
-
-    if (!body.link_code) {
-      return new Response(
-        JSON.stringify({ error: "link_code is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    // Generate a 6-char A-Z0-9 code keyed by the authenticated Bexly user.
+    // Zalo OA has no deep-link start param; the user pastes the code into
+    // the OA chat, and zalo-webhook consumes it.
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    function genCode(): string {
+      let c = "";
+      for (let i = 0; i < 6; i++) {
+        c += alphabet[Math.floor(Math.random() * alphabet.length)];
+      }
+      return c;
     }
 
-    console.log("[link-zalo] Verifying link_code:", body.link_code);
-    const { data: linkCode, error: codeError } = await supabase
-      .from("bot_link_codes")
-      .select("*")
-      .eq("code", body.link_code.toUpperCase())
-      .eq("platform", "zalo")
-      .gt("expires_at", new Date().toISOString())
-      .single();
-
-    if (codeError || !linkCode) {
-      console.error("[link-zalo] Invalid or expired link code:", codeError);
-      return new Response(
-        JSON.stringify({ error: "Invalid or expired link code" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const zaloUserId = linkCode.platform_user_id;
-    console.log("[link-zalo] Link code verified, zalo_user_id:", zaloUserId);
-
-    // Delete the used code
     await supabase
       .from("bot_link_codes")
       .delete()
-      .eq("code", body.link_code.toUpperCase());
+      .eq("user_id", user.id)
+      .eq("platform", "zalo");
 
-    // Check if this Zalo account is already linked to another Bexly user
-    const { data: existing } = await supabase
-      .from("user_integrations")
-      .select("*")
-      .eq("platform", "zalo")
-      .eq("platform_user_id", String(zaloUserId))
-      .single();
-
-    if (existing) {
-      return new Response(
-        JSON.stringify({
-          error: "This Zalo account is already linked to another user",
-        }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    let code = "";
+    let insertErr: unknown = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      code = genCode();
+      const { error } = await supabase
+        .from("bot_link_codes")
+        .insert({ code, user_id: user.id, platform: "zalo" });
+      if (!error) {
+        insertErr = null;
+        break;
+      }
+      insertErr = error;
     }
-
-    // Create the link in user_integrations
-    console.log("[link-zalo] Creating link for user:", user.id, "zalo_user_id:", zaloUserId);
-    const { data: insertData, error: insertError } = await supabase
-      .from("user_integrations")
-      .insert({
-        user_id: user.id,
-        platform: "zalo",
-        platform_user_id: String(zaloUserId),
-        linked_at: new Date().toISOString(),
-        last_activity: new Date().toISOString(),
-      })
-      .select();
-
-    if (insertError) {
-      console.error("[link-zalo] Error creating link:", JSON.stringify(insertError, null, 2));
+    if (insertErr) {
+      console.error("[link-zalo] code insert failed:", JSON.stringify(insertErr));
       return new Response(
-        JSON.stringify({
-          error: "Failed to link account",
-          details: insertError.message,
-          code: insertError.code
-        }),
+        JSON.stringify({ error: "Failed to generate link code" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    console.log("[link-zalo] Link created successfully:", insertData);
-
+    console.log("[link-zalo] code generated for user", user.id);
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Zalo account linked successfully",
-        zalo_user_id: zaloUserId,
+        code,
+        platform: "zalo",
+        expires_in_minutes: 10,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
