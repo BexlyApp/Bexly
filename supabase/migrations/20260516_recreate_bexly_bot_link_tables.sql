@@ -40,3 +40,12 @@ BEGIN
       WITH CHECK (auth.uid() = user_id);
   END IF;
 END $$;
+
+-- Table privileges for the PostgREST API roles. GRANT is independent of
+-- RLS (RLS filters rows; GRANT permits the operation at all). Without
+-- these, PostgREST returns 42501 "permission denied" even for
+-- service_role. authenticated is RLS-scoped by the owner policy above;
+-- bot_link_codes is service-role only (ephemeral internal).
+-- The modern sb_secret_* key maps to service_role. GRANT is idempotent.
+GRANT SELECT, INSERT, UPDATE, DELETE ON bexly.user_integrations TO authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON bexly.bot_link_codes TO service_role;
