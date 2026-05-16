@@ -225,15 +225,28 @@ serve(async (req) => {
 
   console.log('[zalo-webhook] message from zaloUserId:', zaloUserId, '| text:', text.slice(0, 80))
 
+  // A bare 6-char message is treated as an app-generated link code.
+  const bareCode = text.match(/^([A-Za-z0-9]{6})$/)
+  if (bareCode) {
+    const result = await consumeZaloLinkCode(bareCode[1], zaloUserId)
+    if (result === 'ALREADY') {
+      await sendZaloMessage(zaloUserId, 'Tai khoan Zalo nay da duoc lien ket. Cu nhan tin de dung tro ly Bexly.')
+      return new Response('ok', { status: 200 })
+    }
+    if (result) {
+      await sendZaloMessage(zaloUserId, 'Da lien ket tai khoan Bexly! Nhan tin cho toi de ghi chep & hoi ve tai chinh.')
+      return new Response('ok', { status: 200 })
+    }
+    await sendZaloMessage(zaloUserId, 'Ma khong hop le hoac da het han. Mo app Bexly de lay ma moi.')
+    return new Response('ok', { status: 200 })
+  }
+
   const bexlyUserId = await getBexlyUserId(zaloUserId)
 
   if (!bexlyUserId) {
-    // Account not linked yet - generate a link code and prompt the user
-    const code = await generateZaloLinkCode(zaloUserId)
     await sendZaloMessage(
       zaloUserId,
-      `Chao ban! De lien ket voi tai khoan Bexly, vui long mo app Bexly va nhap ma: ${code}\n` +
-        `(Ma co hieu luc trong 10 phut.)`,
+      'Ban chua lien ket tai khoan Bexly. Mo app Bexly, vao Cai dat de lay ma 6 ky tu roi dan vao day.',
     )
     return new Response('ok', { status: 200 })
   }
