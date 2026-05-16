@@ -11,51 +11,49 @@ class TelegramBotService {
     return '${SupabaseConfig.url}/functions/v1';
   }
 
-  /// Link Telegram account to current Bexly user
+  /// Generate a one-time link code for the current Bexly user.
   ///
-  /// Call this after user initiates link from Telegram bot
-  /// Pass the telegram_id from Telegram bot
-  static Future<bool> linkTelegramAccount(String telegramId) async {
+  /// Calls the link-telegram edge function (generate-code mode) and returns
+  /// `{ code, deep_link, ... }`, or null on failure. The user then sends the
+  /// code to the Telegram bot via the deep-link or by pasting it.
+  static Future<Map<String, dynamic>?> generateLinkCode() async {
     try {
       if (!SupabaseInitService.isInitialized) {
-        Log.w('Cannot link Telegram: Supabase not initialized', label: _label);
-        return false;
+        Log.w('Cannot generate link code: Supabase not initialized', label: _label);
+        return null;
       }
       final supabase = SupabaseInitService.client;
       final session = supabase.auth.currentSession;
 
       if (session == null) {
-        Log.w('Cannot link Telegram: User not authenticated', label: _label);
-        return false;
+        Log.w('Cannot generate link code: User not authenticated', label: _label);
+        return null;
       }
 
-      final accessToken = session.accessToken;
-
-      // Call Supabase Edge Function
       final response = await supabase.functions.invoke(
         'link-telegram',
-        body: {
-          'telegram_id': telegramId,
-        },
+        body: {'platform': 'telegram'},
         headers: {
-          'Authorization': 'Bearer $accessToken',
+          'Authorization': 'Bearer ${session.accessToken}',
         },
       );
 
-      if (response.status == 200) {
-        Log.i('Telegram account linked successfully', label: _label);
-        return true;
-      } else {
-        Log.e(
-          'Failed to link Telegram account: ${response.status} - ${response.data}',
-          label: _label,
-        );
-        return false;
+      if (response.status == 200 && response.data is Map) {
+        final data = Map<String, dynamic>.from(response.data as Map);
+        if (data['code'] is String) {
+          Log.i('Telegram link code generated', label: _label);
+          return data;
+        }
       }
+      Log.e(
+        'Failed to generate link code: ${response.status} - ${response.data}',
+        label: _label,
+      );
+      return null;
     } catch (e, stack) {
-      Log.e('Error linking Telegram account: $e', label: _label);
+      Log.e('Error generating link code: $e', label: _label);
       Log.e('Stack: $stack', label: _label);
-      return false;
+      return null;
     }
   }
 

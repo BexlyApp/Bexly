@@ -17,6 +17,8 @@ class BotIntegrationScreen extends HookConsumerWidget {
     final isLoading = useState(false);
     final isTelegramLinked = useState<bool?>(null);
     final telegramId = useState<String?>(null);
+    final linkCode = useState<String?>(null);
+    final deepLink = useState<String?>(null);
 
     // Check Telegram link status on mount
     useEffect(() {
@@ -128,6 +130,7 @@ class BotIntegrationScreen extends HookConsumerWidget {
                     )
                   else
                     Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
                           padding: const EdgeInsets.all(12),
@@ -141,7 +144,7 @@ class BotIntegrationScreen extends HookConsumerWidget {
                               Gap(12),
                               Expanded(
                                 child: Text(
-                                  'Not linked yet',
+                                  'Chưa liên kết',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: Colors.orange,
@@ -152,28 +155,107 @@ class BotIntegrationScreen extends HookConsumerWidget {
                           ),
                         ),
                         const Gap(16),
-                        Text(
-                          'How to link:',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const Gap(8),
-                        const Text(
-                          '1. Open Telegram and search for your bot\n'
-                          '2. Send any message to the bot\n'
-                          '3. Click the "🔗 Link Account" button\n'
-                          '4. App will open and link automatically',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                        const Gap(16),
-                        FilledButton.icon(
-                          onPressed: () => _openTelegram(context),
-                          icon: const Icon(Icons.telegram),
-                          label: const Text('Open in Telegram'),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                            backgroundColor: const Color(0xFF0088CC),
+                        if (linkCode.value == null) ...[
+                          const Text(
+                            'Tạo mã liên kết, mở Telegram và gửi mã cho bot '
+                            '(hoặc bấm nút mở sẵn). Sau khi bot xác nhận, bấm '
+                            '"Kiểm tra".',
+                            style: TextStyle(fontSize: 14),
                           ),
-                        ),
+                          const Gap(16),
+                          FilledButton.icon(
+                            onPressed: isLoading.value
+                                ? null
+                                : () => _generateCode(
+                                      context,
+                                      isLoading,
+                                      linkCode,
+                                      deepLink,
+                                    ),
+                            icon: const Icon(Icons.link),
+                            label: const Text('Tạo mã liên kết'),
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
+                              backgroundColor: const Color(0xFF0088CC),
+                            ),
+                          ),
+                        ] else ...[
+                          Text(
+                            'Mã liên kết của bạn:',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const Gap(8),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                SelectableText(
+                                  linkCode.value!,
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 4,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.copy),
+                                  tooltip: 'Sao chép mã',
+                                  onPressed: () {
+                                    Clipboard.setData(
+                                      ClipboardData(text: linkCode.value!),
+                                    );
+                                    toastification.show(
+                                      context: context,
+                                      title: const Text('Đã sao chép mã'),
+                                      type: ToastificationType.success,
+                                      style: ToastificationStyle.fillColored,
+                                      autoCloseDuration:
+                                          const Duration(seconds: 2),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Gap(8),
+                          const Text(
+                            'Hết hạn sau 10 phút. Mở Telegram, gửi mã này cho '
+                            'bot (hoặc bấm nút bên dưới), rồi bấm "Kiểm tra".',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          const Gap(16),
+                          if (deepLink.value != null)
+                            FilledButton.icon(
+                              onPressed: () =>
+                                  _openDeepLink(context, deepLink.value!),
+                              icon: const Icon(Icons.telegram),
+                              label: const Text('Mở Telegram'),
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size.fromHeight(48),
+                                backgroundColor: const Color(0xFF0088CC),
+                              ),
+                            ),
+                          const Gap(8),
+                          OutlinedButton.icon(
+                            onPressed: isLoading.value
+                                ? null
+                                : () => _checkTelegramStatus(
+                                      isTelegramLinked,
+                                      telegramId,
+                                    ),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Tôi đã gửi xong - Kiểm tra'),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                 ],
@@ -249,32 +331,48 @@ class BotIntegrationScreen extends HookConsumerWidget {
     }
   }
 
-  Future<void> _openTelegram(BuildContext context) async {
-    // Open Telegram bot with pre-filled /link command
-    const botUsername = 'BexlyBot';
-    const url = 'https://t.me/$botUsername?text=/link';
-
+  Future<void> _generateCode(
+    BuildContext context,
+    ValueNotifier<bool> isLoading,
+    ValueNotifier<String?> linkCode,
+    ValueNotifier<String?> deepLink,
+  ) async {
+    isLoading.value = true;
     try {
-      await LinkLauncher.launch(url);
-
-      if (context.mounted) {
-        toastification.show(
-          context: context,
-          title: const Text('Opening Telegram'),
-          description: Text('Bot: @$botUsername'),
-          type: ToastificationType.info,
-          style: ToastificationStyle.fillColored,
-          autoCloseDuration: const Duration(seconds: 2),
-        );
+      final result = await TelegramBotService.generateLinkCode();
+      if (result != null && result['code'] is String) {
+        linkCode.value = result['code'] as String;
+        deepLink.value = result['deep_link'] as String?;
+      } else {
+        throw Exception('No code returned');
       }
     } catch (e) {
-      Log.e('Error opening Telegram: $e', label: 'BotIntegration');
-
+      Log.e('Error generating link code: $e', label: 'BotIntegration');
       if (context.mounted) {
         toastification.show(
           context: context,
-          title: const Text('Error'),
-          description: const Text('Failed to open Telegram. Please open it manually.'),
+          title: const Text('Lỗi'),
+          description: const Text('Không tạo được mã liên kết. Thử lại sau.'),
+          type: ToastificationType.error,
+          style: ToastificationStyle.fillColored,
+          autoCloseDuration: const Duration(seconds: 3),
+        );
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> _openDeepLink(BuildContext context, String url) async {
+    try {
+      await LinkLauncher.launch(url);
+    } catch (e) {
+      Log.e('Error opening Telegram: $e', label: 'BotIntegration');
+      if (context.mounted) {
+        toastification.show(
+          context: context,
+          title: const Text('Lỗi'),
+          description: const Text('Không mở được Telegram. Vui lòng mở thủ công.'),
           type: ToastificationType.error,
           style: ToastificationStyle.fillColored,
           autoCloseDuration: const Duration(seconds: 3),
