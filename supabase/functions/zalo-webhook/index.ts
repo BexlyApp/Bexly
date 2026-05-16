@@ -97,30 +97,45 @@ async function getBexlyUserId(zaloUserId: string): Promise<string | null> {
   return data?.user_id ?? null
 }
 
-// Generate a 6-char alphanumeric link code and store in bot_link_codes table.
-// Reuses the same table pattern as the Telegram channel (platform='zalo').
-async function generateZaloLinkCode(zaloUserId: string): Promise<string> {
-  const code = Math.random().toString(36).substring(2, 8).toUpperCase()
+// Consume an app-generated link code: validate (unexpired, zalo), link
+// this Zalo user to the code's Bexly user, delete the code. Returns the
+// linked user_id, "ALREADY" if this Zalo user is already linked, or null
+// if the code is invalid/expired.
+async function consumeZaloLinkCode(
+  rawCode: string,
+  zaloUserId: string,
+): Promise<string | 'ALREADY' | null> {
+  const code = rawCode.trim().toUpperCase()
+  const sb = getSupabaseClient()
 
-  const supabase = getSupabaseClient()
-
-  // Delete any existing pending codes for this Zalo user
-  await supabase
+  const { data: row } = await sb
     .from('bot_link_codes')
-    .delete()
+    .select('user_id')
+    .eq('code', code)
     .eq('platform', 'zalo')
-    .eq('platform_user_id', zaloUserId)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle()
+  if (!row?.user_id) return null
 
-  // Insert new code
-  await supabase
-    .from('bot_link_codes')
-    .insert({
-      code,
-      platform: 'zalo',
-      platform_user_id: zaloUserId,
-    })
+  const existing = await getBexlyUserId(zaloUserId)
+  if (existing) {
+    await sb.from('bot_link_codes').delete().eq('code', code)
+    return 'ALREADY'
+  }
 
-  return code
+  const { error: insErr } = await sb.from('user_integrations').insert({
+    user_id: row.user_id,
+    platform: 'zalo',
+    platform_user_id: zaloUserId,
+    linked_at: new Date().toISOString(),
+    last_activity: new Date().toISOString(),
+  })
+  if (insErr) {
+    console.error('[zalo-webhook] link insert failed:', JSON.stringify(insErr))
+    return null
+  }
+  await sb.from('bot_link_codes').delete().eq('code', code)
+  return row.user_id
 }
 
 // POST message to the Bexly Agent as a trusted channel caller, accumulate the
