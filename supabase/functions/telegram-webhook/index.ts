@@ -74,15 +74,6 @@ async function callBexlyAgent(userId: string, message: string, threadId?: string
   return full.trim();
 }
 
-// ── Demo accounts for hackathon ──────────────────────────────────────────────
-const DEMO_ACCOUNTS = [
-  { num: 1, userId: "035bf828-fd7d-4210-9d57-5e8f9c2b9cda", name: "Minh", desc: "Office Worker - 20M VND/month, high dining spend" },
-  { num: 2, userId: "c50071e9-f4eb-464b-8b45-0d96c1c935ab", name: "Lan", desc: "Freelancer - irregular income, 8 subscriptions" },
-  { num: 3, userId: "43d7a628-2bde-445f-a8ff-8fdff1e5571b", name: "Huy", desc: "Student - tight budget, minimal savings" },
-  { num: 4, userId: "001531ce-bb0c-4070-b042-a7f62c5efa5f", name: "Trang", desc: "Business Owner - multi-currency, 4 wallets" },
-  { num: 5, userId: "a0ea0178-56c1-45b7-976f-9807a2078a3a", name: "Duc", desc: "Expat - USD+VND, international spending" },
-];
-
 // ── Telegram API helpers ──────────────────────────────────────────────────────
 
 // Convert Markdown-style `*bold*` / `_italic_` to Telegram HTML tags.
@@ -163,84 +154,56 @@ async function answerCallbackQuery(id: string, text?: string) {
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
-// Generate a random 6-char alphanumeric link code and store in DB
-async function generateLinkCode(telegramId: string): Promise<string> {
-  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-  // Delete any existing codes for this user
-  await getSupabaseClient()
-    .from("bot_link_codes")
-    .delete()
-    .eq("platform", "telegram")
-    .eq("platform_user_id", telegramId);
-
-  // Insert new code
-  await getSupabaseClient()
-    .from("bot_link_codes")
-    .insert({
-      code,
-      platform: "telegram",
-      platform_user_id: telegramId,
-    });
-
-  return code;
-}
-
+// Look up the Bexly user linked to this Telegram chat (null if unlinked).
 async function getUserId(telegramId: string): Promise<string | null> {
   const { data } = await getSupabaseClient()
     .from("user_integrations")
     .select("user_id")
     .eq("platform", "telegram")
     .eq("platform_user_id", telegramId)
-    .single();
+    .maybeSingle();
   return data?.user_id ?? null;
 }
 
-// Link telegram user to a demo account (upsert)
-async function linkToDemoAccount(telegramId: string, demoNum: number): Promise<boolean> {
-  const demo = DEMO_ACCOUNTS.find((d) => d.num === demoNum);
-  if (!demo) return false;
+// Consume an app-generated link code: validate (unexpired, telegram),
+// link this Telegram chat to the code's Bexly user, delete the code.
+// Returns the linked user_id, "ALREADY" if this chat is already linked,
+// or null if the code is invalid/expired.
+async function consumeLinkCode(
+  rawCode: string,
+  telegramId: string,
+): Promise<string | "ALREADY" | null> {
+  const code = rawCode.trim().toUpperCase();
+  const sb = getSupabaseClient();
 
-  // Delete existing link for this telegram user
-  await getSupabaseClient()
-    .from("user_integrations")
-    .delete()
+  const { data: row } = await sb
+    .from("bot_link_codes")
+    .select("user_id")
+    .eq("code", code)
     .eq("platform", "telegram")
-    .eq("platform_user_id", telegramId);
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  if (!row?.user_id) return null;
 
-  // Insert new link
-  const { error } = await getSupabaseClient()
-    .from("user_integrations")
-    .insert({
-      user_id: demo.userId,
-      platform: "telegram",
-      platform_user_id: telegramId,
-    });
-
-  return !error;
-}
-
-async function showDemoSelector(chatId: number, prefix?: string) {
-  const lines = [
-    prefix || "👤 *Choose a demo account to explore:*",
-    "",
-  ];
-  for (const d of DEMO_ACCOUNTS) {
-    lines.push(`*${d.num}. ${d.name}* - ${d.desc}`);
+  const existing = await getUserId(telegramId);
+  if (existing) {
+    await sb.from("bot_link_codes").delete().eq("code", code);
+    return "ALREADY";
   }
-  lines.push("");
-  lines.push("_Tap a button below to select:_");
 
-  await sendMessage(chatId, lines.join("\n"), {
-    reply_markup: {
-      keyboard: [
-        DEMO_ACCOUNTS.slice(0, 3).map((d) => ({ text: `${d.num}. ${d.name}` })),
-        DEMO_ACCOUNTS.slice(3).map((d) => ({ text: `${d.num}. ${d.name}` })),
-      ],
-      one_time_keyboard: true,
-      resize_keyboard: true,
-    },
+  const { error: insErr } = await sb.from("user_integrations").insert({
+    user_id: row.user_id,
+    platform: "telegram",
+    platform_user_id: telegramId,
+    linked_at: new Date().toISOString(),
+    last_activity: new Date().toISOString(),
   });
+  if (insErr) {
+    console.error("[telegram-webhook] link insert failed:", JSON.stringify(insErr));
+    return null;
+  }
+  await sb.from("bot_link_codes").delete().eq("code", code);
+  return row.user_id;
 }
 
 async function unlinkUser(telegramId: string): Promise<boolean> {
