@@ -713,26 +713,6 @@ serve(async (req) => {
         await answerCallbackQuery(cbId);
         await editMessageText(chatId, messageId, "✅ Cancelled. Account still linked.");
 
-      } else if (data.startsWith("demo_")) {
-        const demoNum = parseInt(data.slice(5));
-        const demo = DEMO_ACCOUNTS.find((d) => d.num === demoNum);
-        if (!demo) { await answerCallbackQuery(cbId, "Invalid demo"); return new Response("OK"); }
-
-        const ok = await linkToDemoAccount(telegramUserId, demoNum);
-        await answerCallbackQuery(cbId);
-        if (ok) {
-          await editMessageText(chatId, messageId,
-            `✅ *Switched to ${demo.name}'s account!*\n\n` +
-            `${demo.desc}\n\n` +
-            `Try these:\n` +
-            `• /insights - View spending overview\n` +
-            `• \`Tình hình tài chính?\` - Get coaching\n` +
-            `• \`ăn trưa 50k\` - Record expense\n` +
-            `• /demo - Switch account`
-          );
-        } else {
-          await editMessageText(chatId, messageId, "❌ Failed to switch. Try again.");
-        }
       }
 
       return new Response("OK", { status: 200 });
@@ -750,124 +730,72 @@ serve(async (req) => {
     const hasVietnamese = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(text);
     const lang = hasVietnamese || msg.from.language_code === "vi" ? "vi" : "en";
 
-    if (text === "/start") {
-      await sendMessage(chatId,
-        "👋 *Welcome to Bexly AI Financial Coach!*\n" +
-        "_Powered by Qwen AI & Shinhan Bank_\n\n" +
-        "I can:\n" +
-        "📝 Track expenses & income\n" +
-        "📊 Analyze your spending patterns\n" +
-        "💡 Give personalized financial coaching\n" +
-        "🏦 Recommend Shinhan banking products\n\n" +
-        "👇 *Pick a demo account to get started:*"
-      );
-      await showDemoSelector(chatId);
+    // Extract a link code from "/start <code>" or a bare 6-char message.
+    const startMatch = text.match(/^\/start(?:\s+([A-Za-z0-9]{6}))?$/);
+    const bareCodeMatch = text.match(/^([A-Za-z0-9]{6})$/);
+    const linkCode = startMatch?.[1] ?? (bareCodeMatch ? bareCodeMatch[1] : null);
+
+    if (linkCode) {
+      const result = await consumeLinkCode(linkCode, telegramUserId);
+      if (result === "ALREADY") {
+        await sendMessage(chatId,
+          "✅ Tài khoản Telegram này đã được liên kết. Cứ nhắn tin để dùng trợ lý Bexly.");
+      } else if (result) {
+        await sendMessage(chatId,
+          "✅ *Đã liên kết tài khoản Bexly!*\n\nNhắn tin cho tôi để ghi chép & hỏi về tài chính của bạn.");
+      } else {
+        await sendMessage(chatId,
+          "❌ Mã không hợp lệ hoặc đã hết hạn.\n\nMở app Bexly → Cài đặt → Liên kết Telegram để lấy mã mới.");
+      }
       return new Response("OK");
     }
 
-    if (text === "/demo") {
-      const existing = await getUserId(telegramUserId);
-      const currentDemo = existing ? DEMO_ACCOUNTS.find((d) => d.userId === existing) : null;
-      const prefix = currentDemo
-        ? `🔄 *Switch demo account*\n_Currently: ${currentDemo.name} (#${currentDemo.num})_`
-        : "👤 *Choose a demo account to explore:*";
-      await showDemoSelector(chatId, prefix);
+    if (text === "/start") {
+      await sendMessage(chatId,
+        "👋 *Chào mừng đến Bexly!*\n\n" +
+        "Tôi là trợ lý tài chính của bạn. Để bắt đầu:\n\n" +
+        "1. Mở app Bexly → *Cài đặt* → *Liên kết Telegram*\n" +
+        "2. Bấm nút mở Telegram (hoặc dán mã 6 ký tự vào đây)\n\n" +
+        "Sau khi liên kết, cứ nhắn tin để ghi chép & hỏi về tài chính.");
       return new Response("OK");
     }
 
     if (text === "/help") {
       await sendMessage(chatId,
-        "📖 *Bexly AI Coach Commands*\n\n" +
-        "/demo - Choose/switch demo account\n" +
-        "/insights - Spending overview & health score\n" +
-        "/link - Link your real Bexly account\n" +
-        "/unlink - Unlink your account\n" +
-        "/help - Show this help\n\n" +
-        "*Record transactions:*\n" +
-        "`ăn sáng 25k` - breakfast expense\n" +
-        "`lunch $10` - lunch expense\n" +
-        "`lương 15 triệu` - salary income\n\n" +
-        "*Ask for coaching:*\n" +
-        "`Tình hình tài chính tháng này?`\n" +
-        "`How can I save more?`\n" +
-        "`Nên cắt giảm chi tiêu gì?`"
-      );
-      return new Response("OK");
-    }
-
-    if (text === "/insights") {
-      const userId = await getUserId(telegramUserId);
-      if (!userId) {
-        await showDemoSelector(chatId, "📊 *Pick an account first to view insights:*");
-        return new Response("OK");
-      }
-      await handleInsightsCommand(chatId, userId, lang);
-      return new Response("OK");
-    }
-
-    if (text === "/link") {
-      const existing = await getUserId(telegramUserId);
-      if (existing) {
-        await sendMessage(chatId, "✅ Already linked! Just send a message to record a transaction.");
-        return new Response("OK");
-      }
-      const code = await generateLinkCode(telegramUserId);
-      await sendMessage(chatId,
-        `🔗 *Link your Bexly account*\n\n` +
-        `⌨️ Enter this code in Bexly app:\n\n` +
-        `\`${code}\`\n\n` +
-        `_(Settings → Integrations → Telegram)_\n` +
-        `⏰ Code expires in 10 minutes.`
-      );
+        "📖 *Bexly*\n\n" +
+        "/start - Bắt đầu / hướng dẫn liên kết\n" +
+        "/unlink - Huỷ liên kết tài khoản\n" +
+        "/help - Trợ giúp\n\n" +
+        "Đã liên kết? Cứ nhắn tự nhiên:\n" +
+        "`ăn sáng 25k` · `lương 15 triệu` · `Tháng này tôi tiêu bao nhiêu?`");
       return new Response("OK");
     }
 
     if (text === "/unlink") {
       const existing = await getUserId(telegramUserId);
       if (!existing) {
-        await sendMessage(chatId, "❌ Not linked yet. Use /link first.");
+        await sendMessage(chatId, "❌ Chưa liên kết. Mở app Bexly để liên kết trước.");
         return new Response("OK");
       }
-      await sendMessage(chatId, "⚠️ Unlink your Bexly account?", {
+      await sendMessage(chatId, "⚠️ Huỷ liên kết tài khoản Bexly?", {
         reply_markup: {
           inline_keyboard: [[
-            { text: "✅ Yes, unlink", callback_data: `unlink_confirm_${telegramUserId}` },
-            { text: "❌ Cancel", callback_data: `unlink_cancel_${telegramUserId}` },
+            { text: "✅ Huỷ liên kết", callback_data: `unlink_confirm_${telegramUserId}` },
+            { text: "❌ Thôi", callback_data: `unlink_cancel_${telegramUserId}` },
           ]],
         },
       });
       return new Response("OK");
     }
 
-    // Demo account selection via reply keyboard (e.g. "5. Duc")
-    const demoMatch = text.match(/^(\d)\.\s*(\w+)$/);
-    if (demoMatch) {
-      const demoNum = parseInt(demoMatch[1]);
-      const demo = DEMO_ACCOUNTS.find((d) => d.num === demoNum);
-      if (demo) {
-        const ok = await linkToDemoAccount(telegramUserId, demoNum);
-        if (ok) {
-          await sendMessage(chatId,
-            `✅ *Switched to ${demo.name}'s account!*\n\n` +
-            `${demo.desc}\n\n` +
-            `Try these:\n` +
-            `• /insights - View spending overview\n` +
-            `• \`Tình hình tài chính?\` - Get coaching\n` +
-            `• \`ăn trưa 50k\` - Record expense\n` +
-            `• /demo - Switch account`,
-            { reply_markup: { remove_keyboard: true } },
-          );
-        } else {
-          await sendMessage(chatId, "❌ Failed to switch. Try again.");
-        }
-        return new Response("OK");
-      }
-    }
-
-    // Any other message → try to parse as transaction
+    // Any other message requires a linked account.
     const userId = await getUserId(telegramUserId);
     if (!userId) {
-      await showDemoSelector(chatId, "👋 *Welcome!* Pick a demo account to get started:");
+      await sendMessage(chatId,
+        "🔗 Bạn chưa liên kết tài khoản Bexly.\n\n" +
+        "Mở app Bexly → *Cài đặt* → *Liên kết Telegram*, rồi bấm nút mở " +
+        "Telegram hoặc dán mã 6 ký tự vào đây.\n\n" +
+        "_Chưa có tài khoản Bexly? Tải app tại https://bexly.app_");
       return new Response("OK");
     }
 
