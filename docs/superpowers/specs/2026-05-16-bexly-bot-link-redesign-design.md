@@ -53,9 +53,23 @@ registration as a supported contract.
 4. **Linked user** messages → `getUserId()` returns `user_id` → routed to
    the Bexly Agent (existing, working path).
 5. **Telegram user with NO Bexly account** (messages bot, not linked, no
-   valid code) → bot replies with a Bexly sign-up link (app store / web).
-   Recover exact copy/links from git history of the pre-demo-picker
-   telegram-webhook (`git log -- supabase/functions/telegram-webhook`).
+   valid code) → bot replies with a **dos.me ID sign-up link** carrying a
+   signed state that encodes `platform='telegram'` + the Telegram chat id
+   (+ short TTL). The user creates a dos.me ID account (the centralized DOS
+   identity that Bexly auth uses). On signup completion, a callback
+   consumes the state → creates `user_integrations(user_id=<newly created
+   Bexly user>, platform='telegram', platform_user_id=<chat id>)` → then
+   notifies the Telegram chat ("✅ Tài khoản đã tạo & liên kết!"). No
+   separate code step for the no-account case — signup + callback links
+   directly. (Recover the pre-demo-picker sign-up copy/links from
+   `git log -- supabase/functions/telegram-webhook` as a starting point.)
+
+   Cross-team dependency: dos.me ID signup must accept and round-trip the
+   `state` param to the callback. The dos.me-ID-side change is
+   DOS-Me-owned (coordinate via the DOS-Me flow, like migrations); the
+   Bexly side owns (a) the bot emitting the state-bearing link and (b) the
+   callback endpoint that creates `user_integrations` + notifies the
+   chat. State is HMAC-signed + short-TTL to prevent forgery/replay.
 
 Zalo follows the identical pattern (`platform='zalo'`), reusing
 `zalo-webhook` + `link-zalo`.
@@ -69,6 +83,15 @@ survives cleanups; Telegram→Agent E2E works for a real linked user.
 **Non-Goals**: Tingee/open-banking; migrating to `dosai.shared_bot_links`
 or the DOS agent platform; changing the Agent core; multi-account linking
 (one platform account ↔ one Bexly user stays the invariant).
+
+**Cross-team dependency**: the no-account path needs dos.me ID signup to
+accept + round-trip a signed `state` to the Bexly callback. The
+dos.me-ID-side change is DOS-Me-owned (coordinate via the DOS-Me flow,
+same as registered migrations). Bexly owns the state-bearing link and the
+callback endpoint. If dos.me-ID state round-trip is not yet available,
+the no-account branch degrades gracefully to a plain dos.me ID sign-up
+link + "after creating your account, generate a link code in the Bexly
+app" instruction (the normal app→bot flow).
 
 ## Data Model (exact, reconstructed from all call-sites)
 
@@ -130,9 +153,14 @@ The old edge-function generate/consume logic must be rewritten accordingly.
 - **telegram-webhook**: handle `/start <code>` (deep-link start-param) and
   a bare code message → consume `bot_link_codes` → upsert
   `user_integrations` → confirm. Remove `DEMO_ACCOUNTS` + `showDemoSelector`
-  + demo callback handlers. Add the "no Bexly account → sign-up link"
-  branch (recovered from git history). Linked path unchanged (routes to
-  Agent).
+  + demo callback handlers. Add the "no Bexly account → dos.me ID sign-up
+  link" branch: emit a link with an HMAC-signed, short-TTL `state`
+  (platform + chat id). Linked path unchanged (routes to Agent).
+- **new: signup-callback endpoint** (Bexly-owned, e.g.
+  `link-signup-callback`): invoked after dos.me ID signup completes with
+  the round-tripped `state`; verifies the HMAC + TTL, resolves the newly
+  created Bexly user, inserts `user_integrations`, then notifies the
+  Telegram/Zalo chat. Idempotent on replay.
 - **zalo-webhook**: same code-consume + no-account changes for parity.
 - **link-telegram-web**: default = retire it (legacy web link path). During
   planning, grep callers; keep only if an active caller exists, in which
