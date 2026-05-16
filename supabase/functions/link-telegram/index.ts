@@ -60,95 +60,74 @@ serve(async (req) => {
     // Now use Bexly Supabase client for database operations
     const supabase = createSupabaseClient();
 
-    // Get request body
-    const body = await req.json();
-    let telegram_id = body.telegram_id;
+    const body = await req.json().catch(() => ({}));
+    const platform: string = body.platform === "zalo" ? "zalo" : "telegram";
 
-    // If link_code is provided, look up telegram_id from bot_link_codes table
-    if (body.link_code) {
-      console.log("[link-telegram] Verifying link_code:", body.link_code);
-      const { data: linkCode, error: codeError } = await supabase
-        .from("bot_link_codes")
-        .select("*")
-        .eq("code", body.link_code.toUpperCase())
-        .eq("platform", "telegram")
-        .gt("expires_at", new Date().toISOString())
-        .single();
-
-      if (codeError || !linkCode) {
-        console.error("[link-telegram] Invalid or expired link code:", codeError);
-        return new Response(
-          JSON.stringify({ error: "Invalid or expired link code" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+    // Resolve the Telegram bot username for the deep-link (cached per cold
+    // start). Uses the bot token available as a Supabase secret to all
+    // functions; avoids a separate username secret that could drift.
+    const botToken = Deno.env.get("BEXLY_TELEGRAM_BOT_TOKEN");
+    let botUsername = "";
+    if (platform === "telegram" && botToken) {
+      try {
+        const me = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
+        const meJson = await me.json();
+        botUsername = meJson?.result?.username ?? "";
+      } catch (_) {
+        botUsername = "";
       }
+    }
 
-      telegram_id = linkCode.platform_user_id;
-      console.log("[link-telegram] Link code verified, telegram_id:", telegram_id);
+    // Generate a 6-char A-Z0-9 code; retry on the rare PK collision.
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    function genCode(): string {
+      let c = "";
+      for (let i = 0; i < 6; i++) {
+        c += alphabet[Math.floor(Math.random() * alphabet.length)];
+      }
+      return c;
+    }
 
-      // Delete the used code
-      await supabase
+    // Clear this user's prior unused codes for the platform, then insert.
+    await supabase
+      .from("bot_link_codes")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("platform", platform);
+
+    let code = "";
+    let insertErr: unknown = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      code = genCode();
+      const { error } = await supabase
         .from("bot_link_codes")
-        .delete()
-        .eq("code", body.link_code.toUpperCase());
+        .insert({ code, user_id: user.id, platform });
+      if (!error) {
+        insertErr = null;
+        break;
+      }
+      insertErr = error;
     }
-
-    if (!telegram_id) {
+    if (insertErr) {
+      console.error("[link-telegram] code insert failed:", JSON.stringify(insertErr));
       return new Response(
-        JSON.stringify({ error: "telegram_id or link_code is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    // Check if Telegram account is already linked
-    const { data: existing, error: checkError } = await supabase
-      .from("user_integrations")
-      .select("*")
-      .eq("platform", "telegram")
-      .eq("platform_user_id", String(telegram_id))
-      .single();
-
-    if (existing) {
-      return new Response(
-        JSON.stringify({
-          error: "This Telegram account is already linked to another user",
-        }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    // Create link
-    console.log("[link-telegram] Creating link for user:", user.id, "telegram_id:", telegram_id);
-    const { data: insertData, error: insertError } = await supabase
-      .from("user_integrations")
-      .insert({
-        user_id: user.id,
-        platform: "telegram",
-        platform_user_id: String(telegram_id),
-        linked_at: new Date().toISOString(),
-        last_activity: new Date().toISOString(),
-      })
-      .select();
-
-    if (insertError) {
-      console.error("[link-telegram] Error creating link:", JSON.stringify(insertError, null, 2));
-      return new Response(
-        JSON.stringify({
-          error: "Failed to link account",
-          details: insertError.message,
-          code: insertError.code
-        }),
+        JSON.stringify({ error: "Failed to generate link code" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    console.log("[link-telegram] Link created successfully:", insertData);
+    const deepLink = botUsername
+      ? `https://t.me/${botUsername}?start=${code}`
+      : null;
 
+    console.log("[link-telegram] code generated for user", user.id, "platform", platform);
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Telegram account linked successfully",
-        telegram_id: telegram_id,
+        code,
+        platform,
+        deep_link: deepLink,
+        expires_in_minutes: 10,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
